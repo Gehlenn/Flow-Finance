@@ -1,7 +1,7 @@
-# 🐛 BUGLOG - Flow Finance v0.3.0
+# 🐛 BUGLOG - Flow Finance v0.3.1v
 
 **Documento de Rastreamento de Bugs**  
-**Período**: v0.2.0 → v0.3.0  
+**Período**: v0.3.0 → v0.3.1v  
 **Data**: 8 de Março de 2026  
 **Responsável**: QA Team + Development
 
