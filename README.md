@@ -18,19 +18,51 @@ O Flow Finance foi projetado para ser intuitivo, rápido e seguro. Atualmente, o
 
 ---
 
-## 🛠️ Arquitetura Técnica
+## 🛠️ Arquitetura SaaS - Clean Architecture
 
-O projeto é construído com as seguintes tecnologias:
+O Flow Finance foi completamente refatorado para uma arquitetura SaaS escalável seguindo os princípios de **Clean Architecture**, **DDD (Domain Driven Design)**, **SOLID** e **event-driven architecture**.
 
--   **Frontend:** React 19 + TypeScript + Vite
--   **Estilização:** Tailwind CSS
--   **Ícones:** Lucide React
--   **Gráficos:** Recharts
--   **IA:** Integração com Google Gemini API (via `@google/genai`)
--   **Persistência de Dados:**
-    -   Atualmente utiliza um **Mock Service (`localService.ts`)** que simula a API do Firebase.
-    -   Os dados são salvos no `localStorage` do navegador.
-    -   A arquitetura foi desenhada para facilitar a migração para o Firebase real no futuro, mantendo as mesmas assinaturas de métodos (`auth`, `db`, `onSnapshot`, etc.).
+### Camadas da Arquitetura
+
+```
+src/
+├── domain/           # 🏛️  Camada de Domínio (Domain Layer)
+│   └── entities.ts   # Entidades de negócio com regras invariantes
+├── app/              # 🚀 Camada de Aplicação (Application Layer)
+│   └── services.ts   # Serviços de aplicação e coordenação
+├── storage/          # 💾 Camada de Infraestrutura (Infrastructure Layer)
+│   └── StorageProvider.ts # Abstração de persistência
+├── ai/               # 🤖 Módulos de IA
+├── finance/          # 💰 Engines financeiros
+├── security/         # 🔒 Segurança e integridade
+├── events/           # 📡 Sistema de eventos
+└── config/           # ⚙️  Configuração e DI
+```
+
+### Princípios Implementados
+
+- **🏛️ Clean Architecture:** Separação clara entre domínio, aplicação e infraestrutura
+- **📦 SOLID Principles:** Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion
+- **🎯 Domain Driven Design:** Entidades focadas em regras de negócio
+- **📡 Event-Driven:** Comunicação desacoplada via sistema de eventos
+- **🔄 Dependency Injection:** Injeção de dependências para testabilidade
+- **🛡️ Type Safety:** TypeScript rigoroso em todas as camadas
+
+### Serviços de Aplicação
+
+- **UserService:** Gerenciamento de usuários
+- **TransactionService:** Operações com transações
+- **AccountService:** Gerenciamento de contas
+- **GoalService:** Metas financeiras
+- **SimulationService:** Simulações financeiras
+- **ReportService:** Relatórios e análises
+- **SubscriptionService:** Assinaturas recorrentes
+- **BankConnectionService:** Conexões bancárias
+
+### Provedores de Armazenamento
+
+- **LocalStorageProvider:** Para desenvolvimento e testes locais
+- **ApiStorageProvider:** Para integração com backend API
 
 Para detalhes profundos sobre o fluxo de dados e diagramas, consulte o arquivo [ARCHITECTURE.md](./ARCHITECTURE.md).
 

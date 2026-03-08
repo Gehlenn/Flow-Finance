@@ -1,0 +1,393 @@
+/**
+ * APPLICATION SERVICES - Flow Finance
+ *
+ * Application layer services that coordinate between domain entities
+ * and infrastructure services. Following Clean Architecture principles.
+ */
+
+import { Transaction, Account, FinancialGoal, User, Subscription, BankConnection } from '../domain/entities';
+import { StorageProvider } from '../storage/StorageProvider';
+import { runAIOrchestrator } from '../ai/aiOrchestrator';
+import { generateMonthlyReport } from '../finance/reportEngine';
+import { detectFinancialLeaks } from '../ai/leakDetector';
+import { simulateFinancialScenario } from '../ai/financialSimulator';
+import { FinancialEventEmitter } from '../events/eventEngine';
+import { checkTransactionIdempotency, validateTransaction } from '../security/transactionIntegrity';
+import { logAuditEvent } from '../security/auditLogService';
+
+export class UserService {
+  constructor(private storage: StorageProvider) {}
+
+  async getUser(userId: string): Promise<User | null> {
+    return this.storage.getUser(userId);
+  }
+
+  async createUser(userData: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User> {
+    const user: User = {
+      ...userData,
+      id: `usr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await this.storage.saveUser(user);
+
+    logAuditEvent('user_created', 'user', user.id, {
+      email: user.email,
+      name: user.name,
+    });
+
+    return user;
+  }
+
+  async updateUser(userId: string, updates: Partial<User>): Promise<User> {
+    const user = await this.getUser(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const updatedUser: User = {
+      ...user,
+      ...updates,
+      updatedAt: new Date(),
+    };
+
+    await this.storage.saveUser(updatedUser);
+
+    logAuditEvent('user_updated', 'user', userId, {
+      fields: Object.keys(updates),
+    });
+
+    return updatedUser;
+  }
+}
+
+export class TransactionService {
+  constructor(
+    private storage: StorageProvider,
+    private userId: string
+  ) {}
+
+  async createTransaction(transactionData: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Transaction> {
+    // Domain validation
+    const transaction: Transaction = {
+      ...transactionData,
+      id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId: this.userId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    // Security checks
+    if (!checkTransactionIdempotency(transaction)) {
+      throw new Error('Transaction already exists');
+    }
+
+    const validation = validateTransaction(transaction);
+    if (!validation.valid) {
+      throw new Error(`Invalid transaction: ${validation.errors.join(', ')}`);
+    }
+
+    // Save transaction
+    await this.storage.saveTransaction(transaction);
+
+    // Audit log
+    logAuditEvent('transaction_created', 'transaction', transaction.id, {
+      amount: transaction.amount,
+      type: transaction.type,
+      category: transaction.category,
+    });
+
+    // Emit event for AI processing
+    FinancialEventEmitter.transactionCreated(transaction);
+
+    return transaction;
+  }
+
+  async getTransactions(filters?: { accountId?: string; category?: string; dateFrom?: Date; dateTo?: Date }): Promise<Transaction[]> {
+    const transactions = await this.storage.getTransactions(this.userId);
+
+    return transactions.filter(tx => {
+      if (filters?.accountId && tx.accountId !== filters.accountId) return false;
+      if (filters?.category && tx.category !== filters.category) return false;
+      if (filters?.dateFrom && tx.date < filters.dateFrom) return false;
+      if (filters?.dateTo && tx.date > filters.dateTo) return false;
+      return true;
+    });
+  }
+
+  async importTransactions(transactions: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>[]): Promise<Transaction[]> {
+    const imported: Transaction[] = [];
+
+    for (const txData of transactions) {
+      try {
+        const transaction = await this.createTransaction(txData);
+        imported.push(transaction);
+      } catch (error) {
+        console.error('Failed to import transaction:', error);
+      }
+    }
+
+    // Emit bulk import event
+    FinancialEventEmitter.transactionsImported(imported);
+
+    return imported;
+  }
+}
+
+export class AccountService {
+  constructor(
+    private storage: StorageProvider,
+    private userId: string
+  ) {}
+
+  async createAccount(accountData: Omit<Account, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Account> {
+    const account: Account = {
+      ...accountData,
+      id: `acc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId: this.userId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await this.storage.saveAccount(account);
+
+    logAuditEvent('account_created', 'account', account.id, {
+      name: account.name,
+      type: account.type,
+    });
+
+    return account;
+  }
+
+  async getAccounts(): Promise<Account[]> {
+    return this.storage.getAccounts(this.userId);
+  }
+
+  async updateAccountBalance(accountId: string, newBalance: number): Promise<void> {
+    const accounts = await this.getAccounts();
+    const account = accounts.find(acc => acc.id === accountId);
+
+    if (!account) {
+      throw new Error('Account not found');
+    }
+
+    const oldBalance = account.balance;
+    account.balance = newBalance;
+    account.updatedAt = new Date();
+
+    await this.storage.saveAccount(account);
+
+    logAuditEvent('account_balance_updated', 'account', accountId, {
+      oldBalance,
+      newBalance,
+      difference: newBalance - oldBalance,
+    });
+  }
+}
+
+export class GoalService {
+  constructor(
+    private storage: StorageProvider,
+    private userId: string
+  ) {}
+
+  async createGoal(goalData: Omit<FinancialGoal, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isCompleted'>): Promise<FinancialGoal> {
+    const goal: FinancialGoal = {
+      ...goalData,
+      id: `goal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId: this.userId,
+      isCompleted: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await this.storage.saveGoal(goal);
+
+    logAuditEvent('goal_created', 'goal', goal.id, {
+      name: goal.name,
+      targetAmount: goal.targetAmount,
+    });
+
+    FinancialEventEmitter.goalCreated(goal);
+
+    return goal;
+  }
+
+  async getGoals(): Promise<FinancialGoal[]> {
+    return this.storage.getGoals(this.userId);
+  }
+
+  async updateGoalProgress(goalId: string, currentAmount: number): Promise<void> {
+    const goals = await this.getGoals();
+    const goal = goals.find(g => g.id === goalId);
+
+    if (!goal) {
+      throw new Error('Goal not found');
+    }
+
+    goal.currentAmount = currentAmount;
+    goal.isCompleted = currentAmount >= goal.targetAmount;
+    goal.updatedAt = new Date();
+
+    await this.storage.saveGoal(goal);
+  }
+}
+
+export class SimulationService {
+  constructor(
+    private storage: StorageProvider,
+    private userId: string
+  ) {}
+
+  async runSimulation(scenario: any): Promise<any> {
+    const accounts = await this.storage.getAccounts(this.userId);
+    const transactions = await this.storage.getTransactions(this.userId);
+
+    const result = simulateFinancialScenario(accounts, transactions, scenario);
+
+    logAuditEvent('simulation_run', 'simulation', `sim_${Date.now()}`, {
+      scenario: scenario.type,
+      projectedBalance: result.projected_balance,
+    });
+
+    return result;
+  }
+}
+
+export class SubscriptionService {
+  constructor(
+    private storage: StorageProvider,
+    private userId: string
+  ) {}
+
+  async createSubscription(subscriptionData: Omit<Subscription, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Subscription> {
+    const subscription: Subscription = {
+      ...subscriptionData,
+      id: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId: this.userId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await this.storage.saveSubscription(subscription);
+
+    logAuditEvent('subscription_created', 'subscription', subscription.id, {
+      name: subscription.name,
+      amount: subscription.amount,
+      frequency: subscription.frequency,
+    });
+
+    FinancialEventEmitter.subscriptionCreated(subscription);
+
+    return subscription;
+  }
+
+  async getSubscriptions(): Promise<Subscription[]> {
+    return this.storage.getSubscriptions(this.userId);
+  }
+
+  async updateSubscription(subscriptionId: string, updates: Partial<Subscription>): Promise<void> {
+    const subscriptions = await this.getSubscriptions();
+    const subscription = subscriptions.find(sub => sub.id === subscriptionId);
+
+    if (!subscription) {
+      throw new Error('Subscription not found');
+    }
+
+    const updatedSubscription: Subscription = {
+      ...subscription,
+      ...updates,
+      updatedAt: new Date(),
+    };
+
+    await this.storage.saveSubscription(updatedSubscription);
+
+    logAuditEvent('subscription_updated', 'subscription', subscriptionId, {
+      fields: Object.keys(updates),
+    });
+  }
+
+  async deleteSubscription(subscriptionId: string): Promise<void> {
+    const subscriptions = await this.getSubscriptions();
+    const subscription = subscriptions.find(sub => sub.id === subscriptionId);
+
+    if (!subscription) {
+      throw new Error('Subscription not found');
+    }
+
+    await this.storage.deleteSubscription(subscriptionId);
+
+    logAuditEvent('subscription_deleted', 'subscription', subscriptionId, {
+      name: subscription.name,
+    });
+  }
+}
+
+export class BankConnectionService {
+  constructor(
+    private storage: StorageProvider,
+    private userId: string
+  ) {}
+
+  async createBankConnection(connectionData: Omit<BankConnection, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<BankConnection> {
+    const connection: BankConnection = {
+      ...connectionData,
+      id: `bc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId: this.userId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await this.storage.saveBankConnection(connection);
+
+    logAuditEvent('bank_connection_created', 'bank_connection', connection.id, {
+      bankName: connection.bankName,
+      accountType: connection.accountType,
+    });
+
+    FinancialEventEmitter.bankConnectionCreated(connection);
+
+    return connection;
+  }
+
+  async getBankConnections(): Promise<BankConnection[]> {
+    return this.storage.getBankConnections(this.userId);
+  }
+
+  async updateBankConnection(connectionId: string, updates: Partial<BankConnection>): Promise<void> {
+    const connections = await this.getBankConnections();
+    const connection = connections.find(conn => conn.id === connectionId);
+
+    if (!connection) {
+      throw new Error('Bank connection not found');
+    }
+
+    const updatedConnection: BankConnection = {
+      ...connection,
+      ...updates,
+      updatedAt: new Date(),
+    };
+
+    await this.storage.saveBankConnection(updatedConnection);
+
+    logAuditEvent('bank_connection_updated', 'bank_connection', connectionId, {
+      fields: Object.keys(updates),
+    });
+  }
+
+  async deleteBankConnection(connectionId: string): Promise<void> {
+    const connections = await this.getBankConnections();
+    const connection = connections.find(conn => conn.id === connectionId);
+
+    if (!connection) {
+      throw new Error('Bank connection not found');
+    }
+
+    await this.storage.deleteBankConnection(connectionId);
+
+    logAuditEvent('bank_connection_deleted', 'bank_connection', connectionId, {
+      bankName: connection.bankName,
+    });
+  }
+}
