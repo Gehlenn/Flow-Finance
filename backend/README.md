@@ -1,0 +1,601 @@
+# Flow Finance Backend API
+
+> Secure backend server for Flow Finance app — handles authentication, rate limiting, and Gemini AI proxy.
+
+## Overview
+
+The backend serves as:
+- **Authentication proxy**: Issues JWT tokens for mobile app users
+- **AI proxy**: Routes all Gemini API calls server-side (API key never exposed to client)
+- **Rate limiter**: Prevents abuse of AI endpoints
+- **Logger**: Centralized observability for production incidents
+
+## Architecture
+
+```
+Express Server (port 3001)
+├── /api/auth/* → JWT token generation & validation
+├── /api/ai/*   → Gemini API proxy with rate limiting
+├── /health     → Server status
+└── /api/version → API version
+```
+
+**Middleware Stack:**
+1. **Security**: Helmet (headers), CORS (origin validation)
+2. **Logging**: Pino (structured logs)
+3. **Rate Limiting**: Tiered limits (general, AI, auth)
+4. **Authentication**: JWT validation (except login)
+5. **Error Handling**: Centralized error formatter
+
+## Setup
+
+### Prerequisites
+
+- **Node.js** 18+ ([download](https://nodejs.org))
+- **npm** 8+ (comes with Node.js)
+- **Gemini API Key** ([get it here](https://aistudio.google.com/app/apikeys))
+
+### Installation
+
+1. **Install dependencies:**
+
+```bash
+cd backend
+npm install
+```
+
+2. **Create environment file:**
+
+```bash
+cp .env.example .env
+```
+
+3. **Configure environment variables:**
+
+Edit `backend/.env`:
+
+```env
+# Required
+GEMINI_API_KEY=your_api_key_from_google_ai_studio
+
+# Recommended
+JWT_SECRET=use_a_strong_random_string_in_production
+NODE_ENV=development
+FRONTEND_URL=http://localhost:5173
+```
+
+Generate a strong JWT secret (production):
+
+```bash
+# On macOS/Linux
+openssl rand -base64 32
+
+# On Windows (PowerShell)
+[Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+```
+
+### Running the Server
+
+**Development (with auto-reload):**
+
+```bash
+npm run dev
+```
+
+Server starts at: `http://localhost:3001`
+
+**Production:**
+
+```bash
+npm run build
+npm start
+```
+
+**Type checking:**
+
+```bash
+npm run lint
+```
+
+## API Endpoints
+
+### Authentication
+
+#### `POST /api/auth/login`
+
+Generate JWT token.
+
+**Request:**
+```json
+{
+  "email": "user@example.com",
+  "password": "any_password"
+}
+```
+
+**Response:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "expiresIn": 604800,
+  "user": {
+    "userId": "dXNlckBleGFtcG...",
+    "email": "user@example.com"
+  }
+}
+```
+
+**Rate Limit:** 5 requests per 15 minutes
+
+---
+
+#### `POST /api/auth/refresh`
+
+Refresh expired token.
+
+**Headers:**
+```
+Authorization: Bearer <old_token>
+```
+
+**Response:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "expiresIn": 604800
+}
+```
+
+---
+
+#### `GET /api/auth/validate`
+
+Check if token is valid (optional auth).
+
+**Headers:**
+```
+Authorization: Bearer <token>  (optional)
+```
+
+**Response:**
+```json
+{
+  "valid": true,
+  "user": {
+    "userId": "dXNlckBleGFtcG...",
+    "email": "user@example.com"
+  },
+  "expiresIn": 604500
+}
+```
+
+---
+
+#### `POST /api/auth/logout`
+
+Logout (client should discard token).
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Logged out successfully. Please clear the token on the client side."
+}
+```
+
+### AI Operations
+
+All endpoints require `Authorization: Bearer <token>` header.
+
+#### `POST /api/ai/interpret`
+
+Parse smart input (text → transactions/reminders).
+
+**Request:**
+```json
+{
+  "text": "Gastei R$50 no mercado ontem",
+  "memoryContext": "Sou freelancer com receita variável"
+}
+```
+
+**Response:**
+```json
+{
+  "intent": "transaction",
+  "data": [
+    {
+      "amount": 50,
+      "description": "Mercado",
+      "category": "Pessoal",
+      "type": "Despesa"
+    }
+  ]
+}
+```
+
+**Rate Limit:** 10 requests per minute
+
+---
+
+#### `POST /api/ai/scan-receipt`
+
+OCR document parsing (receipt, invoice, etc.).
+
+**Request:**
+```json
+{
+  "imageBase64": "iVBORw0KGgoAAAANSUhEUgAAAA...",
+  "imageMimeType": "image/jpeg",
+  "context": "Compra de material de escritório"
+}
+```
+
+**Response:**
+```json
+{
+  "amount": 125.50,
+  "description": "Papelaria ABC",
+  "date": "2024-01-15",
+  "category": "Trabalho",
+  "type": "Despesa"
+}
+```
+
+---
+
+#### `POST /api/ai/classify-transactions`
+
+Classify and categorize transactions.
+
+**Request:**
+```json
+{
+  "transactions": [
+    { "description": "Magalu", "amount": 89.90, "date": "2024-01-14" },
+    { "description": "Freelance JP", "amount": 1500, "date": "2024-01-13" }
+  ]
+}
+```
+
+**Response:**
+```json
+[
+  {
+    "category": "Pessoal",
+    "type": "Despesa",
+    "confidence": 0.95
+  },
+  {
+    "category": "Negócio",
+    "type": "Receita",
+    "confidence": 0.98
+  }
+]
+```
+
+---
+
+#### `POST /api/ai/insights`
+
+Generate financial insights.
+
+**Request (Daily):**
+```json
+{
+  "transactions": [...],
+  "type": "daily"
+}
+```
+
+**Response (Daily):**
+```json
+[
+  {
+    "title": "Gastos acima da média",
+    "description": "Seus gastos com alimentação estão 20% acima do normal",
+    "type": "alerta"
+  }
+]
+```
+
+**Request (Strategic):**
+```json
+{
+  "transactions": [...],
+  "type": "strategic"
+}
+```
+
+**Response (Strategic):**
+```json
+{
+  "summary": "Você está em bom estado financeiro...",
+  "strengths": [...],
+  "weaknesses": [...],
+  "risks": [...],
+  "opportunities": [...],
+  "actions": [...]
+}
+```
+
+---
+
+#### `POST /api/ai/token-count`
+
+Count tokens for cost estimation.
+
+**Request:**
+```json
+{
+  "text": "Seu texto aqui para contar tokens"
+}
+```
+
+**Response:**
+```json
+{
+  "tokenCount": 12
+}
+```
+
+### System
+
+#### `GET /health`
+
+Server health check.
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "uptime": 123.45,
+  "version": "0.1.0"
+}
+```
+
+---
+
+#### `GET /api/version`
+
+API version.
+
+**Response:**
+```json
+{
+  "version": "0.1.0",
+  "environment": "development"
+}
+```
+
+## Error Responses
+
+All errors follow this format:
+
+```json
+{
+  "error": "Unauthorized",
+  "message": "Invalid or expired token",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "details": {}
+}
+```
+
+**Common Status Codes:**
+- `400`: Bad request (invalid input)
+- `401`: Unauthorized (missing/invalid token)
+- `429`: Too many requests (rate limited)
+- `500`: Server error
+
+## Rate Limiting
+
+The server enforces tiered rate limits:
+
+| Endpoint Category | Limit | Window |
+|---|---|---|
+| General (all) | 100 | 15 min |
+| Auth (`/api/auth/*`) | 5 | 15 min |
+| AI (`/api/ai/*`) | 10 | 1 min |
+
+**Rate-limit headers:**
+```
+X-RateLimit-Limit: 10
+X-RateLimit-Remaining: 8
+X-RateLimit-Reset: 1705314600
+```
+
+## Environment Variables
+
+See [.env.example](.env.example) for all available options.
+
+**Critical (must set):**
+- `GEMINI_API_KEY` — Your Gemini API key
+- `JWT_SECRET` — Strong random string for signing tokens
+
+**Optional (sensible defaults):**
+- `PORT` — Default: 3001
+- `NODE_ENV` — Default: development
+- `FRONTEND_URL` — Default: http://localhost:5173
+- `LOG_LEVEL` — Default: info
+
+## Development Workflow
+
+### Watch Mode
+
+Auto-recompile on file changes:
+
+```bash
+npm run dev
+```
+
+### Testing Request
+
+Using `curl`:
+
+```bash
+# Login
+curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"test"}'
+
+# Use returned token
+TOKEN="eyJhbGciOiJIUzI1NiIs..."
+
+# Interpret
+curl -X POST http://localhost:3001/api/ai/interpret \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Gastei R$50 no mercado"}'
+```
+
+Using Postman or VS Code REST Client (`.rest` file):
+
+```http
+### Login
+POST http://localhost:3001/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "test"
+}
+
+### Interpret
+POST http://localhost:3001/api/ai/interpret
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+Content-Type: application/json
+
+{
+  "text": "Gastei R$50 no mercado"
+}
+```
+
+## Deployment
+
+### Local Testing
+
+```bash
+npm run build
+npm start
+```
+
+### Docker (Optional)
+
+Create `Dockerfile`:
+
+```dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY dist ./dist
+
+EXPOSE 3001
+
+CMD ["npm", "start"]
+```
+
+Build & run:
+
+```bash
+docker build -t flow-finance-api .
+docker run -p 3001:3001 --env-file .env flow-finance-api
+```
+
+### Environment Variables (Production)
+
+Use a secure secrets manager:
+
+- **AWS Secrets Manager**
+- **Google Cloud Secret Manager**
+- **Azure Key Vault**
+- **Heroku Config Vars**
+
+Never commit `.env` to version control. Use `.env.example` as template only.
+
+## Troubleshooting
+
+### "GEMINI_API_KEY is not set"
+
+**Solution:** Make sure `.env` file exists and contains `GEMINI_API_KEY`.
+
+```bash
+cat .env | grep GEMINI_API_KEY
+```
+
+### "Invalid token" errors
+
+**Solution:** Tokens expire after 7 days. Call `/api/auth/refresh` to get a new one.
+
+### Rate limit exceeded
+
+**Solution:** Wait for the window to reset (see `X-RateLimit-Reset` header). Or contact admin to adjust limits.
+
+### CORS errors (frontend can't call backend)
+
+**Solution:** Ensure `FRONTEND_URL` environment variable matches your frontend origin:
+
+```env
+FRONTEND_URL=http://localhost:5173
+```
+
+## Security Notes
+
+- **API Keys**: Gemini API key stays server-side only — never exposed to client
+- **Tokens**: JWT tokens are stateless and expire after 7 days
+- **Secrets**: Use environment variables for all secrets (never hardcode)
+- **HTTPS**: Always use HTTPS in production (Helmet enforces secure headers)
+- **Rate Limiting**: Protects against abuse and DDoS attacks
+- **CORS**: Only allows requests from whitelisted `FRONTEND_URL`
+
+## Monitoring
+
+Logs are output to console with structured format (Pino JSON).
+
+In production, send logs to:
+- **CloudWatch** (AWS)
+- **Stackdriver** (Google Cloud)
+- **Datadog**
+- **New Relic**
+
+Enable pretty-print during development:
+
+```env
+LOG_PRETTY=true
+LOG_LEVEL=debug
+```
+
+## Next Steps
+
+1. ✅ Backend API server created
+2. ⬜ Frontend integration tests
+3. ⬜ Sentry error tracking setup
+4. ⬜ Database integration (replace mock auth)
+5. ⬜ Production deployment
+
+## Contributing
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
+
+## License
+
+See [LICENSE](../LICENSE) for details.
+
+---
+
+**Questions?** Start the dev server and check logs:
+
+```bash
+npm run dev
+```
+
+🎉 Happy coding!

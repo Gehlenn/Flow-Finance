@@ -1,0 +1,144 @@
+/**
+ * API CONFIGURATION — Backend Proxy Setup
+ *
+ * CRITICAL: Gemini API Key must NEVER be exposed in client-side code.
+ * This configuration defines backend proxy endpoints for all API calls.
+ *
+ * Flow:
+ *   Client → Backend Proxy → Gemini API
+ *                    ↓
+ *          Rate limiting + Auth verification
+ */
+
+// ─── Environment Detection ────────────────────────────────────────────────────
+
+export const IS_DEVELOPMENT = import.meta.env.MODE === 'development';
+export const IS_PRODUCTION = !IS_DEVELOPMENT;
+
+// ─── Backend API Endpoints (Update with your actual backend domain) ──────────
+
+const BACKEND_BASE_URL = (() => {
+  if (IS_DEVELOPMENT) {
+    return process.env.VITE_API_DEV_URL || 'http://localhost:3001';
+  }
+  return process.env.VITE_API_PROD_URL || 'https://api.flowfinance.app';
+})();
+
+export const API_ENDPOINTS = {
+  // Gemini AI proxy endpoints
+  AI: {
+    INTERPRET: `${BACKEND_BASE_URL}/api/ai/interpret`,
+    ANALYZE: `${BACKEND_BASE_URL}/api/ai/analyze`,
+    CLASSIFY_TRANSACTIONS: `${BACKEND_BASE_URL}/api/ai/classify-transactions`,
+    SCAN_RECEIPT: `${BACKEND_BASE_URL}/api/ai/scan-receipt`,
+    GENERATE_INSIGHTS: `${BACKEND_BASE_URL}/api/ai/insights`,
+    CREDIT_TOKEN_COUNT: `${BACKEND_BASE_URL}/api/ai/token-count`,
+  },
+
+  // Bank sync endpoints
+  BANKING: {
+    CONNECT: `${BACKEND_BASE_URL}/api/banking/connect`,
+    SYNC: `${BACKEND_BASE_URL}/api/banking/sync`,
+    DISCONNECT: `${BACKEND_BASE_URL}/api/banking/disconnect`,
+  },
+
+  // Auth endpoints
+  AUTH: {
+    LOGIN: `${BACKEND_BASE_URL}/api/auth/login`,
+    LOGOUT: `${BACKEND_BASE_URL}/api/auth/logout`,
+    REFRESH_TOKEN: `${BACKEND_BASE_URL}/api/auth/refresh`,
+  },
+
+  // User data endpoints
+  USER: {
+    PROFILE: `${BACKEND_BASE_URL}/api/user/profile`,
+    PREFERENCES: `${BACKEND_BASE_URL}/api/user/preferences`,
+    SYNC_DATA: `${BACKEND_BASE_URL}/api/user/sync`,
+  },
+};
+
+// ─── Request Configuration ────────────────────────────────────────────────────
+
+export const API_CONFIG = {
+  TIMEOUT: 30000, // 30 seconds
+  RETRY_ATTEMPTS: 3,
+  RETRY_DELAY: 1000, // ms
+  RATE_LIMIT: {
+    REQUESTS_PER_MINUTE: 60,
+    REQUESTS_PER_HOUR: 1000,
+  },
+};
+
+// ─── Security Headers ────────────────────────────────────────────────────────
+
+export function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem('auth_token');
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': token ? `Bearer ${token}` : '',
+    'X-Client-Version': '0.1.0',
+    'X-Client-Platform': getPlatform(),
+  };
+}
+
+function getPlatform(): string {
+  if (typeof window === 'undefined') return 'unknown';
+  try {
+    if (window.Capacitor?.isNativePlatform?.()) {
+      const platform = window.Capacitor.getPlatform?.();
+      return platform || 'native';
+    }
+  } catch {
+    /* */
+  }
+  return 'web';
+}
+
+// ─── API Request Wrapper ─────────────────────────────────────────────────────
+
+export async function apiRequest<T>(
+  endpoint: string,
+  options?: RequestInit
+): Promise<T> {
+  const headers = {
+    ...getAuthHeaders(),
+    ...(options?.headers || {}),
+  };
+
+  try {
+    const response = await fetch(endpoint, {
+      ...options,
+      headers,
+      // Note: timeout is handled via AbortController instead
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(`API Error ${response.status}: ${error.message || response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`[API] Request to ${endpoint} failed:`, error);
+    throw error;
+  }
+}
+
+// ─── Usage Example (for documentation) ──────────────────────────────────────
+
+/**
+ * Example: Replace direct Gemini call with backend proxy
+ *
+ * // OLD (INSECURE - API Key in client)
+ * import { GoogleGenerativeAI } from '@google/generative-ai';
+ * const genAI = new GoogleGenerativeAI(process.env.VITE_GEMINI_API_KEY);
+ *
+ * // NEW (SECURE - Backend proxy)
+ * const result = await apiRequest<InterpretResult>(
+ *   API_ENDPOINTS.AI.INTERPRET,
+ *   {
+ *     method: 'POST',
+ *     body: JSON.stringify({ text, context: { userId, locale: 'pt-BR' } }),
+ *   }
+ * );
+ */

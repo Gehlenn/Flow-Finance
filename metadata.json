@@ -1,0 +1,8 @@
+{
+  "name": "Flow - App para controle de fluxo de caixa inteligente",
+  "description": "Um aplicativo de fluxo de caixa pessoal e profissional com assistente de IA integrado para lançamentos inteligentes por texto, voz ou imagem.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}

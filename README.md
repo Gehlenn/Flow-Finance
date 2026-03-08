@@ -1,0 +1,234 @@
+# Flow Finance - Controle de Fluxo de Caixa Inteligente
+
+Bem-vindo ao **Flow Finance**, uma aplicação moderna para gestão financeira pessoal e profissional, equipada com um assistente de IA para facilitar o lançamento de despesas e receitas.
+
+## 🚀 Visão Geral
+
+O Flow Finance foi projetado para ser intuitivo, rápido e seguro. Atualmente, o projeto opera em um modo **Local-First** (sem dependência de backend externo para testes), utilizando o `localStorage` do navegador para persistir os dados. Isso permite que você teste todas as funcionalidades imediatamente, sem configurar chaves de API complexas ou bancos de dados externos.
+
+### Principais Funcionalidades
+
+-   **Dashboard Interativo:** Visão geral de receitas, despesas e saldo.
+-   **Assistente de IA:** Lançamento de transações via texto natural (ex: "Gastei 50 reais no almoço").
+-   **Gestão de Transações:** Adicione, edite e categorize suas movimentações.
+-   **Metas e Alertas:** Defina objetivos financeiros e receba alertas de gastos.
+-   **Central de Apoio:** Acesso rápido a suporte via IA, contato e documentos legais (Termos, Privacidade, Copyright).
+-   **Modo Escuro/Claro:** Interface adaptável à sua preferência.
+-   **Totalmente Responsivo:** Funciona bem em desktop e mobile.
+
+---
+
+## 🛠️ Arquitetura Técnica
+
+O projeto é construído com as seguintes tecnologias:
+
+-   **Frontend:** React 19 + TypeScript + Vite
+-   **Estilização:** Tailwind CSS
+-   **Ícones:** Lucide React
+-   **Gráficos:** Recharts
+-   **IA:** Integração com Google Gemini API (via `@google/genai`)
+-   **Persistência de Dados:**
+    -   Atualmente utiliza um **Mock Service (`localService.ts`)** que simula a API do Firebase.
+    -   Os dados são salvos no `localStorage` do navegador.
+    -   A arquitetura foi desenhada para facilitar a migração para o Firebase real no futuro, mantendo as mesmas assinaturas de métodos (`auth`, `db`, `onSnapshot`, etc.).
+
+Para detalhes profundos sobre o fluxo de dados e diagramas, consulte o arquivo [ARCHITECTURE.md](./ARCHITECTURE.md).
+
+---
+
+## 📦 Como Rodar o Projeto
+
+Siga os passos abaixo para executar o aplicativo em seu ambiente local:
+
+### Pré-requisitos
+
+-   Node.js (versão 18 ou superior recomendada)
+-   NPM ou Yarn
+
+### Instalação e Execução
+
+1.  **Instale as dependências:**
+    ```bash
+    npm install
+    ```
+
+2.  **Inicie o servidor de desenvolvimento:**
+    ```bash
+    npm run dev
+    ```
+
+3.  **Acesse o aplicativo:**
+    O terminal mostrará o endereço local, geralmente `http://localhost:3000`.
+
+---
+
+## 🧪 Como Testar
+
+O aplicativo possui um sistema de autenticação simulado para facilitar os testes:
+
+1.  **Acesso Rápido (Modo Demo):**
+    -   Na tela de login, clique no botão **"Acesso Rápido (Teste)"** ou **"Iniciar Modo Demo"**.
+    -   Isso fará login automaticamente com um usuário de teste e dados de exemplo.
+
+2.  **Criar Nova Conta:**
+    -   Clique em "Novo por aqui? Cadastre-se".
+    -   Preencha qualquer nome, e-mail e senha (mínimo 6 caracteres).
+    -   O sistema criará um usuário local e persistirá a sessão.
+
+3.  **Testar Persistência:**
+    -   Adicione uma transação ou altere o tema.
+    -   Recarregue a página (F5).
+    -   Seus dados permanecerão salvos (até que você limpe o cache do navegador).
+
+---
+
+## 📂 Estrutura de Pastas
+
+```text
+├── components
+│   ├── AIInput.tsx
+│   ├── Analytics.tsx
+│   ├── Assistant.tsx
+│   ├── CashFlow.tsx
+│   ├── Dashboard.tsx
+│   ├── LegalModal.tsx
+│   ├── Login.tsx
+│   ├── Logo.tsx
+│   ├── NamePromptModal.tsx
+│   ├── OpenFinance.tsx
+│   ├── Settings.tsx
+│   ├── SpendingAlerts.tsx
+│   └── TransactionList.tsx
+├── services
+│   ├── firebase.ts
+│   ├── geminiService.ts
+│   └── localService.ts
+├── .gitignore
+├── App.tsx
+├── ARCHITECTURE.md
+├── CONTRIBUTING.md
+├── debug.txt
+├── index.html
+├── index.tsx
+├── metadata.json
+├── package.json
+├── README.md
+├── teste.ts
+├── tsconfig.json
+├── types.ts
+└── vite.config.ts
+```
+
+---
+
+## 🔄 Migração Futura para Firebase Real
+
+Para conectar com um backend Firebase real no futuro:
+
+1.  Configure um projeto no Console do Firebase.
+2.  Atualize o arquivo `services/firebase.ts` com suas credenciais reais.
+3.  No `App.tsx` e outros componentes, altere as importações de `../services/localService` para `../services/firebase`.
+4.  A lógica de `onSnapshot` e `setDoc` já está compatível com a SDK do Firebase.
+
+---
+
+## 📚 Manutenção da Documentação
+
+Este projeto segue uma política rigorosa de **Documentação Viva**.
+
+### Atualização Automática da Estrutura
+
+Sempre que adicionar novos arquivos ou pastas, execute o seguinte comando para atualizar a árvore de diretórios neste README:
+
+```bash
+npm run docs:update
+```
+
+Para mais detalhes sobre como contribuir e manter a documentação, consulte o arquivo [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+---
+
+## 📱 Instalação Mobile (PWA + Capacitor)
+
+### PWA — Instalar direto no celular
+
+O Flow Finance é uma **Progressive Web App** totalmente instalável. Para instalar:
+
+1. Abra o app no navegador mobile (Chrome/Safari)
+2. Toque em **"Adicionar à tela inicial"** (iOS) ou no banner de instalação (Android)
+3. O app funciona offline graças ao Service Worker
+
+### Capacitor — Build nativo Android/iOS
+
+**Pré-requisitos:**
+- Node.js 18+
+- Android Studio (para Android)
+- Xcode 14+ (para iOS, somente macOS)
+
+**Passo a passo:**
+
+```bash
+# 1. Instalar dependências do Capacitor
+npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/ios
+
+# 2. Gerar o build web otimizado
+npm run build
+
+# 3. Adicionar plataformas nativas
+npx cap add android
+npx cap add ios
+
+# 4. Sincronizar assets web com plataformas nativas
+npx cap sync
+
+# 5. Abrir no Android Studio
+npx cap open android
+
+# 6. Abrir no Xcode (somente macOS)
+npx cap open ios
+```
+
+**Desenvolvimento com hot-reload:**
+
+```bash
+# Rodar dev server e apontar Capacitor para ele
+npm run dev
+# Em outro terminal (edite capacitor.config.ts com o IP local):
+npx cap run android --livereload --external
+```
+
+**Configuração:** edite `capacitor.config.ts` na raiz do projeto para ajustar `appId`, `appName` e opções de plugins nativos (SplashScreen, StatusBar, Keyboard).
+
+### Event Engine
+
+O **Financial Event Engine** (`src/services/finance/eventEngine.ts`) conecta todos os subsistemas via eventos desacoplados:
+
+| Evento | Dispara quando |
+|--------|---------------|
+| `transaction_created` | Usuário adiciona uma transação |
+| `recurring_generated` | Recorrência é expandida |
+| `insight_generated` | Novo insight financeiro detectado |
+| `risk_detected` | Risco financeiro identificado |
+| `autopilot_action` | Autopilot gera uma ação |
+| `goal_created` | Meta financeira criada |
+
+Para emitir um evento customizado:
+
+```typescript
+import { FinancialEventEmitter } from './services/finance/eventEngine';
+
+FinancialEventEmitter.transactionCreated(transaction);
+```
+
+Para escutar eventos:
+
+```typescript
+import { subscribeToEvent } from './services/finance/eventEngine';
+
+const unsubscribe = subscribeToEvent('risk_detected', (event) => {
+  console.log('Risco detectado:', event.payload);
+});
+
+// Cleanup:
+unsubscribe();
+```
