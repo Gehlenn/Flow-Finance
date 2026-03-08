@@ -12,9 +12,9 @@ import { predictCashflow, predictionTrend } from '../services/finance/cashflowPr
 import { calculateMoneyDistribution } from '../services/finance/moneyMap';
 import { getGoals, calculateGoalProgress } from '../services/finance/goalService';
 import { getConnections, formatLastSync } from '../services/integrations/openBankingService';
-import { detectSalary } from '../services/ai/salaryDetector';
-import { detectFixedExpenses } from '../services/ai/fixedExpenseDetector';
-import { getSyncStatusSummary, getLastSyncReport } from '../services/finance/bankSyncEngine';
+import { detectFinancialLeaks, FinancialLeak } from '../services/ai/leakDetector';
+import { generateMonthlyReport, FinancialReport } from '../services/finance/reportEngine';
+import { simulateFinancialScenario, FinancialSimulationResult } from '../services/ai/financialSimulator';
 import { 
   Eye, EyeOff, BrainCircuit, Loader2, Landmark, LayoutDashboard,
   ArrowUpRight, ArrowDownRight, Wallet, 
@@ -126,6 +126,28 @@ const Dashboard: React.FC<DashboardProps> = ({
     () => getSyncStatusSummary(userId ?? 'local'),
     [userId, bankConnections]
   );
+
+  // Financial Leaks
+  const financialLeaks = useMemo(
+    () => detectFinancialLeaks(filteredTransactions),
+    [filteredTransactions]
+  );
+
+  // Monthly Report
+  const monthlyReport = useMemo(
+    () => generateMonthlyReport(filteredTransactions),
+    [filteredTransactions]
+  );
+
+  // Simulation example (extra spending)
+  const simulationResult = useMemo(() => {
+    if (filteredTransactions.length === 0) return null;
+    return simulateFinancialScenario(accounts, filteredTransactions, {
+      type: 'extra_spending',
+      amount: 500,
+      description: 'uma viagem de fim de semana'
+    });
+  }, [accounts, filteredTransactions]);
 
   const hasCriticalAlerts = useMemo(() => {
     return aiInsights.some(insight => insight.type === 'alerta');
@@ -720,6 +742,90 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ── FINANCIAL LEAKS WIDGET ──────────────────────────────────────── */}
+      {financialLeaks.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+          <div className="flex items-center gap-3 px-5 pt-5 pb-3">
+            <div className="w-9 h-9 bg-rose-50 dark:bg-rose-500/10 rounded-xl flex items-center justify-center shrink-0">
+              <AlertTriangle size={16} className="text-rose-500" />
+            </div>
+            <div className="flex-1">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Vazamentos Financeiros</p>
+              <p className="text-xs font-black text-slate-800 dark:text-white mt-0.5">
+                {financialLeaks.length} vazamento{financialLeaks.length > 1 ? 's' : ''} detectado{financialLeaks.length > 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+          <div className="px-5 pb-5 flex flex-col gap-2">
+            {financialLeaks.slice(0, 3).map((leak, idx) => (
+              <div key={idx} className="flex items-start gap-2.5 p-3 bg-rose-50 dark:bg-rose-500/10 rounded-2xl">
+                <AlertTriangle size={11} className="text-rose-500 mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black text-slate-800 dark:text-white truncate">{leak.merchant}</p>
+                  <p className="text-[8px] text-slate-500 dark:text-slate-400 font-bold leading-snug mt-0.5">
+                    {hideValues ? '••••' : formatCurrency(leak.monthly_cost)}/mês - {leak.suggestion}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── MONTHLY FINANCIAL REPORT WIDGET ─────────────────────────────── */}
+      <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-3 px-5 pt-5 pb-3">
+          <div className="w-9 h-9 bg-blue-50 dark:bg-blue-500/10 rounded-xl flex items-center justify-center shrink-0">
+            <CalendarClock size={16} className="text-blue-500" />
+          </div>
+          <div className="flex-1">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Relatório Mensal</p>
+            <p className="text-xs font-black text-slate-800 dark:text-white mt-0.5">{monthlyReport.month}</p>
+          </div>
+          <p className="text-[8px] font-black text-slate-400">
+            {hideValues ? '••••' : formatCurrency(monthlyReport.total_expenses)}
+          </p>
+        </div>
+        <div className="px-5 pb-5 flex flex-col gap-2">
+          {monthlyReport.top_categories.slice(0, 3).map(cat => (
+            <div key={cat.category} className="flex items-center gap-2.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
+              <p className="flex-1 text-[10px] font-bold text-slate-600 dark:text-slate-300 truncate">{cat.category}</p>
+              <p className="text-[9px] font-black text-slate-500">{cat.percentage}%</p>
+            </div>
+          ))}
+          {monthlyReport.insights.length > 0 && (
+            <p className="text-[8px] text-slate-400 font-bold mt-2">{monthlyReport.insights[0]}</p>
+          )}
+        </div>
+      </div>
+
+      {/* ── SIMULATION INSIGHTS WIDGET ───────────────────────────────────── */}
+      {simulationResult && (
+        <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+          <div className="flex items-center gap-3 px-5 pt-5 pb-3">
+            <div className="w-9 h-9 bg-purple-50 dark:bg-purple-500/10 rounded-xl flex items-center justify-center shrink-0">
+              <TrendingUp size={16} className="text-purple-500" />
+            </div>
+            <div className="flex-1">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Simulação Financeira</p>
+              <p className="text-xs font-black text-slate-800 dark:text-white mt-0.5">Cenário: Gasto Extra</p>
+            </div>
+          </div>
+          <div className="px-5 pb-5">
+            <p className="text-[10px] text-slate-600 dark:text-slate-400 font-bold leading-relaxed">
+              {simulationResult.summary}
+            </p>
+            <div className="flex items-center gap-2 mt-3">
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Saldo Projetado</p>
+              <p className="text-[10px] font-black text-slate-800 dark:text-white">
+                {hideValues ? '••••' : formatCurrency(simulationResult.projected_balance)}
+              </p>
+            </div>
           </div>
         </div>
       )}

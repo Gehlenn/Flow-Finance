@@ -25,10 +25,10 @@ import { detectSubscriptions, DetectedSubscription, formatCycle, formatNextCharg
 import { calculateMoneyDistribution }          from '../services/finance/moneyMap';
 import { parseOFX }                            from '../services/finance/ofxParser';
 import { parseCSV }                            from '../services/finance/csvParser';
-import {
-  buildFinancialGraph, getTopMerchants, getCategorySpending,
-  detectSubscriptionCandidates, getNodesByType, FinancialGraph,
-} from '../services/ai/financialGraph';
+import { detectFinancialLeaks, FinancialLeak } from '../services/ai/leakDetector';
+import { generateMonthlyReport, FinancialReport } from '../services/finance/reportEngine';
+import { simulateFinancialScenario, FinancialSimulationResult, SimulationScenario } from '../services/ai/financialSimulator';
+import { getAuditLogs, AUDIT_EVENTS, AuditLogEntry } from '../services/security/auditLogService';
 
 // Icons
 import {
@@ -541,6 +541,270 @@ const MoneyMapTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }
   );
 };
 
+// ─── TAB: Leaks ──────────────────────────────────────────────────────────────
+
+const LeaksTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }) => {
+  const leaks = useMemo(() => detectFinancialLeaks(transactions), [transactions]);
+
+  return (
+    <div className="flex flex-col h-full">
+      <SectionHeader icon={<AlertTriangle size={11} />} title="Financial Leaks" count={leaks.length} />
+
+      <div className="flex-1 overflow-y-auto">
+        {leaks.length === 0 ? (
+          <EmptyState icon={<AlertTriangle size={32} />} message="Nenhum vazamento detectado" />
+        ) : (
+          <div className="divide-y divide-slate-800">
+            {leaks.map((leak, idx) => (
+              <div key={idx} className="px-4 py-3 hover:bg-slate-800/30 transition-colors">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <AlertTriangle size={9} className="text-rose-500 shrink-0" />
+                      <span className="font-mono text-[10px] text-rose-300 truncate">{leak.merchant}</span>
+                    </div>
+                    <p className="font-mono text-[9px] text-slate-400 ml-3.5">R$ {leak.monthly_cost.toFixed(2)}/mês - {leak.occurrences} ocorrências</p>
+                    <p className="font-mono text-[8px] text-slate-500 ml-3.5 mt-1">{leak.suggestion}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── TAB: Report ─────────────────────────────────────────────────────────────
+
+const ReportTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }) => {
+  const report = useMemo(() => generateMonthlyReport(transactions), [transactions]);
+
+  return (
+    <div className="flex flex-col h-full">
+      <SectionHeader icon={<BarChart3 size={11} />} title="Monthly Report" />
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="bg-slate-800/50 rounded p-4">
+          <h3 className="font-mono text-[10px] text-emerald-400 mb-3">{report.month}</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="font-mono text-[8px] text-slate-500">Receitas</p>
+              <p className="font-mono text-[12px] text-emerald-400">R$ {report.total_income.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="font-mono text-[8px] text-slate-500">Despesas</p>
+              <p className="font-mono text-[12px] text-rose-400">R$ {report.total_expenses.toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-slate-800/50 rounded p-4">
+          <h4 className="font-mono text-[9px] text-slate-300 mb-2">Top Categorias</h4>
+          <div className="space-y-2">
+            {report.top_categories.map(cat => (
+              <div key={cat.category} className="flex items-center justify-between">
+                <span className="font-mono text-[9px] text-slate-400">{cat.category}</span>
+                <span className="font-mono text-[9px] text-emerald-400">{cat.percentage}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {report.insights.length > 0 && (
+          <div className="bg-slate-800/50 rounded p-4">
+            <h4 className="font-mono text-[9px] text-slate-300 mb-2">Insights</h4>
+            <div className="space-y-1">
+              {report.insights.map((insight, idx) => (
+                <p key={idx} className="font-mono text-[8px] text-slate-400">{insight}</p>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── TAB: Simulation ─────────────────────────────────────────────────────────
+
+const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[] }> = ({ transactions, accounts }) => {
+  const [scenario, setScenario] = useState<SimulationScenario>({
+    type: 'extra_spending',
+    amount: 500,
+    description: 'uma viagem de fim de semana'
+  });
+  const [result, setResult] = useState<FinancialSimulationResult | null>(null);
+
+  const runSimulation = () => {
+    const res = simulateFinancialScenario(accounts, transactions, scenario);
+    setResult(res);
+  };
+
+  useEffect(() => {
+    runSimulation();
+  }, [scenario]);
+
+  return (
+    <div className="flex flex-col h-full">
+      <SectionHeader icon={<TrendingUp size={11} />} title="Financial Simulation" />
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="bg-slate-800/50 rounded p-4">
+          <h4 className="font-mono text-[9px] text-slate-300 mb-3">Configurar Cenário</h4>
+          <div className="space-y-3">
+            <select
+              value={scenario.type}
+              onChange={e => setScenario({ ...scenario, type: e.target.value as any })}
+              className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-[10px] text-slate-300"
+            >
+              <option value="extra_spending">Gasto Extra</option>
+              <option value="monthly_savings">Economia Mensal</option>
+              <option value="months">Projeção por Meses</option>
+            </select>
+
+            {scenario.type === 'extra_spending' && (
+              <>
+                <input
+                  type="number"
+                  value={scenario.amount}
+                  onChange={e => setScenario({ ...scenario, amount: Number(e.target.value) })}
+                  placeholder="Valor"
+                  className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-[10px] text-slate-300"
+                />
+                <input
+                  value={scenario.description}
+                  onChange={e => setScenario({ ...scenario, description: e.target.value })}
+                  placeholder="Descrição"
+                  className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-[10px] text-slate-300"
+                />
+              </>
+            )}
+
+            {scenario.type === 'monthly_savings' && (
+              <>
+                <input
+                  type="number"
+                  value={scenario.amount}
+                  onChange={e => setScenario({ ...scenario, amount: Number(e.target.value) })}
+                  placeholder="Valor mensal"
+                  className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-[10px] text-slate-300"
+                />
+                <input
+                  value={scenario.description}
+                  onChange={e => setScenario({ ...scenario, description: e.target.value })}
+                  placeholder="Descrição"
+                  className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-[10px] text-slate-300"
+                />
+              </>
+            )}
+
+            {scenario.type === 'months' && (
+              <input
+                type="number"
+                value={(scenario as any).months || 3}
+                onChange={e => setScenario({ ...scenario, months: Number(e.target.value) })}
+                placeholder="Meses"
+                className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-[10px] text-slate-300"
+              />
+            )}
+
+            <button
+              onClick={runSimulation}
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-[10px] py-2 rounded transition-colors"
+            >
+              Simular
+            </button>
+          </div>
+        </div>
+
+        {result && (
+          <div className="bg-slate-800/50 rounded p-4">
+            <h4 className="font-mono text-[9px] text-emerald-400 mb-3">Resultado</h4>
+            <p className="font-mono text-[10px] text-slate-300 mb-3">{result.summary}</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="font-mono text-[8px] text-slate-500">Saldo Projetado</p>
+                <p className="font-mono text-[12px] text-emerald-400">R$ {result.projected_balance.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="font-mono text-[8px] text-slate-500">Período</p>
+                <p className="font-mono text-[12px] text-slate-300">{result.simulation_period} meses</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── TAB: Audit ──────────────────────────────────────────────────────────────
+
+const AuditTab: React.FC = () => {
+  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
+  const [filter, setFilter] = useState('');
+
+  const load = useCallback(() => {
+    const auditLogs = getAuditLogs();
+    setLogs(auditLogs);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = useMemo(() =>
+    logs.filter(log =>
+      !filter || log.event_type.includes(filter) || log.entity.includes(filter)
+    ), [logs, filter]);
+
+  return (
+    <div className="flex flex-col h-full">
+      <SectionHeader icon={<Shield size={11} />} title="Audit Logs" count={logs.length} onRefresh={load} />
+
+      <div className="px-4 py-2 border-b border-slate-700/40">
+        <div className="flex items-center gap-2 bg-black/40 border border-slate-700 rounded px-3 py-1.5">
+          <Search size={10} className="text-slate-500" />
+          <input
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+            placeholder="Filtrar por evento ou entidade..."
+            className="flex-1 bg-transparent font-mono text-[10px] text-slate-300 placeholder-slate-600 outline-none"
+          />
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {filtered.length === 0 ? (
+          <EmptyState icon={<Shield size={32} />} message="Nenhum log de auditoria" />
+        ) : (
+          <div className="divide-y divide-slate-800">
+            {filtered.map(log => (
+              <div key={log.id} className="px-4 py-3 hover:bg-slate-800/30 transition-colors">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono text-[9px] text-emerald-400">{log.event_type}</span>
+                      <span className="font-mono text-[8px] text-slate-500">→</span>
+                      <span className="font-mono text-[9px] text-slate-300">{log.entity}:{log.entity_id}</span>
+                    </div>
+                    <p className="font-mono text-[8px] text-slate-500">{new Date(log.timestamp).toLocaleString()}</p>
+                    {log.metadata && Object.keys(log.metadata).length > 0 && (
+                      <pre className="font-mono text-[7px] text-slate-600 mt-1 overflow-x-auto">
+                        {JSON.stringify(log.metadata, null, 2)}
+                      </pre>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── TAB: Parser Lab ─────────────────────────────────────────────────────────
 
 const ParserLabTab: React.FC = () => {
@@ -930,7 +1194,7 @@ interface AIControlPanelProps {
   userId: string;
 }
 
-type PanelTab = 'stats' | 'memory' | 'insights' | 'autopilot' | 'events' | 'logs' | 'subscriptions' | 'moneymap' | 'parser' | 'graph';
+type PanelTab = 'stats' | 'memory' | 'insights' | 'autopilot' | 'events' | 'logs' | 'subscriptions' | 'moneymap' | 'leaks' | 'report' | 'simulation' | 'audit' | 'parser' | 'graph';
 
 const TAB_CONFIG: Array<{ id: PanelTab; label: string; icon: React.ReactNode }> = [
   { id: 'stats',         label: 'Stats',         icon: <Layers size={11} />       },
@@ -941,6 +1205,10 @@ const TAB_CONFIG: Array<{ id: PanelTab; label: string; icon: React.ReactNode }> 
   { id: 'logs',          label: 'Logs',          icon: <Code2 size={11} />        },
   { id: 'subscriptions', label: 'Subs',          icon: <Repeat2 size={11} />      },
   { id: 'moneymap',      label: 'MoneyMap',      icon: <Map size={11} />          },
+  { id: 'leaks',         label: 'Leaks',         icon: <AlertTriangle size={11} />},
+  { id: 'report',        label: 'Report',        icon: <BarChart3 size={11} />    },
+  { id: 'simulation',    label: 'Simulate',      icon: <TrendingUp size={11} />  },
+  { id: 'audit',         label: 'Audit',         icon: <Shield size={11} />       },
   { id: 'parser',        label: 'Parser',        icon: <FileText size={11} />     },
   { id: 'graph',         label: 'Graph',         icon: <Network size={11} />      },
 ];
@@ -967,9 +1235,10 @@ const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts,
       case 'events':        return <EventsTab />;
       case 'logs':          return <AILogsTab />;
       case 'subscriptions': return <SubscriptionsTab transactions={transactions} />;
-      case 'moneymap':      return <MoneyMapTab transactions={transactions} />;
-      case 'parser':        return <ParserLabTab />;
-      case 'graph':         return <GraphTab transactions={transactions} accounts={accounts} userId={userId} />;
+      case 'leaks':         return <LeaksTab transactions={transactions} />;
+      case 'report':        return <ReportTab transactions={transactions} />;
+      case 'simulation':    return <SimulationTab transactions={transactions} accounts={accounts} />;
+      case 'audit':         return <AuditTab />;
       default:              return null;
     }
   };

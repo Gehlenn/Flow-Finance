@@ -1,5 +1,52 @@
 # 📝 CHANGELOG - Flow Finance
 
+## [0.3.1] - 2026-03-08
+
+### ✨ Advanced AI & Financial Integrity Modules
+
+#### 🤖 AI Engine Enhancements
+- **AI Orchestrator Engine** - Pipeline centralizado para coordenação de IA
+- **Financial Intelligence Graph** - Grafo de relações financeiras com nodes e edges
+- **AI Financial Simulator** - Simulação de cenários financeiros (gastos extras, economia mensal)
+- **AI Category Learning** - Aprendizado automático de categorias por merchant
+- **Financial Leak Detection** - Detecção automática de vazamentos financeiros recorrentes
+
+#### 📊 Financial Reporting
+- **Financial Report Engine** - Relatórios mensais automáticos com insights
+- **Monthly Financial Reports** - Análise comparativa mês a mês
+- **Financial Health Scoring** - Sistema de pontuação de saúde financeira
+
+#### 🔒 Security & Integrity
+- **Secure Money Calculations** - Biblioteca decimal.js para cálculos precisos
+- **Transaction Idempotency** - Prevenção de duplicatas de transações
+- **Audit Log Service** - Logs detalhados de todas operações críticas
+- **Reconciliation Engine** - Reconciliação automática de saldos
+
+#### 🎛️ User Interface
+- **Dashboard Widgets** - Novos widgets: Financial Leaks, Monthly Report, Simulation Insights
+- **AI Control Panel** - Abas expandidas: Leaks, Report, Simulate, Audit
+- **Event Engine Integration** - Triggers automáticos nos eventos relevantes
+
+#### 🏗️ Architecture Improvements
+- **Clean Architecture Compliance** - Separação clara de responsabilidades
+- **SOLID Principles** - Princípios aplicados em todos os módulos
+- **Financial Security** - Validações rigorosas e cálculos precisos
+- **Type Safety** - Interfaces TypeScript completas
+
+### 🐛 Bugs Corrigidos
+- **Hash Generation**: Substituído crypto Node.js por hash compatível com browser
+- **Type Imports**: Adicionadas importações faltantes para SimulationScenario e AuditLogEntry
+
+### 📚 Documentation
+- **Module Documentation**: Todos os novos módulos documentados inline
+- **Architecture Updates**: Diagramas atualizados com novos componentes
+
+### 🧪 Testing
+- **New Module Tests**: Estrutura preparada para testes dos novos módulos
+- **Integration Tests**: Validação de integração entre módulos
+
+---
+
 ## [0.3.0] - 2026-03-08
 
 ### ✨ Features Adicionadas

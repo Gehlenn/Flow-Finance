@@ -159,39 +159,39 @@ export function initEventListeners(
     const { transactions, accounts, userId, onAutopilotActions, onInsights, onRisks } = getState();
 
     try {
-      // PART 6 — Rebuild graph on relevant events
-      const { buildFinancialGraph, invalidateGraphCache } =
-        await import('../ai/financialGraph');
+      // PART 6 — Run AI Orchestrator on relevant events
+      const { runAIOrchestrator } = await import('../ai/aiOrchestrator');
+      const orchestratorResult = await runAIOrchestrator(userId, accounts, transactions);
+
+      // Emit events for each result
+      if (orchestratorResult.insights.length > 0) {
+        emitFinancialEvent({ type: 'insight_generated', payload: { count: orchestratorResult.insights.length, top: orchestratorResult.insights[0] } });
+        onInsights?.(orchestratorResult.insights);
+      }
+
+      if (orchestratorResult.risks.length > 0) {
+        emitFinancialEvent({ type: 'risk_detected', payload: { count: orchestratorResult.risks.length, top: orchestratorResult.risks[0] } });
+        onRisks?.(orchestratorResult.risks);
+      }
+
+      if (orchestratorResult.autopilot_actions.length > 0) {
+        emitFinancialEvent({ type: 'autopilot_action', payload: { count: orchestratorResult.autopilot_actions.length, top: orchestratorResult.autopilot_actions[0] } });
+        onAutopilotActions?.(orchestratorResult.autopilot_actions);
+      }
+
+      // Rebuild graph
+      const { buildFinancialGraph, invalidateGraphCache } = await import('../ai/financialGraph');
       invalidateGraphCache();
       buildFinancialGraph(userId, accounts, transactions);
 
-      // Lazy imports para evitar dependências circulares
-      const { generateFinancialInsights } = await import('../ai/insightGenerator');
-      const { buildCashflowPrediction, detectFinancialRisks } = await import('../ai/riskAnalyzer');
-      const { runFinancialAutopilot } = await import('../ai/financialAutopilot');
+      // Run leak detection and report generation
+      const { detectFinancialLeaks } = await import('../ai/leakDetector');
+      const { generateMonthlyReport } = await import('./reportEngine');
 
-      const prediction = buildCashflowPrediction(transactions);
+      const leaks = detectFinancialLeaks(transactions);
+      const report = generateMonthlyReport(transactions);
 
-      // Insights — pass accounts so graph insights can fire
-      const insights = generateFinancialInsights(transactions, userId, accounts);
-      if (insights.length > 0) {
-        emitFinancialEvent({ type: 'insight_generated', payload: { count: insights.length, top: insights[0] } });
-        onInsights?.(insights);
-      }
-
-      // Risks
-      const risks = detectFinancialRisks(prediction);
-      if (risks.length > 0) {
-        emitFinancialEvent({ type: 'risk_detected', payload: { count: risks.length, top: risks[0] } });
-        onRisks?.(risks);
-      }
-
-      // Autopilot
-      const actions = runFinancialAutopilot(accounts, transactions, prediction, insights);
-      if (actions.length > 0) {
-        emitFinancialEvent({ type: 'autopilot_action', payload: { count: actions.length, top: actions[0] } });
-        onAutopilotActions?.(actions);
-      }
+      // TODO: handle leaks and report in UI
     } catch (e) {
       console.error('[EventEngine] listener pipeline error:', e);
     }

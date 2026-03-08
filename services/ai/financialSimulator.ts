@@ -1,0 +1,72 @@
+/**
+ * AI FINANCIAL SIMULATOR — Simulação de cenários financeiros
+ *
+ * Permite simular impactos de decisões financeiras no futuro.
+ */
+
+import { Transaction, Account } from '../../types';
+import { runFinancialEngine, FinancialState } from './financialEngine';
+import { predictCashflow } from './cashflowPredictor';
+
+export interface FinancialSimulationResult {
+  projected_balance: number;
+  spending_impact: number;
+  simulation_period: number; // em meses
+  summary: string;
+}
+
+export type SimulationScenario =
+  | { type: 'extra_spending'; amount: number; description: string }
+  | { type: 'monthly_savings'; amount: number; description: string }
+  | { type: 'months'; months: number; description: string };
+
+/**
+ * Simula um cenário financeiro.
+ */
+export function simulateFinancialScenario(
+  accounts: Account[],
+  transactions: Transaction[],
+  scenario: SimulationScenario
+): FinancialSimulationResult {
+  const baseState = runFinancialEngine(transactions);
+  const baseBalance = baseState.summary_all_time.balance;
+
+  let projectedBalance = baseBalance;
+  let spendingImpact = 0;
+  let simulationPeriod = 1;
+  let summary = '';
+
+  switch (scenario.type) {
+    case 'extra_spending':
+      // Simular gasto extra único
+      projectedBalance -= scenario.amount;
+      spendingImpact = scenario.amount;
+      summary = `Gasto extra de R$ ${scenario.amount.toFixed(2)} em ${scenario.description} reduziria seu saldo para R$ ${projectedBalance.toFixed(2)}.`;
+      break;
+
+    case 'monthly_savings':
+      // Simular economia mensal
+      const monthlySavings = scenario.amount;
+      projectedBalance += monthlySavings * 12; // projeção anual
+      spendingImpact = -monthlySavings * 12; // impacto positivo
+      simulationPeriod = 12;
+      summary = `Economizar R$ ${monthlySavings.toFixed(2)} por mês em ${scenario.description} aumentaria seu saldo em R$ ${(monthlySavings * 12).toFixed(2)} em um ano.`;
+      break;
+
+    case 'months':
+      // Projeção por meses usando cashflow predictor
+      const prediction = predictCashflow(transactions, scenario.months);
+      projectedBalance = prediction.projected_balance;
+      spendingImpact = baseBalance - projectedBalance;
+      simulationPeriod = scenario.months;
+      summary = `Em ${scenario.months} meses, seu saldo projetado seria R$ ${projectedBalance.toFixed(2)} baseado em ${scenario.description}.`;
+      break;
+  }
+
+  return {
+    projected_balance: projectedBalance,
+    spending_impact: spendingImpact,
+    simulation_period: simulationPeriod,
+    summary,
+  };
+}

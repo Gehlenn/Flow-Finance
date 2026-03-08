@@ -20,7 +20,7 @@
  *   AIAnalysisResult       → UI
  */
 
-import { Transaction } from '../../types';
+import { Transaction, Account } from '../../types';
 
 import { getAIMemory, learnMemory, detectAndLearnPatterns, AIMemory } from './aiMemory';
 import { runFinancialEngine, FinancialState } from './financialEngine';
@@ -32,6 +32,9 @@ import {
   generateAdaptiveInsights,
   getAdaptiveLearningStats,
 } from './adaptiveAIEngine';
+import { runFinancialAutopilot, AutopilotAction } from './financialAutopilot';
+import { learnCategoryFromTransactions } from './categoryLearning';
+import { detectFinancialLeaks, FinancialLeak } from './leakDetector';
 
 // ─── Pipeline Output ──────────────────────────────────────────────────────────
 
@@ -242,5 +245,53 @@ export function runAIPipelineSync(
     adaptive_learning: adaptiveStats,
     health_score: score,
     health_label: label,
+  };
+}
+
+// ─── AI ORCHESTRATOR ENGINE ───────────────────────────────────────────────────
+
+export interface AIOrchestratorResult {
+  profile: FinancialProfileResult;
+  risks: FinancialRiskAlert[];
+  insights: AIInsight[];
+  autopilot_actions: AutopilotAction[];
+  leaks: FinancialLeak[];
+}
+
+/**
+ * Executa o AI Orchestrator completo.
+ */
+export async function runAIOrchestrator(
+  userId: string,
+  accounts: Account[],
+  transactions: Transaction[]
+): Promise<AIOrchestratorResult> {
+  // 1. Detectar perfil financeiro
+  const profile = detectFinancialProfile(transactions);
+
+  // 2. Executar risk detection
+  const financialState = runFinancialEngine(transactions);
+  const risks = detectFinancialRisks(financialState.cashflow_prediction);
+
+  // 3. Gerar insights
+  const insights = generateFinancialInsights(transactions, userId);
+
+  // 4. Executar financial autopilot
+  const autopilot_actions = runFinancialAutopilot(accounts, transactions);
+
+  // 5. Executar category learning
+  await learnCategoryFromTransactions(userId, transactions);
+
+  // 6. Executar leak detection
+  const leaks = detectFinancialLeaks(transactions);
+
+  // 7. Atualizar adaptive AI (já feito no financial engine)
+
+  return {
+    profile,
+    risks,
+    insights,
+    autopilot_actions,
+    leaks,
   };
 }
