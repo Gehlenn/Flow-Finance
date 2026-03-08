@@ -18,7 +18,79 @@ O Flow Finance foi projetado para ser intuitivo, rápido e seguro. Atualmente, o
 
 ---
 
-## 🛠️ Arquitetura SaaS - Clean Architecture
+## � Docker Setup & Deployment
+
+### Pré-requisitos
+
+- Docker & Docker Compose
+- Node.js 18+ (para desenvolvimento local)
+- Git
+
+### 🚀 Execução com Docker
+
+1. **Clone o repositório:**
+   ```bash
+   git clone https://github.com/Gehlenn/Flow-Finance.git
+   cd Flow-Finance
+   ```
+
+2. **Configure as variáveis de ambiente:**
+   ```bash
+   cp .env.example .env
+   # Edite o .env com suas configurações
+   ```
+
+3. **Execute com Docker Compose:**
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Acesse a aplicação:**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:3001
+   - Health Check: http://localhost:3001/health
+
+### 🛠️ Desenvolvimento Local
+
+1. **Instale dependências:**
+   ```bash
+   npm install
+   cd backend && npm install
+   ```
+
+2. **Configure o banco de dados:**
+   ```bash
+   # Com Docker
+   docker run -d --name postgres-dev -p 5432:5432 -e POSTGRES_PASSWORD=dev postgres:15
+   docker run -d --name redis-dev -p 6379:6379 redis:7
+   ```
+
+3. **Execute os serviços:**
+   ```bash
+   # Terminal 1: Frontend
+   npm run dev
+
+   # Terminal 2: Backend
+   cd backend && npm run dev
+   ```
+
+### 🏗️ Build Manual
+
+```bash
+# Frontend
+npm run build
+
+# Backend
+cd backend && npm run build
+
+# Executar
+npm run preview  # Frontend
+cd backend && npm start  # Backend
+```
+
+---
+
+## �🛠️ Arquitetura SaaS - Clean Architecture
 
 O Flow Finance foi completamente refatorado para uma arquitetura SaaS escalável seguindo os princípios de **Clean Architecture**, **DDD (Domain Driven Design)**, **SOLID** e **event-driven architecture**.
 
@@ -68,7 +140,137 @@ Para detalhes profundos sobre o fluxo de dados e diagramas, consulte o arquivo [
 
 ---
 
-## 📦 Como Rodar o Projeto
+## � Deployment
+
+### Plataformas Suportadas
+
+O Flow Finance está pronto para deploy nas seguintes plataformas:
+
+#### Railway
+```bash
+# Instale Railway CLI
+npm install -g @railway/cli
+
+# Login e deploy
+railway login
+railway deploy
+```
+
+#### Render
+- Conecte o repositório GitHub
+- Configure os serviços (Web Service + PostgreSQL + Redis)
+- Defina as variáveis de ambiente
+
+#### AWS
+```bash
+# ECS + Fargate
+aws ecs create-cluster --cluster-name flow-finance
+aws ecs create-service --cluster flow-finance --service-name flow-finance-service --task-definition flow-finance-task
+```
+
+#### DigitalOcean App Platform
+- Conecte o repositório
+- Configure os componentes (Frontend + API + Database)
+- Defina variáveis de ambiente
+
+### 📋 Checklist de Produção
+
+- [ ] Variáveis de ambiente configuradas
+- [ ] Banco PostgreSQL provisionado
+- [ ] Redis provisionado
+- [ ] Chaves API configuradas (Gemini, Sentry)
+- [ ] Domínio configurado
+- [ ] SSL/TLS habilitado
+- [ ] Backups configurados
+- [ ] Monitoring ativo
+
+### 🔧 Configuração de Produção
+
+#### PostgreSQL
+```sql
+-- Conectar ao banco
+psql postgresql://user:password@host:5432/database
+
+-- Executar migrations
+\i docker/postgres/init.sql
+```
+
+#### Redis
+```bash
+# Verificar conexão
+redis-cli -h your-redis-host ping
+```
+
+#### Cloud Storage
+Configure AWS S3 ou Cloudflare R2 no `.env`:
+```env
+CLOUD_STORAGE_PROVIDER=aws-s3
+AWS_ACCESS_KEY_ID=your-key
+AWS_SECRET_ACCESS_KEY=your-secret
+AWS_S3_BUCKET=your-bucket
+```
+
+## 📊 Monitoramento
+
+### Sentry (Error Tracking)
+Configure o DSN no `.env`:
+```env
+SENTRY_DSN=https://your-dsn@sentry.io/project-id
+```
+
+### Health Checks
+- `/health` - Status geral do sistema
+- `/api/version` - Versão da API
+
+### Logs
+```bash
+# Ver logs do Docker
+docker-compose logs -f
+
+# Logs específicos
+docker-compose logs backend
+docker-compose logs frontend
+```
+
+## 🔒 Segurança
+
+### Headers de Segurança
+- Helmet.js configurado
+- CORS configurado
+- Rate limiting ativo
+- Content Security Policy
+
+### Autenticação
+- JWT tokens
+- bcrypt para hash de senhas
+- Sessões Redis
+
+### Rate Limiting
+- API geral: 10 req/segundo
+- Auth endpoints: 5 req/minuto
+
+## 🧪 Testes
+
+```bash
+# Todos os testes
+npm run test
+
+# Com coverage
+npm run test:coverage
+
+# E2E tests
+npm run test:e2e
+```
+
+## 📚 Documentação Adicional
+
+- [Arquitetura SaaS](./SAAS_ARCHITECTURE.md)
+- [Guia de Desenvolvimento](./CONTRIBUTING.md)
+- [API Documentation](./backend/README.md)
+
+---
+
+## �📦 Como Rodar o Projeto
 
 Siga os passos abaixo para executar o aplicativo em seu ambiente local:
 
