@@ -159,47 +159,51 @@ app.use(errorHandlerMiddleware);
 
 // ─── SERVER START ────────────────────────────────────────────────────────────
 
-const server = app.listen(PORT);
+// Only start server in non-serverless environments (local dev)
+// Vercel will handle the request routing via api/index.ts
+if (process.env.VERCEL !== '1') {
+  const server = app.listen(PORT);
 
-server.on('listening', () => {
-  logger.info(
-    {
-      port: PORT,
-      environment: process.env.NODE_ENV || 'development',
-      allowedOrigins,
-    },
-    'Backend API server running'
-  );
-});
-
-server.on('error', (error: NodeJS.ErrnoException) => {
-  if (error.code === 'EADDRINUSE') {
-    logger.warn(
-      { port: PORT },
-      'Port already in use. Another backend process is already running, exiting this instance.'
+  server.on('listening', () => {
+    logger.info(
+      {
+        port: PORT,
+        environment: process.env.NODE_ENV || 'development',
+        allowedOrigins,
+      },
+      'Backend API server running'
     );
-    process.exit(0);
-  }
-
-  logger.error({ error, port: PORT }, 'Failed to start backend server');
-  process.exit(1);
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully...');
-  server.close(() => {
-    logger.info('Server closed');
-    process.exit(0);
   });
-});
 
-process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully...');
-  server.close(() => {
-    logger.info('Server closed');
-    process.exit(0);
+  server.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.code === 'EADDRINUSE') {
+      logger.warn(
+        { port: PORT },
+        'Port already in use. Another backend process is already running, exiting this instance.'
+      );
+      process.exit(0);
+    }
+
+    logger.error({ error, port: PORT }, 'Failed to start backend server');
+    process.exit(1);
   });
-});
+
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    logger.info('SIGTERM received, shutting down gracefully...');
+    server.close(() => {
+      logger.info('Server closed');
+      process.exit(0);
+    });
+  });
+
+  process.on('SIGINT', () => {
+    logger.info('SIGINT received, shutting down gracefully...');
+    server.close(() => {
+      logger.info('Server closed');
+      process.exit(0);
+    });
+  });
+}
 
 export default app;
