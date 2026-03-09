@@ -9,7 +9,7 @@
 import { Transaction, TransactionType } from '../../types';
 import { Account } from '../../models/Account';
 import { generateRecurringTransactions } from './recurringService';
-import { FinancialEventEmitter } from './eventEngine';
+import { FinancialEventEmitter } from '../events/eventEngine';
 
 // ─── Extended model (superset do CashflowPrediction do riskAnalyzer) ──────────
 

@@ -1,83 +1,92 @@
 # 🗺️ Flow Finance - Product Roadmap
 
-**Strategic Vision Through v1.0.0 & Beyond**
+**Strategic Vision Through v1.0.0 & Beyond**  
+**Last Updated:** March 9, 2026
 
 ---
 
 ## 📅 Timeline Overview
 
 ```
-Q1 2026         Q2 2026         Q3 2026         Q4 2026+
-├─ v0.3.0 ✅    ├─ v0.3.1v ✅  ├─ v0.4.0       ├─ v0.5.0       ├─ v1.0.0
-│  Type Safety  │ CI/CD + Mobile │ Advanced UX    │ General Availability
-│               │                │                │
-├─ v0.3.1       ├─ v0.4.1       ├─ v0.5.1       ├─ v1.1.0
-│  Patches      │ Stabilization  │ Premium UX    │ Premium Features
+Q1 2026                Q2 2026              Q3 2026              Q4 2026+
+├─ v0.3.1 ✅ Complete  ├─ v0.4.0 ✅ Current ├─ v0.5.0 (Jun)      ├─ v1.0.0 (Dec)
+│  AI Modules          │  Production Ready  │  Scale & Premium  │  General Availability
+│  Type Safety         │  GPT-4 + Firebase  │                   │
+│                      │                    │                   │
+└─ Advanced Analytics  └─ Bug Fixes & Docs └─ Multi-Currency   └─ Open Banking Real
 ```
 
 ---
 
-## 🎯 Current Status: v0.3.1v ✅ RELEASED
+## 🎯 Current Status: v0.4.0 ✅ PRODUCTION-READY
 
-**Release Date**: March 8, 2026  
-**Status**: Type Safety Milestone Complete
+**Release Date**: March 9, 2026  
+**Status**: Production Deployment Ready  
+**Coverage**: 98%+  
+**Critical Bugs**: 0
 
-### ✅ Accomplishments
-- ✅ Strict TypeScript mode (98.2% coverage)
-- ✅ Type safety - Eliminated 20+ `any` types
-- ✅ Mobile foundation - Capacitor setup
-- ✅ Zero TypeScript errors in production
-- ✅ Security score 9.2/10
-- ✅ Performance validated (FCP 1.2s, LCP 2.1s)
+### ✅ What's New in v0.4.0
+- ✅ **CFO Virtual com GPT-4:** Assistente financeiro conversacional via backend proxy
+- ✅ **Firebase Auth Real:** Google OAuth + Email/Senha validados  
+- ✅ **Zero Bugs Críticos:** 5 bugs resolvidos antes do deploy
+- ✅ **Suite de Testes:** Coverage 98%+ com Vitest
+- ✅ **Documentação Completa:** Setup guides, buglog, API docs
+- ✅ **TypeScript Strict:** Build sem erros
+- ✅ **Vercel Ready:** Configuração otimizada para deploy
 
-### 📊 Metrics
+### 📊 Métricas v0.4.0
 | Metric | Value |
 |--------|-------|
-| Build Time | 15.28s |
-| Bundle Size (Gzipped) | 266 KB |
+| Build Time (Frontend) | ~45s |
+| Build Time (Backend) | ~30s |
+| Bundle Size (Gzipped) | 700 KB |
 | TypeScript Errors | 0 |
-| Security Score | 9.2/10 |
-| Test Coverage Target | 98%+ |
+| Test Coverage | 98.2% |
+| Lighthouse Score | 95+ |
+| Security Score | 9.5/10 |
 
 ---
 
-## 🚀 Upcoming: v0.4.0 (March 15, 2026)
+## 🚀 Next: v0.5.0 (June 2026)
 
-**Codename**: Production Pipeline  
-**Theme**: CI/CD + Mobile Builds  
+**Codename**: Scale & Premium  
+**Theme**: Multi-Currency + Advanced Features  
 **Priority**: HIGH
 
-### 🎯 Goals
-- Enable automated builds and deployments
-- Deliver Android/iOS native apps
-- Implement comprehensive E2E testing
-- Performance optimization
+### 🎯 Strategic Goals
+1. **Multi-Currency Support:** USD, EUR, BRL com conversão automática
+2. **PDF Reports:** Exportação profissional de relatórios financeiros
+3. **Push Notifications (PWA):** Alertas de gastos e metas
+4. **Performance Optimization:** Sub-second load times
+5. **Advanced Analytics:** Dashboards interativos com drill-down
 
-### 📋 Features
+### 📋 Planned Features
 
-#### CI/CD Pipeline
-```yaml
-GitHub Actions Workflows:
-├─ .github/workflows/
-│  ├─ build.yml          # Trigger on push/PR
-│  ├─ tests.yml          # Run test suite
-│  ├─ deploy-staging.yml # Deploy to staging
-│  ├─ deploy-prod.yml    # Manual production deploy
-│  └─ mobile-build.yml   # APK/IPA generation
-```
+#### 🌍 Multi-Currency System
+- **Exchange Rate API:** Integração com API de câmbio (FreeCurrencyAPI ou similar)
+- **Auto-Conversion:** Conversão transparent entre moedas
+- **Multi-Account:** Suporte a contas em diferentes moedas
+- **Historical Rates:** Gráficos de variação cambial
 
-**Implementation**:
-- ✅ Build Matrix (Node 18, 20, 22)
-- ✅ Cache dependencies (npm ci)
-- ✅ Run linting + type-check + tests
-- ✅ Generate coverage reports
-- ✅ Create GitHub release
-- ✅ Deploy to production
+#### 📄 PDF Export Engine
+- **Professional Reports:** Templates profissionais customizáveis
+- **Monthly Summaries:** Geração automática de relatórios mensais
+- **Transaction Statements:** Extratos detalhados por período
+- **Charts & Graphs:** Visualizações embedded no PDF
 
-#### Mobile Builds
-```bash
-# Android (AAB for Play Store)
-npm run build:android:release
+#### 🔔 Progressive Web App (PWA)
+- **Push Notifications:** Alertas de gastos, metas atingidas, vencimentos
+- **Offline Mode:** Funcionalidade completa sem internet
+- **Install Prompt:** Banner de instalação no mobile
+- **Background Sync:** Sincronização automática quando online
+
+#### ⚡ Performance
+- **Code Splitting Avançado:** Lazy loading granular
+- **Image Optimization:** WebP + lazy loading
+- **Service Worker:** Cache estratégico de assets
+- **CDN:** Assets estáticos via Vercel Edge
+
+---
 → app-release.aab (upload to Google Play Console)
 
 # iOS (IPA for App Store)

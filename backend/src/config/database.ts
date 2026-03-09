@@ -23,11 +23,11 @@ const dbConfig = {
 export const pool = new Pool(dbConfig);
 
 // Handle pool events
-pool.on('connect', (client) => {
+pool.on('connect', () => {
   logger.debug('New client connected to database');
 });
 
-pool.on('error', (err, client) => {
+pool.on('error', (err) => {
   logger.error({ error: err }, 'Unexpected error on idle client');
 });
 

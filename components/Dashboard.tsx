@@ -4,17 +4,20 @@ import { formatCurrency } from '../utils/helpers';
 import { Transaction, TransactionType, Alert } from '../types';
 import { Account } from '../models/Account';
 import { GeminiService } from '../services/geminiService';
-import { generateFinancialInsights } from '../services/ai/insightGenerator';
-import { runFinancialAutopilot } from '../services/ai/financialAutopilot';
-import { buildCashflowPrediction } from '../services/ai/riskAnalyzer';
-import { getAdaptiveLearningStats } from '../services/ai/adaptiveAIEngine';
-import { predictCashflow, predictionTrend } from '../services/finance/cashflowPredictor';
-import { calculateMoneyDistribution } from '../services/finance/moneyMap';
-import { getGoals, calculateGoalProgress } from '../services/finance/goalService';
+import { generateFinancialInsights } from '../src/ai/insightGenerator';
+import { runFinancialAutopilot } from '../src/ai/financialAutopilot';
+import { buildCashflowPrediction } from '../src/ai/riskAnalyzer';
+import { getAdaptiveLearningStats } from '../src/ai/adaptiveAIEngine';
+import { predictCashflow, predictionTrend } from '../src/finance/cashflowPredictor';
+import { calculateMoneyDistribution } from '../src/finance/moneyMap';
+import { getGoals, calculateGoalProgress } from '../src/finance/goalService';
 import { getConnections, formatLastSync } from '../services/integrations/openBankingService';
-import { detectFinancialLeaks, FinancialLeak } from '../services/ai/leakDetector';
-import { generateMonthlyReport, FinancialReport } from '../services/finance/reportEngine';
-import { simulateFinancialScenario, FinancialSimulationResult } from '../services/ai/financialSimulator';
+import { detectFinancialLeaks, FinancialLeak } from '../src/ai/leakDetector';
+import { detectSalary } from '../src/ai/salaryDetector';
+import { detectFixedExpenses } from '../src/ai/fixedExpenseDetector';
+import { generateMonthlyReport, FinancialReport } from '../src/finance/reportEngine';
+import { getSyncStatusSummary } from '../src/finance/bankSyncEngine';
+import { simulateFinancialScenario, FinancialSimulationResult } from '../src/ai/financialSimulator';
 import { 
   Eye, EyeOff, BrainCircuit, Loader2, Landmark, LayoutDashboard,
   ArrowUpRight, ArrowDownRight, Wallet, 

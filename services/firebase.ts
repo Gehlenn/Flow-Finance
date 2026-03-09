@@ -1,4 +1,6 @@
+// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider, OAuthProvider, signInWithPopup, onAuthStateChanged, linkWithPopup } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
@@ -15,8 +17,9 @@ const firebaseConfig = {
   measurementId: "G-X9ZKDT6VK9"
 };
 
-// Inicializa o Firebase App
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 
 // Inicializa o Auth usando o padrão Web (getAuth detecta persistência automaticamente)
 const auth = getAuth(app);

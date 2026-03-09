@@ -13,8 +13,9 @@
  *   AICFOResponse             → exibe para o usuário
  */
 
-import { GoogleGenAI } from '@google/genai';
 import { Transaction, TransactionType } from '../../types';
+import { GeminiService } from '../../services/geminiService';
+
 import { Account } from '../../models/Account';
 import { AIInsight } from './insightGenerator';
 import { CashflowPrediction } from './riskAnalyzer';
@@ -180,6 +181,7 @@ export async function generateCFOResponse(
   context: string,
   intent: CFOIntent
 ): Promise<AICFOResponse> {
+  // note: environment variables / model selection are handled server-side
   const intentGuide: Record<CFOIntent, string> = {
     spending_advice:     'O usuário quer saber se pode gastar. Analise o impacto no saldo projetado.',
     budget_question:     'O usuário quer entender seu orçamento. Foque nos números do mês atual e projeções.',
@@ -203,15 +205,12 @@ Responda de forma consultiva, personalizada e baseada exclusivamente nos dados a
 `;
 
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-    });
-
+    // proxy the request to backend, which will call GPT‑4 or Gemini as configured
+    const gemini = new GeminiService();
+    const result = await gemini.generateCFO(question, context, intent);
     return {
       question,
-      answer: response.text?.trim() || 'Não foi possível gerar uma resposta no momento.',
+      answer: result.answer || 'Não foi possível gerar uma resposta no momento.',
       context_summary: `Saldo projetado usado como base.`,
       intent,
       timestamp: new Date().toISOString(),

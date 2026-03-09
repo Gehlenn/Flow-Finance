@@ -6,7 +6,8 @@ import {
   scanReceiptController,
   classifyTransactionsController,
   generateInsightsController,
-  tokenCountController
+  tokenCountController,
+  cfoController
 } from '../controllers/aiController';
 
 const router = Router();
@@ -59,5 +60,13 @@ router.post('/insights', generateInsightsController);
  * Returns: { tokenCount: number }
  */
 router.post('/token-count', tokenCountController);
+
+/**
+ * POST /api/ai/cfo
+ * Free-form assistant query using OpenAI GPT‑4
+ * Body: { question: string, context: string, intent: string }
+ * Returns: { answer: string }
+ */
+router.post('/cfo', cfoController);
 
 export default router;

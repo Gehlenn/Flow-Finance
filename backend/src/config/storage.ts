@@ -5,7 +5,7 @@
  */
 
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { getSignedUrl as getS3SignedUrl } from '@aws-sdk/s3-request-presigner';
 import logger from './logger';
 
 interface CloudStorageConfig {
@@ -112,7 +112,7 @@ export const getSignedUrl = async (key: string, expiresIn: number = 3600): Promi
       Key: key,
     });
 
-    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn });
+    const signedUrl = await getS3SignedUrl(s3Client, command, { expiresIn });
     return signedUrl;
   } catch (error) {
     logger.error({ error, key }, 'Failed to generate signed URL');
@@ -150,7 +150,8 @@ export const fileExists = async (key: string): Promise<boolean> => {
 
     await s3Client.send(command);
     return true;
-  } catch (error) {
+  } catch (err) {
+    const error = err as { name?: string; message: string };
     if (error.name === 'NoSuchKey') {
       return false;
     }

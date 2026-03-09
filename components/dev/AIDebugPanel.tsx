@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getAIDebugLogs, clearAIDebugLogs, AIDebugEntry } from '../../services/ai/aiDebugService';
-import { getFinancialEvents, clearFinancialEvents } from '../../services/finance/eventEngine';
+import { getAIDebugLogs, clearAIDebugLogs, AIDebugEntry } from '../../src/ai/aiDebugService';
+import { getFinancialEvents, clearFinancialEvents } from '../../src/events/eventEngine';
 import { FinancialEvent } from '../../models/FinancialEvent';
 import {
   Bug, X, Trash2, RefreshCw, ChevronDown, ChevronUp,
@@ -275,7 +275,7 @@ const AIDebugPanel: React.FC = () => {
 
             <div className="px-6 py-3 border-t border-slate-100 dark:border-slate-800 shrink-0 flex items-center justify-between">
               <span className="text-[8px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-widest flex items-center gap-1.5"><Bug size={10} /> NODE_ENV=development</span>
-              <span className="text-[8px] font-black text-indigo-400">Flow Finance v0.3</span>
+              <span className="text-[8px] font-black text-indigo-400">Flow Finance v0.4.0</span>
             </div>
           </div>
         </div>

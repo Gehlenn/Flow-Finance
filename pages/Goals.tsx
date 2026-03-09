@@ -3,7 +3,7 @@ import {
   getGoals, createGoal, updateGoal, deleteGoal,
   addContribution, calculateGoalProgress,
   GOAL_PRESETS, GOAL_STATUS_META
-} from '../services/finance/goalService';
+} from '../src/finance/goalService';
 import { formatCurrency } from '../utils/helpers';
 import { FinancialGoal } from '../models/FinancialGoal';
 import {

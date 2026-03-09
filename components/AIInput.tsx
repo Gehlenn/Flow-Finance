@@ -3,7 +3,7 @@ import { GeminiService } from '../services/geminiService';
 import { Transaction, TransactionType, Category, ReminderData } from '../types';
 import { Account, ACCOUNT_TYPE_LABELS } from '../models/Account';
 import { logAIDebug } from '../services/ai/aiDebugService';
-import { interpretText, interpretImage } from '../services/ai/aiInterpreter';
+import { interpretText, interpretImage } from '../src/ai/aiInterpreter';
 import { 
   X, Mic, Send, Sparkles, Loader2, Check, 
   ImageIcon, Briefcase, TrendingUp,

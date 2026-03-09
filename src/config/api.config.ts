@@ -19,9 +19,9 @@ export const IS_PRODUCTION = !IS_DEVELOPMENT;
 
 const BACKEND_BASE_URL = (() => {
   if (IS_DEVELOPMENT) {
-    return process.env.VITE_API_DEV_URL || 'http://localhost:3001';
+    return import.meta.env.VITE_API_DEV_URL || 'http://localhost:3001';
   }
-  return process.env.VITE_API_PROD_URL || 'https://api.flowfinance.app';
+  return import.meta.env.VITE_API_PROD_URL || 'https://api.flowfinance.app';
 })();
 
 export const API_ENDPOINTS = {
@@ -33,6 +33,7 @@ export const API_ENDPOINTS = {
     SCAN_RECEIPT: `${BACKEND_BASE_URL}/api/ai/scan-receipt`,
     GENERATE_INSIGHTS: `${BACKEND_BASE_URL}/api/ai/insights`,
     CREDIT_TOKEN_COUNT: `${BACKEND_BASE_URL}/api/ai/token-count`,
+    CFO: `${BACKEND_BASE_URL}/api/ai/cfo`,    // new route for financial assistant
   },
 
   // Bank sync endpoints
@@ -124,6 +125,7 @@ export async function apiRequest<T>(
   }
 }
 
+// add CFO example to documentation
 // ─── Usage Example (for documentation) ──────────────────────────────────────
 
 /**

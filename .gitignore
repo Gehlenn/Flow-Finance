@@ -55,3 +55,5 @@ android-sdk-tools.zip
 *.tmp
 *.temp
 *.bak
+.vercel
+.env*.local

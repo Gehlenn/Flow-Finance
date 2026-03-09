@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Transaction, TransactionType, Category } from '../types';
-import { scanReceipt, ScannedReceipt } from '../services/ai/receiptScanner';
+import { scanReceipt, ScannedReceipt } from '../src/ai/receiptScanner';
 import {
   Camera, Upload, X, Check, ScanLine, AlertCircle,
   FileImage, Loader2, RotateCcw, ChevronRight,

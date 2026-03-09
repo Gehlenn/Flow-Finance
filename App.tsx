@@ -15,9 +15,9 @@ import Settings from './components/Settings';
 import AdvancedAnalytics from './components/AdvancedAnalytics';
 import PerformanceMonitor from './components/PerformanceMonitor';
 import AIDebugPanel from './components/dev/AIDebugPanel';
-import { detectAndLearnPatterns } from './services/ai/aiMemory';
-import { runAdaptiveLearning } from './services/ai/adaptiveAIEngine';
-import { FinancialEventEmitter, initEventListeners } from './services/finance/eventEngine';
+import { detectAndLearnPatterns } from './src/ai/aiMemory';
+import { runAdaptiveLearning } from './src/ai/adaptiveAIEngine';
+import { FinancialEventEmitter, initEventListeners } from './src/events/eventEngine';
 import {
   LayoutDashboard, History, TrendingUp,
   Settings as SettingsIcon, BrainCircuit, Plus, Download, Building2, Terminal,
@@ -35,8 +35,10 @@ const ImportTransactionsPage = lazy(() => import('./pages/ImportTransactions'));
 const OpenBankingPage = lazy(() => import('./pages/OpenBanking'));
 const AIControlPanel = lazy(() => import('./pages/AIControlPanel'));
 
-// Firebase Services centralizados (Substituído por LocalService para persistência local)
-import { auth, db, onAuthStateChanged, doc, setDoc, onSnapshot, getAccounts, createAccount } from './services/localService';
+// Firebase Services centralizados (produção)
+import { auth, db, onAuthStateChanged } from './services/firebase';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getAccounts, createAccount, updateAccount } from './services/firebaseOptimized';
 
 type Tab = 'dashboard' | 'history' | 'assistant' | 'flow' | 'settings' | 'accounts' | 'insights' | 'cfo' | 'autopilot' | 'goals' | 'scanner' | 'import' | 'openbanking' | 'aicontrol' | 'analytics' | 'performance';
 
@@ -151,17 +153,14 @@ const App: React.FC = () => {
         });
         addBreadcrumb(`User logged in: ${user.email}`, 'auth', 'info');
       } else {
-        // Se não houver usuário Firebase, mas estivermos em modo teste, não limpamos tudo
-        if (userId !== 'demo-user') {
-          setIsLoggedIn(false);
-          setUserId(null);
-          setUserEmail(null);
-          setUserName(null);
+        setIsLoggedIn(false);
+        setUserId(null);
+        setUserEmail(null);
+        setUserName(null);
 
-          // Clear Sentry user context
-          clearUser();
-          addBreadcrumb('User logged out', 'auth', 'info');
-        }
+        // Clear Sentry user context
+        clearUser();
+        addBreadcrumb('User logged out', 'auth', 'info');
         setIsInitialLoading(false);
       }
     });
@@ -170,10 +169,7 @@ const App: React.FC = () => {
 
   // 2. Sincronização em Tempo Real com Firestore
   useEffect(() => {
-    if (!userId || userId === 'demo-user') {
-      if (userId === 'demo-user') setIsInitialLoading(false);
-      return;
-    }
+    if (!userId) return;
 
     const userDocRef = doc(db, 'users', userId);
     
@@ -206,7 +202,7 @@ const App: React.FC = () => {
   }, [theme]);
 
   const syncToCloud = useCallback(async (updates: Record<string, unknown>) => {
-    if (!userId || userId === 'demo-user') return;
+    if (!userId) return;
     setSyncStatus('syncing');
     const userDocRef = doc(db, 'users', userId);
     try {
@@ -219,13 +215,6 @@ const App: React.FC = () => {
 
   const handleLogin = (email: string) => {
     setUserEmail(email);
-    // Se o email for do teste rápido, forçamos o login manual no estado
-    if (email === 'teste@flow.com') {
-      setUserId('demo-user');
-      setUserName('Visitante');
-      setIsLoggedIn(true);
-      setIsInitialLoading(false);
-    }
   };
 
   const handleAddTransactions = useCallback((newItems: Partial<Transaction>[]) => {
@@ -260,16 +249,10 @@ const App: React.FC = () => {
   }, [reminders, syncToCloud]);
 
   const handleLogout = useCallback(async () => {
-    if (userId === 'demo-user') {
-      setIsLoggedIn(false);
-      setUserId(null);
-    } else {
-      await auth.signOut();
-    }
+    await auth.signOut();
   }, [userId]);
 
   const handleUpdateAccount = useCallback(async (updated: Account) => {
-    const { updateAccount } = await import('./services/localService');
     await updateAccount(updated);
     setAccounts(prev => prev.map(a => a.id === updated.id ? updated : a));
   }, []);

@@ -7,7 +7,11 @@ export const env = {
   PORT: parseInt(process.env.PORT || '3001', 10),
   
   // API Keys
-  GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+  // AI provider keys (backend only)
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',            // optional, used only if explicitly chosen
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',            // GPT-4 via GPT Go subscription
+  OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-4',
+  OPENAI_MAX_TOKENS: process.env.OPENAI_MAX_TOKENS || '4096',
   JWT_SECRET: process.env.JWT_SECRET || 'dev-secret-key-change-in-production',
   
   // CORS
@@ -17,13 +21,14 @@ export const env = {
   RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // 15 min
   RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10),
   
-  // Gemini
+  // (legacy) Gemini model name - only used if GEMINI_API_KEY present
   GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
 };
 
 // Validate required environment variables
-if (!env.GEMINI_API_KEY && env.NODE_ENV === 'production') {
-  throw new Error('GEMINI_API_KEY environment variable is required in production');
+// require at least one AI key in production
+if (!env.OPENAI_API_KEY && !env.GEMINI_API_KEY && env.NODE_ENV === 'production') {
+  throw new Error('Either OPENAI_API_KEY or GEMINI_API_KEY environment variable is required in production');
 }
 
 if (!env.JWT_SECRET && env.NODE_ENV === 'production') {

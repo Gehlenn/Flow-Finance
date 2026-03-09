@@ -5,6 +5,7 @@ import 'dotenv/config';
 
 import logger from './config/logger';
 import { initGemini } from './config/gemini';
+import { initOpenAI } from './config/openai';
 import { initSentry, sentryRequestHandler, sentryErrorHandler, addBreadcrumb } from './config/sentry';
 import { errorHandlerMiddleware } from './middleware/errorHandler';
 import { apiLimiter } from './middleware/rateLimit';
@@ -20,15 +21,33 @@ initSentry();
 addBreadcrumb('Backend server initialization', 'server', 'info');
 
 const app: Application = express();
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env.PORT || '3001', 10);
 
-// Initialize Gemini
-try {
-  initGemini();
-  logger.info('Gemini AI initialized');
-} catch (error) {
-  logger.error({ error }, 'Failed to initialize Gemini');
-  process.exit(1);
+// Initialize AI providers
+const aiProviders: string[] = [];
+
+if (process.env.OPENAI_API_KEY) {
+  try {
+    initOpenAI();
+    aiProviders.push('OpenAI');
+  } catch (error) {
+    logger.warn({ error }, 'Failed to initialize OpenAI');
+  }
+}
+
+if (process.env.GEMINI_API_KEY) {
+  try {
+    initGemini();
+    aiProviders.push('Gemini');
+  } catch (error) {
+    logger.warn({ error }, 'Failed to initialize Gemini');
+  }
+}
+
+if (aiProviders.length === 0) {
+  logger.error('No AI provider configured. Set OPENAI_API_KEY or GEMINI_API_KEY in .env');
+} else {
+  logger.info(`AI providers available: ${aiProviders.join(', ')}`);
 }
 
 // ─── MIDDLEWARE ──────────────────────────────────────────────────────────────
@@ -40,8 +59,35 @@ app.use(sentryRequestHandler);
 app.use(helmet());
 
 // CORS
+const defaultOrigins = [
+  'http://localhost:3078',
+  'http://127.0.0.1:3078',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+];
+
+const configuredOrigins = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+const allowedOrigins = configuredOrigins.length > 0 ? configuredOrigins : defaultOrigins;
+
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // Allow same-origin/server-to-server tools without Origin header.
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -77,14 +123,14 @@ app.get('/health', (_req: Request, res: Response) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    version: process.env.APP_VERSION || '0.1.0'
+    version: process.env.APP_VERSION || '0.4.0'
   });
 });
 
 // API version
 app.get('/api/version', (_req: Request, res: Response) => {
   res.json({
-    version: process.env.APP_VERSION || '0.1.0',
+    version: process.env.APP_VERSION || '0.4.0',
     environment: process.env.NODE_ENV || 'development'
   });
 });
@@ -113,15 +159,30 @@ app.use(errorHandlerMiddleware);
 
 // ─── SERVER START ────────────────────────────────────────────────────────────
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT);
+
+server.on('listening', () => {
   logger.info(
     {
       port: PORT,
       environment: process.env.NODE_ENV || 'development',
-      corsOrigin: corsOptions.origin
+      allowedOrigins,
     },
-    `🚀 Backend API server running`
+    'Backend API server running'
   );
+});
+
+server.on('error', (error: NodeJS.ErrnoException) => {
+  if (error.code === 'EADDRINUSE') {
+    logger.warn(
+      { port: PORT },
+      'Port already in use. Another backend process is already running, exiting this instance.'
+    );
+    process.exit(0);
+  }
+
+  logger.error({ error, port: PORT }, 'Failed to start backend server');
+  process.exit(1);
 });
 
 // Graceful shutdown

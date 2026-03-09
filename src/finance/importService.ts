@@ -8,6 +8,7 @@
  */
 
 import { GoogleGenAI, Type } from '@google/genai';
+import { apiRequest, API_ENDPOINTS } from '../config/api.config';
 import { Transaction, TransactionType, Category } from '../../types';
 import { FinancialEventEmitter } from './eventEngine';
 import { learnMemory } from '../ai/aiMemory';

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Account, AccountType, ACCOUNT_TYPE_LABELS, DEFAULT_ACCOUNT } from '../models/Account';
-import { getAccounts, createAccount, deleteAccount } from '../services/localService';
+import { getAccounts, createAccount, deleteAccount } from '../services/firebaseOptimized';
 import {
   Landmark, Wallet, CreditCard, TrendingUp,
   Plus, Trash2, X, Check, Loader2,
@@ -92,7 +92,7 @@ const Accounts: React.FC<AccountsProps> = ({ userId, hideValues }) => {
 
   const handleDelete = async (id: string) => {
     if (accounts.length <= 1) return; // Sempre manter ao menos 1
-    await deleteAccount(id);
+    await deleteAccount(id, userId);
     setAccounts(prev => prev.filter(a => a.id !== id));
   };
 

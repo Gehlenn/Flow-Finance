@@ -23,8 +23,8 @@ import {
   getConnection,
   fullSync,
   formatLastSync,
-} from '../integrations/openBankingService';
-import { FinancialEventEmitter } from './eventEngine';
+} from '../../services/integrations/openBankingService';
+import { FinancialEventEmitter } from '../events/eventEngine';
 import { detectSalary, SalaryDetectionResult } from '../ai/salaryDetector';
 import { detectFixedExpenses, FixedExpenseReport } from '../ai/fixedExpenseDetector';
 

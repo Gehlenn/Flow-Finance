@@ -1,8 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Transaction } from '../types';
 import { Account } from '../models/Account';
-import { runFinancialAutopilot, AutopilotAction, learnAutopilotPatterns } from '../services/ai/financialAutopilot';
-import { runAIPipelineSync } from '../services/ai/aiOrchestrator';
+import { runFinancialAutopilot, AutopilotAction, learnAutopilotPatterns } from '../src/ai/financialAutopilot';
+import { runAIPipelineSync } from '../src/ai/aiOrchestrator';
 import {
   Zap, AlertTriangle, Lightbulb, TrendingUp, ShieldCheck,
   ChevronRight, RefreshCw, CheckCircle2, Info,

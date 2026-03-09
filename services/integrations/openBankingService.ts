@@ -19,9 +19,9 @@ import { Transaction, TransactionType, Category } from '../../types';
 import { Account } from '../../models/Account';
 import { BankConnection, BankProvider, SyncResult, BRAZILIAN_BANKS } from '../../models/BankConnection';
 import { getProvider, RawBankTransaction, ProviderKey } from './mockBankProvider';
-import { FinancialEventEmitter } from '../finance/eventEngine';
-import { classifyImportedTransactions } from '../finance/importService';
-import { learnMemory } from '../ai/aiMemory';
+import { FinancialEventEmitter } from '../../src/events/eventEngine';
+import { classifyImportedTransactions } from '../../src/finance/importService';
+import { learnMemory } from '../../src/ai/aiMemory';
 import { makeId } from '../../utils/helpers';
 
 // ─── Storage ──────────────────────────────────────────────────────────────────

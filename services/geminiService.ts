@@ -1,11 +1,11 @@
 /**
- * GEMINI SERVICE (SECURE VERSION)
+ * AI SERVICE (SECURE PROXY)
  *
  * CRITICAL: This service no longer contains API keys.
  * All requests go through backend proxy for security.
  *
  * Flow:
- *   App → Backend Proxy → Gemini API (backend has the key, NEVER exposed to client)
+ *   App → Backend Proxy → OpenAI / Gemini (keys are stored on server)
  */
 
 import { InterpretResponse } from '../types';
@@ -32,7 +32,7 @@ export class GeminiService {
         }
       );
     } catch (error) {
-      console.error('[GeminiService] processSmartInput failed:', error);
+      console.error('[AIService] processSmartInput failed:', error);
       // Return empty result instead of crashing
       return { intent: 'transaction', data: [] };
     }
@@ -56,7 +56,7 @@ export class GeminiService {
         }
       );
     } catch (error) {
-      console.error('[GeminiService] parseFinancialImage failed:', error);
+      console.error('[AIService] parseFinancialImage failed:', error);
       return [];
     }
   }
@@ -78,7 +78,7 @@ export class GeminiService {
         }
       );
     } catch (error) {
-      console.error('[GeminiService] generateDailyInsights failed:', error);
+      console.error('[AIService] generateDailyInsights failed:', error);
       return [];
     }
   }
@@ -97,7 +97,7 @@ export class GeminiService {
         }
       );
     } catch (error) {
-      console.error('[GeminiService] classifyTransactions failed:', error);
+      console.error('[AIService] classifyTransactions failed:', error);
       return [];
     }
   }
@@ -119,7 +119,7 @@ export class GeminiService {
         }
       );
     } catch (error) {
-      console.error('[GeminiService] generateStrategicReport failed:', error);
+      console.error('[AIService] generateStrategicReport failed:', error);
       return null;
     }
   }
@@ -139,8 +139,46 @@ export class GeminiService {
       );
       return result.tokenCount;
     } catch (error) {
-      console.error('[GeminiService] countTokens failed:', error);
+      console.error('[AIService] countTokens failed:', error);
       return 0;
+    }
+  }
+
+  /**
+   * Convenience helper used by Analytics component.  Calls daily insights
+   * and converts the LLM output into the frontend's InsightTip shape.
+   */
+  async generateFinancialConsultancy(transactions: Transaction[]): Promise<
+    { title: string; description: string; type: 'economy' | 'investment' | 'habit' | 'alert' }[]
+  > {
+    try {
+      const daily: any[] = await this.generateDailyInsights(transactions);
+      return daily.map(ins => {
+        let t: 'economy' | 'investment' | 'habit' | 'alert' = 'economy';
+        if (ins.type === 'alerta') t = 'alert';
+        else if (ins.title.toLowerCase().includes('invest')) t = 'investment';
+        else if (ins.title.toLowerCase().includes('hábito') || ins.title.toLowerCase().includes('hábitos')) t = 'habit';
+        return { title: ins.title, description: ins.description, type: t };
+      });
+    } catch (error) {
+      console.error('[AIService] generateFinancialConsultancy failed:', error);
+      return [];
+    }
+  }
+
+  // ─── CFO helper ──────────────────────────────────────────────────────────
+  async generateCFO(question: string, context: string, intent: string): Promise<{ answer: string }> {
+    try {
+      return await apiRequest(
+        API_ENDPOINTS.AI.CFO,
+        {
+          method: 'POST',
+          body: JSON.stringify({ question, context, intent }),
+        }
+      );
+    } catch (error) {
+      console.error('[AIService] generateCFO failed:', error);
+      return { answer: '' };
     }
   }
 

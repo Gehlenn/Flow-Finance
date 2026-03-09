@@ -7,8 +7,8 @@ import {
   analyzeFinancialQuestion,
   generateCFOResponse,
   learnFromConversation,
-} from '../services/ai/aiCFO';
-import { runAIPipelineSync } from '../services/ai/aiOrchestrator';
+} from '../src/ai/aiCFO';
+import { runAIPipelineSync } from '../src/ai/aiOrchestrator';
 import {
   Send, Loader2, BrainCircuit, Sparkles,
   User, Bot, Trash2, ChevronRight, ShieldCheck,

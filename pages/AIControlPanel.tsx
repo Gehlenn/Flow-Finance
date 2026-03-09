@@ -13,22 +13,22 @@ import { Transaction } from '../types';
 import { Account } from '../models/Account';
 
 // Services
-import { getAIMemory, AIMemory }              from '../services/ai/aiMemory';
-import { getAIDebugLogs, clearAIDebugLogs, AIDebugEntry } from '../services/ai/aiDebugService';
-import { generateFinancialInsights, AIInsight } from '../services/ai/insightGenerator';
-import { buildCashflowPrediction }             from '../services/ai/riskAnalyzer';
-import { runFinancialAutopilot, AutopilotAction } from '../services/ai/financialAutopilot';
-import { getFinancialEvents, clearFinancialEvents } from '../services/finance/eventEngine';
+import { getAIMemory, AIMemory }              from '../src/ai/aiMemory';
+import { getAIDebugLogs, clearAIDebugLogs, AIDebugEntry } from '../src/ai/aiDebugService';
+import { generateFinancialInsights, AIInsight } from '../src/ai/insightGenerator';
+import { buildCashflowPrediction }             from '../src/ai/riskAnalyzer';
+import { runFinancialAutopilot, AutopilotAction } from '../src/ai/financialAutopilot';
+import { getFinancialEvents, clearFinancialEvents } from '../src/events/eventEngine';
 import { FinancialEvent }                      from '../models/FinancialEvent';
-import { getAdaptiveLearningStats }            from '../services/ai/adaptiveAIEngine';
-import { detectSubscriptions, DetectedSubscription, formatCycle, formatNextCharge } from '../services/ai/subscriptionDetector';
-import { calculateMoneyDistribution }          from '../services/finance/moneyMap';
-import { parseOFX }                            from '../services/finance/ofxParser';
-import { parseCSV }                            from '../services/finance/csvParser';
-import { detectFinancialLeaks, FinancialLeak } from '../services/ai/leakDetector';
-import { generateMonthlyReport, FinancialReport } from '../services/finance/reportEngine';
-import { simulateFinancialScenario, FinancialSimulationResult, SimulationScenario } from '../services/ai/financialSimulator';
-import { getAuditLogs, AUDIT_EVENTS, AuditLogEntry } from '../services/security/auditLogService';
+import { getAdaptiveLearningStats }            from '../src/ai/adaptiveAIEngine';
+import { detectSubscriptions, DetectedSubscription, formatCycle, formatNextCharge } from '../src/ai/subscriptionDetector';
+import { calculateMoneyDistribution }          from '../src/finance/moneyMap';
+import { parseOFX }                            from '../src/finance/ofxParser';
+import { parseCSV }                            from '../src/finance/csvParser';
+import { detectFinancialLeaks, FinancialLeak } from '../src/ai/leakDetector';
+import { generateMonthlyReport, FinancialReport } from '../src/finance/reportEngine';
+import { simulateFinancialScenario, FinancialSimulationResult, SimulationScenario } from '../src/ai/financialSimulator';
+import { getAuditLogs, AUDIT_EVENTS, AuditLogEntry } from '../src/security/auditLogService';
 
 // Icons
 import {
@@ -1293,7 +1293,7 @@ const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts,
 
       {/* Footer */}
       <p className="font-mono text-[7px] text-slate-600 text-center pt-2 uppercase tracking-widest">
-        Flow Finance v0.3 · AI Control Panel · {IS_DEV ? 'Development' : 'Production'}
+        Flow Finance v0.4.0 · AI Control Panel · {IS_DEV ? 'Development' : 'Production'}
       </p>
     </div>
   );

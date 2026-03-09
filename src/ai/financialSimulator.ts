@@ -6,7 +6,7 @@
 
 import { Transaction, Account } from '../../types';
 import { runFinancialEngine, FinancialState } from './financialEngine';
-import { predictCashflow } from './cashflowPredictor';
+import { predictCashflow } from '../finance/cashflowPredictor';
 
 export interface FinancialSimulationResult {
   projected_balance: number;

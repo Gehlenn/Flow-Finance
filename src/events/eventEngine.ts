@@ -186,7 +186,7 @@ export function initEventListeners(
 
       // Run leak detection and report generation
       const { detectFinancialLeaks } = await import('../ai/leakDetector');
-      const { generateMonthlyReport } = await import('./reportEngine');
+      const { generateMonthlyReport } = await import('../finance/reportEngine');
 
       const leaks = detectFinancialLeaks(transactions);
       const report = generateMonthlyReport(transactions);

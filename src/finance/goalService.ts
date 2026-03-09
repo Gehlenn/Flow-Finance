@@ -1,5 +1,5 @@
 import { FinancialGoal, GoalProgress, GoalStatus } from '../../models/FinancialGoal';
-import { FinancialEventEmitter } from './eventEngine';
+import { FinancialEventEmitter } from '../events/eventEngine';
 
 const STORAGE_KEY = 'flow_financial_goals';
 

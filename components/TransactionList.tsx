@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Transaction, TransactionType, Category } from '../types';
 import { formatCurrency, getFromStorage } from '../utils/helpers';
-import { expandTransactionsWithRecurring } from '../services/finance/recurringService';
+import { expandTransactionsWithRecurring } from '../src/finance/recurringService';
 import { 
   Trash2, Search, Share2, Edit2, Filter, RotateCcw, History, X, 
   ShoppingBag, GraduationCap, Briefcase, TrendingUp, Download, 

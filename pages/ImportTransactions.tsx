@@ -3,8 +3,8 @@ import { Transaction, TransactionType, Category } from '../types';
 import {
   runImportPipeline, toTransactions, detectFormat,
   ImportResult, ImportedTransaction, ImportFormat,
-} from '../services/finance/importService';
-import { FinancialEventEmitter } from '../services/finance/eventEngine';
+} from '../src/finance/importService';
+import { FinancialEventEmitter } from '../src/events/eventEngine';
 import {
   Upload, FileText, FileSpreadsheet, FileScan, X, Check,
   AlertTriangle, Loader2, ChevronDown, ChevronUp, RefreshCw,

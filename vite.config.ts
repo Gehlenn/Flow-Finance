@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     const config: VitestConfigExport = {
       server: {
-        port: 3000,
+        port: 3078,
         host: '0.0.0.0',
       },
       // PART 9 — Build output compatível com Capacitor (Android/iOS)
@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
       define: {
         'import.meta.env.VITE_API_DEV_URL': JSON.stringify(env.VITE_API_DEV_URL || 'http://localhost:3001'),
         'import.meta.env.VITE_API_PROD_URL': JSON.stringify(env.VITE_API_PROD_URL || ''),
-        'import.meta.env.VITE_APP_VERSION': JSON.stringify(env.VITE_APP_VERSION || '0.1.0'),
+        'import.meta.env.VITE_APP_VERSION': JSON.stringify(env.VITE_APP_VERSION || '0.4.0'),
         'import.meta.env.VITE_SENTRY_DSN': JSON.stringify(env.VITE_SENTRY_DSN || ''),
         'import.meta.env.VITE_SENTRY_DEV_ENABLED': JSON.stringify(env.VITE_SENTRY_DEV_ENABLED || 'false'),
       },

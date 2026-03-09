@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Transaction } from '../types';
-import { runAIPipelineSync } from '../services/ai/aiOrchestrator';
+import { runAIPipelineSync } from '../src/ai/aiOrchestrator';
 import { AIInsight } from '../services/ai/insightGenerator';
 import { FinancialRiskAlert } from '../services/ai/riskAnalyzer';
 import {

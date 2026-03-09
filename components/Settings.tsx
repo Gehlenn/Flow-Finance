@@ -7,7 +7,8 @@ import {
 import NamePromptModal from './NamePromptModal';
 import LegalModal from './LegalModal';
 import { GoogleGenAI } from "@google/genai";
-import { auth, googleProvider, appleProvider, linkWithPopup, Provider } from '../services/localService';
+import { auth, googleProvider, appleProvider, linkWithPopup } from '../services/firebase';
+import { AuthProvider } from 'firebase/auth';
 
 interface SettingsProps {
   userName: string | null;
@@ -62,7 +63,7 @@ const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  const handleLinkAccount = async (provider: Provider) => {
+  const handleLinkAccount = async (provider: AuthProvider) => {
     if (!auth.currentUser) return;
     setIsLinking(true);
     setLinkFeedback(null);

@@ -1,20 +1,55 @@
 # Flow Finance - Controle de Fluxo de Caixa Inteligente
 
-Bem-vindo ao **Flow Finance**, uma aplicação moderna para gestão financeira pessoal e profissional, equipada com um assistente de IA para facilitar o lançamento de despesas e receitas.
+**Versão:** 0.4.0  
+**Última Atualização:** 09 de Março de 2026  
+**Status:** Production-Ready ✅
+
+Bem-vindo ao **Flow Finance**, uma aplicação moderna para gestão financeira pessoal e profissional, equipada com um assistente de IA (GPT-4) para facilitar o lançamento de despesas e receitas.
 
 ## 🚀 Visão Geral
 
-O Flow Finance foi projetado para ser intuitivo, rápido e seguro. Atualmente, o projeto opera em um modo **Local-First** (sem dependência de backend externo para testes), utilizando o `localStorage` do navegador para persistir os dados. Isso permite que você teste todas as funcionalidades imediatamente, sem configurar chaves de API complexas ou bancos de dados externos.
+O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvolvida com **React + Vite**, **Firebase** (auth/data) e **OpenAI GPT-4** (via backend proxy seguro). O projeto segue arquitetura **Clean Architecture** com separação clara de responsabilidades.
 
 ### Principais Funcionalidades
 
--   **Dashboard Interativo:** Visão geral de receitas, despesas e saldo.
--   **Assistente de IA:** Lançamento de transações via texto natural (ex: "Gastei 50 reais no almoço").
--   **Gestão de Transações:** Adicione, edite e categorize suas movimentações.
--   **Metas e Alertas:** Defina objetivos financeiros e receba alertas de gastos.
--   **Central de Apoio:** Acesso rápido a suporte via IA, contato e documentos legais (Termos, Privacidade, Copyright).
+-   **Dashboard Interativo:** Visão geral de receitas, despesas e saldo com gráficos animados.
+-   **Assistente de IA (CFO Virtual):** Consultas financeiras em linguagem natural via GPT-4.
+-   **Análise Financeira Automatizada:** Pipeline de IA para insights, detecção de riscos e perfil financeiro.
+-   **Gestão de Transações:** Adicione, edite, categorize e importe transações (CSV/OFX).
+-   **Metas e Alertas:** Defina objetivos financeiros e receba alertas inteligentes de gastos.
+-   **Open Banking (Mock):** Simulação de sincronização bancária automática.
+-   **Scanner de Recibos:** OCR para extrair dados de comprovantes (Gemini Vision).
+-   **Central de Apoio:** Acesso rápido a suporte via IA, contato e documentos legais.
 -   **Modo Escuro/Claro:** Interface adaptável à sua preferência.
--   **Totalmente Responsivo:** Funciona bem em desktop e mobile.
+-   **Totalmente Responsivo:** Funciona bem em desktop e mobile (PWA pronto).
+
+---
+
+## 📦 Stack Tecnológica (v0.4.0)
+
+### Frontend
+- **React 18** + **TypeScript 5.3**
+- **Vite 6** (build otimizado)
+- **TailwindCSS 3** (UI responsiva)
+- **Firebase SDK** (Auth + Firestore)
+- **Recharts** (gráficos) + **Lucide React** (ícones)
+- **Capacitor** (iOS/Android deployment)
+
+### Backend
+- **Node.js 20** + **Express 5**
+- **TypeScript 5.3**
+- **OpenAI SDK** (GPT-4 para consultas financeiras)
+- **Gemini SDK** (OCR de recibos - opcional)
+- **PostgreSQL** (dados relacionais - opcional)
+- **JWT** (autenticação stateless)
+- **Pino** (logging estruturado)
+
+### Cloud & Deploy
+- **Frontend:** Vercel (SPA estático)
+- **Backend:** Vercel Serverless Functions / Railway
+- **Database:** Firebase Firestore (produção)
+- **Storage:** Firebase Storage (recibos)
+- **Monitoring:** Sentry (error tracking)
 
 ---
 
