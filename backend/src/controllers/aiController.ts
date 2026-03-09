@@ -206,11 +206,14 @@ export const tokenCountController = asyncHandler(async (req: Request, res: Respo
 export const cfoController = asyncHandler(async (req: Request, res: Response) => {
   const { question, context, intent } = req.body as { question: string; context: string; intent: string };
 
+  logger.info({ path: '/api/ai/cfo', method: 'POST', hasQuestion: !!question, hasContext: !!context }, 'CFO endpoint called');
+
   if (!question || typeof question !== 'string') {
+    logger.warn({ received: req.body }, 'CFO request missing question');
     throw new AppError(400, 'question is required');
   }
 
-  logger.debug({ userId: req.userId, intent }, 'CFO request');
+  logger.info({ intent, questionLength: question.length }, 'CFO request received');
 
   const SAFETY_PREAMBLE = `
 Você é o CFO Virtual do Flow Finance, um assistente financeiro pessoal.
@@ -247,11 +250,19 @@ PERGUNTA DO USUÁRIO: "${question}"
 Responda de forma consultiva, personalizada e baseada exclusivamente nos dados acima.
 `;
 
+  logger.debug({ promptLength: prompt.length }, 'Calling generateContent for CFO');
+
   try {
     const answer = await generateContent(prompt);
+    logger.info({ answerLength: answer?.length || 0 }, 'CFO response generated successfully');
     res.json({ answer });
-  } catch (error) {
-    logger.error({ error, userId: req.userId }, 'CFO generation error');
-    throw new AppError(500, 'Failed to generate CFO response');
+  } catch (error: any) {
+    logger.error({ 
+      error: error?.message || String(error),
+      errorType: error?.constructor?.name,
+      stack: error?.stack,
+      status: error?.status,
+    }, 'CFO generation error');
+    throw new AppError(500, `Failed to generate CFO response: ${error?.message || 'Unknown error'}`);
   }
 });

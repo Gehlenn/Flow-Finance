@@ -28,7 +28,10 @@ export async function generateContent(
   options?: { responseMimeType?: string; responseSchema?: any }
 ): Promise<string> {
   try {
+    logger.debug({ model: env.OPENAI_MODEL, promptLength: prompt.length }, 'Initializing OpenAI client');
     const openai = getOpenAI();
+    
+    logger.debug({ model: env.OPENAI_MODEL, maxTokens: env.OPENAI_MAX_TOKENS }, 'Sending request to OpenAI');
     const resp = await openai.chat.completions.create({
       model: env.OPENAI_MODEL || 'gpt-4',
       messages: [{ role: 'user', content: prompt }],
@@ -38,9 +41,20 @@ export async function generateContent(
         response_format: { type: 'json_object' }
       })
     });
-    return resp.choices[0]?.message?.content || '';
-  } catch (error) {
-    logger.error({ error }, 'OpenAI API error');
+    
+    const content = resp.choices[0]?.message?.content || '';
+    logger.info({ resultLength: content.length, model: env.OPENAI_MODEL }, 'OpenAI response received successfully');
+    return content;
+  } catch (error: any) {
+    logger.error({ 
+      error: error?.message || String(error),
+      status: error?.status,
+      code: error?.code,
+      type: error?.type,
+      errorType: error?.constructor?.name,
+      stack: error?.stack,
+      model: env.OPENAI_MODEL,
+    }, 'OpenAI generateContent error');
     throw error;
   }
 }

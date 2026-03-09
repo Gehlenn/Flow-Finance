@@ -31,9 +31,11 @@ export async function generateContent(
   }
 ): Promise<string> {
   try {
+    logger.debug({ promptLength: prompt.length }, 'Initializing Gemini model');
     const client = getGemini();
     const model = client.getGenerativeModel({ model: env.GEMINI_MODEL });
 
+    logger.debug({ model: env.GEMINI_MODEL, hasConfig: !!config }, 'Sending request to Gemini');
     const response = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: config ? {
@@ -42,10 +44,20 @@ export async function generateContent(
       } : undefined,
     });
 
+    if (!response || !response.response) {
+      throw new Error('Invalid response from Gemini API');
+    }
+
     const result = response.response.text();
+    logger.info({ resultLength: result?.length || 0 }, 'Gemini response received successfully');
     return result;
-  } catch (error) {
-    logger.error({ error }, 'Gemini API error');
+  } catch (error: any) {
+    logger.error({ 
+      error: error?.message || String(error),
+      errorType: error?.constructor?.name,
+      stack: error?.stack,
+      geminiModel: env.GEMINI_MODEL,
+    }, 'Gemini generateContent error');
     throw error;
   }
 }
