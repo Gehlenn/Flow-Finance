@@ -59,11 +59,13 @@ app.use(sentryRequestHandler);
 app.use(helmet());
 
 // CORS
+// Build list of allowed origins (dev + production)
 const defaultOrigins = [
   'http://localhost:3078',
   'http://127.0.0.1:3078',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'https://flow-finance-frontend-nine.vercel.app', // Production frontend
 ];
 
 const configuredOrigins = (process.env.FRONTEND_URL || '')
@@ -72,6 +74,8 @@ const configuredOrigins = (process.env.FRONTEND_URL || '')
   .filter(Boolean);
 
 const allowedOrigins = configuredOrigins.length > 0 ? configuredOrigins : defaultOrigins;
+
+logger.info({ allowedOrigins, environment: process.env.NODE_ENV }, 'CORS allowed origins configured');
 
 const corsOptions = {
   origin(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
@@ -86,7 +90,9 @@ const corsOptions = {
       return;
     }
 
-    callback(new Error(`CORS blocked for origin: ${origin}`));
+    // Log rejected origin for debugging but don't throw - just reject silently
+    logger.warn({ origin }, 'CORS request rejected');
+    callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
