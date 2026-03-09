@@ -138,11 +138,18 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           
           {error?.code === 'auth/unauthorized-domain' ? (
             <div className="animate-in slide-in-from-top-4 duration-500 space-y-3">
-              <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-[2rem] space-y-2 text-center">
+              <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-[2rem] space-y-3 text-center">
                 <FlaskConical size={24} className="mx-auto text-indigo-500" />
                 <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 leading-tight">
                   OAuth restrito. Adicione este domínio nos domínios autorizados do Firebase para continuar.
                 </p>
+                <button 
+                  onClick={() => setError(null)}
+                  className="w-full py-3 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  <ChevronLeft size={14} />
+                  Voltar
+                </button>
               </div>
             </div>
           ) : (
