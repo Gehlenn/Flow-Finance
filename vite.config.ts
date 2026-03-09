@@ -35,6 +35,7 @@ export default defineConfig(({ mode }) => {
       // SECURITY: Never expose API keys in client-side code!
       // Use backend proxy instead. Define safe environment variables only:
       define: {
+        'import.meta.env.VITE_BACKEND_URL': JSON.stringify(env.VITE_BACKEND_URL || ''),
         'import.meta.env.VITE_API_DEV_URL': JSON.stringify(env.VITE_API_DEV_URL || 'http://localhost:3001'),
         'import.meta.env.VITE_API_PROD_URL': JSON.stringify(env.VITE_API_PROD_URL || ''),
         'import.meta.env.VITE_APP_VERSION': JSON.stringify(env.VITE_APP_VERSION || '0.4.0'),
