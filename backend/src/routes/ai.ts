@@ -12,7 +12,10 @@ import {
 
 const router = Router();
 
-// All AI routes require authentication and are rate-limited
+// CFO route is public (no auth required) for testing
+router.post('/cfo', aiLimiter, cfoController);
+
+// All other AI routes require authentication and are rate-limited
 router.use(authMiddleware);
 router.use(aiLimiter);
 
@@ -60,13 +63,5 @@ router.post('/insights', generateInsightsController);
  * Returns: { tokenCount: number }
  */
 router.post('/token-count', tokenCountController);
-
-/**
- * POST /api/ai/cfo
- * Free-form assistant query using OpenAI GPT‑4
- * Body: { question: string, context: string, intent: string }
- * Returns: { answer: string }
- */
-router.post('/cfo', cfoController);
 
 export default router;
