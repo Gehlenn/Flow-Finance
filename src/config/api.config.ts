@@ -19,9 +19,9 @@ export const IS_PRODUCTION = !IS_DEVELOPMENT;
 
 const BACKEND_BASE_URL = (() => {
   if (IS_DEVELOPMENT) {
-    return import.meta.env.VITE_API_DEV_URL || 'http://localhost:3001';
+    return import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_DEV_URL || 'http://localhost:3001';
   }
-  return import.meta.env.VITE_API_PROD_URL || 'https://api.flowfinance.app';
+  return import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_PROD_URL || 'https://api.flowfinance.app';
 })();
 
 export const API_ENDPOINTS = {
