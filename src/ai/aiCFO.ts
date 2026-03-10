@@ -21,6 +21,7 @@ import { AIInsight } from './insightGenerator';
 import { CashflowPrediction } from './riskAnalyzer';
 import { learnMemory } from './aiMemory';
 import { buildFinancialGraph, graphToAIContext, getTopMerchants, getCategorySpending } from './financialGraph';
+import { getSpendingPatterns, getUserBehaviors, getFinancialProfile, getMerchantCategories } from './memory';
 
 // ─── PART 2 — Response Model ──────────────────────────────────────────────────
 
@@ -84,7 +85,8 @@ export function buildFinancialContext(
   accounts: Account[],
   transactions: Transaction[],
   prediction: CashflowPrediction,
-  insights: AIInsight[]
+  insights: AIInsight[],
+  userId: string = 'local'
 ): string {
   const fmt = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -130,6 +132,56 @@ export function buildFinancialContext(
     const graph = buildFinancialGraph('local', accounts, transactions);
     graphContext = '\n\n' + graphToAIContext(graph, 6);
   } catch (_) { /* graph unavailable */ }
+
+  // AI MEMORY SYSTEM 2.0 — Behavioral context
+  let behaviorContext = '';
+  try {
+    const spendingPatterns = getSpendingPatterns(userId);
+    const behaviors = getUserBehaviors(userId);
+    const profile = getFinancialProfile(userId);
+    const merchants = getMerchantCategories(userId);
+
+    if (spendingPatterns.length > 0 || behaviors.length > 0 || profile) {
+      behaviorContext += '\n\n=== PADRÕES COMPORTAMENTAIS APRENDIDOS ===\n';
+      
+      if (profile) {
+        behaviorContext += `\nPERFIL FINANCEIRO: ${profile.profile.toUpperCase()}\n`;
+        behaviorContext += `  - Taxa de poupança: ${profile.savingsRate.toFixed(1)}%\n`;
+        behaviorContext += `  - Renda média mensal: ${fmt(profile.averageMonthlyIncome)}\n`;
+        behaviorContext += `  - Despesas média mensal: ${fmt(profile.averageMonthlyExpenses)}\n`;
+      }
+
+      if (spendingPatterns.length > 0) {
+        behaviorContext += '\nPADRÕES DE GASTOS:\n';
+        spendingPatterns.slice(0, 3).forEach(pattern => {
+          behaviorContext += `  - ${pattern.description}\n`;
+        });
+      }
+
+      if (behaviors.length > 0) {
+        behaviorContext += '\nCOMPORTAMENTOS DETECTADOS:\n';
+        behaviors.slice(0, 3).forEach(behavior => {
+          const behaviorLabels: Record<string, string> = {
+            impulsive_spending: 'Gastos impulsivos',
+            budget_conscious: 'Consciente do orçamento',
+            weekend_spender: 'Gasta mais aos finais de semana',
+            online_shopper: 'Comprador online',
+          };
+          const label = behaviorLabels[behavior.behavior] || behavior.behavior;
+          behaviorContext += `  - ${label} (${behavior.score.toFixed(0)}% de confiança)\n`;
+        });
+      }
+
+      if (merchants.length > 0) {
+        behaviorContext += '\nCOMERCIANTES FREQUENTES:\n';
+        merchants.slice(0, 3).forEach(merchant => {
+          behaviorContext += `  - ${merchant.merchantName}: ${merchant.frequency.toFixed(1)} visitas/mês, ${fmt(merchant.avgAmount)} média\n`;
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[buildFinancialContext] Erro ao carregar memórias:', err);
+  }
 
   return `
 === DADOS FINANCEIROS DO USUÁRIO ===

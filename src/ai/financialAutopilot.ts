@@ -20,6 +20,13 @@ import { AIInsight } from './insightGenerator';
 import { learnMemory } from './aiMemory';
 import { buildFinancialGraph, getTopMerchants, getCategorySpending, detectSubscriptionCandidates } from './financialGraph';
 import { makeId, formatCurrency } from '../../utils/helpers';
+import { 
+  hasBehavior, 
+  getSpendingPatterns, 
+  getRecurringExpenses, 
+  getMerchantCategories,
+  getUserBehaviors 
+} from './memory';
 // fmt was previously used, update all instances below to formatCurrency
 
 // ─── PART 2 — Model ───────────────────────────────────────────────────────────
@@ -305,6 +312,85 @@ export function runFinancialAutopilot(
       });
     }
   } catch (_) { /* graph unavailable — skip */ }
+
+  // ─── AI MEMORY SYSTEM 2.0 — Behavioral actions ────────────────────────────
+  try {
+    const userId = 'local'; // In real app, pass userId as parameter
+
+    // Weekend spending behavior
+    const spendingPatterns = getSpendingPatterns(userId);
+    const weekendPattern = spendingPatterns.find(p => p.pattern === 'weekend');
+    if (weekendPattern && weekendPattern.frequency > 40) {
+      actions.push({
+        id: makeId(),
+        type: 'insight',
+        severity: 'low',
+        title: 'Padrão de gastos aos finais de semana',
+        description: weekendPattern.description + '. Considere estabelecer um orçamento específico para lazer.',
+        value: weekendPattern.avgAmount,
+        category: 'Comportamento',
+        action_label: 'Ver Padrões',
+        created_at: now(),
+      });
+    }
+
+    // Impulsive spending behavior
+    if (hasBehavior(userId, 'impulsive_spending')) {
+      const behaviors = getUserBehaviors(userId);
+      const impulsive = behaviors.find(b => b.behavior === 'impulsive_spending');
+      if (impulsive && impulsive.score > 60) {
+        actions.push({
+          id: makeId(),
+          type: 'suggestion',
+          severity: 'medium',
+          title: 'Padrão de compras impulsivas detectado',
+          description: `Identificamos ${impulsive.score.toFixed(0)}% de probabilidade de gastos impulsivos. Tente aguardar 24h antes de compras não-planejadas.`,
+          value: impulsive.score,
+          category: 'Comportamento',
+          action_label: 'Ver Dicas',
+          created_at: now(),
+        });
+      }
+    }
+
+    // Recurring expenses that can be optimized
+    const recurringExpenses = getRecurringExpenses(userId);
+    const subscriptions = recurringExpenses.filter(r => r.isSubscription);
+    if (subscriptions.length >= 3) {
+      const totalSubscriptions = subscriptions.reduce((s, sub) => s + sub.amount, 0);
+      actions.push({
+        id: makeId(),
+        type: 'optimization',
+        severity: 'low',
+        title: 'Múltiplas assinaturas detectadas',
+        description: `Você tem ${subscriptions.length} assinaturas ativas totalizando ${formatCurrency(totalSubscriptions)}/mês. Revise quais são realmente necessárias.`,
+        value: totalSubscriptions,
+        category: 'Assinaturas',
+        action_label: 'Gerenciar',
+        created_at: now(),
+      });
+    }
+
+    // High-frequency merchants
+    const merchants = getMerchantCategories(userId);
+    const highFrequency = merchants.filter(m => m.frequency > 8); // More than 8 visits/month
+    if (highFrequency.length > 0) {
+      const topMerchant = highFrequency[0];
+      actions.push({
+        id: makeId(),
+        type: 'insight',
+        severity: 'low',
+        title: `Frequência alta em "${topMerchant.merchantName}"`,
+        description: `Você visita este estabelecimento ${topMerchant.frequency.toFixed(1)} vezes por mês, com gasto médio de ${formatCurrency(topMerchant.avgAmount)}. Total: ${formatCurrency(topMerchant.totalSpent)}.`,
+        value: topMerchant.totalSpent,
+        category: topMerchant.category,
+        action_label: 'Ver Detalhes',
+        created_at: now(),
+      });
+    }
+  } catch (err) {
+    console.error('[Autopilot] Error loading AI memories:', err);
+  }
 
   // Ordenar: high → medium → low, warnings primeiro
   const severityOrder = { high: 0, medium: 1, low: 2 };

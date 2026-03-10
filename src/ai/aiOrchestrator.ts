@@ -36,6 +36,7 @@ import {
 import { runFinancialAutopilot, AutopilotAction } from './financialAutopilot';
 import { learnCategoryFromTransactions } from './categoryLearning';
 import { detectFinancialLeaks, FinancialLeak } from './leakDetector';
+import { updateAIMemory } from './memory';
 
 // ─── Pipeline Output ──────────────────────────────────────────────────────────
 
@@ -170,9 +171,12 @@ export async function runAIPipeline(
   // mas com um .catch individual para que uma falha não pare as outras.
   try {
     const learningPromises = [
+      // Legacy memory system (v1)
       detectAndLearnPatterns(userId, transactions).catch(e => console.error('Erro em detectAndLearnPatterns:', e)),
       learnMemory(userId, 'financial_profile', profile.profile, 0.8).catch(e => console.error('Erro ao salvar profile memory:', e)),
-      learnMemory(userId, 'balance_trend', financial_state.summary_current_month.balance >= 0 ? 'positivo' : 'negativo', 0.7).catch(e => console.error('Erro ao salvar balance trend memory:', e))
+      learnMemory(userId, 'balance_trend', financial_state.summary_current_month.balance >= 0 ? 'positivo' : 'negativo', 0.7).catch(e => console.error('Erro ao salvar balance trend memory:', e)),
+      // AI Memory System 2.0 - Structured behavioral learning
+      updateAIMemory(userId, transactions).catch(e => console.error('Erro em updateAIMemory v2:', e))
     ];
     await Promise.all(learningPromises);
   } catch (error) {
