@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -37,12 +40,44 @@
     <div id="root"></div>
 <script type="module" src="/index.tsx"></script>
 <script>
-  // PART 8 — Registrar Service Worker para suporte PWA/offline
+  // PART 8 — Registrar Service Worker para suporte PWA/offline com limpeza de cache antigo
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then(reg => console.log('[Flow] SW registrado:', reg.scope))
-        .catch(err => console.warn('[Flow] SW falhou:', err));
+    window.addEventListener('load', async () => {
+      try {
+        // Force delete old caches (v1-v4) before registering new SW
+        const cacheNames = await window.caches.keys();
+        const oldCaches = cacheNames.filter(name => 
+          name.startsWith('flow-finance-') && !name.includes('-v5')
+        );
+        
+        if (oldCaches.length > 0) {
+          console.log('[Flow] Limpando caches antigos:', oldCaches);
+          await Promise.all(oldCaches.map(name => window.caches.delete(name)));
+          
+          // Unregister old service workers
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const registration of registrations) {
+            await registration.unregister();
+          }
+          
+          console.log('[Flow] Cache limpo! Recarregando página...');
+          // Force hard reload to bypass any cached content
+          window.location.reload(true);
+          return;
+        }
+        
+        // Register new SW v5
+        const reg = await navigator.serviceWorker.register('/sw.js');
+        console.log('[Flow] SW v5 registrado:', reg.scope);
+        
+        // Force immediate update check
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+        reg.update();
+      } catch (err) {
+        console.warn('[Flow] SW error:', err);
+      }
     });
   }
 </script>

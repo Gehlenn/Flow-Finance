@@ -1,6 +1,6 @@
 /**
- * Flow Finance — Service Worker
- * Estratégia: Cache-First para assets, Network-First para API calls
+ * Flow Finance — Service Worker v5
+ * Estratégia: Cache-First para assets, Network-First para API calls e CSS
  */
 
 const CACHE_NAME = 'flow-finance-v5';
@@ -9,13 +9,26 @@ const STATIC_ASSETS = [
   '/index.html',
 ];
 
+console.log('[SW v5] Service Worker iniciando');
+
+// ─── Message handler: force skip waiting ──────────────────────────────────
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('[SW v5] SKIP_WAITING recebido - ativando imediatamente');
+    self.skipWaiting();
+  }
+});
+
 // ─── Install: pre-cache assets ─────────────────────────────────────────────
 
 self.addEventListener('install', (event) => {
+  console.log('[SW v5] Instalando...');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Pre-caching static assets');
-      return cache.addAll(STATIC_ASSETS).catch(() => {
+      console.log('[SW v5] Pre-caching static assets');
+      return cache.addAll(STATIC_ASSETS).catch((err) => {
+        console.warn('[SW v5] Pre-cache falhou:', err);
         // Falha silenciosa — assets serão cacheados no primeiro fetch
       });
     })
