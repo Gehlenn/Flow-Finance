@@ -113,7 +113,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   return (
     <div
-      className="h-screen w-full bg-slate-50 dark:bg-[#020617] flex flex-col items-center justify-between py-6 px-4 overflow-hidden transition-colors duration-500 relative text-slate-900 dark:text-white"
+      data-login-legacy="true"
+      className="login-legacy h-screen w-full bg-slate-50 dark:bg-[#020617] flex flex-col items-center justify-between py-6 px-4 overflow-hidden transition-colors duration-500 relative text-slate-900 dark:text-white"
       style={{
         forcedColorAdjust: 'none',
         WebkitTextSizeAdjust: '100%',
@@ -143,7 +144,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         </div>
 
         {/* Form Card */}
-        <div className="bg-white/90 dark:bg-slate-900/95 px-6 py-6 rounded-[3rem] shadow-[0_30px_80px_-15px_rgba(0,0,0,0.12)] dark:shadow-[0_40px_100px_-20px_rgba(0,0,0,0.7)] border border-white/50 dark:border-slate-800/50 backdrop-blur-3xl my-4">
+        <div className="legacy-card bg-white/90 dark:bg-slate-900/95 px-6 py-6 rounded-[3rem] shadow-[0_30px_80px_-15px_rgba(0,0,0,0.12)] dark:shadow-[0_40px_100px_-20px_rgba(0,0,0,0.7)] border border-white/50 dark:border-slate-800/50 backdrop-blur-3xl my-4">
           
           {error?.code === 'auth/unauthorized-domain' ? (
             <div className="animate-in slide-in-from-top-4 duration-500 space-y-3">
@@ -274,6 +275,64 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </div>
         </div>
       </div>
+
+      <style>{`
+        .login-legacy,
+        .login-legacy * {
+          -webkit-text-size-adjust: 100%;
+          text-size-adjust: 100%;
+        }
+
+        .login-legacy input,
+        .login-legacy button {
+          appearance: none;
+          -webkit-appearance: none;
+          font-family: Inter, sans-serif;
+        }
+
+        .login-legacy input::placeholder {
+          color: #94a3b8;
+          opacity: 1;
+        }
+
+        .login-legacy .legacy-card {
+          background: rgba(255, 255, 255, 0.9) !important;
+          border: 1px solid rgba(255, 255, 255, 0.5) !important;
+          border-radius: 3rem !important;
+          box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.12) !important;
+          backdrop-filter: blur(24px) !important;
+        }
+
+        @media (forced-colors: active) {
+          .login-legacy,
+          .login-legacy * {
+            forced-color-adjust: none !important;
+          }
+
+          .login-legacy {
+            background: #f8fafc !important;
+            color: #0f172a !important;
+          }
+
+          .login-legacy .legacy-card {
+            background: rgba(255, 255, 255, 0.95) !important;
+            border: 1px solid rgba(255, 255, 255, 0.6) !important;
+            box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.12) !important;
+          }
+
+          .login-legacy input {
+            background: rgba(248, 250, 252, 0.9) !important;
+            border: 2px solid transparent !important;
+            color: #0f172a !important;
+          }
+
+          .login-legacy button[type='submit'] {
+            background: #4f46e5 !important;
+            color: #ffffff !important;
+            border: 0 !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
