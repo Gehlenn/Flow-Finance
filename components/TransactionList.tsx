@@ -21,6 +21,24 @@ interface TransactionListProps {
 type SortKey = 'date' | 'amount' | 'category' | 'description';
 type SortDirection = 'asc' | 'desc';
 
+// Static class maps for Tailwind static analysis - prevents CSS purging
+const TRANSACTION_LIST_CLASSES = {
+  filterButtonActive: 'bg-indigo-600 text-white border-indigo-500',
+  filterButtonInactive: 'bg-white dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700',
+  categoryFilterActive: 'bg-indigo-600 text-white shadow-md',
+  categoryFilterInactive: 'bg-slate-50 dark:bg-slate-900 text-slate-400',
+  categoryBadgeIncome: 'bg-emerald-50 text-emerald-500',
+  categoryBadgeExpense: 'bg-rose-50 dark:bg-rose-500/10 text-rose-500',
+  rowSelected: 'bg-indigo-50/50 dark:bg-indigo-500/10',
+  rowUnselected: '',
+  checkboxSelected: 'text-indigo-600',
+  checkboxUnselected: 'text-slate-200 dark:text-slate-700',
+  amountIncome: 'text-emerald-600',
+  amountExpense: 'text-rose-600',
+  shareTypeActive: 'bg-indigo-600 text-white border-indigo-600 shadow-md',
+  shareTypeInactive: 'bg-slate-50 dark:bg-slate-900 text-slate-400 border-transparent'
+};
+
 // Cache global para persistir entre remontagens
 const listCache = {
   paramsKey: '',
@@ -268,7 +286,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, hideVal
           >
             <Share2 size={18} />
           </button>
-          <button onClick={() => setShowFilters(!showFilters)} className={`p-3.5 rounded-2xl border transition-all ${showFilters ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-white dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'}`}>
+          <button onClick={() => setShowFilters(!showFilters)} className={`p-3.5 rounded-2xl border transition-all ${showFilters ? TRANSACTION_LIST_CLASSES.filterButtonActive : TRANSACTION_LIST_CLASSES.filterButtonInactive}`}>
             <Filter size={18} />
           </button>
         </div>
@@ -284,7 +302,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, hideVal
                   <label className="text-[7px] font-black text-slate-400 uppercase tracking-widest ml-1">Categoria</label>
                   <div className="flex flex-wrap gap-1">
                     {['Todas', ...Object.values(Category)].map(cat => (
-                      <button key={cat} onClick={() => setCategoryFilter(cat as any)} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${categoryFilter === cat ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 dark:bg-slate-900 text-slate-400'}`}>{cat}</button>
+                      <button key={cat} onClick={() => setCategoryFilter(cat as any)} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${categoryFilter === cat ? TRANSACTION_LIST_CLASSES.categoryFilterActive : TRANSACTION_LIST_CLASSES.categoryFilterInactive}`}>{cat}</button>
                     ))}
                   </div>
                </div>
@@ -327,15 +345,15 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, hideVal
           <div 
             key={t.id} 
             onClick={() => setViewingTransaction(t)}
-            className={`p-5 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-all cursor-pointer group ${selectedIds.has(t.id) ? 'bg-indigo-50/50 dark:bg-indigo-500/10' : ''}`}
+            className={`p-5 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-all cursor-pointer group ${selectedIds.has(t.id) ? TRANSACTION_LIST_CLASSES.rowSelected : TRANSACTION_LIST_CLASSES.rowUnselected}`}
           >
             <button 
               onClick={(e) => toggleSelect(t.id, e)}
-              className={`shrink-0 transition-colors ${selectedIds.has(t.id) ? 'text-indigo-600' : 'text-slate-200 dark:text-slate-700'}`}
+              className={`shrink-0 transition-colors ${selectedIds.has(t.id) ? TRANSACTION_LIST_CLASSES.checkboxSelected : TRANSACTION_LIST_CLASSES.checkboxUnselected}`}
             >
               {selectedIds.has(t.id) ? <CheckSquare size={22} /> : <Square size={22} />}
             </button>
-            <div className={`p-2.5 rounded-xl shrink-0 ${t.type === TransactionType.RECEITA ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-500'}`}>
+            <div className={`p-2.5 rounded-xl shrink-0 ${t.type === TransactionType.RECEITA ? TRANSACTION_LIST_CLASSES.categoryBadgeIncome : TRANSACTION_LIST_CLASSES.categoryBadgeExpense}`}>
               {getCategoryIcon(t.category)}
             </div>
             <div className="flex-1 min-w-0">
@@ -355,7 +373,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, hideVal
               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">{new Date(t.date).toLocaleDateString('pt-BR')} • {t.category}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className={`text-sm font-black ${t.type === TransactionType.RECEITA ? 'text-emerald-600' : 'text-rose-600'}`}>{hideValues ? '••••' : formatVal(t.amount)}</span>
+              <span className={`text-sm font-black ${t.type === TransactionType.RECEITA ? TRANSACTION_LIST_CLASSES.amountIncome : TRANSACTION_LIST_CLASSES.amountExpense}`}>{hideValues ? '••••' : formatVal(t.amount)}</span>
             </div>
           </div>
         ))}
@@ -417,7 +435,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, hideVal
                       <button
                         key={type}
                         onClick={() => toggleShareFilter(shareTypes, setShareTypes, type)}
-                        className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${shareTypes.has(type) ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-slate-50 dark:bg-slate-900 text-slate-400 border-transparent'}`}
+                        className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${shareTypes.has(type) ? TRANSACTION_LIST_CLASSES.shareTypeActive : TRANSACTION_LIST_CLASSES.shareTypeInactive}`}
                       >
                         {type}
                       </button>
@@ -429,7 +447,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, hideVal
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => toggleShareFilter(shareCategories, setShareCategories, 'tudo')}
-                      className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${shareCategories.has('tudo') ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-slate-50 dark:bg-slate-900 text-slate-400 border-transparent'}`}
+                      className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${shareCategories.has('tudo') ? TRANSACTION_LIST_CLASSES.shareTypeActive : TRANSACTION_LIST_CLASSES.shareTypeInactive}`}
                     >
                       Tudo
                     </button>
@@ -437,7 +455,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, hideVal
                       <button
                         key={cat}
                         onClick={() => toggleShareFilter(shareCategories, setShareCategories, cat.toLowerCase())}
-                        className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${shareCategories.has(cat.toLowerCase()) ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-slate-50 dark:bg-slate-900 text-slate-400 border-transparent'}`}
+                        className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${shareCategories.has(cat.toLowerCase()) ? TRANSACTION_LIST_CLASSES.shareTypeActive : TRANSACTION_LIST_CLASSES.shareTypeInactive}`}
                       >
                         {cat}
                       </button>

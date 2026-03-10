@@ -670,10 +670,20 @@ const App: React.FC = () => {
   );
 };
 
+// Static class maps for Tailwind static analysis
+const NAV_BUTTON_CLASS_MAP = {
+  buttonBase: 'flex flex-col items-center gap-1 transition-all',
+  active: 'text-indigo-600 dark:text-indigo-400 scale-110',
+  inactive: 'text-slate-400 dark:text-slate-600',
+  iconActive: 'p-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-500/10',
+  iconInactive: 'p-1.5 rounded-xl',
+  label: 'text-[8px] font-black uppercase tracking-widest'
+};
+
 const NavButton: React.FC<{active: boolean; onClick: () => void; icon: React.ReactNode; label: string}> = ({ active, onClick, icon, label }) => (
-  <button onClick={onClick} className={`flex flex-col items-center gap-1 transition-all ${active ? 'text-indigo-600 dark:text-indigo-400 scale-110' : 'text-slate-400 dark:text-slate-600'}`}>
-    <div className={`p-1.5 rounded-xl ${active ? 'bg-indigo-50 dark:bg-indigo-500/10' : ''}`}>{icon}</div>
-    <span className="text-[8px] font-black uppercase tracking-widest">{label}</span>
+  <button onClick={onClick} className={`${NAV_BUTTON_CLASS_MAP.buttonBase} ${active ? NAV_BUTTON_CLASS_MAP.active : NAV_BUTTON_CLASS_MAP.inactive}`}>
+    <div className={active ? NAV_BUTTON_CLASS_MAP.iconActive : NAV_BUTTON_CLASS_MAP.iconInactive}>{icon}</div>
+    <span className={NAV_BUTTON_CLASS_MAP.label}>{label}</span>
   </button>
 );
 
