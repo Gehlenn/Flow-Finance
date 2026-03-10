@@ -26,9 +26,10 @@ export function getGemini(): GoogleGenerativeAI {
 function getCandidateModels(): string[] {
   const models = [
     env.GEMINI_MODEL,
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-pro-latest',
-    'gemini-1.5-flash-8b-latest',
+    'gemini-2.5-flash',
+    'gemini-flash-latest',
+    'gemini-2.0-flash',
+    'gemini-pro-latest',
   ];
 
   // Keep order, remove empty and duplicate values.
