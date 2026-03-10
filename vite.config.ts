@@ -25,7 +25,12 @@ export default defineConfig(({ mode }) => {
             manualChunks(id) {
               if (id.includes('node_modules')) {
                 if (id.includes('react') || id.includes('scheduler')) return 'vendor-react';
-                if (id.includes('firebase')) return 'vendor-firebase';
+                if (id.includes('firebase')) {
+                  if (id.includes('/auth') || id.includes('firebase-auth')) return 'vendor-firebase-auth';
+                  if (id.includes('/firestore') || id.includes('firebase-firestore')) return 'vendor-firebase-firestore';
+                  if (id.includes('/app') || id.includes('firebase-app')) return 'vendor-firebase-app';
+                  return 'vendor-firebase-core';
+                }
                 if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts';
                 if (id.includes('lucide-react')) return 'vendor-icons';
                 if (id.includes('@google/generative-ai') || id.includes('@google/genai')) return 'vendor-ai-sdk';
