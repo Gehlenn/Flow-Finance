@@ -119,3 +119,18 @@ export async function detectAndLearnPatterns(
     await learnMemory(userId, 'recurring_expenses', String(recurringCount), Math.min(recurringCount / 5, 1));
   }
 }
+
+export async function getUserMemoryProfile(userId: string): Promise<{
+  userId: string;
+  patterns: AIMemory[];
+  spending_profile: AIMemory[];
+  merchant_categories: AIMemory[];
+}> {
+  const memories = await getAIMemory(userId);
+  return {
+    userId,
+    patterns: memories.filter((m) => m.key.includes('pattern') || m.key.includes('weekend')),
+    spending_profile: memories.filter((m) => m.key.includes('profile') || m.key.includes('recurring')),
+    merchant_categories: memories.filter((m) => m.key.includes('merchant')),
+  };
+}

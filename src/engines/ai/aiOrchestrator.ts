@@ -15,6 +15,7 @@ export async function runAIOrchestrator(input: AIContextInput): Promise<{
   eventBus.emit(AI_TASK_COMPLETED, {
     taskId: `ai_${Date.now()}`,
     engine: 'aiOrchestrator',
+    userId: context.userId,
     durationMs: Date.now() - start,
     success: true,
   });

@@ -1,3 +1,5 @@
+import { UserContext } from '../../context/UserContext';
+
 export interface BudgetInput {
   income: number;
   expenses: number;
@@ -9,7 +11,7 @@ export interface BudgetAnalysis {
   recommendation: string;
 }
 
-export function analyzeBudget(input: BudgetInput): BudgetAnalysis {
+export function analyzeBudget(input: BudgetInput, _userContext?: UserContext): BudgetAnalysis {
   if (input.income <= 0) {
     return {
       savingsRate: 0,

@@ -1,4 +1,5 @@
 import { TransactionType } from '../../../types';
+import { UserContext } from '../../context/UserContext';
 
 export interface CashflowTransaction {
   amount: number;
@@ -11,11 +12,11 @@ export interface CashflowSummary {
   balance: number;
 }
 
-export function calculateCashflow(transactions: CashflowTransaction[]): number {
+export function calculateCashflow(transactions: CashflowTransaction[], _userContext?: UserContext): number {
   return transactions.reduce((sum, t) => sum + t.amount, 0);
 }
 
-export function calculateCashflowSummary(transactions: CashflowTransaction[]): CashflowSummary {
+export function calculateCashflowSummary(transactions: CashflowTransaction[], _userContext?: UserContext): CashflowSummary {
   const summary = transactions.reduce(
     (acc, tx) => {
       const isIncome = tx.type === TransactionType.RECEITA;

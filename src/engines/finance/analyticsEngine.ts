@@ -1,4 +1,5 @@
 import { Alert, Transaction, TransactionType } from '../../../types';
+import { UserContext } from '../../context/UserContext';
 
 export type CashflowTimeframe = '7d' | '30d' | '12m' | 'custom';
 
@@ -6,7 +7,8 @@ export function filterTransactionsByTimeframe(
   transactions: Transaction[],
   timeframe: CashflowTimeframe,
   dateStart?: string,
-  dateEnd?: string
+  dateEnd?: string,
+  _userContext?: UserContext
 ): Transaction[] {
   const now = new Date();
 
@@ -24,7 +26,7 @@ export function filterTransactionsByTimeframe(
   });
 }
 
-export function buildCashflowTimeline(transactions: Transaction[]): Array<{
+export function buildCashflowTimeline(transactions: Transaction[], _userContext?: UserContext): Array<{
   date: string;
   rawDate: string;
   incoming: number;
@@ -51,7 +53,7 @@ export function buildCashflowTimeline(transactions: Transaction[]): Array<{
   return Object.values(dataMap).sort((a, b) => a.rawDate.localeCompare(b.rawDate));
 }
 
-export function buildExpenseCategoryData(transactions: Transaction[]): Array<{ name: string; value: number }> {
+export function buildExpenseCategoryData(transactions: Transaction[], _userContext?: UserContext): Array<{ name: string; value: number }> {
   const map = transactions
     .filter((t) => t.type === TransactionType.DESPESA)
     .reduce((acc, curr) => {
@@ -64,14 +66,14 @@ export function buildExpenseCategoryData(transactions: Transaction[]): Array<{ n
     .sort((a, b) => b.value - a.value);
 }
 
-export function calculateSignedBalance(transactions: Array<{ amount: number; type: TransactionType }>): number {
+export function calculateSignedBalance(transactions: Array<{ amount: number; type: TransactionType }>, _userContext?: UserContext): number {
   return transactions.reduce((total, item) => {
     if (item.type === TransactionType.RECEITA) return total + item.amount;
     return total - item.amount;
   }, 0);
 }
 
-export function calculateAlertProgress(transactions: Transaction[], alert: Alert): { spent: number; percent: number } {
+export function calculateAlertProgress(transactions: Transaction[], alert: Alert, _userContext?: UserContext): { spent: number; percent: number } {
   const spent = transactions
     .filter((t) => t.type === TransactionType.DESPESA && (alert.category === 'Geral' || t.category === alert.category))
     .reduce((sum, t) => sum + t.amount, 0);

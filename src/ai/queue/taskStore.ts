@@ -112,10 +112,11 @@ class TaskStore {
     }
   }
 
-  getNextTask(): AITask | null {
+  getNextTask(userId?: string): AITask | null {
     // Get pending tasks sorted by priority (high to low) then creation time (old to new)
     const pendingTasks = Array.from(this.tasks.values())
       .filter((task) => task.status === AITaskStatus.PENDING)
+      .filter((task) => !userId || task.userId === userId)
       .sort((a, b) => {
         // First by priority (higher priority first)
         if (a.priority !== b.priority) {
@@ -126,6 +127,21 @@ class TaskStore {
       });
 
     return pendingTasks.length > 0 ? pendingTasks[0] : null;
+  }
+
+  getUserTaskSnapshot(userId: string): {
+    pending: AITask[];
+    processing: AITask[];
+    completed: AITask[];
+    failed: AITask[];
+  } {
+    const userTasks = this.getTasksByUser(userId);
+    return {
+      pending: userTasks.filter((t) => t.status === AITaskStatus.PENDING),
+      processing: userTasks.filter((t) => t.status === AITaskStatus.PROCESSING),
+      completed: userTasks.filter((t) => t.status === AITaskStatus.COMPLETED),
+      failed: userTasks.filter((t) => t.status === AITaskStatus.FAILED),
+    };
   }
 
   getTasksByStatus(status: AITaskStatus): AITask[] {
@@ -179,6 +195,10 @@ export function addTask(task: AITask): void {
 
 export function getNextTask(): AITask | null {
   return taskStore.getNextTask();
+}
+
+export function getNextTaskForUser(userId: string): AITask | null {
+  return taskStore.getNextTask(userId);
 }
 
 export function updateTaskStatus(id: string, status: AITaskStatus): void {

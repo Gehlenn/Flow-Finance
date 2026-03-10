@@ -1,4 +1,5 @@
 import { TransactionType } from '../../../types';
+import { UserContext } from '../../context/UserContext';
 
 export interface ForecastPoint {
   month: string;
@@ -13,7 +14,7 @@ interface TransactionLike {
   date: string;
 }
 
-export function buildMonthlyForecast(transactions: TransactionLike[], months = 6): ForecastPoint[] {
+export function buildMonthlyForecast(transactions: TransactionLike[], months = 6, _userContext?: UserContext): ForecastPoint[] {
   const now = new Date();
   const points: ForecastPoint[] = [];
 

@@ -203,3 +203,15 @@ export function enqueueTask<T = any>(type: AITaskType, payload: T): string {
   }
   return aiTaskQueue.enqueueTask(type, payload, 'system');
 }
+
+export function enqueueTaskForUser<T = any>(
+  userId: string,
+  type: AITaskType,
+  payload: T,
+  options?: { priority?: AITaskPriority; maxRetries?: number }
+): string {
+  if (!aiTaskQueue.isInitialized()) {
+    aiTaskQueue.initialize();
+  }
+  return aiTaskQueue.enqueueTask(type, payload, userId, options);
+}

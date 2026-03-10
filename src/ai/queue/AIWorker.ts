@@ -63,13 +63,17 @@ class AIWorker {
     await this.processNextTask();
   }
 
-  private async processNextTask(): Promise<void> {
+  async runForUser(userId: string): Promise<void> {
+    await this.processNextTask(userId);
+  }
+
+  private async processNextTask(userId?: string): Promise<void> {
     // Skip if already processing a task
     if (this.processingTaskId) {
       return;
     }
 
-    const task = taskStore.getNextTask();
+    const task = taskStore.getNextTask(userId);
     if (!task) {
       return; // No pending tasks
     }
@@ -221,4 +225,8 @@ export const aiWorker = new AIWorker();
 // Sprint 3 simple function API.
 export async function runAIWorker(): Promise<void> {
   await aiWorker.runOnce();
+}
+
+export async function runAIWorkerForUser(userId: string): Promise<void> {
+  await aiWorker.runForUser(userId);
 }

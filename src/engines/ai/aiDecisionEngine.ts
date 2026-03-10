@@ -4,6 +4,7 @@ import { AIContext } from './aiContextBuilder';
 export interface AIDecision {
   level: 'safe' | 'attention' | 'critical';
   recommendation: string;
+  userId?: string;
 }
 
 export function makeAIDecision(context: AIContext): AIDecision {
@@ -16,6 +17,7 @@ export function makeAIDecision(context: AIContext): AIDecision {
     return {
       level: 'critical',
       recommendation: 'Fluxo negativo com baixa poupanca. Priorize corte de custos e renegociacao de contas fixas.',
+      userId: context.userId,
     };
   }
 
@@ -23,11 +25,13 @@ export function makeAIDecision(context: AIContext): AIDecision {
     return {
       level: 'attention',
       recommendation: budget.recommendation,
+      userId: context.userId,
     };
   }
 
   return {
     level: 'safe',
     recommendation: budget.recommendation,
+    userId: context.userId,
   };
 }

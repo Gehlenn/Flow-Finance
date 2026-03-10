@@ -18,6 +18,9 @@ export * from './security/transactionIntegrity';
 // Configuration
 export * from './config/appConfig';
 
+// User Context Layer
+export * from './context';
+
 // Event System
 export { FinancialEventEmitter } from './events/eventEngine';
 export * from './events';

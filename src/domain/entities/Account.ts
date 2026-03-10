@@ -1,10 +1,13 @@
 import { Money } from '../valueObjects/Money';
 
+export type AccountKind = 'checking' | 'credit_card' | 'savings' | 'investment';
+
 export class Account {
   constructor(
     public readonly id: string,
+    public readonly userId: string,
     public readonly name: string,
-    public readonly type: 'bank' | 'cash' | 'credit_card' | 'investment',
+    public readonly kind: AccountKind,
     private balance: Money
   ) {}
 
@@ -12,11 +15,19 @@ export class Account {
     return this.balance;
   }
 
+  isCreditCard(): boolean {
+    return this.kind === 'credit_card';
+  }
+
+  isInvestment(): boolean {
+    return this.kind === 'investment';
+  }
+
   applyCredit(value: Money): Account {
-    return new Account(this.id, this.name, this.type, this.balance.add(value));
+    return new Account(this.id, this.userId, this.name, this.kind, this.balance.add(value));
   }
 
   applyDebit(value: Money): Account {
-    return new Account(this.id, this.name, this.type, this.balance.subtract(value));
+    return new Account(this.id, this.userId, this.name, this.kind, this.balance.subtract(value));
   }
 }

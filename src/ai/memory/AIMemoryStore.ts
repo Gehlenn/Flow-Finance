@@ -202,6 +202,21 @@ class AIMemoryStore {
     };
   }
 
+  getUserMemoryProfile(userId: string): {
+    userId: string;
+    patterns: AIMemoryEntry[];
+    spending_profile: AIMemoryEntry[];
+    merchant_categories: AIMemoryEntry[];
+  } {
+    const memories = this.getMemoriesByUser(userId);
+    return {
+      userId,
+      patterns: memories.filter((m) => m.type === AIMemoryType.SPENDING_PATTERN || m.type === AIMemoryType.TIME_PATTERN),
+      spending_profile: memories.filter((m) => m.type === AIMemoryType.FINANCIAL_PROFILE),
+      merchant_categories: memories.filter((m) => m.type === AIMemoryType.MERCHANT_CATEGORY),
+    };
+  }
+
   setDecayConfig(config: Partial<MemoryDecayConfig>): void {
     this.decayConfig = { ...this.decayConfig, ...config };
   }

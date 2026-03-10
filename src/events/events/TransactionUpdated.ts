@@ -1,6 +1,6 @@
-export const TRANSACTION_CREATED = 'transaction_created';
+export const TRANSACTION_UPDATED = 'transaction_updated';
 
-export interface TransactionCreatedEvent {
+export interface TransactionUpdatedEvent {
   userId: string;
   transactionId: string;
   accountId?: string;

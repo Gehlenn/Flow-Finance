@@ -335,3 +335,7 @@ export function hasBehavior(userId: string, behavior: UserBehaviorValue['behavio
 export function getMemoryStats(userId: string) {
   return aiMemoryEngine.getStats(userId);
 }
+
+export function getUserMemoryProfile(userId: string) {
+  return aiMemoryStore.getUserMemoryProfile(userId);
+}

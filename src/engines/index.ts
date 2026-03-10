@@ -5,3 +5,4 @@ export * from './finance/analyticsEngine';
 export * from './ai/aiContextBuilder';
 export * from './ai/aiDecisionEngine';
 export * from './ai/aiOrchestrator';
+export * from './autopilot/financialAutopilot';

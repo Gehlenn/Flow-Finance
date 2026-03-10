@@ -9,6 +9,12 @@ import { Transaction, Account, FinancialGoal, User, Subscription, BankConnection
 import { StorageProvider } from '../storage/StorageProvider';
 import { simulateFinancialScenario } from '../ai/financialSimulator';
 import { FinancialEventEmitter } from '../events/eventEngine';
+import {
+  emitBudgetChanged,
+  emitGoalCreated,
+  emitTransactionCreated,
+  emitTransactionUpdated,
+} from '../events/financialEventStream';
 import { logAuditEvent } from '../security/auditLogService';
 import { TransactionType, Category } from '../../types';
 
@@ -103,6 +109,34 @@ export class TransactionService {
     });
   }
 
+  async updateTransaction(transactionId: string, updates: Partial<Transaction>): Promise<Transaction> {
+    const transactions = await this.storage.getTransactions(this.userId);
+    const existing = transactions.find((tx) => tx.id === transactionId);
+
+    if (!existing) {
+      throw new Error('Transaction not found');
+    }
+
+    const updated: Transaction = {
+      ...existing,
+      ...updates,
+      updatedAt: new Date(),
+    };
+
+    await this.storage.saveTransaction(updated);
+
+    emitTransactionUpdated({
+      userId: this.userId,
+      transactionId: updated.id,
+      accountId: updated.accountId,
+      amount: updated.amount,
+      category: updated.category,
+      date: updated.date.toISOString(),
+    });
+
+    return updated;
+  }
+
   async importTransactions(transactions: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>[]): Promise<Transaction[]> {
     const imported: Transaction[] = [];
 
@@ -170,6 +204,14 @@ export class AccountService {
       newBalance,
       difference: newBalance - oldBalance,
     });
+
+    emitBudgetChanged({
+      userId: this.userId,
+      accountId,
+      previousBudget: oldBalance,
+      currentBudget: newBalance,
+      changedAt: new Date().toISOString(),
+    });
   }
 }
 
@@ -197,6 +239,13 @@ export class GoalService {
     });
 
     FinancialEventEmitter.goalCreated(goal);
+    emitGoalCreated({
+      userId: this.userId,
+      goalId: goal.id,
+      title: goal.name,
+      targetAmount: goal.targetAmount,
+      createdAt: goal.createdAt.toISOString(),
+    });
 
     return goal;
   }
