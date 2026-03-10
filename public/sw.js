@@ -3,7 +3,7 @@
  * Estratégia: Cache-First para assets, Network-First para API calls
  */
 
-const CACHE_NAME = 'flow-finance-v3';
+const CACHE_NAME = 'flow-finance-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -48,6 +48,26 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   if (url.origin !== location.origin) return;
 
+  // Network-First para navegação/HTML para evitar prender index.html antigo.
+  const isNavigation = request.mode === 'navigate';
+  const acceptsHtml = request.headers.get('accept')?.includes('text/html');
+  if (isNavigation || acceptsHtml) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', clone));
+          }
+          return response;
+        })
+        .catch(async () => {
+          return (await caches.match('/index.html')) || Response.error();
+        })
+    );
+    return;
+  }
+
   // Network-First para .tsx/.ts (módulos ESM em dev)
   if (url.pathname.endsWith('.tsx') || url.pathname.endsWith('.ts')) {
     event.respondWith(
@@ -85,6 +105,7 @@ self.addEventListener('fetch', (event) => {
       if (request.headers.get('accept')?.includes('text/html')) {
         return caches.match('/index.html');
       }
+      return Response.error();
     })
   );
 });
