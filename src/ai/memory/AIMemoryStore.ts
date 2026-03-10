@@ -98,6 +98,26 @@ class AIMemoryStore {
     this.saveToStorage();
   }
 
+  save(memory: Partial<AIMemoryEntry> & { type: AIMemoryType; value: any; key?: string; userId?: string }): void {
+    const now = Date.now();
+    const entry: AIMemoryEntry = {
+      id: memory.id || `mem_${now}_${Math.random().toString(36).slice(2, 11)}`,
+      userId: memory.userId || 'local',
+      type: memory.type,
+      key: memory.key || memory.type.toLowerCase(),
+      value: memory.value,
+      confidence: memory.confidence ?? 0.7,
+      strength: memory.strength ?? 25,
+      occurrences: memory.occurrences ?? 1,
+      createdAt: memory.createdAt ?? now,
+      updatedAt: memory.updatedAt ?? now,
+      lastObservedAt: memory.lastObservedAt ?? now,
+      metadata: memory.metadata,
+    };
+
+    this.saveMemory(entry);
+  }
+
   getMemory(id: string): AIMemoryEntry | undefined {
     return this.memories.get(id);
   }
@@ -112,6 +132,10 @@ class AIMemoryStore {
     return Array.from(this.memories.values())
       .filter((m) => m.userId === userId && m.type === type)
       .sort((a, b) => b.strength - a.strength);
+  }
+
+  getByType(type: AIMemoryType, userId: string = 'local'): AIMemoryEntry[] {
+    return this.getMemoriesByType(userId, type);
   }
 
   queryMemories(filter: MemoryQueryFilter): AIMemoryEntry[] {

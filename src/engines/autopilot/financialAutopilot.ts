@@ -1,5 +1,7 @@
 import { UserContext } from '../../context/UserContext';
 import { aiTaskQueue } from '../../ai/queue/AITaskQueue';
+import { aiMemoryStore } from '../../ai/memory/AIMemoryStore';
+import { AIMemoryType } from '../../ai/memory/memoryTypes';
 
 export interface AutopilotAlert {
   type: 'overspending' | 'negative_balance' | 'low_savings_rate' | 'stable';
@@ -14,7 +16,7 @@ export interface FinancialHealthContext {
 }
 
 export class FinancialAutopilot {
-  analyze(context: Omit<FinancialHealthContext, 'userContext'>): AutopilotAlert[] {
+  analyze(context: Omit<FinancialHealthContext, 'userContext'> & { userId?: string }): AutopilotAlert[] {
     const alerts: AutopilotAlert[] = [];
 
     if (context.monthlyExpenses > context.monthlyIncome) {
@@ -48,6 +50,16 @@ export class FinancialAutopilot {
       });
     }
 
+    if (context.userId) {
+      const recurring = aiMemoryStore.getByType(AIMemoryType.RECURRING_EXPENSE, context.userId);
+      if (recurring.length >= 3) {
+        alerts.push({
+          type: 'overspending',
+          message: `Detectamos ${recurring.length} recorrencias. Revise assinaturas e custos fixos para reduzir gastos.`,
+        });
+      }
+    }
+
     return alerts;
   }
 
@@ -66,5 +78,6 @@ export function analyzeFinancialHealth(context: FinancialHealthContext): string[
     monthlyExpenses: context.monthlyExpenses,
     monthlyIncome: context.monthlyIncome,
     currentBalance: context.currentBalance,
+    userId: context.userContext.userId,
   }).map((alert) => alert.message);
 }

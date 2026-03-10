@@ -17,6 +17,7 @@ import {
   IncomePatternValue,
   TimePatternValue,
 } from './memoryTypes';
+import { FinancialPatterns } from '../../engines/finance/patternDetector/financialPatternDetector';
 import {
   analyzeSpendingPatterns,
   analyzeMerchantCategories,
@@ -36,6 +37,47 @@ const DEFAULT_LEARNING_CONFIG: MemoryLearningConfig = {
 
 class AIMemoryEngine {
   private learningConfig: MemoryLearningConfig = DEFAULT_LEARNING_CONFIG;
+
+  /**
+   * Simple update path used by event-driven/orchestrator flow.
+   */
+  updateMemory(patterns: FinancialPatterns, userId: string = 'local'): void {
+    if (patterns.recurring.length > 0) {
+      aiMemoryStore.save({
+        userId,
+        type: AIMemoryType.RECURRING_EXPENSE,
+        key: 'recurring_expenses',
+        value: patterns.recurring,
+        confidence: 0.85,
+        strength: Math.min(100, patterns.recurring.length * 15),
+      });
+    }
+
+    if (patterns.weeklySpikes.length > 0) {
+      aiMemoryStore.save({
+        userId,
+        type: AIMemoryType.SPENDING_PATTERN,
+        key: 'weekly_spikes',
+        value: patterns.weeklySpikes,
+        confidence: 0.75,
+        strength: Math.min(100, patterns.weeklySpikes.length * 5),
+      });
+    }
+
+    if (patterns.categoryDominance) {
+      aiMemoryStore.save({
+        userId,
+        type: AIMemoryType.SPENDING_PATTERN,
+        key: 'category_dominance',
+        value: {
+          category: patterns.categoryDominance[0],
+          amount: patterns.categoryDominance[1],
+        },
+        confidence: 0.8,
+        strength: 60,
+      });
+    }
+  }
 
   /**
    * Main function to update AI memory based on transactions

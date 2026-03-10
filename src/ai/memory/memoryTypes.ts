@@ -15,6 +15,12 @@ export enum AIMemoryType {
   TIME_PATTERN = 'TIME_PATTERN',
 }
 
+export type MemoryType =
+  | 'SPENDING_PATTERN'
+  | 'MERCHANT_CATEGORY'
+  | 'RECURRING_EXPENSE'
+  | 'FINANCIAL_PROFILE';
+
 export interface AIMemoryEntry {
   id: string;
   userId: string;

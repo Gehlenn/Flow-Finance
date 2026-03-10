@@ -1,7 +1,11 @@
+import { AIMemoryType } from '../../ai/memory/memoryTypes';
+import { aiMemoryStore } from '../../ai/memory/AIMemoryStore';
+
 export interface CFOFinancialState {
   balance: number;
   income: number;
   expenses: number;
+  userId?: string;
 }
 
 export class AICFOAgent {
@@ -14,6 +18,13 @@ export class AICFOAgent {
 
     if (context.expenses > context.income) {
       insights.push('Seus gastos mensais estao acima da sua renda.');
+    }
+
+    if (context.userId) {
+      const recurring = aiMemoryStore.getByType(AIMemoryType.RECURRING_EXPENSE, context.userId);
+      if (recurring.length > 0) {
+        insights.push(`Voce possui ${recurring.length} pagamentos recorrentes.`);
+      }
     }
 
     if (insights.length === 0) {
