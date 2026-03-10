@@ -23,6 +23,24 @@ export function getGemini(): GoogleGenerativeAI {
   return genAI;
 }
 
+function getCandidateModels(): string[] {
+  const models = [
+    env.GEMINI_MODEL,
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-pro-latest',
+    'gemini-1.5-flash-8b-latest',
+  ];
+
+  // Keep order, remove empty and duplicate values.
+  return Array.from(new Set(models.filter(Boolean)));
+}
+
+function isModelNotFoundError(error: any): boolean {
+  const status = error?.status;
+  const message = String(error?.message || '').toLowerCase();
+  return status === 404 || message.includes('not found') || message.includes('is not found');
+}
+
 export async function generateContent(
   prompt: string,
   config?: {
@@ -30,47 +48,77 @@ export async function generateContent(
     responseSchema?: ResponseSchema;
   }
 ): Promise<string> {
-  try {
-    logger.debug({ promptLength: prompt.length }, 'Initializing Gemini model');
-    const client = getGemini();
-    const model = client.getGenerativeModel({ model: env.GEMINI_MODEL });
+  const client = getGemini();
+  const candidates = getCandidateModels();
+  let lastError: any;
 
-    logger.debug({ model: env.GEMINI_MODEL, hasConfig: !!config }, 'Sending request to Gemini');
-    const response = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: config ? {
-        responseMimeType: config.responseMimeType,
-        responseSchema: config.responseSchema,
-      } : undefined,
-    });
+  for (const modelName of candidates) {
+    try {
+      logger.debug({ promptLength: prompt.length, model: modelName }, 'Initializing Gemini model');
+      const model = client.getGenerativeModel({ model: modelName });
 
-    if (!response || !response.response) {
-      throw new Error('Invalid response from Gemini API');
+      logger.debug({ model: modelName, hasConfig: !!config }, 'Sending request to Gemini');
+      const response = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: config ? {
+          responseMimeType: config.responseMimeType,
+          responseSchema: config.responseSchema,
+        } : undefined,
+      });
+
+      if (!response || !response.response) {
+        throw new Error('Invalid response from Gemini API');
+      }
+
+      const result = response.response.text();
+      logger.info({ resultLength: result?.length || 0, model: modelName }, 'Gemini response received successfully');
+      return result;
+    } catch (error: any) {
+      lastError = error;
+
+      if (isModelNotFoundError(error)) {
+        logger.warn({ model: modelName, error: error?.message || String(error) }, 'Gemini model unavailable, trying next candidate');
+        continue;
+      }
+
+      logger.error({
+        error: error?.message || String(error),
+        errorType: error?.constructor?.name,
+        stack: error?.stack,
+        geminiModel: modelName,
+      }, 'Gemini generateContent error');
+      throw error;
     }
-
-    const result = response.response.text();
-    logger.info({ resultLength: result?.length || 0 }, 'Gemini response received successfully');
-    return result;
-  } catch (error: any) {
-    logger.error({ 
-      error: error?.message || String(error),
-      errorType: error?.constructor?.name,
-      stack: error?.stack,
-      geminiModel: env.GEMINI_MODEL,
-    }, 'Gemini generateContent error');
-    throw error;
   }
+
+  logger.error({
+    error: lastError?.message || String(lastError),
+    triedModels: candidates,
+  }, 'Gemini generateContent failed for all candidate models');
+  throw lastError || new Error('Gemini model resolution failed');
 }
 
 export async function countTokens(text: string): Promise<number> {
-  try {
-    const client = getGemini();
-    const model = client.getGenerativeModel({ model: env.GEMINI_MODEL });
+  const client = getGemini();
+  const candidates = getCandidateModels();
+  let lastError: any;
 
-    const result = await model.countTokens(text);
-    return result.totalTokens;
-  } catch (error) {
-    logger.error({ error }, 'Token count error');
-    throw error;
+  for (const modelName of candidates) {
+    try {
+      const model = client.getGenerativeModel({ model: modelName });
+      const result = await model.countTokens(text);
+      return result.totalTokens;
+    } catch (error: any) {
+      lastError = error;
+      if (isModelNotFoundError(error)) {
+        logger.warn({ model: modelName }, 'Gemini token-count model unavailable, trying next candidate');
+        continue;
+      }
+      logger.error({ error, model: modelName }, 'Token count error');
+      throw error;
+    }
   }
+
+  logger.error({ error: lastError, triedModels: candidates }, 'Token count failed for all Gemini models');
+  throw lastError || new Error('Gemini token count failed');
 }

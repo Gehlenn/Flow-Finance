@@ -22,7 +22,7 @@ export const env = {
   RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10),
   
   // (legacy) Gemini model name - only used if GEMINI_API_KEY present
-  GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+  GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-1.5-flash-latest',
 };
 
 // Validate required environment variables

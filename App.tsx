@@ -39,6 +39,7 @@ const AIControlPanel = lazy(() => import('./pages/AIControlPanel'));
 import { auth, db, onAuthStateChanged } from './services/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { getAccounts, createAccount, updateAccount } from './services/firebaseOptimized';
+import { API_ENDPOINTS } from './src/config/api.config';
 
 type Tab = 'dashboard' | 'history' | 'assistant' | 'flow' | 'settings' | 'accounts' | 'insights' | 'cfo' | 'autopilot' | 'goals' | 'scanner' | 'import' | 'openbanking' | 'aicontrol' | 'analytics' | 'performance';
 
@@ -152,11 +153,35 @@ const App: React.FC = () => {
           email: user.email || undefined,
         });
         addBreadcrumb(`User logged in: ${user.email}`, 'auth', 'info');
+
+        // Bridge Firebase auth with backend JWT expected by protected API routes.
+        if (user.email) {
+          void fetch(API_ENDPOINTS.AUTH.LOGIN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: user.email, password: 'firebase-session' }),
+          })
+            .then(async (res) => {
+              if (!res.ok) {
+                throw new Error(`Backend login failed (${res.status})`);
+              }
+              return res.json();
+            })
+            .then((payload) => {
+              if (payload?.token) {
+                localStorage.setItem('auth_token', payload.token);
+              }
+            })
+            .catch((err) => {
+              console.warn('[Auth] Failed to bootstrap backend token:', err);
+            });
+        }
       } else {
         setIsLoggedIn(false);
         setUserId(null);
         setUserEmail(null);
         setUserName(null);
+        localStorage.removeItem('auth_token');
 
         // Clear Sentry user context
         clearUser();
