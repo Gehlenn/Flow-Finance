@@ -112,7 +112,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="h-screen w-full bg-slate-50 dark:bg-[#020617] flex flex-col items-center justify-between py-6 px-4 overflow-hidden transition-colors duration-500 relative text-slate-900 dark:text-white">
+    <div
+      className="h-screen w-full bg-slate-50 dark:bg-[#020617] flex flex-col items-center justify-between py-6 px-4 overflow-hidden transition-colors duration-500 relative text-slate-900 dark:text-white"
+      style={{
+        forcedColorAdjust: 'none',
+        WebkitTextSizeAdjust: '100%',
+        textSizeAdjust: '100%',
+      }}
+    >
       {/* Background blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-indigo-500/10 dark:bg-indigo-600/10 rounded-full blur-[120px] animate-pulse"></div>
