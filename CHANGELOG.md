@@ -1,5 +1,60 @@
 # 📝 CHANGELOG - Flow Finance
 
+## [0.5.0] - 2026-03-10
+
+### 🚀 Multi-Account Dashboard + Enhanced Analytics
+**Status:** Production-Ready ✅
+
+#### ✨ Multi-Account Dashboard (`components/Dashboard.tsx`)
+- **Visual account selector**: dropdown `<select>` substituído por pills clicáveis com ícone, nome e saldo da conta
+- **Filtro por conta**: métricas de Entradas/Saídas agora refletem a conta selecionada (fix `account_id`)
+- **Barra de distribuição**: quando "Todas" está selecionado, mostra cada conta com barra proporcional ao saldo — clicável para filtrar
+- **Labels corretos**: "Patrimônio Total" / "Disponibilidade de Caixa Total" para visão consolidada; "Saldo da Conta" / "Saldo Disponível" por conta específica
+- **Bug fix**: `t.accountId` corrigido para `t.account_id` (campo correto do modelo `Transaction`)
+
+#### ✨ Enhanced Analytics (`components/AdvancedAnalytics.tsx`)
+- **Tendência Mensal**: ComposedChart com barras de Receitas (verde) + Despesas (vermelho) + linha de Saldo (roxo) para os últimos 6 meses
+- **Relatório Mensal**: tabela mês a mês com Receitas, Despesas, Saldo e variação % de despesas (badge colorido: verde↓ / vermelho↑ / neutro)
+- Importado `ComposedChart` do Recharts e ícones `TrendingUp`, `TrendingDown`, `Minus`, `FileText` do Lucide
+
+---
+
+## [0.4.1] - 2026-03-10
+
+### 🔥 **HOTFIX CRÍTICO - Tailwind CSS Bug**  
+**Status:** Production-Ready ✅  
+**Severity:** CRITICAL  
+**Affected:** Toda interface visual (cores, gradientes, sombras, hover states)
+
+#### 🐛 **Bug Identificado**
+- **Tailwind v4.2.1** com `@tailwindcss/postcss` **NÃO gera classes CSS**
+- CSS output: apenas **29 KB** ao invés dos **85 KB** esperados
+- Resultado: App inteiro sem estilos visuais (Dashboard, Login, todas as telas)
+- Classes faltando: `bg-gradient-to-r`, `shadow-indigo-500/20`, `hover:bg-indigo-700`, `scale-95`, `blur-3xl`, etc
+
+#### ✅ **Solução Implementada**
+- **Downgrade para Tailwind v3.4.19** (versão estável e testada)
+- Atualizado `postcss.config.cjs` para usar plugin v3 padrão
+- Removido workaround temporário (`colors.css`)
+- Reinstalado todas as dependências do zero
+
+#### 📊 **Resultado**
+- CSS agora: **85.00 KB** (quase 3x maior que a versão bugada)
+- ✅ Todas as classes geradas corretamente
+- ✅ Dashboard perfeitamente alinhado
+- ✅ Login com cores, sombras e animações
+- ✅ Dark mode funcionando
+- ✅ Todos os hover states e transforms presentes
+
+#### 📦 **Alterações de Dependências**
+```diff
+- "tailwindcss": "^4.2.1"
++ "tailwindcss": "^3.4.19"
+- "@tailwindcss/postcss": "^4.2.1"
+```
+
+---
+
 ## [0.4.0] - 2026-03-09
 
 ### 🚀 **RELEASE HIGHLIGHTS**  

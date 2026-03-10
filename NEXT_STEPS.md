@@ -74,8 +74,8 @@
 ## 🎯 OBJETIVOS v0.4.1 (March 8-12, 2026)
 
 ### 1️⃣ **CI/CD + MOBILE BUILDS** (v0.4.0 Core)
-**Status**: 🔄 IN PROGRESS  
-**Deadline**: March 10, 2026
+**Status**: ⏸️ DEFERRED (Final Phase)  
+**Deadline**: To be scheduled on request
 
 #### ✅ Já Concluído:
 - [x] JDK 17 instalado
@@ -84,12 +84,12 @@
 - [x] E2E framework
 
 #### 🎯 Próximos Passos:
-- [ ] Instalar Android SDK
 - [ ] Testar GitHub Actions
-- [ ] Gerar APK Android
-- [ ] Preparar iOS build
 - [ ] Executar E2E tests
-- [ ] Criar release v0.4.1
+- [ ] Criar release v0.4.1 (web scope)
+- [ ] Instalar Android SDK (deferred)
+- [ ] Gerar APK Android (deferred)
+- [ ] Preparar iOS build (deferred)
 
 ### 2️⃣ **ADVANCED UX FEATURES** (v0.5.0 Preview)
 **Status**: 🔄 IN PROGRESS  

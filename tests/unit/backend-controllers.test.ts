@@ -16,6 +16,7 @@ vi.mock('../../backend/src/config/logger', () => ({
     debug: vi.fn(),
     error: vi.fn(),
     info: vi.fn(),
+    warn: vi.fn(),
   },
 }));
 
@@ -36,6 +37,11 @@ function createMockResponse() {
   return res;
 }
 
+async function flushAsyncHandler() {
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
 // ─── Testes CFO Controller ──────────────────────────────────────────────────
 
 describe('CFO Controller', () => {
@@ -54,7 +60,8 @@ describe('CFO Controller', () => {
     });
     const res = createMockResponse();
 
-    await cfoController(req as any, res as any, vi.fn());
+    cfoController(req as any, res as any, vi.fn());
+    await flushAsyncHandler();
 
     expect(res.json).toHaveBeenCalledWith({ answer: mockAnswer });
     expect(aiConfig.generateContent).toHaveBeenCalled();
@@ -69,7 +76,8 @@ describe('CFO Controller', () => {
     const res = createMockResponse();
     const next = vi.fn();
 
-    await cfoController(req as any, res as any, next);
+    cfoController(req as any, res as any, next);
+    await flushAsyncHandler();
 
     expect(next).toHaveBeenCalled();
     const error = next.mock.calls[0][0];
@@ -90,14 +98,13 @@ describe('CFO Controller', () => {
     const res = createMockResponse();
     const next = vi.fn();
 
-    // O asyncHandler captura o erro e chama next()
-    // Mas precisamos testar o controller diretamente
-    try {
-      await cfoController(req as any, res as any, next);
-    } catch (error: any) {
-      expect(error.statusCode).toBe(500);
-      expect(error.message).toContain('Failed to generate CFO response');
-    }
+    cfoController(req as any, res as any, next);
+    await flushAsyncHandler();
+
+    expect(next).toHaveBeenCalled();
+    const error = next.mock.calls[0][0];
+    expect(error.statusCode).toBe(500);
+    expect(error.message).toContain('Failed to generate CFO response');
   });
 });
 

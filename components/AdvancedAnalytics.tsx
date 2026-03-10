@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart
 } from 'recharts';
 import { formatCurrency } from '../utils/helpers';
 import { Transaction, TransactionType } from '../types';
+import { TrendingUp, TrendingDown, Minus, FileText } from 'lucide-react';
 
 interface AdvancedAnalyticsProps {
   transactions: Transaction[];
@@ -102,6 +103,32 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ transactions, hid
       projected: true
     }));
   }, [transactions]);
+
+  // 5. Monthly Trends (last 6 months)
+  const monthlyTrends = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      const label = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+      const [year, month] = [d.getFullYear(), d.getMonth()];
+      const monthTxs = transactions.filter(t => {
+        const td = new Date(t.date);
+        return td.getFullYear() === year && td.getMonth() === month;
+      });
+      const receitas = monthTxs.filter(t => t.type === TransactionType.RECEITA).reduce((s, t) => s + t.amount, 0);
+      const despesas = monthTxs.filter(t => t.type === TransactionType.DESPESA).reduce((s, t) => s + t.amount, 0);
+      return { label, receitas, despesas, saldo: receitas - despesas };
+    });
+  }, [transactions]);
+
+  // 6. Monthly Report with % change
+  const monthlyReport = useMemo(() => {
+    return monthlyTrends.map((m, i) => {
+      const prev = i > 0 ? monthlyTrends[i - 1] : null;
+      const despesaChange = prev && prev.despesas > 0 ? ((m.despesas - prev.despesas) / prev.despesas) * 100 : null;
+      return { ...m, despesaChange };
+    });
+  }, [monthlyTrends]);
 
   const formatTooltipValue = (value: number) => {
     if (hideValues) return '••••';
@@ -291,6 +318,117 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ transactions, hid
               />
             </LineChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Monthly Trends Chart */}
+      <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-amber-50 dark:bg-amber-500/10 rounded-xl flex items-center justify-center">
+            <TrendingUp className="w-5 h-5 text-amber-500" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-slate-800 dark:text-white">Tendência Mensal</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Receitas e despesas nos últimos 6 meses</p>
+          </div>
+        </div>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={monthlyTrends} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+              <XAxis dataKey="label" stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
+              <YAxis tickFormatter={formatAxisValue} stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
+              <Tooltip
+                formatter={(value: number, name: string) => [
+                  formatTooltipValue(value),
+                  name === 'receitas' ? 'Receitas' : name === 'despesas' ? 'Despesas' : 'Saldo',
+                ]}
+                contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+              />
+              <Bar dataKey="receitas" fill={COLORS.income} radius={[6, 6, 0, 0]} barSize={16} opacity={0.9} />
+              <Bar dataKey="despesas" fill={COLORS.expenses} radius={[6, 6, 0, 0]} barSize={16} opacity={0.9} />
+              <Line type="monotone" dataKey="saldo" stroke={COLORS.balance} strokeWidth={2.5} dot={{ r: 4, fill: COLORS.balance, stroke: 'white', strokeWidth: 2 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="flex items-center justify-center gap-6 mt-4">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.income }} />
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Receitas</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.expenses }} />
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Despesas</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-0.5 rounded" style={{ backgroundColor: COLORS.balance }} />
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saldo</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Monthly Report Table */}
+      <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center">
+            <FileText className="w-5 h-5 text-indigo-500" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-slate-800 dark:text-white">Relatório Mensal</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Comparativo mês a mês com variação percentual</p>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-slate-700">
+                <th className="text-left pb-3 text-[8px] font-black text-slate-400 uppercase tracking-widest">Mês</th>
+                <th className="text-right pb-3 text-[8px] font-black text-slate-400 uppercase tracking-widest">Receitas</th>
+                <th className="text-right pb-3 text-[8px] font-black text-slate-400 uppercase tracking-widest">Despesas</th>
+                <th className="text-right pb-3 text-[8px] font-black text-slate-400 uppercase tracking-widest">Saldo</th>
+                <th className="text-right pb-3 text-[8px] font-black text-slate-400 uppercase tracking-widest">Var. Desp.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {monthlyReport.map((row, i) => (
+                <tr key={i} className="border-b border-slate-50 dark:border-slate-800 last:border-0">
+                  <td className="py-3 text-xs font-black text-slate-700 dark:text-slate-300 capitalize">{row.label}</td>
+                  <td className="py-3 text-right text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    {hideValues ? '••••' : formatCurrency(row.receitas)}
+                  </td>
+                  <td className="py-3 text-right text-xs font-bold text-rose-500">
+                    {hideValues ? '••••' : formatCurrency(row.despesas)}
+                  </td>
+                  <td className={`py-3 text-right text-xs font-black ${row.saldo >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-500'}`}>
+                    {hideValues ? '••••' : formatCurrency(row.saldo)}
+                  </td>
+                  <td className="py-3 text-right">
+                    {row.despesaChange !== null ? (
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full ${
+                        row.despesaChange > 5
+                          ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500'
+                          : row.despesaChange < -5
+                          ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600'
+                          : 'bg-slate-50 dark:bg-slate-700 text-slate-400'
+                      }`}>
+                        {row.despesaChange > 5 ? <TrendingUp size={10} /> : row.despesaChange < -5 ? <TrendingDown size={10} /> : <Minus size={10} />}
+                        {Math.abs(row.despesaChange).toFixed(0)}%
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-300 dark:text-slate-600">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {monthlyReport.every(r => r.receitas === 0 && r.despesas === 0) && (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-[10px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-widest">
+                    Sem dados nos últimos 6 meses
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

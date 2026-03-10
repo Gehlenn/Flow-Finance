@@ -20,7 +20,7 @@ import { getSyncStatusSummary } from '../src/finance/bankSyncEngine';
 import { simulateFinancialScenario, FinancialSimulationResult } from '../src/ai/financialSimulator';
 import { 
   Eye, EyeOff, BrainCircuit, Loader2, Landmark, LayoutDashboard,
-  ArrowUpRight, ArrowDownRight, Wallet, 
+  ArrowUpRight, ArrowDownRight, Wallet, CreditCard,
   Sun, Moon, Sunrise,
   Zap, AlertTriangle, X, Bot, Lightbulb, Sparkles, GraduationCap,
   TrendingUp, TrendingDown, Minus, Target, MapPin, Receipt,
@@ -64,7 +64,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   // Filtrar transações por conta selecionada
   const filteredTransactions = useMemo(() => {
     if (selectedAccountId === 'all') return transactions;
-    return transactions.filter(t => t.accountId === selectedAccountId);
+    return transactions.filter(t => t.account_id === selectedAccountId);
   }, [transactions, selectedAccountId]);
 
   // Insight local gerado dinamicamente para o widget de preview
@@ -185,12 +185,14 @@ const Dashboard: React.FC<DashboardProps> = ({
   }, [relevantTransactionsHash]);
 
   const summary = useMemo(() => {
-    return transactions.reduce((acc, t) => {
+    return filteredTransactions.reduce((acc, t) => {
       if (t.type === TransactionType.RECEITA) acc.income += t.amount;
       else acc.expenses += t.amount;
       return acc;
     }, { income: 0, expenses: 0 });
-  }, [transactions]);
+  }, [filteredTransactions]);
+
+  const totalBalance = useMemo(() => accounts.reduce((s, a) => s + Math.abs(a.balance), 0), [accounts]);
 
   const balance = summary.income - summary.expenses;
 
@@ -217,31 +219,46 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Account Selector */}
       {accounts.length > 1 && (
-        <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-5 border border-slate-100 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center">
-                <Building2 size={16} className="text-indigo-500" />
-              </div>
-              <div>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Visualizando</p>
-                <p className="text-sm font-black text-slate-800 dark:text-white">
-                  {selectedAccountId ? accounts.find(acc => acc.id === selectedAccountId)?.name || 'Conta selecionada' : 'Todas as contas'}
-                </p>
-              </div>
-            </div>
-            <select
-              value={selectedAccountId || ''}
-              onChange={(e) => setSelectedAccountId(e.target.value || null)}
-              className="px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-4 border border-slate-100 dark:border-slate-700 shadow-sm">
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            <button
+              onClick={() => setSelectedAccountId('all')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-tight whitespace-nowrap transition-all shrink-0 ${
+                selectedAccountId === 'all'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
             >
-              <option value="">Todas as contas</option>
-              {accounts.map(account => (
-                <option key={account.id} value={account.id}>
+              <Wallet size={12} /> Todas
+            </button>
+            {accounts.map(account => {
+              const accountIcons: Record<string, React.ReactNode> = {
+                bank: <Landmark size={12} />,
+                cash: <Wallet size={12} />,
+                credit_card: <CreditCard size={12} />,
+                investment: <TrendingUp size={12} />,
+              };
+              const sel = selectedAccountId === account.id;
+              return (
+                <button
+                  key={account.id}
+                  onClick={() => setSelectedAccountId(account.id)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-tight whitespace-nowrap transition-all shrink-0 ${
+                    sel
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {accountIcons[account.type] ?? <Wallet size={12} />}
                   {account.name}
-                </option>
-              ))}
-            </select>
+                  {!hideValues && (
+                    <span className={`text-[9px] font-bold ${sel ? 'text-white/70' : 'text-slate-400'}`}>
+                      {formatVal(account.balance)}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -254,7 +271,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-indigo-100/50 dark:border-indigo-500/20">
               <Wallet size={12} /> 
-              {selectedAccountId ? 'Saldo da Conta' : 'Patrimônio Total'}
+              {selectedAccountId !== 'all' ? 'Saldo da Conta' : 'Patrimônio Total'}
             </div>
             <button 
               onClick={onToggleHideValues}
@@ -275,7 +292,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               {hideValues ? 'R$ •••••' : formatVal(balance)}
             </h2>
             <p className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] ml-1">
-              {selectedAccountId ? 'Saldo Disponível' : 'Disponibilidade de Caixa Total'}
+              {selectedAccountId !== 'all' ? 'Saldo Disponível' : 'Disponibilidade de Caixa Total'}
             </p>
           </div>
 
@@ -295,6 +312,33 @@ const Dashboard: React.FC<DashboardProps> = ({
             className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl flex items-center justify-center gap-3 text-[9px] font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
           >
             <Landmark size={16} /> Gerenciar Contas Bancárias
+
+                    {/* Account Distribution Bars */}
+                    {selectedAccountId === 'all' && accounts.length > 1 && (
+                      <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+                        <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-3">Distribuição por Conta</p>
+                        <div className="space-y-2.5">
+                          {accounts.map(acc => {
+                            const pct = totalBalance > 0 ? (Math.abs(acc.balance) / totalBalance) * 100 : 0;
+                            const typeColors: Record<string, string> = {
+                              bank: 'bg-blue-500',
+                              cash: 'bg-emerald-500',
+                              credit_card: 'bg-violet-500',
+                              investment: 'bg-amber-500',
+                            };
+                            return (
+                              <button key={acc.id} onClick={() => setSelectedAccountId(acc.id)} className="w-full flex items-center gap-2 group">
+                                <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 w-20 truncate text-left group-hover:text-indigo-500 transition-colors">{acc.name}</span>
+                                <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                  <div className={`h-full ${typeColors[acc.type] ?? 'bg-indigo-500'} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
+                                </div>
+                                <span className="text-[9px] font-black text-slate-400 shrink-0">{hideValues ? '••••' : formatVal(acc.balance)}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
           </button>
         </div>
       </div>
