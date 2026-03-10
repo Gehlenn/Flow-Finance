@@ -12,9 +12,14 @@ import { FinancialEventEmitter } from '../events/eventEngine';
 import {
   emitBudgetChanged,
   emitGoalCreated,
-  emitTransactionCreated,
   emitTransactionUpdated,
 } from '../events/financialEventStream';
+import {
+  emitBudgetUpdatedEvent,
+  emitGoalCreatedEvent,
+  emitTransactionCreatedEvent,
+  emitTransactionDeletedEvent,
+} from '../events/financialEvents';
 import { logAuditEvent } from '../security/auditLogService';
 import { TransactionType, Category } from '../../types';
 import {
@@ -135,6 +140,12 @@ export class TransactionService {
 
     // Emit event for AI processing
     FinancialEventEmitter.transactionCreated(transaction);
+    emitTransactionCreatedEvent({
+      userId: this.userId,
+      transactionId: transaction.id,
+      amount: transaction.amount,
+      category: transaction.category,
+    });
 
     const updatedUsage = trackUsage(this.userId, 'transactions');
     emitBillingHook({
@@ -210,6 +221,26 @@ export class TransactionService {
 
     return imported;
   }
+
+  async deleteTransaction(transactionId: string): Promise<void> {
+    const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
+    assertCanPerform(saasContext, 'transactions:update');
+
+    const transactions = await this.storage.getTransactions(this.userId);
+    const existing = transactions.find((tx) => tx.id === transactionId);
+
+    if (!existing) {
+      throw new Error('Transaction not found');
+    }
+
+    await this.storage.deleteTransaction(transactionId);
+
+    emitTransactionDeletedEvent({
+      userId: this.userId,
+      transactionId,
+      deletedAt: new Date().toISOString(),
+    });
+  }
 }
 
 export class AccountService {
@@ -275,6 +306,13 @@ export class AccountService {
       currentBudget: newBalance,
       changedAt: new Date().toISOString(),
     });
+
+    emitBudgetUpdatedEvent({
+      userId: this.userId,
+      accountId,
+      previousBudget: oldBalance,
+      currentBudget: newBalance,
+    });
   }
 }
 
@@ -312,6 +350,11 @@ export class GoalService {
       title: goal.name,
       targetAmount: goal.targetAmount,
       createdAt: goal.createdAt.toISOString(),
+    });
+    emitGoalCreatedEvent({
+      userId: this.userId,
+      goalId: goal.id,
+      targetAmount: goal.targetAmount,
     });
 
     return goal;

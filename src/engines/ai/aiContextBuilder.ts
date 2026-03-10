@@ -11,7 +11,7 @@ export interface AIContextInput {
 
 export interface AIContext {
   userId: string;
-  accountIds: string[];
+  accounts: string[];
   timezone: string;
   balance: number;
   monthlySpending: number;
@@ -26,7 +26,7 @@ export function buildAIContext(input: AIContextInput): AIContext {
 
   return {
     userId: input.userContext.userId,
-    accountIds: input.userContext.accountIds,
+    accounts: input.userContext.accounts,
     timezone: input.userContext.timezone,
     balance: summary.balance,
     monthlySpending: summary.expenses,

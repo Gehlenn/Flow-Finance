@@ -12,6 +12,7 @@ export * from './app/services';
 
 // Infrastructure Layer
 export * from './storage/StorageProvider';
+export * from './repositories';
 export * from './finance/reportEngine';
 export * from './security/transactionIntegrity';
 
@@ -30,3 +31,6 @@ export * from './events';
 
 // Engines (AI + Finance)
 export * from './engines';
+
+// AI Agents
+export * from './agents/cfo';
