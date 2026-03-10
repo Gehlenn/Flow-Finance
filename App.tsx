@@ -56,16 +56,10 @@ const OpenBankingPage = lazyWithRetry(() => import('./pages/OpenBanking'));
 const AIControlPanel = lazyWithRetry(() => import('./pages/AIControlPanel'));
 
 // Firebase Services centralizados (produção)
-// LAZY LOADED - See useEffect below to avoid chunk initialization errors
-// import { auth, db, onAuthStateChanged } from './services/firebase';
-// import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { auth, db, onAuthStateChanged } from './services/firebase';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { getAccounts, createAccount, updateAccount } from './services/firebaseOptimized';
 import { API_ENDPOINTS } from './src/config/api.config';
-
-// Lazy Firebase variables
-let firebaseAuth: any = null;
-let firebaseDb: any = null;
-let firebaseOnAuthStateChanged: any = null;
 
 type Tab = 'dashboard' | 'history' | 'assistant' | 'flow' | 'settings' | 'accounts' | 'insights' | 'cfo' | 'autopilot' | 'goals' | 'scanner' | 'import' | 'openbanking' | 'aicontrol' | 'analytics' | 'performance';
 
@@ -119,70 +113,6 @@ const App: React.FC = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
 
-  // 0. LAZY LOAD FIREBASE — Initialize Firebase lazy to avoid chunk errors
-  useEffect(() => {
-    const initFirebase = async () => {
-      try {
-        console.log('[Firebase] Lazy loading Firebase...');
-        const firebase = await import('./services/firebase');
-        firebaseAuth = firebase.auth;
-        firebaseDb = firebase.db;
-        firebaseOnAuthStateChanged = firebase.onAuthStateChanged;
-        console.log('[Firebase] Firebase loaded successfully');
-        
-        // Now that Firebase is loaded, setup auth listener
-        const unsubscribe = firebaseOnAuthStateChanged(firebaseAuth, (user: any) => {
-          if (user) {
-            setUserId(user.uid);
-            setUserEmail(user.email);
-            setIsLoggedIn(true);
-            setUser({ id: user.uid, email: user.email || undefined });
-            addBreadcrumb(`User logged in: ${user.email}`, 'auth', 'info');
-
-            // Bridge Firebase auth with backend JWT
-            if (user.email) {
-              void fetch(API_ENDPOINTS.AUTH.LOGIN, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: user.email, password: 'firebase-session' }),
-              })
-                .then(async (res) => {
-                  if (!res.ok) throw new Error(`Backend login failed (${res.status})`);
-                  return res.json();
-                })
-                .then((payload) => {
-                  if (payload?.token) localStorage.setItem('auth_token', payload.token);
-                })
-                .catch((err) => console.warn('[Auth] Failed to bootstrap backend token:', err));
-            }
-          } else {
-            setIsLoggedIn(false);
-            setUserId(null);
-            setUserEmail(null);
-            setUserName(null);
-            localStorage.removeItem('auth_token');
-            clearUser();
-            addBreadcrumb('User logged out', 'auth', 'info');
-            setIsInitialLoading(false);
-          }
-        });
-        
-        return unsubscribe;
-      } catch (error) {
-        console.error('[Firebase] Failed to load Firebase:', error);
-        setIsInitialLoading(false);
-      }
-    };
-
-    let unsubscribe: (() => void) | null = null;
-    initFirebase().then((unsub) => { unsubscribe = unsub; });
-    
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, []);
-
-
   // PART 9 — Aprender padrões automaticamente quando transações mudam
   useEffect(() => {
     if (userId && transactions.length >= 3) {
@@ -229,49 +159,85 @@ const App: React.FC = () => {
     loadAccounts();
   }, [userId]);
 
-  // REMOVED — Firebase auth is now lazy loaded above in useEffect
+  // 1. Escutar Mudanças na Autenticação
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUserId(user.uid);
+        setUserEmail(user.email);
+        setIsLoggedIn(true);
+
+        // Set Sentry user context for error tracking
+        setUser({
+          id: user.uid,
+          email: user.email || undefined,
+        });
+        addBreadcrumb(`User logged in: ${user.email}`, 'auth', 'info');
+
+        // Bridge Firebase auth with backend JWT expected by protected API routes.
+        if (user.email) {
+          void fetch(API_ENDPOINTS.AUTH.LOGIN, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: user.email, password: 'firebase-session' }),
+          })
+            .then(async (res) => {
+              if (!res.ok) {
+                throw new Error(`Backend login failed (${res.status})`);
+              }
+              return res.json();
+            })
+            .then((payload) => {
+              if (payload?.token) {
+                localStorage.setItem('auth_token', payload.token);
+              }
+            })
+            .catch((err) => {
+              console.warn('[Auth] Failed to bootstrap backend token:', err);
+            });
+        }
+      } else {
+        setIsLoggedIn(false);
+        setUserId(null);
+        setUserEmail(null);
+        setUserName(null);
+        localStorage.removeItem('auth_token');
+
+        // Clear Sentry user context
+        clearUser();
+        addBreadcrumb('User logged out', 'auth', 'info');
+        setIsInitialLoading(false);
+      }
+    });
+    return () => unsubscribe();
+  }, [userId]);
 
   // 2. Sincronização em Tempo Real com Firestore
   useEffect(() => {
-    if (!userId || !firebaseDb) return;
+    if (!userId) return;
 
-    const initFirestoreSync = async () => {
-      try {
-        const { doc, onSnapshot } = await import('firebase/firestore');
-        const userDocRef = doc(firebaseDb, 'users', userId);
-        
-        const unsubSnapshot = onSnapshot(userDocRef, (docSnap: any) => {
-          if (docSnap.exists && docSnap.exists()) {
-            const data = docSnap.data ? docSnap.data() : {};
-            if (data.name) setUserName(data.name);
-            if (data.theme) setTheme(data.theme);
-            setTransactions(data.transactions || []);
-            setAlerts(data.alerts || []);
-            setReminders(data.reminders || []);
-            setGoals(data.goals || []);
-            setSyncStatus('synced');
-            setTimeout(() => setSyncStatus('idle'), 2000);
-          }
-          setIsInitialLoading(false);
-        }, (error: any) => {
-          console.error("Erro na conexão com Firestore:", error);
-          setSyncStatus('error');
-          setIsInitialLoading(false);
-        });
-
-        return unsubSnapshot;
-      } catch (error) {
-        console.error('[Firestore] Failed to initialize sync:', error);
-        setIsInitialLoading(false);
-      }
-    };
-
-    let unsubscribe: (() => void) | undefined;
-    initFirestoreSync().then((unsub) => { unsubscribe = unsub; });
+    const userDocRef = doc(db, 'users', userId);
     
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
+    const unsubSnapshot = onSnapshot(userDocRef, (docSnap: any) => {
+      if (docSnap.exists && docSnap.exists()) {
+        const data = docSnap.data ? docSnap.data() : {};
+        if (data.name) setUserName(data.name);
+        if (data.theme) setTheme(data.theme);
+        setTransactions(data.transactions || []);
+        setAlerts(data.alerts || []);
+        setReminders(data.reminders || []);
+        setGoals(data.goals || []);
+        setSyncStatus('synced');
+        setTimeout(() => setSyncStatus('idle'), 2000);
+      }
+      setIsInitialLoading(false);
+    }, (error) => {
+      console.error("Erro na conexão com Firestore:", error);
+      setSyncStatus('error');
+      setIsInitialLoading(false);
+    });
+
+    return () => unsubSnapshot();
   }, [userId]);
 
   // Aplicar tema escuro/claro
