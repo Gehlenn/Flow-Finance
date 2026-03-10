@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, ArrowRight, Lock, AlertCircle, FlaskConical, UserPlus, Fingerprint, ChevronLeft, CheckCircle2, ShieldCheck, Terminal } from 'lucide-react';
+import { Mail, ArrowRight, Lock, AlertCircle, UserPlus, Fingerprint, ChevronLeft, CheckCircle2, ShieldCheck } from 'lucide-react';
 import Logo from './Logo';
 import { 
   auth, 
@@ -26,7 +26,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [name, setName] = useState('');
   const [isAnimating, setIsAnimating] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
   const [error, setError] = useState<{code: string, message: string} | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -112,227 +111,221 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div
-      data-login-legacy="true"
-      className="login-legacy h-screen w-full bg-slate-50 dark:bg-[#020617] flex flex-col items-center justify-between py-6 px-4 overflow-hidden transition-colors duration-500 relative text-slate-900 dark:text-white"
-      style={{
-        forcedColorAdjust: 'none',
-        WebkitTextSizeAdjust: '100%',
-        textSizeAdjust: '100%',
-      }}
-    >
-      {/* Background blobs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-indigo-500/10 dark:bg-indigo-600/10 rounded-full blur-[120px] animate-pulse"></div>
-        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-cyan-400/5 dark:bg-cyan-600/5 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }}></div>
-      </div>
-
-      <div className={`w-full max-w-[360px] flex flex-col flex-1 justify-between transition-all duration-700 relative z-10 ${isAnimating ? 'opacity-0 scale-95 blur-md' : 'opacity-100'}`}>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
+      <div className={`w-full max-w-md transition-all duration-700 ${isAnimating ? 'opacity-0 scale-95' : 'opacity-100'}`}>
         
-        {/* Header */}
-        <div className="text-center flex flex-col items-center animate-in fade-in zoom-in-95 duration-1000 mt-4 overflow-visible">
-          <div className="transform scale-[1.35] mb-6 overflow-visible">
+        {/* Logo e Título */}
+        <div className="text-center mb-8">
+          <div className="inline-block mb-4">
             <Logo size="md" showText={false} />
           </div>
-          <div className="flex flex-col items-center mt-2">
-            <h1 className="text-6xl font-black tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-b from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
-              Flow
-            </h1>
-            <p className="text-[14px] font-black text-indigo-500 uppercase tracking-[0.6em] mt-2">Finance</p>
-            <p className="text-xs text-slate-400 mt-1">Flow Finance</p>
-          </div>
+          <h1 className="text-5xl font-black text-gray-900 tracking-tight">Flow</h1>
+          <p className="text-sm font-bold text-indigo-600 tracking-[0.4em] mt-1">FINANCE</p>
+          <p className="text-xs text-gray-400 mt-1">Flow Finance</p>
         </div>
 
-        {/* Form Card */}
-        <div className="legacy-card bg-white/90 dark:bg-slate-900/95 px-6 py-6 rounded-[3rem] shadow-[0_30px_80px_-15px_rgba(0,0,0,0.12)] dark:shadow-[0_40px_100px_-20px_rgba(0,0,0,0.7)] border border-white/50 dark:border-slate-800/50 backdrop-blur-3xl my-4">
-          
-          {error?.code === 'auth/unauthorized-domain' ? (
-            <div className="animate-in slide-in-from-top-4 duration-500 space-y-3">
-              <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-[2rem] space-y-2 text-center">
-                <FlaskConical size={24} className="mx-auto text-indigo-500" />
-                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 leading-tight">
-                  OAuth restrito. Use a demonstração segura para explorar o Flow.
-                </p>
-                <button 
-                  onClick={handleQuickTest}
-                  className="w-full py-3.5 bg-indigo-600 text-white rounded-2xl font-black text-[9px] uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+        {/* Card Principal */}
+        <div className="bg-white rounded-3xl shadow-lg p-8">
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-600">
+              <AlertCircle size={16} />
+              <p className="text-xs font-semibold">{error.message}</p>
+            </div>
+          )}
+
+          {view === 'login' && (
+            <>
+              <form onSubmit={handleEmailLogin} className="space-y-4">
+                {/* Input E-mail */}
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="E-mail"
+                    className="w-full pl-12 pr-4 py-3 bg-gray-50 rounded-xl text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                  />
+                </div>
+
+                {/* Input Senha */}
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Senha"
+                    className="w-full pl-12 pr-4 py-3 bg-gray-50 rounded-xl text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                  />
+                </div>
+
+                {/* Link Esqueci Senha */}
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => setView('recover')}
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-700 tracking-wider"
+                  >
+                    ESQUECI A SENHA
+                  </button>
+                </div>
+
+                {/* Botão Acessar */}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm tracking-wide shadow-lg shadow-indigo-600/30 active:scale-[0.98] disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                 >
-                  <Fingerprint size={14} className="mr-2 inline" /> Iniciar Modo Demo
+                  {isLoading ? 'AUTENTICANDO...' : 'ACESSAR CONTA'} <ArrowRight size={18} />
+                </button>
+              </form>
+
+              {/* Divisor OU */}
+              <div className="flex items-center gap-3 my-6">
+                <div className="flex-1 h-px bg-gray-200"></div>
+                <span className="text-xs font-semibold text-gray-400 uppercase">ou</span>
+                <div className="flex-1 h-px bg-gray-200"></div>
+              </div>
+
+              {/* Botão Google */}
+              <button
+                onClick={() => handleSocialLogin(googleProvider)}
+                className="w-full py-3.5 bg-white border-2 border-gray-200 hover:border-gray-300 rounded-xl flex items-center justify-center gap-3 text-sm font-bold text-gray-700 active:scale-[0.98] transition-all"
+              >
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+                ENTRAR COM GOOGLE
+              </button>
+
+              {/* Link Cadastro */}
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => setView('signup')}
+                  className="text-xs font-bold text-gray-500 hover:text-gray-700 tracking-wider"
+                >
+                  NOVO POR AQUI? <span className="text-indigo-600">CADASTRE-SE</span>
                 </button>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {error && (
-                <div className="p-2.5 bg-rose-500/5 border border-rose-500/20 rounded-xl flex items-center gap-2 text-rose-500 animate-in shake">
-                  <AlertCircle size={14} className="shrink-0" />
-                  <p className="text-[9px] font-bold">{error.message}</p>
-                </div>
-              )}
+            </>
+          )}
 
-              {view === 'login' && (
-                <>
-                  <form onSubmit={handleEmailLogin} className="space-y-3">
-                    <div className="space-y-2">
-                      <div className="relative group">
-                        <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 transition-colors ${focusedField === 'email' ? 'text-indigo-500' : ''}`} size={15} />
-                        <input 
-                          type="email" required value={email}
-                          onFocus={() => setFocusedField('email')} onBlur={() => setFocusedField(null)}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="E-mail"
-                          data-testid="email"
-                          className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent focus:border-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 text-xs font-bold outline-none transition-all shadow-inner"
-                        />
-                      </div>
-                      <div className="relative group">
-                        <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 transition-colors ${focusedField === 'password' ? 'text-indigo-500' : ''}`} size={15} />
-                        <input 
-                          type="password" required value={password}
-                          onFocus={() => setFocusedField('password')} onBlur={() => setFocusedField(null)}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="Senha"
-                          data-testid="password"
-                          className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent focus:border-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 text-xs font-bold outline-none transition-all shadow-inner"
-                        />
-                      </div>
-                      <button type="button" onClick={() => setView('recover')} className="block w-full text-right text-[9px] font-black text-indigo-500 uppercase tracking-widest px-1">Esqueci a senha</button>
-                    </div>
-                    <button type="submit" disabled={isLoading} data-testid="login-button" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-600/30 active:scale-95 disabled:opacity-50 transition-all">
-                      {isLoading ? 'Autenticando...' : 'Acessar Conta'} <ArrowRight size={14} className="inline ml-1" />
-                    </button>
-                  </form>
-                  
-                  <div className="flex items-center gap-3 py-1">
-                    <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>
-                    <span className="text-[7px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-widest">OU</span>
-                    <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>
-                  </div>
+          {view === 'signup' && (
+            <form onSubmit={handleSignup} className="space-y-4">
+              <button
+                type="button"
+                onClick={() => setView('login')}
+                className="flex items-center gap-2 text-xs font-bold text-gray-500 mb-2"
+              >
+                <ChevronLeft size={16} /> VOLTAR
+              </button>
+              <input
+                type="text"
+                required
+                placeholder="Seu nome"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <input
+                type="email"
+                required
+                placeholder="Seu e-mail"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <input
+                type="password"
+                required
+                placeholder="Senha (mín. 6 caracteres)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              >
+                CRIAR CONTA <UserPlus size={18} />
+              </button>
+            </form>
+          )}
 
-                  <button onClick={() => handleSocialLogin(googleProvider)} className="w-full py-3.5 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200 active:scale-95 transition-all shadow-sm">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-4 h-4" /> Entrar com Google
-                  </button>
+          {view === 'recover' && (
+            <form onSubmit={handleRecoverPassword} className="space-y-4">
+              <button
+                type="button"
+                onClick={() => setView('login')}
+                className="flex items-center gap-2 text-xs font-bold text-gray-500 mb-2"
+              >
+                <ChevronLeft size={16} /> VOLTAR
+              </button>
+              <p className="text-xs text-gray-600 text-center mb-4">
+                Enviaremos um link de recuperação para seu e-mail.
+              </p>
+              <input
+                type="email"
+                required
+                placeholder="E-mail cadastrado"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm active:scale-[0.98] transition-all"
+              >
+                RECUPERAR SENHA
+              </button>
+            </form>
+          )}
 
-                  <button onClick={() => setView('signup')} className="w-full text-center text-[9px] font-black text-slate-400 uppercase tracking-widest pt-1.5 group">
-                    Novo por aqui? <span className="text-indigo-600 group-hover:underline">Cadastre-se</span>
-                  </button>
-                </>
-              )}
-
-              {view === 'signup' && (
-                <form onSubmit={handleSignup} className="space-y-3 animate-in slide-in-from-right-4 duration-500">
-                  <button type="button" onClick={() => setView('login')} className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase mb-1"><ChevronLeft size={14} /> Voltar</button>
-                  <div className="space-y-2">
-                    <input type="text" required placeholder="Seu nome" value={name} onChange={e => setName(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
-                    <input type="email" required placeholder="Seu e-mail" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
-                    <input type="password" required placeholder="Senha (min 6 car.)" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
-                  </div>
-                  <button type="submit" disabled={isLoading} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-xl active:scale-95 transition-all">
-                    Criar meu Acesso <UserPlus size={16} className="ml-2 inline" />
-                  </button>
-                </form>
-              )}
-
-              {view === 'recover' && (
-                <form onSubmit={handleRecoverPassword} className="space-y-4 animate-in slide-in-from-right-4 duration-500">
-                  <button type="button" onClick={() => setView('login')} className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase mb-1"><ChevronLeft size={14} /> Voltar</button>
-                  <div className="space-y-3">
-                    <p className="text-[10px] font-bold text-slate-500 text-center leading-relaxed px-2">Enviaremos um link de recuperação para o e-mail cadastrado.</p>
-                    <input type="email" required placeholder="E-mail cadastrado" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-4 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
-                  </div>
-                  <button type="submit" className="w-full py-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all">Recuperar Senha</button>
-                </form>
-              )}
-
-              {view === 'success' && (
-                <div className="text-center space-y-4 py-2 animate-in zoom-in-95 duration-500">
-                  <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto shadow-inner border border-emerald-500/20">
-                    <CheckCircle2 size={36} />
-                  </div>
-                  <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 px-2 leading-relaxed">{successMessage}</p>
-                  <button onClick={() => setView('login')} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all">Voltar ao Login</button>
-                </div>
-              )}
+          {view === 'success' && (
+            <div className="text-center space-y-4 py-4">
+              <div className="w-16 h-16 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center mx-auto">
+                <CheckCircle2 size={32} />
+              </div>
+              <p className="text-sm font-semibold text-gray-700">{successMessage}</p>
+              <button
+                onClick={() => setView('login')}
+                className="w-full py-3.5 bg-gray-900 text-white rounded-xl font-bold text-sm active:scale-[0.98] transition-all"
+              >
+                VOLTAR AO LOGIN
+              </button>
             </div>
           )}
         </div>
-        
-        {/* Footer with Quick Access button */}
-        <div className="flex flex-col items-center gap-3 mb-4">
-          <button 
-            onClick={handleQuickTest}
-            className="flex items-center gap-2 px-5 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-full border border-indigo-500/20 text-[9px] font-black uppercase tracking-[0.2em] transition-all active:scale-90"
-          >
-            <Terminal size={12} /> Acesso Rápido (Teste)
-          </button>
 
-          <div className="flex items-center gap-2 px-5 py-2 bg-white/40 dark:bg-slate-900/40 rounded-full border border-slate-200/50 dark:border-slate-800/50 text-[10px] font-black uppercase tracking-widest opacity-60">
-            <ShieldCheck size={14} className="text-emerald-500" /> AES-256 Secured
+        {/* Footer */}
+        <div className="mt-8 space-y-3">
+          {/* Botão Acesso Rápido */}
+          <div className="text-center">
+            <button
+              onClick={handleQuickTest}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-full text-xs font-bold tracking-wider transition-all"
+            >
+              <Fingerprint size={14} /> ACESSO RÁPIDO (TESTE)
+            </button>
           </div>
-          <div className="text-center opacity-30">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">© Komodo Flow Finance</p>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Build v1.0.0 Stable</p>
+
+          {/* Badge Segurança */}
+          <div className="flex justify-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-gray-200 text-xs font-bold text-gray-600">
+              <ShieldCheck size={14} className="text-green-600" /> AES-256 SECURED
+            </div>
+          </div>
+
+          {/* Copyright */}
+          <div className="text-center text-xs text-gray-400 space-y-0.5">
+            <p className="font-bold tracking-widest">© KOMODO FLOW FINANCE</p>
+            <p className="text-[10px] tracking-wider">BUILD V1.0.0 STABLE</p>
           </div>
         </div>
       </div>
-
-      <style>{`
-        .login-legacy,
-        .login-legacy * {
-          -webkit-text-size-adjust: 100%;
-          text-size-adjust: 100%;
-        }
-
-        .login-legacy input,
-        .login-legacy button {
-          appearance: none;
-          -webkit-appearance: none;
-          font-family: Inter, sans-serif;
-        }
-
-        .login-legacy input::placeholder {
-          color: #94a3b8;
-          opacity: 1;
-        }
-
-        .login-legacy .legacy-card {
-          background: rgba(255, 255, 255, 0.9) !important;
-          border: 1px solid rgba(255, 255, 255, 0.5) !important;
-          border-radius: 3rem !important;
-          box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.12) !important;
-          backdrop-filter: blur(24px) !important;
-        }
-
-        @media (forced-colors: active) {
-          .login-legacy,
-          .login-legacy * {
-            forced-color-adjust: none !important;
-          }
-
-          .login-legacy {
-            background: #f8fafc !important;
-            color: #0f172a !important;
-          }
-
-          .login-legacy .legacy-card {
-            background: rgba(255, 255, 255, 0.95) !important;
-            border: 1px solid rgba(255, 255, 255, 0.6) !important;
-            box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.12) !important;
-          }
-
-          .login-legacy input {
-            background: rgba(248, 250, 252, 0.9) !important;
-            border: 2px solid transparent !important;
-            color: #0f172a !important;
-          }
-
-          .login-legacy button[type='submit'] {
-            background: #4f46e5 !important;
-            color: #ffffff !important;
-            border: 0 !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };
