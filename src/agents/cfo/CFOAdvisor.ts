@@ -6,10 +6,11 @@ import { createUserContext } from '../../context/UserContext';
 import { Transaction } from '../../../types';
 import { AICFOAgent } from './AICFOAgent';
 import { CFOPlanner } from './CFOPlanner';
+import { TransactionRepository } from '../../repositories';
 
 export interface CFOAdvisorInput {
   userId: string;
-  transactions: Transaction[];
+  transactions?: Transaction[];
   monthlyIncome: number;
   monthlyExpenses: number;
   balance: number;
@@ -27,15 +28,20 @@ export class CFOAdvisor {
   private readonly planner = new CFOPlanner();
   private readonly autopilot = new FinancialAutopilot();
 
+  constructor(private readonly transactionRepository?: TransactionRepository) {}
+
   async advise(input: CFOAdvisorInput): Promise<CFOAdvisorResult> {
+    const transactions = input.transactions ||
+      (this.transactionRepository ? await this.transactionRepository.getByUser(input.userId) : []);
+
     const userContext = createUserContext({ userId: input.userId });
 
-    const summary = calculateCashflowSummary(input.transactions);
-    const forecast = buildMonthlyForecast(input.transactions, 6);
+    const summary = calculateCashflowSummary(transactions);
+    const forecast = buildMonthlyForecast(transactions, 6);
 
     await runAIOrchestrator({
       userContext,
-      transactions: input.transactions,
+      transactions,
       memory: {
         monthlyIncome: input.monthlyIncome,
         monthlyExpenses: input.monthlyExpenses,

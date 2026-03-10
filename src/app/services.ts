@@ -7,6 +7,7 @@
 
 import { Transaction, Account, FinancialGoal, User, Subscription, BankConnection } from '../domain/entities';
 import { StorageProvider } from '../storage/StorageProvider';
+import { AccountRepository, GoalRepository, TransactionRepository } from '../repositories';
 import { simulateFinancialScenario } from '../ai/financialSimulator';
 import { FinancialEventEmitter } from '../events/eventEngine';
 import {
@@ -36,6 +37,12 @@ import {
 interface ServiceSaaSOptions {
   role?: UserRole;
   plan?: PlanName;
+}
+
+interface ServiceRepositories {
+  transactionRepository?: TransactionRepository;
+  accountRepository?: AccountRepository;
+  goalRepository?: GoalRepository;
 }
 
 async function resolveSaaSContext(
@@ -106,11 +113,16 @@ export class UserService {
 }
 
 export class TransactionService {
+  private readonly transactionRepository: TransactionRepository;
+
   constructor(
     private storage: StorageProvider,
     private userId: string,
-    private saasOptions: ServiceSaaSOptions = {}
-  ) {}
+    private saasOptions: ServiceSaaSOptions = {},
+    repositories: ServiceRepositories = {}
+  ) {
+    this.transactionRepository = repositories.transactionRepository || new TransactionRepository(storage);
+  }
 
   async createTransaction(transactionData: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Transaction> {
     const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
@@ -129,7 +141,7 @@ export class TransactionService {
     };
 
     // Save transaction
-    await this.storage.saveTransaction(transaction);
+    await this.transactionRepository.create(transaction);
 
     // Audit log
     logAuditEvent('transaction_created', 'transaction', transaction.id, {
@@ -162,7 +174,7 @@ export class TransactionService {
   }
 
   async getTransactions(filters?: { accountId?: string; category?: string; dateFrom?: Date; dateTo?: Date }): Promise<Transaction[]> {
-    const transactions = await this.storage.getTransactions(this.userId);
+    const transactions = await this.transactionRepository.getByUser(this.userId);
 
     return transactions.filter(tx => {
       if (filters?.accountId && tx.accountId !== filters.accountId) return false;
@@ -177,7 +189,7 @@ export class TransactionService {
     const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
     assertCanPerform(saasContext, 'transactions:update');
 
-    const transactions = await this.storage.getTransactions(this.userId);
+    const transactions = await this.transactionRepository.getByUser(this.userId);
     const existing = transactions.find((tx) => tx.id === transactionId);
 
     if (!existing) {
@@ -190,7 +202,7 @@ export class TransactionService {
       updatedAt: new Date(),
     };
 
-    await this.storage.saveTransaction(updated);
+    await this.transactionRepository.create(updated);
 
     emitTransactionUpdated({
       userId: this.userId,
@@ -226,14 +238,14 @@ export class TransactionService {
     const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
     assertCanPerform(saasContext, 'transactions:update');
 
-    const transactions = await this.storage.getTransactions(this.userId);
+    const transactions = await this.transactionRepository.getByUser(this.userId);
     const existing = transactions.find((tx) => tx.id === transactionId);
 
     if (!existing) {
       throw new Error('Transaction not found');
     }
 
-    await this.storage.deleteTransaction(transactionId);
+    await this.transactionRepository.delete(transactionId);
 
     emitTransactionDeletedEvent({
       userId: this.userId,
@@ -244,11 +256,16 @@ export class TransactionService {
 }
 
 export class AccountService {
+  private readonly accountRepository: AccountRepository;
+
   constructor(
     private storage: StorageProvider,
     private userId: string,
-    private saasOptions: ServiceSaaSOptions = {}
-  ) {}
+    private saasOptions: ServiceSaaSOptions = {},
+    repositories: ServiceRepositories = {}
+  ) {
+    this.accountRepository = repositories.accountRepository || new AccountRepository(storage);
+  }
 
   async createAccount(accountData: Omit<Account, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Account> {
     const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
@@ -262,7 +279,7 @@ export class AccountService {
       updatedAt: new Date(),
     };
 
-    await this.storage.saveAccount(account);
+    await this.accountRepository.create(account);
 
     logAuditEvent('account_created', 'account', account.id, {
       name: account.name,
@@ -273,7 +290,7 @@ export class AccountService {
   }
 
   async getAccounts(): Promise<Account[]> {
-    return this.storage.getAccounts(this.userId);
+    return this.accountRepository.getByUser(this.userId);
   }
 
   async updateAccountBalance(accountId: string, newBalance: number): Promise<void> {
@@ -291,7 +308,7 @@ export class AccountService {
     account.balance = newBalance;
     account.updatedAt = new Date();
 
-    await this.storage.saveAccount(account);
+    await this.accountRepository.create(account);
 
     logAuditEvent('account_balance_updated', 'account', accountId, {
       oldBalance,
@@ -317,11 +334,16 @@ export class AccountService {
 }
 
 export class GoalService {
+  private readonly goalRepository: GoalRepository;
+
   constructor(
     private storage: StorageProvider,
     private userId: string,
-    private saasOptions: ServiceSaaSOptions = {}
-  ) {}
+    private saasOptions: ServiceSaaSOptions = {},
+    repositories: ServiceRepositories = {}
+  ) {
+    this.goalRepository = repositories.goalRepository || new GoalRepository(storage);
+  }
 
   async createGoal(goalData: Omit<FinancialGoal, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isCompleted'>): Promise<FinancialGoal> {
     const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
@@ -336,7 +358,7 @@ export class GoalService {
       updatedAt: new Date(),
     };
 
-    await this.storage.saveGoal(goal);
+    await this.goalRepository.create(goal);
 
     logAuditEvent('goal_created', 'goal', goal.id, {
       name: goal.name,
@@ -361,7 +383,7 @@ export class GoalService {
   }
 
   async getGoals(): Promise<FinancialGoal[]> {
-    return this.storage.getGoals(this.userId);
+    return this.goalRepository.getByUser(this.userId);
   }
 
   async updateGoalProgress(goalId: string, currentAmount: number): Promise<void> {
@@ -379,7 +401,7 @@ export class GoalService {
     goal.isCompleted = currentAmount >= goal.targetAmount;
     goal.updatedAt = new Date();
 
-    await this.storage.saveGoal(goal);
+    await this.goalRepository.create(goal);
   }
 }
 
