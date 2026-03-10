@@ -6,6 +6,7 @@
 
 // Domain Layer
 export * from './domain/entities';
+export * from './domain';
 
 // Application Layer
 export * from './app/services';
@@ -21,3 +22,7 @@ export * from './config/appConfig';
 
 // Event System
 export { FinancialEventEmitter } from './events/eventEngine';
+export * from './events';
+
+// Engines (AI + Finance)
+export * from './engines';

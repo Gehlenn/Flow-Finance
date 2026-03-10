@@ -8,6 +8,44 @@ Este documento detalha a arquitetura técnica, o fluxo de dados e a experiência
 
 O Flow Finance segue uma arquitetura **Local-First** (no momento) com uma camada de abstração para serviços de dados. Isso significa que o aplicativo funciona inteiramente no navegador do usuário, salvando os dados localmente, mas está estruturado como se estivesse conectado a um backend real (Firebase), facilitando a migração futura.
 
+### Camadas (Sprint 2)
+
+- **Presentation**: `components/`, `pages/`, `App.tsx`
+- **Application**: `src/app/`
+- **Domain**: `src/domain/` (entidades e value objects puros)
+- **Infrastructure**: `src/services/`, `src/storage/`, integrações externas
+- **AI Engine**: `src/engines/ai/`
+
+### Estrutura de referência criada
+
+```text
+src/
+├ domain/
+│ ├ entities/
+│ │ ├ Transaction.ts
+│ │ ├ Account.ts
+│ │ ├ Goal.ts
+│ │ └ User.ts
+│ └ valueObjects/
+│   ├ Money.ts
+│   └ Category.ts
+├ events/
+│ ├ EventBus.ts
+│ └ events/
+│   ├ TransactionCreated.ts
+│   ├ GoalCreated.ts
+│   └ AITaskCompleted.ts
+└ engines/
+    ├ finance/
+    │ ├ cashflowEngine.ts
+    │ ├ forecastEngine.ts
+    │ └ budgetEngine.ts
+    └ ai/
+        ├ aiOrchestrator.ts
+        ├ aiContextBuilder.ts
+        └ aiDecisionEngine.ts
+```
+
 ### Diagrama de Componentes
 
 ```mermaid

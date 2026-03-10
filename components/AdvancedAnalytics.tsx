@@ -6,6 +6,7 @@ import {
 import { formatCurrency } from '../utils/helpers';
 import { Transaction, TransactionType } from '../types';
 import { TrendingUp, TrendingDown, Minus, FileText } from 'lucide-react';
+import { buildMonthlyForecast } from '../src/engines/finance/forecastEngine';
 
 interface AdvancedAnalyticsProps {
   transactions: Transaction[];
@@ -105,21 +106,10 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ transactions, hid
   }, [transactions]);
 
   // 5. Monthly Trends (last 6 months)
-  const monthlyTrends = useMemo(() => {
-    const now = new Date();
-    return Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-      const label = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-      const [year, month] = [d.getFullYear(), d.getMonth()];
-      const monthTxs = transactions.filter(t => {
-        const td = new Date(t.date);
-        return td.getFullYear() === year && td.getMonth() === month;
-      });
-      const receitas = monthTxs.filter(t => t.type === TransactionType.RECEITA).reduce((s, t) => s + t.amount, 0);
-      const despesas = monthTxs.filter(t => t.type === TransactionType.DESPESA).reduce((s, t) => s + t.amount, 0);
-      return { label, receitas, despesas, saldo: receitas - despesas };
-    });
-  }, [transactions]);
+  const monthlyTrends = useMemo(
+    () => buildMonthlyForecast(transactions, 6).map((p) => ({ ...p, label: p.month })),
+    [transactions]
+  );
 
   // 6. Monthly Report with % change
   const monthlyReport = useMemo(() => {

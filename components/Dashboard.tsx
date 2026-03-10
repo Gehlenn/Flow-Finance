@@ -18,6 +18,7 @@ import { detectFixedExpenses } from '../src/ai/fixedExpenseDetector';
 import { generateMonthlyReport, FinancialReport } from '../src/finance/reportEngine';
 import { getSyncStatusSummary } from '../src/finance/bankSyncEngine';
 import { simulateFinancialScenario, FinancialSimulationResult } from '../src/ai/financialSimulator';
+import { calculateCashflowSummary } from '../src/engines/finance/cashflowEngine';
 import { 
   Eye, EyeOff, BrainCircuit, Loader2, Landmark, LayoutDashboard,
   ArrowUpRight, ArrowDownRight, Wallet, CreditCard,
@@ -184,13 +185,10 @@ const Dashboard: React.FC<DashboardProps> = ({
     fetchInsights();
   }, [relevantTransactionsHash]);
 
-  const summary = useMemo(() => {
-    return filteredTransactions.reduce((acc, t) => {
-      if (t.type === TransactionType.RECEITA) acc.income += t.amount;
-      else acc.expenses += t.amount;
-      return acc;
-    }, { income: 0, expenses: 0 });
-  }, [filteredTransactions]);
+  const summary = useMemo(
+    () => calculateCashflowSummary(filteredTransactions),
+    [filteredTransactions]
+  );
 
   const totalBalance = useMemo(() => accounts.reduce((s, a) => s + Math.abs(a.balance), 0), [accounts]);
 
