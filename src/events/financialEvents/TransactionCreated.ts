@@ -1,3 +1,5 @@
+import { Transaction } from '../../domain/entities';
+
 export const TRANSACTION_CREATED_EVENT = 'transaction_created';
 
 export interface TransactionCreatedEvent {
@@ -5,4 +7,5 @@ export interface TransactionCreatedEvent {
   transactionId: string;
   amount: number;
   category: string;
+  transaction: Transaction;
 }

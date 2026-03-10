@@ -18,6 +18,7 @@ export * from './security/transactionIntegrity';
 
 // Configuration
 export * from './config/appConfig';
+export * from './observability';
 
 // User Context Layer
 export * from './context';

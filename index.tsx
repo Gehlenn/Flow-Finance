@@ -4,6 +4,7 @@ import App from './App';
 import './src/styles/tailwind.css';
 import { initializeRuntimeGuard } from './src/runtime/runtimeGuard';
 import { aiTaskQueue } from './src/ai/queue';
+import { initializeFinancialEventPipeline } from './src/events/financialEventPipeline';
 
 (window as any).process = (window as any).process || { env: {} };
 
@@ -31,6 +32,13 @@ async function initializeApp() {
   } catch (error) {
     console.error('[App] AI Task Queue initialization failed:', error);
     // Non-critical - app can run without task queue
+  }
+
+  try {
+    initializeFinancialEventPipeline();
+    console.log('[App] Financial Event Pipeline initialized');
+  } catch (error) {
+    console.error('[App] Financial Event Pipeline initialization failed:', error);
   }
 
   // ─── SERVICE WORKER AUTO-UPDATE ─────────────────────────────────────────────

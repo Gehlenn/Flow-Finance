@@ -157,6 +157,7 @@ export class TransactionService {
       transactionId: transaction.id,
       amount: transaction.amount,
       category: transaction.category,
+      transaction,
     });
 
     const updatedUsage = trackUsage(this.userId, 'transactions');
