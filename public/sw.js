@@ -3,7 +3,7 @@
  * Estratégia: Cache-First para assets, Network-First para API calls
  */
 
-const CACHE_NAME = 'flow-finance-v1';
+const CACHE_NAME = 'flow-finance-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -65,6 +65,18 @@ self.addEventListener('fetch', (event) => {
         if (!response || response.status !== 200 || response.type !== 'basic') {
           return response;
         }
+
+        const contentType = response.headers.get('content-type') || '';
+        const isScriptRequest = url.pathname.endsWith('.js') || request.destination === 'script';
+        const isStyleRequest = url.pathname.endsWith('.css') || request.destination === 'style';
+        const gotHtml = contentType.includes('text/html');
+
+        // Never cache HTML as if it were JS/CSS. This avoids stale MIME errors
+        // when a previous deploy/router served index.html for chunk paths.
+        if ((isScriptRequest || isStyleRequest) && gotHtml) {
+          return response;
+        }
+
         const clone = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
         return response;

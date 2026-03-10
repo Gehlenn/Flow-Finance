@@ -21,7 +21,8 @@ const BACKEND_BASE_URL = (() => {
   if (IS_DEVELOPMENT) {
     return import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_DEV_URL || 'http://localhost:3001';
   }
-  return import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_PROD_URL || 'https://api.flowfinance.app';
+  // Keep a stable, resolvable fallback for production builds when env vars are missing.
+  return import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_PROD_URL || 'https://flow-finance-backend.vercel.app';
 })();
 
 export const API_ENDPOINTS = {
