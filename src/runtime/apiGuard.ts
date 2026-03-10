@@ -8,7 +8,7 @@ import { GuardResult } from './types';
 const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL ||
   import.meta.env.VITE_API_PROD_URL ||
-  'https://flow-finance-backend.vercel.app';
+  '';
 
 let apiOfflineMode = false;
 let lastHealthCheck = 0;
@@ -34,10 +34,11 @@ export async function checkAPIHealth(): Promise<GuardResult> {
   lastHealthCheck = now;
 
   try {
+    const endpoint = API_BASE_URL ? `${API_BASE_URL}/api/health` : '/api/health';
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch(`${API_BASE_URL}/health`, {
+    const response = await fetch(endpoint, {
       signal: controller.signal,
       headers: { 'Accept': 'application/json' },
     });
@@ -66,7 +67,7 @@ export async function checkAPIHealth(): Promise<GuardResult> {
     }
   } catch (error) {
     apiOfflineMode = true;
-    console.warn('[API Guard] Backend health check failed:', error);
+    console.warn('[API Guard] Backend health check failed, running degraded mode:', error);
     return {
       guard: 'api',
       status: 'warning',

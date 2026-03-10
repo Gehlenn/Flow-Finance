@@ -171,3 +171,16 @@ class TaskStore {
 
 // Singleton instance
 export const taskStore = new TaskStore();
+
+// Sprint 3 simple function API wrappers.
+export function addTask(task: AITask): void {
+  taskStore.addTask(task);
+}
+
+export function getNextTask(): AITask | null {
+  return taskStore.getNextTask();
+}
+
+export function updateTaskStatus(id: string, status: AITaskStatus): void {
+  taskStore.updateTaskStatus(id, status);
+}

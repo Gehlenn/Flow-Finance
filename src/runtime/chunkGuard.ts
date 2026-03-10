@@ -9,7 +9,7 @@ let chunkErrorCount = 0;
 const MAX_CHUNK_ERRORS = 3;
 let hasReloaded = false;
 
-export function initChunkGuard(): GuardResult {
+export function protectChunkLoading(): GuardResult {
   if (typeof window === 'undefined') {
     return {
       guard: 'chunk',
@@ -46,6 +46,9 @@ export function initChunkGuard(): GuardResult {
     timestamp: Date.now(),
   };
 }
+
+// Backward-compatible alias.
+export const initChunkGuard = protectChunkLoading;
 
 function handleChunkError(error: string): void {
   chunkErrorCount++;

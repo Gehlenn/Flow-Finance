@@ -5,11 +5,11 @@
 
 import { GuardResult } from './types';
 
-const LOCAL_VERSION = import.meta.env.VITE_APP_VERSION || '0.4.0';
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || '0.5.0';
 const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL ||
   import.meta.env.VITE_API_PROD_URL ||
-  'https://flow-finance-backend.vercel.app';
+  '';
 
 let lastVersionCheck = 0;
 const VERSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -33,7 +33,8 @@ export async function checkAppVersion(): Promise<GuardResult> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch(`${API_BASE_URL}/api/version`, {
+    const endpoint = API_BASE_URL ? `${API_BASE_URL}/api/version` : '/api/version';
+    const response = await fetch(endpoint, {
       signal: controller.signal,
       headers: { 'Accept': 'application/json' },
     });
@@ -53,29 +54,29 @@ export async function checkAppVersion(): Promise<GuardResult> {
     const data = await response.json();
     const backendVersion = data.version;
 
-    if (backendVersion && backendVersion !== LOCAL_VERSION) {
+    if (backendVersion && backendVersion !== APP_VERSION) {
       console.warn(
-        `[Version Guard] Version mismatch detected - Frontend: ${LOCAL_VERSION}, Backend: ${backendVersion}`
+        `[Version Guard] Version mismatch detected - Frontend: ${APP_VERSION}, Backend: ${backendVersion}`
       );
 
-      // Show version mismatch notification
-      showVersionMismatchNotification(LOCAL_VERSION, backendVersion);
+      // Hard reload to avoid inconsistent deploy state.
+      window.location.reload();
 
       return {
         guard: 'version',
         status: 'warning',
-        message: `Version mismatch: ${LOCAL_VERSION} (local) vs ${backendVersion} (backend)`,
+        message: `Version mismatch: ${APP_VERSION} (local) vs ${backendVersion} (backend)`,
         retryable: false,
         timestamp: now,
       };
     }
 
-    console.log('[Version Guard] Versions match:', LOCAL_VERSION);
+    console.log('[Version Guard] Versions match:', APP_VERSION);
 
     return {
       guard: 'version',
       status: 'ok',
-      message: `Version ${LOCAL_VERSION} consistent`,
+      message: `Version ${APP_VERSION} consistent`,
       timestamp: now,
     };
   } catch (error) {
@@ -160,5 +161,5 @@ function showVersionMismatchNotification(localVersion: string, backendVersion: s
 }
 
 export function getLocalVersion(): string {
-  return LOCAL_VERSION;
+  return APP_VERSION;
 }

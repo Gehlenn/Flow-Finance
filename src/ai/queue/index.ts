@@ -3,9 +3,9 @@
  * Exports for external use
  */
 
-export { aiTaskQueue } from './AITaskQueue';
-export { aiWorker } from './AIWorker';
-export { taskStore } from './taskStore';
+export { aiTaskQueue, enqueueTask } from './AITaskQueue';
+export { aiWorker, runAIWorker } from './AIWorker';
+export { taskStore, addTask, getNextTask, updateTaskStatus } from './taskStore';
 export {
   AITaskType,
   AITaskStatus,

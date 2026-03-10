@@ -6,7 +6,7 @@
 
 import { GuardResult, RuntimeConfig } from './types';
 import { checkAPIHealth, activateFallbackMode } from './apiGuard';
-import { initChunkGuard } from './chunkGuard';
+import { protectChunkLoading } from './chunkGuard';
 import { validateServiceWorker } from './serviceWorkerGuard';
 import { checkAppVersion } from './versionGuard';
 
@@ -32,13 +32,13 @@ export async function initializeRuntimeGuard(userConfig?: Partial<RuntimeConfig>
 
   const results: GuardResult[] = [];
 
-  // 1. Initialize Chunk Guard (synchronous)
+  // 1. Chunk loading protection
   if (config.enableChunkRetry) {
-    const chunkResult = initChunkGuard();
+    const chunkResult = protectChunkLoading();
     results.push(chunkResult);
   }
 
-  // 2. Validate Service Worker (async)
+  // 2. Service worker validation
   try {
     const swResult = await validateServiceWorker();
     results.push(swResult);
@@ -46,7 +46,7 @@ export async function initializeRuntimeGuard(userConfig?: Partial<RuntimeConfig>
     console.error('[Runtime Guard] Service worker validation failed:', error);
   }
 
-  // 3. Check API Health (async)
+  // 3. API health check
   try {
     const apiResult = await checkAPIHealth();
     results.push(apiResult);
@@ -58,7 +58,7 @@ export async function initializeRuntimeGuard(userConfig?: Partial<RuntimeConfig>
     console.error('[Runtime Guard] API health check failed:', error);
   }
 
-  // 4. Check Version (async)
+  // 4. Deploy version consistency check
   try {
     const versionResult = await checkAppVersion();
     results.push(versionResult);

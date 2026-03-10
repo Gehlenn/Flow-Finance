@@ -35,7 +35,7 @@ class AITaskQueue {
   enqueueTask<T = any>(
     type: AITaskType,
     payload: T,
-    userId: string,
+    userId = 'system',
     options?: {
       priority?: AITaskPriority;
       maxRetries?: number;
@@ -195,3 +195,11 @@ class AITaskQueue {
 
 // Singleton instance
 export const aiTaskQueue = new AITaskQueue();
+
+// Sprint 3 simple function API.
+export function enqueueTask<T = any>(type: AITaskType, payload: T): string {
+  if (!aiTaskQueue.isInitialized()) {
+    aiTaskQueue.initialize();
+  }
+  return aiTaskQueue.enqueueTask(type, payload, 'system');
+}

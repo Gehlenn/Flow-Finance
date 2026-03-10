@@ -59,6 +59,10 @@ class AIWorker {
       });
   }
 
+  async runOnce(): Promise<void> {
+    await this.processNextTask();
+  }
+
   private async processNextTask(): Promise<void> {
     // Skip if already processing a task
     if (this.processingTaskId) {
@@ -213,3 +217,8 @@ class AIWorker {
 
 // Singleton instance
 export const aiWorker = new AIWorker();
+
+// Sprint 3 simple function API.
+export async function runAIWorker(): Promise<void> {
+  await aiWorker.runOnce();
+}
