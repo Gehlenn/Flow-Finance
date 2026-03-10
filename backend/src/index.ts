@@ -23,6 +23,9 @@ addBreadcrumb('Backend server initialization', 'server', 'info');
 const app: Application = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
+// Trust proxy for Vercel/serverless environments
+app.set('trust proxy', true);
+
 // Initialize AI providers
 const aiProviders: string[] = [];
 

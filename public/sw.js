@@ -3,7 +3,7 @@
  * Estratégia: Cache-First para assets, Network-First para API calls
  */
 
-const CACHE_NAME = 'flow-finance-v2';
+const CACHE_NAME = 'flow-finance-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
