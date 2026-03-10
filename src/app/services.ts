@@ -7,12 +7,8 @@
 
 import { Transaction, Account, FinancialGoal, User, Subscription, BankConnection } from '../domain/entities';
 import { StorageProvider } from '../storage/StorageProvider';
-import { runAIOrchestrator } from '../ai/aiOrchestrator';
-import { generateMonthlyReport } from '../finance/reportEngine';
-import { detectFinancialLeaks } from '../ai/leakDetector';
 import { simulateFinancialScenario } from '../ai/financialSimulator';
 import { FinancialEventEmitter } from '../events/eventEngine';
-import { checkTransactionIdempotency, validateTransaction } from '../security/transactionIntegrity';
 import { logAuditEvent } from '../security/auditLogService';
 
 export class UserService {
@@ -77,16 +73,6 @@ export class TransactionService {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-
-    // Security checks
-    if (!checkTransactionIdempotency(transaction)) {
-      throw new Error('Transaction already exists');
-    }
-
-    const validation = validateTransaction(transaction);
-    if (!validation.valid) {
-      throw new Error(`Invalid transaction: ${validation.errors.join(', ')}`);
-    }
 
     // Save transaction
     await this.storage.saveTransaction(transaction);
@@ -275,10 +261,8 @@ export class SubscriptionService {
     logAuditEvent('subscription_created', 'subscription', subscription.id, {
       name: subscription.name,
       amount: subscription.amount,
-      frequency: subscription.frequency,
+      cycle: subscription.cycle,
     });
-
-    FinancialEventEmitter.subscriptionCreated(subscription);
 
     return subscription;
   }
@@ -343,10 +327,8 @@ export class BankConnectionService {
 
     logAuditEvent('bank_connection_created', 'bank_connection', connection.id, {
       bankName: connection.bankName,
-      accountType: connection.accountType,
+      connectionStatus: connection.connectionStatus,
     });
-
-    FinancialEventEmitter.bankConnectionCreated(connection);
 
     return connection;
   }

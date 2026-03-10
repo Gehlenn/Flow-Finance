@@ -4,8 +4,8 @@
  * Exports all storage-related interfaces and implementations
  */
 
+export type { StorageProvider } from './StorageProvider';
 export {
-  StorageProvider,
   LocalStorageProvider,
   ApiStorageProvider,
 } from './StorageProvider';

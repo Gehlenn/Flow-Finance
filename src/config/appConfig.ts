@@ -11,7 +11,6 @@ import {
   AccountService,
   GoalService,
   SimulationService,
-  ReportService,
   SubscriptionService,
   BankConnectionService,
 } from '../app/services';
@@ -71,14 +70,6 @@ export class AppContainer {
     const key = `simulation_${userId}`;
     if (!this.services.has(key)) {
       this.services.set(key, new SimulationService(this.storageProvider, userId));
-    }
-    return this.services.get(key);
-  }
-
-  getReportService(userId: string): ReportService {
-    const key = `report_${userId}`;
-    if (!this.services.has(key)) {
-      this.services.set(key, new ReportService(this.storageProvider, userId));
     }
     return this.services.get(key);
   }

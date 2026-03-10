@@ -10,7 +10,6 @@ export {
   AccountService,
   GoalService,
   SimulationService,
-  ReportService,
   SubscriptionService,
   BankConnectionService,
 } from './services';
