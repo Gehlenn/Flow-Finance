@@ -17,11 +17,12 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  DEPLOY_PLATFORM: ${{ vars.DEPLOY_PLATFORM || 'none' }}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment || 'production' }}
+    environment: ${{ github.event.inputs.environment || 'production' }}
 
     steps:
     - name: Checkout code
@@ -109,7 +110,7 @@ jobs:
         cache-to: type=gha,mode=max
 
     - name: Deploy to Railway
-      if: env.DEPLOY_PLATFORM == 'railway'
+      if: ${{ env.DEPLOY_PLATFORM == 'railway' }}
       run: |
         curl -X POST \
           -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
@@ -121,7 +122,7 @@ jobs:
           }'
 
     - name: Deploy to Render
-      if: env.DEPLOY_PLATFORM == 'render'
+      if: ${{ env.DEPLOY_PLATFORM == 'render' }}
       run: |
         curl -X POST \
           -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
@@ -130,7 +131,7 @@ jobs:
           -d '{}'
 
     - name: Deploy to AWS ECS
-      if: env.DEPLOY_PLATFORM == 'aws'
+      if: ${{ env.DEPLOY_PLATFORM == 'aws' }}
       run: |
         aws ecs update-service \
           --cluster ${{ secrets.AWS_ECS_CLUSTER }} \
@@ -143,7 +144,7 @@ jobs:
       run: |
         curl -X POST \
           -H 'Content-type: application/json' \
-          --data '{"text":"🚀 Flow Finance deployed successfully to ${{ inputs.environment || '\''production'\'' }}"}' \
+          --data '{"text":"${{ format('🚀 Flow Finance deployed successfully to {0}', github.event.inputs.environment || 'production') }}"}' \
           ${{ secrets.SLACK_WEBHOOK_URL }}
 
     - name: Notify deployment failure
@@ -151,5 +152,5 @@ jobs:
       run: |
         curl -X POST \
           -H 'Content-type: application/json' \
-          --data '{"text":"❌ Flow Finance deployment failed to ${{ inputs.environment || '\''production'\'' }}"}' \
+          --data '{"text":"${{ format('❌ Flow Finance deployment failed to {0}', github.event.inputs.environment || 'production') }}"}' \
           ${{ secrets.SLACK_WEBHOOK_URL }}
