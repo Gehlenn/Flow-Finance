@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Transaction, TransactionType, Category } from '../types';
 import { formatCurrency, getFromStorage } from '../utils/helpers';
 import { expandTransactionsWithRecurring } from '../src/finance/recurringService';
+import { calculateSignedBalance } from '../src/engines/finance/analyticsEngine';
 import { 
   Trash2, Search, Share2, Edit2, Filter, RotateCcw, History, X, 
   ShoppingBag, GraduationCap, Briefcase, TrendingUp, Download, 
@@ -204,7 +205,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, hideVal
     list.forEach(t => {
       text += `• ${t.description} (${t.category})\n  ${t.type === TransactionType.RECEITA ? '🟢 Ganho' : '🔴 Gasto'} ${formatVal(t.amount)}\n\n`;
     });
-    const total = list.reduce((a, b) => b.type === TransactionType.RECEITA ? a + b.amount : a - b.amount, 0);
+    const total = calculateSignedBalance(list);
     text += `*Saldo do Período:* ${formatVal(total)}`;
     return text;
   };

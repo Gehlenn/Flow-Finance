@@ -3,6 +3,12 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Transaction, TransactionType, Category } from '../types';
 import { formatCurrency } from '../utils/helpers';
 import { GeminiService } from '../services/geminiService';
+import {
+  buildCashflowTimeline,
+  buildExpenseCategoryData,
+  filterTransactionsByTimeframe,
+} from '../src/engines/finance/analyticsEngine';
+import { calculateCashflowSummary } from '../src/engines/finance/cashflowEngine';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, BarChart, Bar
@@ -83,50 +89,19 @@ const CashFlow: React.FC<CashFlowProps> = ({ transactions, hideValues, theme }) 
 
   const fmt = (val: number) => hideValues ? 'R$ ••••' : formatCurrency(val);
 
-  const filtered = useMemo(() => {
-    const now = new Date();
-    return transactions.filter(t => {
-      const d = new Date(t.date);
-      if (timeframe === '7d') return (now.getTime() - d.getTime()) / 86400000 <= 7;
-      if (timeframe === '30d') return (now.getTime() - d.getTime()) / 86400000 <= 30;
-      if (timeframe === '12m') return d.getFullYear() === now.getFullYear();
-      if (timeframe === 'custom') {
-        const start = dateStart ? new Date(dateStart + 'T00:00:00') : new Date(0);
-        const end = dateEnd ? new Date(dateEnd + 'T23:59:59') : new Date();
-        return d >= start && d <= end;
-      }
-      return true;
-    });
-  }, [transactions, timeframe, dateStart, dateEnd]);
+  const filtered = useMemo(
+    () => filterTransactionsByTimeframe(transactions, timeframe, dateStart, dateEnd),
+    [transactions, timeframe, dateStart, dateEnd]
+  );
 
   const totalsByPeriod = useMemo(() => {
-    const expenses = filtered.filter(t => t.type === TransactionType.DESPESA).reduce((a, b) => a + b.amount, 0);
-    const income = filtered.filter(t => t.type === TransactionType.RECEITA).reduce((a, b) => a + b.amount, 0);
-    return { expenses, income };
+    const summary = calculateCashflowSummary(filtered);
+    return { expenses: summary.expenses, income: summary.income };
   }, [filtered]);
 
-  const timelineData = useMemo(() => {
-    const dataMap: Record<string, { date: string, rawDate: string, incoming: number, outgoing: number }> = {};
-    filtered.forEach(t => {
-      const key = new Date(t.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-      const rawKey = new Date(t.date).toISOString().split('T')[0];
-      if (!dataMap[key]) dataMap[key] = { date: key, rawDate: rawKey, incoming: 0, outgoing: 0 };
-      if (t.type === TransactionType.RECEITA) dataMap[key].incoming += t.amount;
-      else dataMap[key].outgoing += t.amount;
-    });
-    return Object.values(dataMap).sort((a,b) => a.rawDate.localeCompare(b.rawDate));
-  }, [filtered]);
+  const timelineData = useMemo(() => buildCashflowTimeline(filtered), [filtered]);
 
-  const categoryData = useMemo(() => {
-    const map = filtered.filter(t => t.type === TransactionType.DESPESA).reduce((acc, curr) => {
-      acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
-      return acc;
-    }, {} as Record<string, number>);
-    return Object.keys(map).map(key => ({ 
-      name: key, 
-      value: map[key]
-    })).sort((a, b) => b.value - a.value);
-  }, [filtered]);
+  const categoryData = useMemo(() => buildExpenseCategoryData(filtered), [filtered]);
 
   const handleGenerateReport = async () => {
     if (report) {

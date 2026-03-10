@@ -8,6 +8,7 @@ import {
   ChevronDown, ChevronUp, AlertTriangle, Sparkles, Loader2
 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
+import { calculateAlertProgress } from '../src/engines/finance/analyticsEngine';
 
 interface AssistantProps {
   reminders: Reminder[];
@@ -382,8 +383,7 @@ const Assistant: React.FC<AssistantProps> = ({
                 <span className="text-[7px] font-black text-slate-400 uppercase tracking-[0.2em]">Limites & Orçamentos</span>
               </div>
               {alerts.map(alert => {
-                const spent = transactions.filter(t => t.type === TransactionType.DESPESA && (alert.category === 'Geral' || t.category === alert.category)).reduce((a, b) => a + b.amount, 0);
-                const percent = Math.min((spent / (alert.threshold || 1)) * 100, 100);
+                const { spent, percent } = calculateAlertProgress(transactions, alert);
                 const colorClass = getAlertColor(percent);
                 
                 return (
