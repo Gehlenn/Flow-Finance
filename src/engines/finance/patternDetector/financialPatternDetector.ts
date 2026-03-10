@@ -7,12 +7,24 @@ export interface FinancialPatterns {
 }
 
 export class FinancialPatternDetector {
+  private lastPatterns: FinancialPatterns = {
+    recurring: [],
+    weeklySpikes: [],
+    categoryDominance: null,
+  };
+
   detectPatterns(transactions: Transaction[]): FinancialPatterns {
-    return {
+    this.lastPatterns = {
       recurring: this.detectRecurring(transactions),
       weeklySpikes: this.detectWeeklySpikes(transactions),
       categoryDominance: this.detectCategoryDominance(transactions),
     };
+
+    return this.lastPatterns;
+  }
+
+  getPatterns(): FinancialPatterns {
+    return this.lastPatterns;
   }
 
   detectRecurring(transactions: Transaction[]): Transaction[][] {

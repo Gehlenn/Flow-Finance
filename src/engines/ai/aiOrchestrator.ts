@@ -5,6 +5,16 @@ import { AI_TASK_COMPLETED } from '../../events/events/AITaskCompleted';
 import { financialPatternDetector } from '../finance/patternDetector/financialPatternDetector';
 import { aiMemoryEngine } from '../../ai/memory/AIMemoryEngine';
 
+export interface AIOrchestratorInsight {
+  timestamp: string;
+  userId: string;
+  decision: ReturnType<typeof makeAIDecision>;
+  profile: ReturnType<typeof buildAIContext>['financialProfile'];
+  timelineTotals: ReturnType<typeof buildAIContext>['timeline']['totals'];
+}
+
+const lastInsights: AIOrchestratorInsight[] = [];
+
 export async function runAIOrchestrator(input: AIContextInput): Promise<{
   context: ReturnType<typeof buildAIContext>;
   decision: ReturnType<typeof makeAIDecision>;
@@ -31,6 +41,18 @@ export async function runAIOrchestrator(input: AIContextInput): Promise<{
     success: true,
   });
 
+  lastInsights.unshift({
+    timestamp: new Date().toISOString(),
+    userId: context.userId,
+    decision,
+    profile: context.financialProfile,
+    timelineTotals: context.timeline.totals,
+  });
+
+  if (lastInsights.length > 50) {
+    lastInsights.splice(50);
+  }
+
   return {
     context: {
       ...context,
@@ -38,4 +60,8 @@ export async function runAIOrchestrator(input: AIContextInput): Promise<{
     },
     decision,
   };
+}
+
+export function getLastInsights(): AIOrchestratorInsight[] {
+  return [...lastInsights];
 }

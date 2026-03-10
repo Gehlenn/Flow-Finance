@@ -5,6 +5,7 @@ import './src/styles/tailwind.css';
 import { initializeRuntimeGuard } from './src/runtime/runtimeGuard';
 import { aiTaskQueue } from './src/ai/queue';
 import { initializeFinancialEventPipeline } from './src/events/financialEventPipeline';
+import { AIControlPanel } from './src/debug/aiPanel/AIControlPanel';
 
 (window as any).process = (window as any).process || { env: {} };
 
@@ -72,6 +73,18 @@ async function initializeApp() {
   }
 
   const root = createRoot(rootElement);
+
+  const debugPanelEnabled = Boolean(import.meta.env.VITE_AI_DEBUG_PANEL);
+  const isAIDebugRoute = typeof window !== 'undefined' && window.location.pathname === '/ai-debug';
+
+  if (debugPanelEnabled && isAIDebugRoute) {
+    root.render(
+      <React.StrictMode>
+        <AIControlPanel />
+      </React.StrictMode>
+    );
+    return;
+  }
 
   root.render(
     <React.StrictMode>

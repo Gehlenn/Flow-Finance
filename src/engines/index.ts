@@ -5,6 +5,7 @@ export * from './finance/analyticsEngine';
 export * from './finance/patternDetector/financialPatternDetector';
 export * from './finance/financialTimeline';
 export * from './ai/aiContextBuilder';
+export * from './ai/contextBuilder/advancedContextBuilder';
 export * from './ai/aiDecisionEngine';
 export * from './ai/aiOrchestrator';
 export * from './ai/financialProfileClassifier';

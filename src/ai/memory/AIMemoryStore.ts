@@ -249,6 +249,10 @@ class AIMemoryStore {
     return Array.from(this.memories.values());
   }
 
+  getAll(): AIMemoryEntry[] {
+    return this.getAllMemories();
+  }
+
   clear(): void {
     this.memories.clear();
     this.saveToStorage();
