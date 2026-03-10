@@ -25,15 +25,34 @@ import {
 } from 'lucide-react';
 
 // Lazy load page components for better performance
-const AccountsPage = lazy(() => import('./pages/Accounts'));
-const InsightsPage = lazy(() => import('./pages/Insights'));
-const AICFOPage = lazy(() => import('./pages/AICFO'));
-const AutopilotPage = lazy(() => import('./pages/Autopilot'));
-const GoalsPage = lazy(() => import('./pages/Goals'));
-const ReceiptScannerPage = lazy(() => import('./pages/ReceiptScanner'));
-const ImportTransactionsPage = lazy(() => import('./pages/ImportTransactions'));
-const OpenBankingPage = lazy(() => import('./pages/OpenBanking'));
-const AIControlPanel = lazy(() => import('./pages/AIControlPanel'));
+// Dynamic import with failsafe fallback to prevent app crash
+const lazyWithRetry = (importFn: () => Promise<any>) => {
+  return lazy(() =>
+    importFn().catch((error) => {
+      console.error('[App] Failed to load module, retrying...', error);
+      // Retry after 1s (handles transient network issues)
+      return new Promise((resolve) => setTimeout(resolve, 1000))
+        .then(() => importFn())
+        .catch((retryError) => {
+          console.error('[App] Module load failed after retry', retryError);
+          // Force page reload as last resort
+          window.location.reload();
+          // Return empty component to prevent render crash
+          return { default: () => null };
+        });
+    })
+  );
+};
+
+const AccountsPage = lazyWithRetry(() => import('./pages/Accounts'));
+const InsightsPage = lazyWithRetry(() => import('./pages/Insights'));
+const AICFOPage = lazyWithRetry(() => import('./pages/AICFO'));
+const AutopilotPage = lazyWithRetry(() => import('./pages/Autopilot'));
+const GoalsPage = lazyWithRetry(() => import('./pages/Goals'));
+const ReceiptScannerPage = lazyWithRetry(() => import('./pages/ReceiptScanner'));
+const ImportTransactionsPage = lazyWithRetry(() => import('./pages/ImportTransactions'));
+const OpenBankingPage = lazyWithRetry(() => import('./pages/OpenBanking'));
+const AIControlPanel = lazyWithRetry(() => import('./pages/AIControlPanel'));
 
 // Firebase Services centralizados (produção)
 import { auth, db, onAuthStateChanged } from './services/firebase';

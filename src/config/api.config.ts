@@ -100,30 +100,55 @@ function getPlatform(): string {
 
 export async function apiRequest<T>(
   endpoint: string,
-  options?: RequestInit
+  options?: RequestInit & { timeout?: number; retries?: number }
 ): Promise<T> {
+  const timeout = options?.timeout || API_CONFIG.TIMEOUT;
+  const maxRetries = options?.retries || API_CONFIG.RETRY_ATTEMPTS;
+  
   const headers = {
     ...getAuthHeaders(),
     ...(options?.headers || {}),
   };
 
-  try {
-    const response = await fetch(endpoint, {
-      ...options,
-      headers,
-      // Note: timeout is handled via AbortController instead
-    });
+  let lastError: Error | null = null;
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(`API Error ${response.status}: ${error.message || response.statusText}`);
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const response = await fetch(endpoint, {
+        ...options,
+        headers,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(`API Error ${response.status}: ${error.message || response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      lastError = error;
+      
+      // Don't retry on auth errors or non-network issues
+      if (error.message?.includes('401') || error.message?.includes('403')) {
+        throw error;
+      }
+
+      if (attempt < maxRetries) {
+        console.warn(`[API] Request to ${endpoint} failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying...`);
+        await new Promise(resolve => setTimeout(resolve, API_CONFIG.RETRY_DELAY * (attempt + 1)));
+      }
     }
-
-    return await response.json();
-  } catch (error) {
-    console.error(`[API] Request to ${endpoint} failed:`, error);
-    throw error;
   }
+
+  console.error(`[API] Request to ${endpoint} failed after ${maxRetries + 1} attempts:`, lastError);
+  throw lastError;
 }
 
 // add CFO example to documentation
