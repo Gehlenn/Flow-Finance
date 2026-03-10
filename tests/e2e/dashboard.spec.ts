@@ -24,7 +24,8 @@ test.describe('Dashboard', () => {
 
     // Should show at least some transactions or empty state
     const transactions = page.locator('[data-testid="transaction-item"]');
-    await expect(transactions).toHaveCount(await transactions.count() >= 0);
+    const count = await transactions.count();
+    expect(count).toBeGreaterThanOrEqual(0);
   });
 
   test('should display AI insights', async ({ page }) => {

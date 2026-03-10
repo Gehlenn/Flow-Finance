@@ -10,6 +10,7 @@ import { StorageProvider } from '../storage/StorageProvider';
 import { simulateFinancialScenario } from '../ai/financialSimulator';
 import { FinancialEventEmitter } from '../events/eventEngine';
 import { logAuditEvent } from '../security/auditLogService';
+import { TransactionType, Category } from '../../types';
 
 export class UserService {
   constructor(private storage: StorageProvider) {}
@@ -230,7 +231,17 @@ export class SimulationService {
     const accounts = await this.storage.getAccounts(this.userId);
     const transactions = await this.storage.getTransactions(this.userId);
 
-    const result = simulateFinancialScenario(accounts, transactions, scenario);
+    const normalizedTransactions = transactions.map((tx) => ({
+      id: tx.id,
+      amount: tx.amount,
+      type: tx.type === 'income' ? TransactionType.RECEITA : TransactionType.DESPESA,
+      category: Category.PESSOAL,
+      description: tx.description,
+      date: tx.date instanceof Date ? tx.date.toISOString() : new Date(tx.date).toISOString(),
+      generated: tx.isGenerated,
+    }));
+
+    const result = simulateFinancialScenario(accounts, normalizedTransactions, scenario);
 
     logAuditEvent('simulation_run', 'simulation', `sim_${Date.now()}`, {
       scenario: scenario.type,

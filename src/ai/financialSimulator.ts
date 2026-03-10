@@ -5,9 +5,10 @@
  */
 
 import { Transaction } from '../../types';
-import { Account } from '../../models/Account';
 import { runFinancialEngine } from './financialEngine';
 import { predictCashflow } from '../finance/cashflowPredictor';
+
+type BalanceAccount = { id: string; balance: number };
 
 export interface FinancialSimulationResult {
   projected_balance: number;
@@ -25,7 +26,7 @@ export type SimulationScenario =
  * Simula um cenário financeiro.
  */
 export function simulateFinancialScenario(
-  accounts: Account[],
+  accounts: BalanceAccount[],
   transactions: Transaction[],
   scenario: SimulationScenario
 ): FinancialSimulationResult {
@@ -56,7 +57,17 @@ export function simulateFinancialScenario(
 
     case 'months':
       // Projeção por meses usando cashflow predictor
-      const prediction = predictCashflow(accounts, transactions);
+      const mappedAccounts = accounts.map(acc => ({
+        id: acc.id,
+        user_id: 'legacy',
+        name: 'Conta',
+        type: 'cash' as const,
+        balance: acc.balance,
+        currency: 'BRL',
+        created_at: new Date().toISOString(),
+      }));
+
+      const prediction = predictCashflow(mappedAccounts, transactions);
       const targetDays = Math.max(1, Math.min(90, scenario.months * 30));
       projectedBalance = prediction.daily_balances[targetDays - 1]?.balance ?? prediction.balance_90_days;
       spendingImpact = baseBalance - projectedBalance;

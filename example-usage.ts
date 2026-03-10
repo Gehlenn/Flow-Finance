@@ -18,7 +18,6 @@ const userService = app.getUserService();
 const transactionService = app.getTransactionService(userId);
 const accountService = app.getAccountService(userId);
 const goalService = app.getGoalService(userId);
-const reportService = app.getReportService(userId);
 
 // Example usage
 async function exampleUsage() {
@@ -27,9 +26,16 @@ async function exampleUsage() {
     const user = await userService.createUser({
       email: 'user@example.com',
       name: 'John Doe',
-      preferences: {
-        currency: 'USD',
-        language: 'en',
+      subscriptionPlan: {
+        id: 'free',
+        name: 'free',
+        price: 0,
+        features: ['basic_dashboard'],
+        limits: {
+          transactionsPerMonth: 500,
+          aiQueriesPerMonth: 100,
+          bankConnections: 2,
+        },
       },
     });
 
@@ -41,6 +47,7 @@ async function exampleUsage() {
       type: 'checking',
       balance: 5000.00,
       currency: 'USD',
+      isActive: true,
     });
 
     console.log('Account created:', account);
@@ -53,6 +60,8 @@ async function exampleUsage() {
       category: 'Food',
       date: new Date(),
       type: 'expense',
+      source: 'manual',
+      isGenerated: false,
     });
 
     console.log('Transaction created:', transaction);
@@ -63,18 +72,11 @@ async function exampleUsage() {
       targetAmount: 10000.00,
       currentAmount: 2500.00,
       targetDate: new Date('2024-12-31'),
-      category: 'Savings',
+      color: '#10b981',
+      icon: 'target',
     });
 
     console.log('Goal created:', goal);
-
-    // Generate a report
-    const report = await reportService.generateMonthlyReport();
-    console.log('Monthly report:', report);
-
-    // Detect financial leaks
-    const leaks = await reportService.detectLeaks();
-    console.log('Detected leaks:', leaks);
 
   } catch (error) {
     console.error('Error:', error);

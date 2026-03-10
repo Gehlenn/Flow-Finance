@@ -5,7 +5,6 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { Request, Response } from 'express';
 import * as aiConfig from '../../backend/src/config/ai';
 import { cfoController } from '../../backend/src/controllers/aiController';
 
@@ -22,15 +21,15 @@ vi.mock('../../backend/src/config/logger', () => ({
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function createMockRequest(body: any, userId: string = 'test-user'): Partial<Request> {
+function createMockRequest(body: any, userId: string = 'test-user') {
   return {
     body,
     userId,
   };
 }
 
-function createMockResponse(): Partial<Response> {
-  const res: Partial<Response> = {
+function createMockResponse() {
+  const res = {
     json: vi.fn(),
     status: vi.fn().mockReturnThis(),
   };
@@ -55,7 +54,7 @@ describe('CFO Controller', () => {
     });
     const res = createMockResponse();
 
-    await cfoController(req as Request, res as Response, vi.fn());
+    await cfoController(req as any, res as any, vi.fn());
 
     expect(res.json).toHaveBeenCalledWith({ answer: mockAnswer });
     expect(aiConfig.generateContent).toHaveBeenCalled();
@@ -70,7 +69,7 @@ describe('CFO Controller', () => {
     const res = createMockResponse();
     const next = vi.fn();
 
-    await cfoController(req as Request, res as Response, next);
+    await cfoController(req as any, res as any, next);
 
     expect(next).toHaveBeenCalled();
     const error = next.mock.calls[0][0];
@@ -94,7 +93,7 @@ describe('CFO Controller', () => {
     // O asyncHandler captura o erro e chama next()
     // Mas precisamos testar o controller diretamente
     try {
-      await cfoController(req as Request, res as Response, next);
+      await cfoController(req as any, res as any, next);
     } catch (error: any) {
       expect(error.statusCode).toBe(500);
       expect(error.message).toContain('Failed to generate CFO response');
