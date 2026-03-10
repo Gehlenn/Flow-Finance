@@ -22,11 +22,15 @@ export default defineConfig(({ mode }) => {
         // Chunking para melhor performance mobile
         rollupOptions: {
           output: {
-            manualChunks: {
-              vendor:   ['react', 'react-dom'],
-              ai:       ['@google/generative-ai'],
-              charts:   ['recharts'],
-              icons:    ['lucide-react'],
+            manualChunks(id) {
+              if (id.includes('node_modules')) {
+                if (id.includes('react') || id.includes('scheduler')) return 'vendor-react';
+                if (id.includes('firebase')) return 'vendor-firebase';
+                if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts';
+                if (id.includes('lucide-react')) return 'vendor-icons';
+                if (id.includes('@google/generative-ai') || id.includes('@google/genai')) return 'vendor-ai-sdk';
+                if (id.includes('@sentry')) return 'vendor-sentry';
+              }
             },
           },
         },
