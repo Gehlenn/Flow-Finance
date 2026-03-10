@@ -1,0 +1,21 @@
+import { z } from 'zod';
+
+const UsageSnapshotSchema = z.object({
+  transactions: z.number().int().min(0),
+  aiQueries: z.number().int().min(0),
+  bankConnections: z.number().int().min(0),
+});
+
+export const UsageUpsertSchema = z.object({
+  usage: z.record(UsageSnapshotSchema),
+});
+
+export const BillingHookSchema = z.object({
+  userId: z.string().min(1),
+  plan: z.enum(['free', 'pro']),
+  event: z.enum(['usage_recorded', 'limit_reached', 'upgrade_required']),
+  resource: z.enum(['transactions', 'aiQueries', 'bankConnections']),
+  amount: z.number(),
+  at: z.string().min(1),
+  metadata: z.record(z.unknown()).optional(),
+});

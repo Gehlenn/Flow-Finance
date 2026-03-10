@@ -14,6 +14,7 @@ import { apiLimiter } from './middleware/rateLimit';
 // Routes
 import authRoutes from './routes/auth';
 import aiRoutes from './routes/ai';
+import saasRoutes from './routes/saas';
 
 // ─── INITIALIZATION ──────────────────────────────────────────────────────────
 
@@ -162,6 +163,9 @@ app.use('/api/auth', authRoutes);
 
 // AI routes (Gemini proxy)
 app.use('/api/ai', aiRoutes);
+
+// SaaS routes (usage + billing hooks)
+app.use('/api/saas', saasRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

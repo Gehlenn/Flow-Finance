@@ -1,6 +1,6 @@
 import { ResourceKind } from './types';
 
-interface UsageSnapshot {
+export interface UsageSnapshot {
   transactions: number;
   aiQueries: number;
   bankConnections: number;

@@ -18,6 +18,7 @@ import { AccountRepository, GoalRepository, TransactionRepository } from '../rep
 import { PlanName, UserRole } from '../saas';
 import { configureBillingTransport } from '../saas/billingHooks';
 import { configureUsageStoreAdapter } from '../saas/usageTracker';
+import { createHttpBillingTransport, createHttpUsageStoreAdapter } from '../saas/httpAdapters';
 
 interface ServiceSaaSOptions {
   role?: UserRole;
@@ -51,42 +52,39 @@ export class AppContainer {
     this.accountRepository = new AccountRepository(this.storageProvider);
     this.goalRepository = new GoalRepository(this.storageProvider);
 
-    // Keep usage tracking persistent regardless of provider.
-    void configureUsageStoreAdapter({
-      read: async () => {
-        if (typeof localStorage === 'undefined') {
-          return {};
-        }
+    if (config.storageProvider === 'api') {
+      void configureUsageStoreAdapter(createHttpUsageStoreAdapter(config.apiUrl));
+      configureBillingTransport(createHttpBillingTransport(config.billingWebhookUrl || config.apiUrl));
+    } else {
+      // Keep local persistence as fallback for offline/local mode.
+      void configureUsageStoreAdapter({
+        read: async () => {
+          if (typeof localStorage === 'undefined') {
+            return {};
+          }
 
-        try {
-          return JSON.parse(localStorage.getItem('flow_saas_usage') || '{}') as Record<string, {
-            transactions: number;
-            aiQueries: number;
-            bankConnections: number;
-          }>;
-        } catch {
-          return {};
-        }
-      },
-      write: async (data) => {
-        if (typeof localStorage === 'undefined') {
-          return;
-        }
+          try {
+            return JSON.parse(localStorage.getItem('flow_saas_usage') || '{}') as Record<string, {
+              transactions: number;
+              aiQueries: number;
+              bankConnections: number;
+            }>;
+          } catch {
+            return {};
+          }
+        },
+        write: async (data) => {
+          if (typeof localStorage === 'undefined') {
+            return;
+          }
 
-        localStorage.setItem('flow_saas_usage', JSON.stringify(data));
-      },
-    });
-
-    if (config.billingWebhookUrl) {
-      configureBillingTransport(async (payload) => {
-        await fetch(config.billingWebhookUrl as string, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
+          localStorage.setItem('flow_saas_usage', JSON.stringify(data));
+        },
       });
+
+      if (config.billingWebhookUrl) {
+        configureBillingTransport(createHttpBillingTransport(config.billingWebhookUrl));
+      }
     }
 
     // Initialize user service (doesn't need userId)

@@ -17,7 +17,7 @@ export const IS_PRODUCTION = !IS_DEVELOPMENT;
 
 // ─── Backend API Endpoints (Update with your actual backend domain) ──────────
 
-const BACKEND_BASE_URL = (() => {
+export const BACKEND_BASE_URL = (() => {
   if (IS_DEVELOPMENT) {
     return import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_DEV_URL || 'http://localhost:3001';
   }
@@ -56,6 +56,12 @@ export const API_ENDPOINTS = {
     PROFILE: `${BACKEND_BASE_URL}/api/user/profile`,
     PREFERENCES: `${BACKEND_BASE_URL}/api/user/preferences`,
     SYNC_DATA: `${BACKEND_BASE_URL}/api/user/sync`,
+  },
+
+  // SaaS endpoints
+  SAAS: {
+    USAGE: `${BACKEND_BASE_URL}/api/saas/usage`,
+    BILLING_HOOKS: `${BACKEND_BASE_URL}/api/saas/billing-hooks`,
   },
 };
 
