@@ -14,6 +14,12 @@ import {
   SubscriptionService,
   BankConnectionService,
 } from '../app/services';
+import { PlanName, UserRole } from '../saas';
+
+interface ServiceSaaSOptions {
+  role?: UserRole;
+  plan?: PlanName;
+}
 
 export interface AppConfig {
   storageProvider: 'local' | 'api';
@@ -42,50 +48,50 @@ export class AppContainer {
     return this.userService;
   }
 
-  getTransactionService(userId: string): TransactionService {
+  getTransactionService(userId: string, saasOptions: ServiceSaaSOptions = {}): TransactionService {
     const key = `transaction_${userId}`;
     if (!this.services.has(key)) {
-      this.services.set(key, new TransactionService(this.storageProvider, userId));
+      this.services.set(key, new TransactionService(this.storageProvider, userId, saasOptions));
     }
     return this.services.get(key);
   }
 
-  getAccountService(userId: string): AccountService {
+  getAccountService(userId: string, saasOptions: ServiceSaaSOptions = {}): AccountService {
     const key = `account_${userId}`;
     if (!this.services.has(key)) {
-      this.services.set(key, new AccountService(this.storageProvider, userId));
+      this.services.set(key, new AccountService(this.storageProvider, userId, saasOptions));
     }
     return this.services.get(key);
   }
 
-  getGoalService(userId: string): GoalService {
+  getGoalService(userId: string, saasOptions: ServiceSaaSOptions = {}): GoalService {
     const key = `goal_${userId}`;
     if (!this.services.has(key)) {
-      this.services.set(key, new GoalService(this.storageProvider, userId));
+      this.services.set(key, new GoalService(this.storageProvider, userId, saasOptions));
     }
     return this.services.get(key);
   }
 
-  getSimulationService(userId: string): SimulationService {
+  getSimulationService(userId: string, saasOptions: ServiceSaaSOptions = {}): SimulationService {
     const key = `simulation_${userId}`;
     if (!this.services.has(key)) {
-      this.services.set(key, new SimulationService(this.storageProvider, userId));
+      this.services.set(key, new SimulationService(this.storageProvider, userId, saasOptions));
     }
     return this.services.get(key);
   }
 
-  getSubscriptionService(userId: string): SubscriptionService {
+  getSubscriptionService(userId: string, saasOptions: ServiceSaaSOptions = {}): SubscriptionService {
     const key = `subscription_${userId}`;
     if (!this.services.has(key)) {
-      this.services.set(key, new SubscriptionService(this.storageProvider, userId));
+      this.services.set(key, new SubscriptionService(this.storageProvider, userId, saasOptions));
     }
     return this.services.get(key);
   }
 
-  getBankConnectionService(userId: string): BankConnectionService {
+  getBankConnectionService(userId: string, saasOptions: ServiceSaaSOptions = {}): BankConnectionService {
     const key = `bank_${userId}`;
     if (!this.services.has(key)) {
-      this.services.set(key, new BankConnectionService(this.storageProvider, userId));
+      this.services.set(key, new BankConnectionService(this.storageProvider, userId, saasOptions));
     }
     return this.services.get(key);
   }

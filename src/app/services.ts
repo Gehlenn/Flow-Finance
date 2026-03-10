@@ -17,6 +17,41 @@ import {
 } from '../events/financialEventStream';
 import { logAuditEvent } from '../security/auditLogService';
 import { TransactionType, Category } from '../../types';
+import {
+  assertCanPerform,
+  assertWithinPlanLimit,
+  emitBillingHook,
+  getCurrentUsage,
+  PlanName,
+  SaaSContext,
+  trackUsage,
+  UserRole,
+} from '../saas';
+
+interface ServiceSaaSOptions {
+  role?: UserRole;
+  plan?: PlanName;
+}
+
+async function resolveSaaSContext(
+  storage: StorageProvider,
+  userId: string,
+  options: ServiceSaaSOptions
+): Promise<SaaSContext> {
+  let plan = options.plan;
+
+  if (!plan) {
+    const user = await storage.getUser(userId);
+    const planName = user?.subscriptionPlan?.name;
+    plan = planName === 'pro' ? 'pro' : 'free';
+  }
+
+  return {
+    userId,
+    role: options.role || 'member',
+    plan,
+  };
+}
 
 export class UserService {
   constructor(private storage: StorageProvider) {}
@@ -68,10 +103,17 @@ export class UserService {
 export class TransactionService {
   constructor(
     private storage: StorageProvider,
-    private userId: string
+    private userId: string,
+    private saasOptions: ServiceSaaSOptions = {}
   ) {}
 
   async createTransaction(transactionData: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Transaction> {
+    const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
+    assertCanPerform(saasContext, 'transactions:create');
+
+    const currentUsage = getCurrentUsage(this.userId, 'transactions');
+    assertWithinPlanLimit(saasContext, 'transactions', currentUsage);
+
     // Domain validation
     const transaction: Transaction = {
       ...transactionData,
@@ -94,6 +136,17 @@ export class TransactionService {
     // Emit event for AI processing
     FinancialEventEmitter.transactionCreated(transaction);
 
+    const updatedUsage = trackUsage(this.userId, 'transactions');
+    emitBillingHook({
+      userId: this.userId,
+      plan: saasContext.plan,
+      event: 'usage_recorded',
+      resource: 'transactions',
+      amount: updatedUsage,
+      at: new Date().toISOString(),
+      metadata: { transactionId: transaction.id },
+    });
+
     return transaction;
   }
 
@@ -110,6 +163,9 @@ export class TransactionService {
   }
 
   async updateTransaction(transactionId: string, updates: Partial<Transaction>): Promise<Transaction> {
+    const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
+    assertCanPerform(saasContext, 'transactions:update');
+
     const transactions = await this.storage.getTransactions(this.userId);
     const existing = transactions.find((tx) => tx.id === transactionId);
 
@@ -159,10 +215,14 @@ export class TransactionService {
 export class AccountService {
   constructor(
     private storage: StorageProvider,
-    private userId: string
+    private userId: string,
+    private saasOptions: ServiceSaaSOptions = {}
   ) {}
 
   async createAccount(accountData: Omit<Account, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Account> {
+    const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
+    assertCanPerform(saasContext, 'accounts:create');
+
     const account: Account = {
       ...accountData,
       id: `acc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -186,6 +246,9 @@ export class AccountService {
   }
 
   async updateAccountBalance(accountId: string, newBalance: number): Promise<void> {
+    const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
+    assertCanPerform(saasContext, 'accounts:update');
+
     const accounts = await this.getAccounts();
     const account = accounts.find(acc => acc.id === accountId);
 
@@ -218,10 +281,14 @@ export class AccountService {
 export class GoalService {
   constructor(
     private storage: StorageProvider,
-    private userId: string
+    private userId: string,
+    private saasOptions: ServiceSaaSOptions = {}
   ) {}
 
   async createGoal(goalData: Omit<FinancialGoal, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isCompleted'>): Promise<FinancialGoal> {
+    const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
+    assertCanPerform(saasContext, 'goals:create');
+
     const goal: FinancialGoal = {
       ...goalData,
       id: `goal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -255,6 +322,9 @@ export class GoalService {
   }
 
   async updateGoalProgress(goalId: string, currentAmount: number): Promise<void> {
+    const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
+    assertCanPerform(saasContext, 'goals:update');
+
     const goals = await this.getGoals();
     const goal = goals.find(g => g.id === goalId);
 
@@ -273,10 +343,14 @@ export class GoalService {
 export class SimulationService {
   constructor(
     private storage: StorageProvider,
-    private userId: string
+    private userId: string,
+    private saasOptions: ServiceSaaSOptions = {}
   ) {}
 
   async runSimulation(scenario: any): Promise<any> {
+    const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
+    assertCanPerform(saasContext, 'simulations:run');
+
     const accounts = await this.storage.getAccounts(this.userId);
     const transactions = await this.storage.getTransactions(this.userId);
 
@@ -304,10 +378,14 @@ export class SimulationService {
 export class SubscriptionService {
   constructor(
     private storage: StorageProvider,
-    private userId: string
+    private userId: string,
+    private saasOptions: ServiceSaaSOptions = {}
   ) {}
 
   async createSubscription(subscriptionData: Omit<Subscription, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Subscription> {
+    const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
+    assertCanPerform(saasContext, 'subscriptions:create');
+
     const subscription: Subscription = {
       ...subscriptionData,
       id: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -332,6 +410,9 @@ export class SubscriptionService {
   }
 
   async updateSubscription(subscriptionId: string, updates: Partial<Subscription>): Promise<void> {
+    const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
+    assertCanPerform(saasContext, 'subscriptions:update');
+
     const subscriptions = await this.getSubscriptions();
     const subscription = subscriptions.find(sub => sub.id === subscriptionId);
 
@@ -353,6 +434,9 @@ export class SubscriptionService {
   }
 
   async deleteSubscription(subscriptionId: string): Promise<void> {
+    const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
+    assertCanPerform(saasContext, 'subscriptions:delete');
+
     const subscriptions = await this.getSubscriptions();
     const subscription = subscriptions.find(sub => sub.id === subscriptionId);
 
@@ -371,10 +455,17 @@ export class SubscriptionService {
 export class BankConnectionService {
   constructor(
     private storage: StorageProvider,
-    private userId: string
+    private userId: string,
+    private saasOptions: ServiceSaaSOptions = {}
   ) {}
 
   async createBankConnection(connectionData: Omit<BankConnection, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<BankConnection> {
+    const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
+    assertCanPerform(saasContext, 'bankConnections:create');
+
+    const currentConnections = (await this.storage.getBankConnections(this.userId)).length;
+    assertWithinPlanLimit(saasContext, 'bankConnections', currentConnections);
+
     const connection: BankConnection = {
       ...connectionData,
       id: `bc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -390,6 +481,17 @@ export class BankConnectionService {
       connectionStatus: connection.connectionStatus,
     });
 
+    const updatedUsage = trackUsage(this.userId, 'bankConnections');
+    emitBillingHook({
+      userId: this.userId,
+      plan: saasContext.plan,
+      event: 'usage_recorded',
+      resource: 'bankConnections',
+      amount: updatedUsage,
+      at: new Date().toISOString(),
+      metadata: { connectionId: connection.id },
+    });
+
     return connection;
   }
 
@@ -398,6 +500,9 @@ export class BankConnectionService {
   }
 
   async updateBankConnection(connectionId: string, updates: Partial<BankConnection>): Promise<void> {
+    const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
+    assertCanPerform(saasContext, 'bankConnections:update');
+
     const connections = await this.getBankConnections();
     const connection = connections.find(conn => conn.id === connectionId);
 
@@ -419,6 +524,9 @@ export class BankConnectionService {
   }
 
   async deleteBankConnection(connectionId: string): Promise<void> {
+    const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
+    assertCanPerform(saasContext, 'bankConnections:delete');
+
     const connections = await this.getBankConnections();
     const connection = connections.find(conn => conn.id === connectionId);
 

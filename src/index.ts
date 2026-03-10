@@ -21,6 +21,9 @@ export * from './config/appConfig';
 // User Context Layer
 export * from './context';
 
+// SaaS Layer
+export * from './saas';
+
 // Event System
 export { FinancialEventEmitter } from './events/eventEngine';
 export * from './events';
