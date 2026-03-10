@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, ArrowRight, Lock, AlertCircle, FlaskConical, UserPlus, ChevronLeft, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Mail, ArrowRight, Lock, AlertCircle, FlaskConical, UserPlus, Fingerprint, ChevronLeft, CheckCircle2, ShieldCheck, Terminal } from 'lucide-react';
 import Logo from './Logo';
 import { 
   auth, 
@@ -52,10 +52,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     } catch (err: any) {
       setIsLoading(false);
       if (err.code === 'auth/unauthorized-domain' || !window.location.hostname) {
-        setError({
-          code: 'auth/unauthorized-domain',
-          message: `Dominio nao autorizado no Firebase: ${window.location.hostname}. Adicione em Authentication > Settings > Authorized domains.`,
-        });
+        setError({ code: 'auth/unauthorized-domain', message: "Sandbox Ativa: Domínio não autorizado." });
       } else {
         setError({ code: err.code, message: getFirebaseErrorMessage(err.code) });
       }
@@ -109,16 +106,13 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     }
   };
 
+  const handleQuickTest = () => {
+    setIsAnimating(true);
+    setTimeout(() => onLogin('teste@flow.com'), 400);
+  };
+
   return (
-    <div
-      className="h-screen w-full bg-slate-50 dark:bg-[#020617] flex flex-col items-center justify-between py-6 px-4 overflow-hidden transition-colors duration-500 relative text-slate-900 dark:text-white"
-      style={{
-        // Keep visual fidelity when browser/OS forces high-contrast overrides.
-        forcedColorAdjust: 'none',
-        WebkitTextSizeAdjust: '100%',
-        textSizeAdjust: '100%',
-      }}
-    >
+    <div className="h-screen w-full bg-slate-50 dark:bg-[#020617] flex flex-col items-center justify-between py-6 px-4 overflow-hidden transition-colors duration-500 relative text-slate-900 dark:text-white">
       {/* Background blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-indigo-500/10 dark:bg-indigo-600/10 rounded-full blur-[120px] animate-pulse"></div>
@@ -146,17 +140,16 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           
           {error?.code === 'auth/unauthorized-domain' ? (
             <div className="animate-in slide-in-from-top-4 duration-500 space-y-3">
-              <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-[2rem] space-y-3 text-center">
+              <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-[2rem] space-y-2 text-center">
                 <FlaskConical size={24} className="mx-auto text-indigo-500" />
                 <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 leading-tight">
-                  OAuth restrito. Adicione este domínio nos domínios autorizados do Firebase para continuar.
+                  OAuth restrito. Use a demonstração segura para explorar o Flow.
                 </p>
                 <button 
-                  onClick={() => setError(null)}
-                  className="w-full py-3 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  onClick={handleQuickTest}
+                  className="w-full py-3.5 bg-indigo-600 text-white rounded-2xl font-black text-[9px] uppercase tracking-widest shadow-xl active:scale-95 transition-all"
                 >
-                  <ChevronLeft size={14} />
-                  Voltar
+                  <Fingerprint size={14} className="mr-2 inline" /> Iniciar Modo Demo
                 </button>
               </div>
             </div>
@@ -256,8 +249,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           )}
         </div>
         
-        {/* Footer */}
+        {/* Footer with Quick Access button */}
         <div className="flex flex-col items-center gap-3 mb-4">
+          <button 
+            onClick={handleQuickTest}
+            className="flex items-center gap-2 px-5 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-full border border-indigo-500/20 text-[9px] font-black uppercase tracking-[0.2em] transition-all active:scale-90"
+          >
+            <Terminal size={12} /> Acesso Rápido (Teste)
+          </button>
+
           <div className="flex items-center gap-2 px-5 py-2 bg-white/40 dark:bg-slate-900/40 rounded-full border border-slate-200/50 dark:border-slate-800/50 text-[10px] font-black uppercase tracking-widest opacity-60">
             <ShieldCheck size={14} className="text-emerald-500" /> AES-256 Secured
           </div>
