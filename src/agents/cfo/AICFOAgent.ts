@@ -1,5 +1,8 @@
 import { AIMemoryType } from '../../ai/memory/memoryTypes';
 import { aiMemoryStore } from '../../ai/memory/AIMemoryStore';
+import { Transaction } from '../../../types';
+import { FinancialPatterns, financialPatternDetector } from '../../engines/finance/patternDetector/financialPatternDetector';
+import { cashflowPredictionEngine } from '../../engines/finance/cashflowPrediction/cashflowPredictionEngine';
 
 export interface CFOFinancialState {
   balance: number;
@@ -7,6 +10,16 @@ export interface CFOFinancialState {
   expenses: number;
   userId?: string;
   profile?: 'Saver' | 'Spender' | 'Balanced' | 'Risk Taker';
+  transactions?: Transaction[];
+  patterns?: FinancialPatterns;
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 export class AICFOAgent {
@@ -30,6 +43,16 @@ export class AICFOAgent {
 
     if (context.profile) {
       insights.push(`Seu perfil financeiro atual e ${context.profile}.`);
+    }
+
+    if (context.transactions && context.transactions.length > 0) {
+      const forecast = cashflowPredictionEngine.predict({
+        balance: context.balance,
+        transactions: context.transactions,
+        patterns: context.patterns || financialPatternDetector.detectPatterns(context.transactions),
+      });
+
+      insights.push(`Seu saldo estimado em 30 dias e ${formatCurrency(forecast.in30Days)}.`);
     }
 
     if (insights.length === 0) {

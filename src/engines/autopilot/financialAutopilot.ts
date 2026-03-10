@@ -2,6 +2,8 @@ import { UserContext } from '../../context/UserContext';
 import { aiTaskQueue } from '../../ai/queue/AITaskQueue';
 import { aiMemoryStore } from '../../ai/memory/AIMemoryStore';
 import { AIMemoryType } from '../../ai/memory/memoryTypes';
+import { Transaction } from '../../../types';
+import { moneyMapEngine } from '../finance/moneyMap/moneyMapEngine';
 
 export interface AutopilotAlert {
   type: 'overspending' | 'negative_balance' | 'low_savings_rate' | 'stable';
@@ -16,7 +18,7 @@ export interface FinancialHealthContext {
 }
 
 export class FinancialAutopilot {
-  analyze(context: Omit<FinancialHealthContext, 'userContext'> & { userId?: string }): AutopilotAlert[] {
+  analyze(context: Omit<FinancialHealthContext, 'userContext'> & { userId?: string; transactions?: Transaction[] }): AutopilotAlert[] {
     const alerts: AutopilotAlert[] = [];
 
     if (context.monthlyExpenses > context.monthlyIncome) {
@@ -56,6 +58,16 @@ export class FinancialAutopilot {
         alerts.push({
           type: 'overspending',
           message: `Detectamos ${recurring.length} recorrencias. Revise assinaturas e custos fixos para reduzir gastos.`,
+        });
+      }
+    }
+
+    if (context.transactions && context.transactions.length > 0) {
+      const dominantCategory = moneyMapEngine.getDominantCategory(context.transactions);
+      if (dominantCategory && dominantCategory.percentage >= 35) {
+        alerts.push({
+          type: 'overspending',
+          message: `${dominantCategory.category} representa ${Math.round(dominantCategory.percentage)}% dos seus gastos.`,
         });
       }
     }

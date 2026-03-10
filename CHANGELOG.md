@@ -1,5 +1,33 @@
 # 📝 CHANGELOG - Flow Finance
 
+## [0.6.0] - 2026-03-10
+
+### 🧠 Inteligencia Financeira - Transicao de Fase
+**Status:** Production-Ready ✅
+
+#### ✨ Cashflow Prediction Engine
+- Novo modulo em `src/engines/finance/cashflowPrediction/` para previsoes em 7, 30 e 90 dias
+- Deteccao de recorrencias baseada em historico por merchant/valor
+- Forecast ajustado por padroes semanais detectados no pipeline
+
+#### ✨ Money Map
+- Novo modulo em `src/engines/finance/moneyMap/` para distribuicao percentual de gastos por categoria
+- Categoria dominante agora pode alimentar alertas do Autopilot
+- Snapshot de distribuicao exposto no AI Control Panel interno
+
+#### ✨ Integracao com IA
+- `aiOrchestrator` agora produz snapshots de `moneyMap` e `cashflowForecast`
+- `AIMemoryEngine` persiste distribuicao agregada em `SPENDING_PATTERN`
+- `AICFOAgent` inclui insight de saldo estimado em 30 dias
+- `FinancialAutopilot` detecta categoria dominante acima de 35% dos gastos
+
+#### ✅ Validacao
+- `npm test` verde com 105/105 testes
+- `npm run build` verde
+- Novos testes unitarios para `cashflowPredictionEngine` e `moneyMapEngine`
+
+---
+
 ## [0.5.0] - 2026-03-10
 
 ### 🚀 Multi-Account Dashboard + Enhanced Analytics

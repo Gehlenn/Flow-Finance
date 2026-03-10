@@ -19,6 +19,31 @@
 
 ---
 
+## CHECKPOINT DE TRANSICAO v0.6.0
+
+### 🟢 B006 - Coverage command without provider dependency
+**ID**: B006  
+**Versão Identificada**: v0.6.0-transition  
+**Severidade**: 🟠 ALTA  
+**Impacto**: Protocolo de transição não conseguia gerar baseline formal de cobertura  
+
+**Descrição**:
+- `npm run test:coverage` falhou por ausência de `@vitest/coverage-v8`
+- A suíte unitária e o build estavam verdes, mas a etapa obrigatória de coverage não estava operacional
+
+**Causa Raiz**:
+- Script `test:coverage` existia em `package.json`
+- Provider de coverage do Vitest não estava presente em `devDependencies`
+
+**Solução Aplicada**:
+- instalar `@vitest/coverage-v8` em `devDependencies`
+- rerodar `npm run test:coverage` para registrar a baseline da versão 0.6.0
+
+**Status**: 🟢 CORRIGIDO  
+**Data de Correção**: 10 Mar 2026
+
+---
+
 ## BUGS ENCONTRADOS & RESOLVIDOS
 
 ### 🟢 B001 - Category.OUTROS Undefined in Test

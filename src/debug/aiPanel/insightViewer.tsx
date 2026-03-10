@@ -16,6 +16,13 @@ export function InsightViewer() {
     recommendation: i.decision.recommendation,
   }));
 
+  const cashflowForecasts = insights.map((i) => ({
+    userId: i.userId,
+    in7Days: i.cashflowForecast.in7Days,
+    in30Days: i.cashflowForecast.in30Days,
+    in90Days: i.cashflowForecast.in90Days,
+  }));
+
   return (
     <section>
       <h2>AI Insights</h2>
@@ -26,6 +33,9 @@ export function InsightViewer() {
 
       <h2>Autopilot Decisions</h2>
       <pre>{JSON.stringify(autopilotDecisions, null, 2)}</pre>
+
+      <h2>Cashflow Forecast</h2>
+      <pre>{JSON.stringify(cashflowForecasts, null, 2)}</pre>
     </section>
   );
 }

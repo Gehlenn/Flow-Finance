@@ -57,6 +57,7 @@ export class CFOAdvisor {
       expenses: summary.expenses,
       userId: input.userId,
       profile: profile.profile,
+      transactions,
     });
 
     const plan = this.planner.generatePlan({
@@ -69,6 +70,8 @@ export class CFOAdvisor {
       monthlyExpenses: input.monthlyExpenses,
       monthlyIncome: input.monthlyIncome,
       currentBalance: input.balance,
+      userId: input.userId,
+      transactions,
     });
 
     return {

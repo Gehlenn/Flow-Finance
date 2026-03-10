@@ -5,28 +5,30 @@
 
 ## Prioridade Imediata
 
-1. AI Context Builder avancado
-- consolidar saldo atual, recorrencias, metas e perfil
-- padronizar contrato de entrada para AI engines
+1. Consolidacao da fase 0.6.x
+- validar consumo do advanced context builder nos modulos de produto
+- estabilizar contratos entre orquestrador, CFO e Autopilot
 
-2. Financial Pattern Detector
-- detectar assinaturas, recorrencias e picos
-- gerar saida reutilizavel para autopilot e CFO advisor
+2. Exposicao em produto
+- levar cashflow prediction e money map para Dashboard, Insights e fluxos assistidos
+- transformar dados de debug em UI de produto quando fizer sentido
 
-3. Financial Timeline
-- consolidar income/expenses/balance evolution por janela temporal
-- expor para dashboards e ai context
+3. Aprendizado e memoria
+- refinar persistencia de SPENDING_PATTERN e recorrencias
+- adicionar sinais de confianca e expiracao para distribuicao por categoria
 
-4. Perfis Financeiros automaticos
-- classificar usuarios em Saver/Spender/Balanced/Risk Taker
-- usar classificacao para personalizar recomendacoes
+4. Cobertura de integracao
+- adicionar testes para advancedContextBuilder e viewers internos
+- ampliar cenarios de previsao e dominancia por categoria
 
 ## Entregaveis Tecnicos Sugeridos
 
 - `src/engines/ai/contextBuilder/advancedContextBuilder.ts`
-- `src/engines/finance/patternDetector.ts`
+- `src/engines/finance/patternDetector/financialPatternDetector.ts`
 - `src/engines/finance/financialTimeline.ts`
 - `src/engines/ai/financialProfileClassifier.ts`
+- `src/engines/finance/cashflowPrediction/`
+- `src/engines/finance/moneyMap/`
 - testes unitarios dedicados para cada modulo
 
 ## Criterios de aceite da fase 0.6.x
@@ -35,4 +37,6 @@
 - padroes financeiros detectados com regras claras
 - timeline utilizada por pelo menos 2 modulos (dashboard + IA)
 - classificacao de perfil ativa no fluxo de recomendacao
+- previsao de saldo em 7/30/90 dias disponivel para engines internos
+- money map disponivel para memoria, debug panel e alertas
 - build e testes verdes no fim de cada incremento

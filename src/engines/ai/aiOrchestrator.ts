@@ -4,6 +4,8 @@ import { eventBus } from '../../events/EventBus';
 import { AI_TASK_COMPLETED } from '../../events/events/AITaskCompleted';
 import { financialPatternDetector } from '../finance/patternDetector/financialPatternDetector';
 import { aiMemoryEngine } from '../../ai/memory/AIMemoryEngine';
+import { moneyMapEngine } from '../finance/moneyMap/moneyMapEngine';
+import { cashflowPredictionEngine } from '../finance/cashflowPrediction/cashflowPredictionEngine';
 
 export interface AIOrchestratorInsight {
   timestamp: string;
@@ -11,6 +13,8 @@ export interface AIOrchestratorInsight {
   decision: ReturnType<typeof makeAIDecision>;
   profile: ReturnType<typeof buildAIContext>['financialProfile'];
   timelineTotals: ReturnType<typeof buildAIContext>['timeline']['totals'];
+  moneyMap: ReturnType<typeof moneyMapEngine.generate>;
+  cashflowForecast: ReturnType<typeof cashflowPredictionEngine.predict>;
 }
 
 const lastInsights: AIOrchestratorInsight[] = [];
@@ -22,15 +26,24 @@ export async function runAIOrchestrator(input: AIContextInput): Promise<{
   const start = Date.now();
 
   const patterns = financialPatternDetector.detectPatterns(input.transactions);
-  aiMemoryEngine.updateMemory(patterns, input.userContext.userId);
+  const moneyMap = moneyMapEngine.generate(input.transactions);
 
   const context = buildAIContext(input);
+  const cashflowForecast = cashflowPredictionEngine.predict({
+    balance: context.balance,
+    transactions: input.transactions,
+    patterns,
+  });
+
+  aiMemoryEngine.updateMemory(patterns, input.userContext.userId, { moneyMap });
   const decision = makeAIDecision(context);
 
   const enrichedMemory = {
     ...(input.memory || {}),
     financialProfile: context.financialProfile,
     timelineTotals: context.timeline.totals,
+    moneyMap,
+    cashflowForecast,
   };
 
   eventBus.emit(AI_TASK_COMPLETED, {
@@ -47,6 +60,8 @@ export async function runAIOrchestrator(input: AIContextInput): Promise<{
     decision,
     profile: context.financialProfile,
     timelineTotals: context.timeline.totals,
+    moneyMap,
+    cashflowForecast,
   });
 
   if (lastInsights.length > 50) {

@@ -2,6 +2,8 @@ export * from './finance/cashflowEngine';
 export * from './finance/forecastEngine';
 export * from './finance/budgetEngine';
 export * from './finance/analyticsEngine';
+export * from './finance/cashflowPrediction';
+export * from './finance/moneyMap';
 export * from './finance/patternDetector/financialPatternDetector';
 export * from './finance/financialTimeline';
 export * from './ai/aiContextBuilder';

@@ -144,7 +144,7 @@ app.get('/health', (_req: Request, res: Response) => {
 // API version
 app.get('/api/version', (_req: Request, res: Response) => {
   res.json({
-    version: process.env.APP_VERSION || '0.4.0',
+    version: process.env.APP_VERSION || '0.6.0',
     environment: process.env.NODE_ENV || 'development'
   });
 });
@@ -154,7 +154,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     service: 'flow-finance-api',
-    version: process.env.APP_VERSION || '0.5.0',
+    version: process.env.APP_VERSION || '0.6.0',
   });
 });
 

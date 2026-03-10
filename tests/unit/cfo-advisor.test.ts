@@ -62,4 +62,54 @@ describe('CFOAdvisor', () => {
     expect(result.plan.savingsGoal).toBe(800);
     expect(result.insights.length).toBeGreaterThan(0);
   });
+
+  it('includes 30 day cashflow forecast insight', async () => {
+    const advisor = new CFOAdvisor();
+
+    const result = await advisor.advise({
+      userId: 'user-forecast',
+      transactions: [
+        {
+          id: 'income-1',
+          amount: 6000,
+          type: TransactionType.RECEITA,
+          category: Category.CONSULTORIO,
+          description: 'Receita mensal',
+          date: '2026-01-05T00:00:00.000Z',
+        },
+        {
+          id: 'netflix-1',
+          amount: 50,
+          type: TransactionType.DESPESA,
+          category: Category.PESSOAL,
+          description: 'Netflix',
+          merchant: 'Netflix',
+          date: '2026-01-10T00:00:00.000Z',
+        },
+        {
+          id: 'netflix-2',
+          amount: 50,
+          type: TransactionType.DESPESA,
+          category: Category.PESSOAL,
+          description: 'Netflix',
+          merchant: 'Netflix',
+          date: '2026-02-10T00:00:00.000Z',
+        },
+        {
+          id: 'netflix-3',
+          amount: 50,
+          type: TransactionType.DESPESA,
+          category: Category.PESSOAL,
+          description: 'Netflix',
+          merchant: 'Netflix',
+          date: '2026-03-10T00:00:00.000Z',
+        },
+      ],
+      monthlyIncome: 6000,
+      monthlyExpenses: 1000,
+      balance: 5000,
+    });
+
+    expect(result.insights.some((insight) => insight.includes('30 dias'))).toBe(true);
+  });
 });

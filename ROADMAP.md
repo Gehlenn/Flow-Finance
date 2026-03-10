@@ -1,7 +1,7 @@
 # FLOW FINANCE - ROADMAP OFICIAL
 
 **Data:** 10 de Marco de 2026
-**Status Atual:** v0.5.x (Hardening)
+**Status Atual:** v0.6.x (Inteligencia Financeira)
 **Meta Estrategica:** v1.0 publico com AI Financial Assistant completo
 
 ## Visao por Fases
@@ -15,7 +15,7 @@
 
 ---
 
-## v0.5.x - Hardening (fase atual)
+## v0.5.x - Hardening (concluida)
 
 ### Objetivo
 - arquitetura solida
@@ -40,7 +40,7 @@
 
 ---
 
-## v0.6.x - Inteligencia Financeira
+## v0.6.x - Inteligencia Financeira (fase atual)
 
 ### 1. AI Context Builder avancado
 Criar/fortalecer modulo em `src/engines/ai/contextBuilder` para consolidar:
@@ -70,6 +70,18 @@ Classificacao automatica:
 - Balanced
 - Risk Taker
 
+### 5. Cashflow Prediction Engine
+Previsoes orientadas por recorrencias e padroes para:
+- 7 dias
+- 30 dias
+- 90 dias
+
+### 6. Money Map
+Distribuicao de gastos por categoria para:
+- detectar categoria dominante
+- alimentar memoria de gasto
+- apoiar CFO e Autopilot
+
 **Meta de fase:** melhorar qualidade de recomendacao e contextualizacao da IA.
 
 ---
@@ -94,11 +106,9 @@ Fluxos para metas como:
 - pagar divida
 - criar reserva
 
-### 4. Forecast Engine avancado
-Previsoes de saldo para:
-- 7 dias
-- 30 dias
-- 90 dias
+### 4. Orquestracao automatica de acoes
+- executar recomendacoes com mais contexto
+- priorizar alertas por risco e impacto
 
 **Meta de fase:** sair de analise passiva para recomendacao ativa e acionavel.
 

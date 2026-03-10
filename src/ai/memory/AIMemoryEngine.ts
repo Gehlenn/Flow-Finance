@@ -27,6 +27,7 @@ import {
   analyzeIncomePatterns,
   analyzeTimePatterns,
 } from './memoryAnalyzer';
+import { MoneyMapSlice } from '../../engines/finance/moneyMap/moneyMapEngine';
 
 const DEFAULT_LEARNING_CONFIG: MemoryLearningConfig = {
   minOccurrences: 3,
@@ -41,41 +42,52 @@ class AIMemoryEngine {
   /**
    * Simple update path used by event-driven/orchestrator flow.
    */
-  updateMemory(patterns: FinancialPatterns, userId: string = 'local'): void {
+  updateMemory(
+    patterns: FinancialPatterns,
+    userId: string = 'local',
+    supplemental?: { moneyMap?: MoneyMapSlice[] }
+  ): void {
     if (patterns.recurring.length > 0) {
-      aiMemoryStore.save({
+      this.saveOrUpdateMemory(
         userId,
-        type: AIMemoryType.RECURRING_EXPENSE,
-        key: 'recurring_expenses',
-        value: patterns.recurring,
-        confidence: 0.85,
-        strength: Math.min(100, patterns.recurring.length * 15),
-      });
+        AIMemoryType.RECURRING_EXPENSE,
+        'recurring_expenses',
+        patterns.recurring,
+        0.85
+      );
     }
 
     if (patterns.weeklySpikes.length > 0) {
-      aiMemoryStore.save({
+      this.saveOrUpdateMemory(
         userId,
-        type: AIMemoryType.SPENDING_PATTERN,
-        key: 'weekly_spikes',
-        value: patterns.weeklySpikes,
-        confidence: 0.75,
-        strength: Math.min(100, patterns.weeklySpikes.length * 5),
-      });
+        AIMemoryType.SPENDING_PATTERN,
+        'weekly_spikes',
+        patterns.weeklySpikes,
+        0.75
+      );
     }
 
     if (patterns.categoryDominance) {
-      aiMemoryStore.save({
+      this.saveOrUpdateMemory(
         userId,
-        type: AIMemoryType.SPENDING_PATTERN,
-        key: 'category_dominance',
-        value: {
+        AIMemoryType.SPENDING_PATTERN,
+        'category_dominance',
+        {
           category: patterns.categoryDominance[0],
           amount: patterns.categoryDominance[1],
         },
-        confidence: 0.8,
-        strength: 60,
-      });
+        0.8
+      );
+    }
+
+    if (supplemental?.moneyMap && supplemental.moneyMap.length > 0) {
+      this.saveOrUpdateMemory(
+        userId,
+        AIMemoryType.SPENDING_PATTERN,
+        'money_map_distribution',
+        supplemental.moneyMap,
+        0.8
+      );
     }
   }
 

@@ -1,7 +1,7 @@
 # Flow Finance - Controle de Fluxo de Caixa Inteligente
 
-**Versão:** 0.4.0  
-**Última Atualização:** 09 de Março de 2026  
+**Versão:** 0.6.0  
+**Última Atualização:** 10 de Março de 2026  
 **Status:** Production-Ready ✅
 
 Bem-vindo ao **Flow Finance**, uma aplicação moderna para gestão financeira pessoal e profissional, equipada com um assistente de IA (GPT-4) para facilitar o lançamento de despesas e receitas.
@@ -14,7 +14,7 @@ O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvol
 
 -   **Dashboard Interativo:** Visão geral de receitas, despesas e saldo com gráficos animados.
 -   **Assistente de IA (CFO Virtual):** Consultas financeiras em linguagem natural via GPT-4.
--   **Análise Financeira Automatizada:** Pipeline de IA para insights, detecção de riscos e perfil financeiro.
+-   **Análise Financeira Automatizada:** Pipeline de IA para insights, detecção de riscos, perfil financeiro, money map e previsão de cashflow.
 -   **Gestão de Transações:** Adicione, edite, categorize e importe transações (CSV/OFX).
 -   **Metas e Alertas:** Defina objetivos financeiros e receba alertas inteligentes de gastos.
 -   **Open Banking (Mock):** Simulação de sincronização bancária automática.
@@ -25,7 +25,7 @@ O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvol
 
 ---
 
-## 📦 Stack Tecnológica (v0.4.0)
+## 📦 Stack Tecnológica (v0.6.0)
 
 ### Frontend
 - **React 18** + **TypeScript 5.3**
