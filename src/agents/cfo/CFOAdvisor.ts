@@ -1,5 +1,6 @@
 import { calculateCashflowSummary } from '../../engines/finance/cashflowEngine';
 import { buildMonthlyForecast } from '../../engines/finance/forecastEngine';
+import { classifyFinancialProfile } from '../../engines/ai/financialProfileClassifier';
 import { runAIOrchestrator } from '../../engines/ai/aiOrchestrator';
 import { FinancialAutopilot } from '../../engines/autopilot/financialAutopilot';
 import { createUserContext } from '../../context/UserContext';
@@ -38,6 +39,7 @@ export class CFOAdvisor {
 
     const summary = calculateCashflowSummary(transactions);
     const forecast = buildMonthlyForecast(transactions, 6);
+    const profile = classifyFinancialProfile(transactions);
 
     await runAIOrchestrator({
       userContext,
@@ -45,6 +47,7 @@ export class CFOAdvisor {
       memory: {
         monthlyIncome: input.monthlyIncome,
         monthlyExpenses: input.monthlyExpenses,
+        profile,
       },
     });
 
@@ -53,6 +56,7 @@ export class CFOAdvisor {
       income: summary.income,
       expenses: summary.expenses,
       userId: input.userId,
+      profile: profile.profile,
     });
 
     const plan = this.planner.generatePlan({

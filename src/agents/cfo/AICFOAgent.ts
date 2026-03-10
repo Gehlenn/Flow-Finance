@@ -6,6 +6,7 @@ export interface CFOFinancialState {
   income: number;
   expenses: number;
   userId?: string;
+  profile?: 'Saver' | 'Spender' | 'Balanced' | 'Risk Taker';
 }
 
 export class AICFOAgent {
@@ -25,6 +26,10 @@ export class AICFOAgent {
       if (recurring.length > 0) {
         insights.push(`Voce possui ${recurring.length} pagamentos recorrentes.`);
       }
+    }
+
+    if (context.profile) {
+      insights.push(`Seu perfil financeiro atual e ${context.profile}.`);
     }
 
     if (insights.length === 0) {

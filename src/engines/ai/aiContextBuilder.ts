@@ -1,5 +1,7 @@
 import { buildMonthlyForecast } from '../finance/forecastEngine';
 import { calculateCashflowSummary } from '../finance/cashflowEngine';
+import { buildFinancialTimeline, FinancialTimeline } from '../finance/financialTimeline';
+import { classifyFinancialProfile, FinancialProfileResult } from './financialProfileClassifier';
 import { Transaction, TransactionType } from '../../../types';
 import { UserContext } from '../../context/UserContext';
 
@@ -17,12 +19,16 @@ export interface AIContext {
   monthlySpending: number;
   monthlyIncome: number;
   trend: ReturnType<typeof buildMonthlyForecast>;
+  timeline: FinancialTimeline;
+  financialProfile: FinancialProfileResult;
   memory?: Record<string, unknown>;
 }
 
 export function buildAIContext(input: AIContextInput): AIContext {
   const summary = calculateCashflowSummary(input.transactions);
   const trend = buildMonthlyForecast(input.transactions as Array<{ amount: number; type: TransactionType; date: string }>, 6);
+  const timeline = buildFinancialTimeline(input.transactions);
+  const financialProfile = classifyFinancialProfile(input.transactions);
 
   return {
     userId: input.userContext.userId,
@@ -32,6 +38,8 @@ export function buildAIContext(input: AIContextInput): AIContext {
     monthlySpending: summary.expenses,
     monthlyIncome: summary.income,
     trend,
+    timeline,
+    financialProfile,
     memory: input.memory,
   };
 }

@@ -17,6 +17,12 @@ export async function runAIOrchestrator(input: AIContextInput): Promise<{
   const context = buildAIContext(input);
   const decision = makeAIDecision(context);
 
+  const enrichedMemory = {
+    ...(input.memory || {}),
+    financialProfile: context.financialProfile,
+    timelineTotals: context.timeline.totals,
+  };
+
   eventBus.emit(AI_TASK_COMPLETED, {
     taskId: `ai_${Date.now()}`,
     engine: 'aiOrchestrator',
@@ -25,5 +31,11 @@ export async function runAIOrchestrator(input: AIContextInput): Promise<{
     success: true,
   });
 
-  return { context, decision };
+  return {
+    context: {
+      ...context,
+      memory: enrichedMemory,
+    },
+    decision,
+  };
 }
