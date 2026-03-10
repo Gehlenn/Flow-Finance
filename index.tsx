@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import './src/styles/tailwind.css';
 import { initializeRuntimeGuard } from './src/runtime/runtimeGuard';
+import { aiTaskQueue } from './src/ai/queue';
 
 (window as any).process = (window as any).process || { env: {} };
 
@@ -20,6 +21,16 @@ async function initializeApp() {
   } catch (error) {
     console.error('[App] Runtime guard initialization failed:', error);
     // Continue anyway - some guards may still be active
+  }
+
+  // ─── AI TASK QUEUE INITIALIZATION ──────────────────────────────────────────
+
+  try {
+    aiTaskQueue.initialize();
+    console.log('[App] AI Task Queue initialized');
+  } catch (error) {
+    console.error('[App] AI Task Queue initialization failed:', error);
+    // Non-critical - app can run without task queue
   }
 
   // ─── SERVICE WORKER AUTO-UPDATE ─────────────────────────────────────────────

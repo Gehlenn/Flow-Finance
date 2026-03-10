@@ -15,6 +15,7 @@ import Settings from './components/Settings';
 import AdvancedAnalytics from './components/AdvancedAnalytics';
 import PerformanceMonitor from './components/PerformanceMonitor';
 import AIDebugPanel from './components/dev/AIDebugPanel';
+import AITaskQueueMonitor from './components/dev/AITaskQueueMonitor';
 import { detectAndLearnPatterns } from './src/ai/aiMemory';
 import { runAdaptiveLearning } from './src/ai/adaptiveAIEngine';
 import { FinancialEventEmitter, initEventListeners } from './src/events/eventEngine';
@@ -661,6 +662,9 @@ const App: React.FC = () => {
 
       {/* DEV ONLY — AI Debug Panel */}
       {IS_DEV && <AIDebugPanel />}
+      
+      {/* DEV ONLY — AI Task Queue Monitor */}
+      {IS_DEV && <AITaskQueueMonitor />}
       </div>
     </ErrorBoundary>
   );
