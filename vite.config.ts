@@ -26,10 +26,8 @@ export default defineConfig(({ mode }) => {
               if (id.includes('node_modules')) {
                 if (id.includes('react') || id.includes('scheduler')) return 'vendor-react';
                 if (id.includes('firebase')) {
-                  if (id.includes('/auth') || id.includes('firebase-auth')) return 'vendor-firebase-auth';
-                  if (id.includes('/firestore') || id.includes('firebase-firestore')) return 'vendor-firebase-firestore';
-                  if (id.includes('/app') || id.includes('firebase-app')) return 'vendor-firebase-app';
-                  return 'vendor-firebase-core';
+                  // Keep Firebase in a single chunk to avoid runtime init order issues.
+                  return 'vendor-firebase';
                 }
                 if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts';
                 if (id.includes('lucide-react')) return 'vendor-icons';
