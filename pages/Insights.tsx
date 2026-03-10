@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { Transaction } from '../types';
 import { runAIPipelineSync } from '../src/ai/aiOrchestrator';
-import { AIInsight } from '../services/ai/insightGenerator';
-import { FinancialRiskAlert } from '../services/ai/riskAnalyzer';
+import { AIInsight } from '../src/ai/insightGenerator';
+import { FinancialRiskAlert } from '../src/ai/riskAnalyzer';
 import {
   Sparkles, TrendingUp, TrendingDown, ShieldAlert,
   Lightbulb, PiggyBank, AlertTriangle, CheckCircle2,

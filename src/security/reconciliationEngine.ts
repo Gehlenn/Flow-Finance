@@ -4,7 +4,8 @@
  * Compara saldos armazenados com saldos calculados para detectar divergências.
  */
 
-import { Account, Transaction, TransactionType } from '../../types';
+import { Transaction, TransactionType } from '../../types';
+import { Account } from '../../models/Account';
 import { sumTransactions } from './moneyMath';
 import { logAuditEvent } from './auditLogService';
 

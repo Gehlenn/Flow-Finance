@@ -1,6 +1,9 @@
 import * as Sentry from '@sentry/react';
 import { BrowserTracing } from '@sentry/tracing';
 
+type SeverityLevel = 'fatal' | 'error' | 'warning' | 'log' | 'info' | 'debug';
+const sentryAny = Sentry as any;
+
 // ─── SENTRY CONFIGURATION ──────────────────────────────────────────────────────
 
 /**
@@ -97,27 +100,27 @@ const isPlatformNative = (): boolean => {
  * Report an error manually to Sentry
  */
 export const reportError = (error: Error, context?: Record<string, any>) => {
-  Sentry.withScope((scope) => {
+  sentryAny.withScope?.((scope: any) => {
     if (context) {
       Object.keys(context).forEach(key => {
         scope.setTag(key, context[key]);
       });
     }
-    Sentry.captureException(error);
+    sentryAny.captureException?.(error);
   });
 };
 
 /**
  * Report a message to Sentry
  */
-export const reportMessage = (message: string, level: Sentry.SeverityLevel = 'info', context?: Record<string, any>) => {
-  Sentry.withScope((scope) => {
+export const reportMessage = (message: string, level: SeverityLevel = 'info', context?: Record<string, any>) => {
+  sentryAny.withScope?.((scope: any) => {
     if (context) {
       Object.keys(context).forEach(key => {
         scope.setTag(key, context[key]);
       });
     }
-    Sentry.captureMessage(message, level);
+    sentryAny.captureMessage?.(message, level);
   });
 };
 
@@ -125,7 +128,7 @@ export const reportMessage = (message: string, level: Sentry.SeverityLevel = 'in
  * Set user context for error tracking
  */
 export const setUser = (user: { id: string; email?: string; username?: string }) => {
-  Sentry.setUser({
+  sentryAny.setUser?.({
     id: user.id,
     email: user.email,
     username: user.username,
@@ -136,14 +139,14 @@ export const setUser = (user: { id: string; email?: string; username?: string })
  * Clear user context
  */
 export const clearUser = () => {
-  Sentry.setUser(null);
+  sentryAny.setUser?.(null);
 };
 
 /**
  * Add breadcrumb for debugging
  */
-export const addBreadcrumb = (message: string, category?: string, level?: Sentry.SeverityLevel) => {
-  Sentry.addBreadcrumb({
+export const addBreadcrumb = (message: string, category?: string, level?: SeverityLevel) => {
+  sentryAny.addBreadcrumb?.({
     message,
     category: category || 'custom',
     level: level || 'info',

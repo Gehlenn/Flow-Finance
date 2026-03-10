@@ -38,7 +38,7 @@ const PerformanceMonitor: React.FC = () => {
     );
   };
 
-  const getStatusForMetric = (value: number | null, thresholds: { good: number; warning: number }): 'good' | 'warning' | 'error' => {
+  const getStatusForMetric = (value: number | null, thresholds: { good: number; warning: number }): 'good' | 'warning' | 'error' | 'neutral' => {
     if (!value) return 'neutral';
     if (value <= thresholds.good) return 'good';
     if (value <= thresholds.warning) return 'warning';

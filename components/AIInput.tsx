@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GeminiService } from '../services/geminiService';
-import { Transaction, TransactionType, Category, ReminderData } from '../types';
+import { Transaction, TransactionType, Category, ReminderData, TransactionData } from '../types';
 import { Account, ACCOUNT_TYPE_LABELS } from '../models/Account';
-import { logAIDebug } from '../services/ai/aiDebugService';
 import { interpretText, interpretImage } from '../src/ai/aiInterpreter';
 import { 
   X, Mic, Send, Sparkles, Loader2, Check, 
@@ -106,7 +105,8 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
       );
 
       if (output.intent === 'transaction') {
-        const withAccount = output.data.map((t: Partial<Transaction>) => ({
+        const txData = output.data as TransactionData[];
+        const withAccount = txData.map((t) => ({
           ...t,
           account_id: selectedAccountId,
           source: 'ai_text' as const,
@@ -165,7 +165,8 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
           userId,
           (b, m, t) => gemini.current.parseFinancialImage(b, m, t)
         );
-        const withAccount = output.data.map((t: Partial<Transaction>) => ({
+        const txData = output.data as TransactionData[];
+        const withAccount = txData.map((t) => ({
           ...t,
           account_id: selectedAccountId,
           source: 'ai_image' as const,

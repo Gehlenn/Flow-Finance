@@ -9,7 +9,7 @@ import {
   fullSync,
   formatLastSync,
 } from '../services/integrations/openBankingService';
-import { runBankSync, getSyncStatusSummary, getLastSyncReport, formatSyncDuration } from '../services/finance/bankSyncEngine';
+import { runBankSync, getSyncStatusSummary, getLastSyncReport, formatSyncDuration } from '../src/finance/bankSyncEngine';
 import {
   Building2, Wifi, WifiOff, RefreshCw, Loader2, Plus, X,
   CheckCircle2, AlertCircle, ChevronRight, Zap, Clock,

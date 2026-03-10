@@ -4,8 +4,8 @@
  * Exports configuration and dependency injection setup
  */
 
+export type { AppConfig } from './appConfig';
 export {
-  AppConfig,
   AppContainer,
   defaultConfig,
   initializeApp,

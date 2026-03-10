@@ -4,8 +4,9 @@
  * Permite simular impactos de decisões financeiras no futuro.
  */
 
-import { Transaction, Account } from '../../types';
-import { runFinancialEngine, FinancialState } from './financialEngine';
+import { Transaction } from '../../types';
+import { Account } from '../../models/Account';
+import { runFinancialEngine } from './financialEngine';
 import { predictCashflow } from '../finance/cashflowPredictor';
 
 export interface FinancialSimulationResult {
@@ -55,8 +56,9 @@ export function simulateFinancialScenario(
 
     case 'months':
       // Projeção por meses usando cashflow predictor
-      const prediction = predictCashflow(transactions, scenario.months);
-      projectedBalance = prediction.projected_balance;
+      const prediction = predictCashflow(accounts, transactions);
+      const targetDays = Math.max(1, Math.min(90, scenario.months * 30));
+      projectedBalance = prediction.daily_balances[targetDays - 1]?.balance ?? prediction.balance_90_days;
       spendingImpact = baseBalance - projectedBalance;
       simulationPeriod = scenario.months;
       summary = `Em ${scenario.months} meses, seu saldo projetado seria R$ ${projectedBalance.toFixed(2)} baseado em ${scenario.description}.`;

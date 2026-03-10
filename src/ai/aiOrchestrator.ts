@@ -20,7 +20,8 @@
  *   AIAnalysisResult       → UI
  */
 
-import { Transaction, Account } from '../../types';
+import { Transaction } from '../../types';
+import { Account } from '../../models/Account';
 
 import { getAIMemory, learnMemory, detectAndLearnPatterns, AIMemory } from './aiMemory';
 import { runFinancialEngine, FinancialState } from './financialEngine';
@@ -277,7 +278,12 @@ export async function runAIOrchestrator(
   const insights = generateFinancialInsights(transactions, userId);
 
   // 4. Executar financial autopilot
-  const autopilot_actions = runFinancialAutopilot(accounts, transactions);
+  const autopilot_actions = runFinancialAutopilot(
+    accounts,
+    transactions,
+    financialState.cashflow_prediction,
+    insights
+  );
 
   // 5. Executar category learning
   await learnCategoryFromTransactions(userId, transactions);

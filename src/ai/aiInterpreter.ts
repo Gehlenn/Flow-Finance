@@ -10,22 +10,8 @@
  */
 
 import { Transaction, TransactionType } from '../../types';
+import { TransactionData, ReminderData } from '../../types';
 
-// Local type definitions
-interface TransactionData {
-  amount: number;
-  description: string;
-  category: any;
-  type: any;
-}
-
-interface ReminderData {
-  title: string;
-  date?: string;
-  type: string;
-  amount?: number;
-  priority: string;
-}
 import { getAIMemory, AIMemory } from './aiMemory';
 import { logAIDebug } from './aiDebugService';
 
@@ -72,9 +58,9 @@ export function estimateConfidence(data: TransactionData[] | ReminderData[], int
   if (!data || data.length === 0) return 0.1;
   const item = data[0];
   let score = 0.5;
-  if (item.amount && item.amount > 0) score += 0.15;
-  if (item.description && item.description.length > 3) score += 0.1;
-  if (item.category) score += 0.1;
+  if ('amount' in item && item.amount && item.amount > 0) score += 0.15;
+  if ('description' in item && item.description && item.description.length > 3) score += 0.1;
+  if ('category' in item && item.category) score += 0.1;
   if (item.type) score += 0.1;
   if (intent !== 'unknown') score += 0.05;
   return Math.min(parseFloat(score.toFixed(2)), 1.0);
@@ -115,8 +101,8 @@ export async function interpretText(
     logAIDebug({
       input,
       intent: output.intent,
-      parsed_transaction: output.intent === 'transaction' ? output.data[0] : undefined,
-      predicted_category: output.data[0]?.category,
+      parsed_transaction: output.intent === 'transaction' ? (output.data[0] as Partial<Transaction>) : undefined,
+      predicted_category: output.intent === 'transaction' ? (output.data[0] as TransactionData | undefined)?.category : undefined,
       confidence,
       processing_ms,
       raw_response: JSON.stringify(result.data).slice(0, 500),
@@ -165,8 +151,8 @@ export async function interpretImage(
     logAIDebug({
       input: `[imagem] ${hint || ''}`,
       intent: 'transaction',
-      parsed_transaction: data[0],
-      predicted_category: data[0]?.category,
+      parsed_transaction: data[0] as Partial<Transaction>,
+      predicted_category: (data[0] as TransactionData | undefined)?.category,
       confidence,
       processing_ms,
     });

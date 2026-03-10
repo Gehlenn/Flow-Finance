@@ -22,6 +22,7 @@ import { getFinancialEvents, clearFinancialEvents } from '../src/events/eventEng
 import { FinancialEvent }                      from '../models/FinancialEvent';
 import { getAdaptiveLearningStats }            from '../src/ai/adaptiveAIEngine';
 import { detectSubscriptions, DetectedSubscription, formatCycle, formatNextCharge } from '../src/ai/subscriptionDetector';
+import { buildFinancialGraph, getTopMerchants, getCategorySpending, detectSubscriptionCandidates } from '../src/ai/financialGraph';
 import { calculateMoneyDistribution }          from '../src/finance/moneyMap';
 import { parseOFX }                            from '../src/finance/ofxParser';
 import { parseCSV }                            from '../src/finance/csvParser';
