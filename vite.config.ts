@@ -34,7 +34,6 @@ export default defineConfig(({ mode }) => {
                 if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts';
                 if (id.includes('lucide-react')) return 'vendor-icons';
                 if (id.includes('@google/generative-ai') || id.includes('@google/genai')) return 'vendor-ai-sdk';
-                if (id.includes('@sentry')) return 'vendor-sentry';
               }
             },
           },

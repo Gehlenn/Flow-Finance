@@ -1,8 +1,28 @@
-import * as Sentry from '@sentry/react';
-import { BrowserTracing } from '@sentry/tracing';
-
 type SeverityLevel = 'fatal' | 'error' | 'warning' | 'log' | 'info' | 'debug';
-const sentryAny = Sentry as any;
+type SentryModule = typeof import('@sentry/react');
+
+let sentryModule: SentryModule | null = null;
+let sentryLoader: Promise<SentryModule | null> | null = null;
+let sentryInitialized = false;
+
+const getDsn = (): string => import.meta.env.VITE_SENTRY_DSN || '';
+
+async function loadSentry(): Promise<SentryModule | null> {
+  if (sentryModule) return sentryModule;
+  if (!getDsn()) return null;
+  if (!sentryLoader) {
+    sentryLoader = import('@sentry/react')
+      .then((mod) => {
+        sentryModule = mod;
+        return mod;
+      })
+      .catch((error) => {
+        console.warn('Failed to load Sentry module:', error);
+        return null;
+      });
+  }
+  return sentryLoader;
+}
 
 // ─── SENTRY CONFIGURATION ──────────────────────────────────────────────────────
 
@@ -12,66 +32,51 @@ const sentryAny = Sentry as any;
  */
 export const initSentry = () => {
   // Only initialize if DSN is provided (production/staging)
-  const dsn = import.meta.env.VITE_SENTRY_DSN;
+  const dsn = getDsn();
 
   if (!dsn) {
     console.warn('Sentry DSN not found. Error tracking disabled.');
     return;
   }
 
-  Sentry.init({
-    dsn,
-    environment: import.meta.env.MODE || 'development',
-    release: import.meta.env.VITE_APP_VERSION || '0.1.0',
+  void loadSentry().then((Sentry) => {
+    if (!Sentry || sentryInitialized) return;
 
-    // Performance monitoring
-    integrations: [
-      // BrowserTracing desabilitado - usar apenas error tracking
-    ],
+    Sentry.init({
+      dsn,
+      environment: import.meta.env.MODE || 'development',
+      release: import.meta.env.VITE_APP_VERSION || '0.1.0',
+      tracesSampleRate: import.meta.env.DEV ? 1.0 : 0.1,
+      sampleRate: 1.0,
+      beforeSend: (event) => {
+        if (import.meta.env.DEV && !import.meta.env.VITE_SENTRY_DEV_ENABLED) {
+          return null;
+        }
 
-    // Performance traces sample rate (0.0 to 1.0)
-    tracesSampleRate: import.meta.env.DEV ? 1.0 : 0.1,
+        event.tags = {
+          ...event.tags,
+          platform: getPlatform(),
+          isNative: isPlatformNative(),
+        };
 
-    // Error sample rate (0.0 to 1.0)
-    sampleRate: 1.0,
+        return event;
+      },
+      ignoreErrors: [
+        'NetworkError',
+        'AbortError',
+        'ResizeObserver loop limit exceeded',
+        'plugin_not_installed',
+      ],
+      denyUrls: import.meta.env.PROD ? [
+        /localhost/,
+        /127\.0\.0\.1/,
+        /0\.0\.0\.0/,
+      ] : [],
+    });
 
-    // Capture console errors in development
-    beforeSend: (event, hint) => {
-      // Don't send events in development unless explicitly configured
-      if (import.meta.env.DEV && !import.meta.env.VITE_SENTRY_DEV_ENABLED) {
-        return null;
-      }
-
-      // Add platform context
-      event.tags = {
-        ...event.tags,
-        platform: getPlatform(),
-        isNative: isPlatformNative(),
-      };
-
-      return event;
-    },
-
-    // Ignore certain errors
-    ignoreErrors: [
-      // Network errors that are expected
-      'NetworkError',
-      'AbortError',
-      // ResizeObserver loop limit exceeded (common in React apps)
-      'ResizeObserver loop limit exceeded',
-      // Capacitor-specific errors that are handled elsewhere
-      'plugin_not_installed',
-    ],
-
-    // Don't capture errors from localhost in production builds
-    denyUrls: import.meta.env.PROD ? [
-      /localhost/,
-      /127\.0\.0\.1/,
-      /0\.0\.0\.0/,
-    ] : [],
+    sentryInitialized = true;
+    console.log('Sentry initialized for error tracking');
   });
-
-  console.log('Sentry initialized for error tracking');
 };
 
 // ─── UTILITY FUNCTIONS ────────────────────────────────────────────────────────
@@ -100,13 +105,17 @@ const isPlatformNative = (): boolean => {
  * Report an error manually to Sentry
  */
 export const reportError = (error: Error, context?: Record<string, any>) => {
-  sentryAny.withScope?.((scope: any) => {
-    if (context) {
-      Object.keys(context).forEach(key => {
-        scope.setTag(key, context[key]);
-      });
-    }
-    sentryAny.captureException?.(error);
+  void loadSentry().then((Sentry) => {
+    if (!Sentry) return;
+    const sentryAny = Sentry as any;
+    sentryAny.withScope?.((scope: any) => {
+      if (context) {
+        Object.keys(context).forEach((key) => {
+          scope.setTag(key, context[key]);
+        });
+      }
+      sentryAny.captureException?.(error);
+    });
   });
 };
 
@@ -114,13 +123,17 @@ export const reportError = (error: Error, context?: Record<string, any>) => {
  * Report a message to Sentry
  */
 export const reportMessage = (message: string, level: SeverityLevel = 'info', context?: Record<string, any>) => {
-  sentryAny.withScope?.((scope: any) => {
-    if (context) {
-      Object.keys(context).forEach(key => {
-        scope.setTag(key, context[key]);
-      });
-    }
-    sentryAny.captureMessage?.(message, level);
+  void loadSentry().then((Sentry) => {
+    if (!Sentry) return;
+    const sentryAny = Sentry as any;
+    sentryAny.withScope?.((scope: any) => {
+      if (context) {
+        Object.keys(context).forEach((key) => {
+          scope.setTag(key, context[key]);
+        });
+      }
+      sentryAny.captureMessage?.(message, level);
+    });
   });
 };
 
@@ -128,10 +141,14 @@ export const reportMessage = (message: string, level: SeverityLevel = 'info', co
  * Set user context for error tracking
  */
 export const setUser = (user: { id: string; email?: string; username?: string }) => {
-  sentryAny.setUser?.({
-    id: user.id,
-    email: user.email,
-    username: user.username,
+  void loadSentry().then((Sentry) => {
+    if (!Sentry) return;
+    const sentryAny = Sentry as any;
+    sentryAny.setUser?.({
+      id: user.id,
+      email: user.email,
+      username: user.username,
+    });
   });
 };
 
@@ -139,17 +156,25 @@ export const setUser = (user: { id: string; email?: string; username?: string })
  * Clear user context
  */
 export const clearUser = () => {
-  sentryAny.setUser?.(null);
+  void loadSentry().then((Sentry) => {
+    if (!Sentry) return;
+    const sentryAny = Sentry as any;
+    sentryAny.setUser?.(null);
+  });
 };
 
 /**
  * Add breadcrumb for debugging
  */
 export const addBreadcrumb = (message: string, category?: string, level?: SeverityLevel) => {
-  sentryAny.addBreadcrumb?.({
-    message,
-    category: category || 'custom',
-    level: level || 'info',
+  void loadSentry().then((Sentry) => {
+    if (!Sentry) return;
+    const sentryAny = Sentry as any;
+    sentryAny.addBreadcrumb?.({
+      message,
+      category: category || 'custom',
+      level: level || 'info',
+    });
   });
 };
 
@@ -159,7 +184,7 @@ export const addBreadcrumb = (message: string, category?: string, level?: Severi
  * Enhanced Error Boundary that reports to Sentry
  * Use this instead of the basic ErrorBoundary component
  */
-export const SentryErrorBoundary = Sentry.ErrorBoundary;
+export const SentryErrorBoundary = null;
 
 /**
  * Hook to report errors from React error boundaries

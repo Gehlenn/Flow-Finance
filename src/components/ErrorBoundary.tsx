@@ -1,11 +1,16 @@
 import React, { ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
-import * as Sentry from '@sentry/react';
+import { reportError } from '../config/sentry';
 
 interface Props {
   children: ReactNode;
   fallback?: (error: Error, reset: () => void) => ReactNode;
   onError?: (error: Error, errorInfo: { componentStack: string }) => void;
+}
+
+interface State {
+  hasError: boolean;
+  error: Error | null;
 }
 
 function DefaultErrorFallback({ error, onReset }: { error: Error | null; onReset: () => void }) {
@@ -49,25 +54,42 @@ function DefaultErrorFallback({ error, onReset }: { error: Error | null; onReset
   );
 }
 
-export const ErrorBoundary: React.FC<Props> = ({ children, fallback, onError }) => {
-  const sentryAny = Sentry as any;
-  const SentryBoundary = sentryAny.ErrorBoundary as React.ComponentType<any> | undefined;
+class ErrorBoundaryComponent extends React.Component<Props, State> {
+  state: State = {
+    hasError: false,
+    error: null,
+  };
 
-  if (!SentryBoundary) {
-    return <>{children}</>;
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
   }
 
-  return (
-    <SentryBoundary
-      onError={(error: Error, errorInfo: { componentStack: string }) => onError?.(error, errorInfo)}
-      fallback={({ error, resetError }: { error: Error; resetError: () => void }) =>
-        fallback ? fallback(error, resetError) : <DefaultErrorFallback error={error} onReset={resetError} />
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
+    this.props.onError?.(error, { componentStack: errorInfo.componentStack || '' });
+    reportError(error, { componentStack: errorInfo.componentStack || 'unknown' });
+  }
+
+  private reset = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
+  render() {
+    if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback(this.state.error || new Error('Unknown error'), this.reset);
       }
-    >
-      {children}
-    </SentryBoundary>
-  );
-};
+      return <DefaultErrorFallback error={this.state.error} onReset={this.reset} />;
+    }
+
+    return this.props.children;
+  }
+}
+
+export const ErrorBoundary: React.FC<Props> = ({ children, fallback, onError }) => (
+  <ErrorBoundaryComponent fallback={fallback} onError={onError}>
+    {children}
+  </ErrorBoundaryComponent>
+);
 
 export function useErrorHandler() {
   return (error: Error) => {

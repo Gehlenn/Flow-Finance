@@ -18,6 +18,9 @@ import { FinancialEvent, FinancialEventType } from '../../models/FinancialEvent'
 import { makeId, now } from '../../utils/helpers';
 import { Transaction } from '../../types';
 import { Account } from '../../models/Account';
+import { buildFinancialGraph, invalidateGraphCache } from '../ai/financialGraph';
+import { detectFinancialLeaks } from '../ai/leakDetector';
+import { generateMonthlyReport } from '../finance/reportEngine';
 
 
 // ─── PART 5 — Storage ─────────────────────────────────────────────────────────
@@ -180,14 +183,10 @@ export function initEventListeners(
       }
 
       // Rebuild graph
-      const { buildFinancialGraph, invalidateGraphCache } = await import('../ai/financialGraph');
       invalidateGraphCache();
       buildFinancialGraph(userId, accounts, transactions);
 
       // Run leak detection and report generation
-      const { detectFinancialLeaks } = await import('../ai/leakDetector');
-      const { generateMonthlyReport } = await import('../finance/reportEngine');
-
       const leaks = detectFinancialLeaks(transactions);
       const report = generateMonthlyReport(transactions);
 
