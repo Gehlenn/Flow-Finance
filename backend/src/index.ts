@@ -8,6 +8,7 @@ import { initGemini } from './config/gemini';
 import { initOpenAI } from './config/openai';
 import { initSentry, sentryRequestHandler, sentryErrorHandler, addBreadcrumb } from './config/sentry';
 import { errorHandlerMiddleware } from './middleware/errorHandler';
+import { validateJsonMiddleware } from './middleware/jsonValidation';
 import { apiLimiter } from './middleware/rateLimit';
 
 // Routes
@@ -120,6 +121,9 @@ app.use((_req: Request, _res: Response, next: NextFunction) => {
 // Body parser
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// JSON validation middleware (catches malformed JSON)
+app.use(validateJsonMiddleware);
 
 // General rate limiter
 app.use(apiLimiter);

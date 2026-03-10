@@ -4,6 +4,7 @@ import { generateContent, estimateTokens } from '../config/ai';
 
 import logger from '../config/logger';
 import { AppError, asyncHandler } from '../middleware/errorHandler';
+import { safeJsonParse, validateAIResponse } from '../utils/jsonHelpers';
 import {
   InterpretRequest,
   InterpretResponse,
@@ -49,7 +50,9 @@ Responda em JSON estruturado conforme o schema.`;
       responseMimeType: 'application/json',
     });
 
-    const parsed = JSON.parse(result);
+    const parsed = safeJsonParse(result, 'interpret');
+    validateAIResponse(parsed, ['intent'], 'interpret');
+    
     const response: InterpretResponse = {
       intent: parsed.intent,
       data: parsed.intent === 'transaction'
@@ -89,7 +92,7 @@ Responda em JSON.`;
 
   try {
     const result = await generateContent(prompt);
-    const parsed = JSON.parse(result) as ReceiptScanResult;
+    const parsed = safeJsonParse<ReceiptScanResult>(result, 'scan-receipt');
     const response: ScanReceiptResponse = parsed;
     res.json(response);
   } catch (error) {
@@ -121,7 +124,7 @@ Responda em JSON array.`;
 
   try {
     const result = await generateContent(prompt);
-    const parsed = JSON.parse(result) as TransactionClassification[];
+    const parsed = safeJsonParse<TransactionClassification[]>(result, 'classify-transactions');
     const response: ClassifyTransactionsResponse = parsed;
     res.json(response);
   } catch (error) {
@@ -166,7 +169,7 @@ Responda em JSON estruturado.`;
 
   try {
     const result = await generateContent(prompt);
-    const parsed = JSON.parse(result);
+    const parsed = safeJsonParse(result, `insights-${type}`);
 
     let response: GenerateInsightsResponse;
     if (type === 'daily') {
