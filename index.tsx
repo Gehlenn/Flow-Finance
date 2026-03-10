@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import './src/styles/tailwind.css';
+import './src/styles/colors.css';
 import { initializeRuntimeGuard } from './src/runtime/runtimeGuard';
 import { aiTaskQueue } from './src/ai/queue';
 
