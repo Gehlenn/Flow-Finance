@@ -13,7 +13,7 @@ export class AppError extends Error {
   }
 }
 
-export function errorHandlerMiddleware(
+export function errorHandler(
   error: Error | AppError,
   req: Request,
   res: Response,
@@ -47,6 +47,9 @@ export function errorHandlerMiddleware(
 
   res.status(statusCode).json(response);
 }
+
+// Backward-compatible alias used by existing imports.
+export const errorHandlerMiddleware = errorHandler;
 
 export function asyncHandler(fn: Function) {
   return (req: Request, res: Response, next: NextFunction) => {

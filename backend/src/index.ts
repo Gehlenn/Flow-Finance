@@ -25,7 +25,7 @@ const app: Application = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
 // Trust proxy for Vercel/serverless environments
-app.set('trust proxy', true);
+app.set('trust proxy', 1);
 
 // Initialize AI providers
 const aiProviders: string[] = [];
@@ -145,6 +145,15 @@ app.get('/api/version', (_req: Request, res: Response) => {
   res.json({
     version: process.env.APP_VERSION || '0.4.0',
     environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// API health check (stable endpoint for probes)
+app.get('/api/health', (_req: Request, res: Response) => {
+  res.json({
+    status: 'ok',
+    service: 'flow-finance-api',
+    version: process.env.APP_VERSION || '0.5.0',
   });
 });
 

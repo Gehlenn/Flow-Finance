@@ -9,11 +9,20 @@ import {
   tokenCountController,
   cfoController
 } from '../controllers/aiController';
+import { validate } from '../middleware/validate';
+import {
+  CFOSchema,
+  InterpretSchema,
+  ScanReceiptSchema,
+  ClassifyTransactionsSchema,
+  GenerateInsightsSchema,
+  TokenCountSchema,
+} from '../validation/ai.schema';
 
 const router = Router();
 
 // CFO route is public (no auth required) for testing
-router.post('/cfo', aiLimiter, cfoController);
+router.post('/cfo', aiLimiter, validate(CFOSchema), cfoController);
 
 // All other AI routes require authentication and are rate-limited
 router.use(authMiddleware);
@@ -26,7 +35,7 @@ router.use(aiLimiter);
  * Body: { text: string, memoryContext?: string }
  * Returns: { intent: 'transaction'|'reminder', data: TransactionData[] | ReminderData[] }
  */
-router.post('/interpret', interpretController);
+router.post('/interpret', validate(InterpretSchema), interpretController);
 
 /**
  * POST /api/ai/scan-receipt
@@ -35,7 +44,7 @@ router.post('/interpret', interpretController);
  * Body: { imageBase64: string, imageMimeType: string, context?: string }
  * Returns: ReceiptScanResult
  */
-router.post('/scan-receipt', scanReceiptController);
+router.post('/scan-receipt', validate(ScanReceiptSchema), scanReceiptController);
 
 /**
  * POST /api/ai/classify-transactions
@@ -44,7 +53,7 @@ router.post('/scan-receipt', scanReceiptController);
  * Body: { transactions: TransactionData[] }
  * Returns: TransactionClassification[]
  */
-router.post('/classify-transactions', classifyTransactionsController);
+router.post('/classify-transactions', validate(ClassifyTransactionsSchema), classifyTransactionsController);
 
 /**
  * POST /api/ai/insights
@@ -53,7 +62,7 @@ router.post('/classify-transactions', classifyTransactionsController);
  * Body: { transactions: TransactionData[], type: 'daily'|'strategic' }
  * Returns: GenerateInsightsResponse
  */
-router.post('/insights', generateInsightsController);
+router.post('/insights', validate(GenerateInsightsSchema), generateInsightsController);
 
 /**
  * POST /api/ai/token-count
@@ -62,6 +71,6 @@ router.post('/insights', generateInsightsController);
  * Body: { text: string }
  * Returns: { tokenCount: number }
  */
-router.post('/token-count', tokenCountController);
+router.post('/token-count', validate(TokenCountSchema), tokenCountController);
 
 export default router;

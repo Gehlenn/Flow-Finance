@@ -7,6 +7,8 @@ import {
   validateController,
   logoutController
 } from '../controllers/authController';
+import { validate } from '../middleware/validate';
+import { LoginSchema } from '../validation/user.schema';
 
 const router = Router();
 
@@ -17,7 +19,7 @@ const router = Router();
  * Body: { email: string, password: string }
  * Returns: { token: string, expiresIn: number, user: { userId: string, email: string } }
  */
-router.post('/login', authLimiter, loginController);
+router.post('/login', authLimiter, validate(LoginSchema), loginController);
 
 /**
  * POST /api/auth/refresh
