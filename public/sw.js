@@ -7,7 +7,6 @@ const CACHE_NAME = 'flow-finance-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/index.css',
 ];
 
 // ─── Install: pre-cache assets ─────────────────────────────────────────────
