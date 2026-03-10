@@ -3,7 +3,7 @@
  * Estratégia: Cache-First para assets, Network-First para API calls
  */
 
-const CACHE_NAME = 'flow-finance-v4';
+const CACHE_NAME = 'flow-finance-v5';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -51,17 +51,29 @@ self.addEventListener('fetch', (event) => {
   // Network-First para navegação/HTML para evitar prender index.html antigo.
   const isNavigation = request.mode === 'navigate';
   const acceptsHtml = request.headers.get('accept')?.includes('text/html');
-  if (isNavigation || acceptsHtml) {
+  const isCssRequest = url.pathname.endsWith('.css') || request.destination === 'style';
+  
+  // Network-First também para CSS para evitar estilos desatualizados
+  if (isNavigation || acceptsHtml || isCssRequest) {
     event.respondWith(
       fetch(request)
         .then((response) => {
           if (response && response.status === 200) {
             const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', clone));
+            caches.open(CACHE_NAME).then((cache) => {
+              if (isCssRequest) {
+                cache.put(request, clone);
+              } else {
+                cache.put('/index.html', clone);
+              }
+            });
           }
           return response;
         })
         .catch(async () => {
+          if (isCssRequest) {
+            return (await caches.match(request)) || Response.error();
+          }
           return (await caches.match('/index.html')) || Response.error();
         })
     );
