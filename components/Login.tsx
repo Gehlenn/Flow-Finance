@@ -148,7 +148,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           ) : (
             <div className="space-y-4">
               {error && (
-                <div className="p-2.5 bg-rose-500/5 border border-rose-500/20 rounded-xl flex items-center gap-2 text-rose-500 animate-in shake">
+                <div role="alert" aria-live="polite" className="p-2.5 bg-rose-500/5 border border-rose-500/20 rounded-xl flex items-center gap-2 text-rose-500 animate-in shake">
                   <AlertCircle size={14} className="shrink-0" />
                   <p className="text-[9px] font-bold">{error.message}</p>
                 </div>
@@ -164,6 +164,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                           type="email" required value={email}
                           onFocus={() => setFocusedField('email')} onBlur={() => setFocusedField(null)}
                           onChange={(e) => setEmail(e.target.value)}
+                          aria-label="E-mail de acesso"
+                          autoComplete="email"
                           placeholder="E-mail"
                           data-testid="email"
                           className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent focus:border-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 text-xs font-bold outline-none transition-all shadow-inner"
@@ -175,6 +177,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                           type="password" required value={password}
                           onFocus={() => setFocusedField('password')} onBlur={() => setFocusedField(null)}
                           onChange={(e) => setPassword(e.target.value)}
+                          aria-label="Senha de acesso"
+                          autoComplete="current-password"
                           placeholder="Senha"
                           data-testid="password"
                           className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent focus:border-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 text-xs font-bold outline-none transition-all shadow-inner"
@@ -207,9 +211,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 <form onSubmit={handleSignup} className="space-y-3 animate-in slide-in-from-right-4 duration-500">
                   <button type="button" onClick={() => setView('login')} className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase mb-1"><ChevronLeft size={14} /> Voltar</button>
                   <div className="space-y-2">
-                    <input type="text" required placeholder="Seu nome" value={name} onChange={e => setName(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
-                    <input type="email" required placeholder="Seu e-mail" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
-                    <input type="password" required placeholder="Senha (min 6 car.)" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
+                    <input type="text" required aria-label="Nome completo" autoComplete="name" placeholder="Seu nome" value={name} onChange={e => setName(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
+                    <input type="email" required aria-label="E-mail para cadastro" autoComplete="email" placeholder="Seu e-mail" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
+                    <input type="password" required aria-label="Senha para cadastro" autoComplete="new-password" placeholder="Senha (min 6 car.)" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
                   </div>
                   <button type="submit" disabled={isLoading} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-xl active:scale-95 transition-all">
                     Criar meu Acesso <UserPlus size={16} className="ml-2 inline" />
@@ -222,14 +226,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   <button type="button" onClick={() => setView('login')} className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase mb-1"><ChevronLeft size={14} /> Voltar</button>
                   <div className="space-y-3">
                     <p className="text-[10px] font-bold text-slate-500 text-center leading-relaxed px-2">Enviaremos um link de recuperação para o e-mail cadastrado.</p>
-                    <input type="email" required placeholder="E-mail cadastrado" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-4 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
+                    <input type="email" required aria-label="E-mail para recuperar senha" autoComplete="email" placeholder="E-mail cadastrado" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-4 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
                   </div>
                   <button type="submit" className="w-full py-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all">Recuperar Senha</button>
                 </form>
               )}
 
               {view === 'success' && (
-                <div className="text-center space-y-4 py-2 animate-in zoom-in-95 duration-500">
+                <div role="status" aria-live="polite" className="text-center space-y-4 py-2 animate-in zoom-in-95 duration-500">
                   <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto shadow-inner border border-emerald-500/20">
                     <CheckCircle2 size={36} />
                   </div>
