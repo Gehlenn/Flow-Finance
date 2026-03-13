@@ -14,6 +14,7 @@ import {
   getBankingHealth,
   listPluggyConnectors,
   PluggyConnector,
+  BankingHealth,
 } from '../services/integrations/openBankingService';
 import { runBankSync, getSyncStatusSummary, getLastSyncReport, formatSyncDuration } from '../src/finance/bankSyncEngine';
 import {
@@ -169,6 +170,7 @@ const BankPicker: React.FC<{
   connecting: string | null;
   onConnect: (bank: BankOption) => void;
   pluggyEnabled: boolean;
+  manualConnectDisabled: boolean;
   pluggyConnectToken: string | null;
   pluggyConnectors: PluggyConnector[];
   onPluggySuccess: (data: unknown) => void;
@@ -179,6 +181,7 @@ const BankPicker: React.FC<{
   connecting,
   onConnect,
   pluggyEnabled,
+  manualConnectDisabled,
   pluggyConnectToken,
   pluggyConnectors,
   onPluggySuccess,
@@ -204,11 +207,17 @@ const BankPicker: React.FC<{
       <ShieldCheck size={14} className="text-emerald-500 shrink-0 mt-0.5" />
       <div>
         <p className="text-[9px] font-black text-emerald-700 dark:text-emerald-300">
-          {pluggyEnabled ? 'Conexão segura Pluggy ativa' : 'Conexão segura simulada'}
+          {pluggyEnabled
+            ? 'Conexão segura Pluggy ativa'
+            : manualConnectDisabled
+            ? 'Backend em modo simulado (bloqueado em produção)'
+            : 'Conexão segura simulada'}
         </p>
         <p className="text-[8px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5 leading-relaxed">
           {pluggyEnabled
             ? 'Token gerado no backend e credenciais protegidas no servidor. Nenhum CLIENT_ID/SECRET é exposto no navegador.'
+            : manualConnectDisabled
+            ? 'Para evitar dados fictícios em produção, conexão manual está desabilitada até o backend voltar para providerMode=pluggy.'
             : 'Ambiente de demonstração com dados fictícios. Nenhuma credencial bancária real é solicitada.'}
         </p>
       </div>
@@ -238,10 +247,12 @@ const BankPicker: React.FC<{
         return (
           <button
             key={bank.id}
-            onClick={() => !isConnected && !isConnecting && onConnect(bank)}
-            disabled={isConnected || !!connecting}
+            onClick={() => !manualConnectDisabled && !isConnected && !isConnecting && onConnect(bank)}
+            disabled={manualConnectDisabled || isConnected || !!connecting}
             className={`relative flex flex-col items-center gap-3 p-4 rounded-[1.5rem] border transition-all active:scale-[0.97]
-              ${isConnected
+              ${manualConnectDisabled
+                ? 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 opacity-60 cursor-not-allowed'
+                : isConnected
                 ? 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-500/5 opacity-70 cursor-not-allowed'
                 : isConnecting
                 ? 'border-indigo-300 dark:border-indigo-500/40 bg-indigo-50 dark:bg-indigo-500/10 scale-[0.98]'
@@ -311,7 +322,11 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
   const [lastResults, setLastResults] = useState<Record<string, SyncResult>>({});
   const [syncAllLoading, setSyncAllLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [bankingHealth, setBankingHealth] = useState<BankingHealth | null>(null);
   const [pluggyEnabled, setPluggyEnabled] = useState(false);
+    const strictProductionMode = import.meta.env.MODE === 'production';
+    const simulatedBackendBlocked = strictProductionMode && !pluggyEnabled;
+
   const [pluggyConnectToken, setPluggyConnectToken] = useState<string | null>(null);
   const [pluggyConnectors, setPluggyConnectors] = useState<PluggyConnector[]>([]);
 
@@ -341,6 +356,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
 
       if (cancelled) return;
 
+      setBankingHealth(health);
       setPluggyEnabled(isAvailable);
       if (!isAvailable) {
         setPluggyConnectToken(null);
@@ -411,6 +427,11 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
   // ── Connect ────────────────────────────────────────────────────────────────
 
   const handleConnect = async (bank: BankOption) => {
+    if (simulatedBackendBlocked) {
+      setActionError('Open Banking real indisponível: backend está em modo simulado. Aguarde providerMode=pluggy.');
+      return;
+    }
+
     setConnectingBank(bank.id);
     try {
       setActionError(null);
@@ -435,6 +456,11 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
   // ── Sync single ────────────────────────────────────────────────────────────
 
   const handleSync = async (id: string) => {
+    if (simulatedBackendBlocked) {
+      setActionError('Sincronização real bloqueada: backend está em modo simulado (mock).');
+      return;
+    }
+
     if (syncingIds.has(id)) return;
     setSyncingIds(prev => new Set([...prev, id]));
     await reload(); // show syncing status
@@ -461,6 +487,11 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
   // ── Sync all ───────────────────────────────────────────────────────────────
 
   const handleSyncAll = async () => {
+    if (simulatedBackendBlocked) {
+      setActionError('Sincronização real bloqueada: backend está em modo simulado (mock).');
+      return;
+    }
+
     const connected = connections.filter(c => c.connection_status !== 'error');
     if (!connected.length) return;
     setSyncAllLoading(true);
@@ -510,6 +541,15 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
         </div>
       )}
 
+      {simulatedBackendBlocked && (
+        <div className="flex items-start gap-2 px-4 py-3 rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          <AlertCircle size={14} className="shrink-0 mt-0.5" />
+          <p className="text-[10px] font-bold leading-relaxed">
+            Ambiente em modo simulado detectado ({bankingHealth?.providerMode || 'desconhecido'}). Em produção, conexões e sync reais ficam bloqueados para evitar dados fictícios.
+          </p>
+        </div>
+      )}
+
       {/* View: Add bank */}
       {view === 'add' && (
         <BankPicker
@@ -517,6 +557,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
           connecting={connectingBank}
           onConnect={handleConnect}
           pluggyEnabled={pluggyEnabled}
+          manualConnectDisabled={simulatedBackendBlocked}
           pluggyConnectToken={pluggyConnectToken}
           pluggyConnectors={pluggyConnectors}
           onPluggySuccess={handlePluggySuccess}
@@ -549,14 +590,18 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
           {anyConnected && (
             <button
               onClick={handleSyncAll}
-              disabled={syncAllLoading || syncingIds.size > 0}
+              disabled={simulatedBackendBlocked || syncAllLoading || syncingIds.size > 0}
               className="w-full flex items-center justify-center gap-3 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm shadow-lg shadow-indigo-500/25 transition-all active:scale-[0.98] disabled:opacity-50"
             >
               {syncAllLoading
                 ? <Loader2 size={17} className="animate-spin" />
                 : <RefreshCw size={17} />
               }
-              {syncAllLoading ? 'Sincronizando todos…' : 'Sincronizar Todos os Bancos'}
+              {simulatedBackendBlocked
+                ? 'Backend em modo simulado'
+                : syncAllLoading
+                ? 'Sincronizando todos…'
+                : 'Sincronizar Todos os Bancos'}
             </button>
           )}
 
@@ -586,6 +631,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
               </div>
               <button
                 onClick={() => setView('add')}
+                disabled={simulatedBackendBlocked}
                 className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-indigo-500/25"
               >
                 <Plus size={16} /> Conectar Banco
@@ -597,6 +643,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
           {anyConnected && (
             <button
               onClick={() => setView('add')}
+              disabled={simulatedBackendBlocked}
               className="w-full flex items-center gap-3 p-4 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl text-slate-400 hover:border-indigo-300 hover:text-indigo-500 dark:hover:border-indigo-500/40 transition-colors group"
             >
               <div className="w-9 h-9 border-2 border-dashed border-current rounded-xl flex items-center justify-center">
@@ -617,7 +664,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
             </p>
             <div className="flex gap-2 mt-3 flex-wrap">
               {[
-                { name: 'MockBankProvider', status: 'Ativo', color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10' },
+                { name: 'MockBankProvider', status: bankingHealth?.providerMode === 'mock' ? 'Ativo' : 'Inativo', color: bankingHealth?.providerMode === 'mock' ? 'text-amber-500 bg-amber-50 dark:bg-amber-500/10' : 'text-slate-400 bg-slate-100 dark:bg-slate-700' },
                 { name: 'PluggyProvider',   status: pluggyEnabled ? 'Ativo' : 'Parcial', color: pluggyEnabled ? 'text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' : 'text-amber-500 bg-amber-50 dark:bg-amber-500/10' },
                 { name: 'BelvoProvider',    status: 'Futuro', color: 'text-slate-400 bg-slate-100 dark:bg-slate-700' },
                 { name: 'TrueLayerProvider',status: 'Futuro', color: 'text-slate-400 bg-slate-100 dark:bg-slate-700' },
