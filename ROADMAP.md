@@ -1,7 +1,7 @@
 # FLOW FINANCE - ROADMAP OFICIAL
 
 **Data:** 10 de Marco de 2026
-**Status Atual:** v0.6.x (Inteligencia Financeira)
+**Status Atual:** v0.5.1v-transition (Open Finance Firebase-first validado)
 **Meta Estrategica:** v1.0 publico com AI Financial Assistant completo
 
 ## Visao por Fases
@@ -41,6 +41,12 @@
 ---
 
 ## v0.6.x - Inteligencia Financeira (fase atual)
+
+### Checkpoint 0.5.1v
+- health checks de IO e runtime estabilizados no deploy
+- Open Finance real com Pluggy, JWT, webhook protegido e persistencia Firebase
+- PostgreSQL permanece opcional e desligado por padrao
+- cobertura critica validada em `98.9%` branch no recorte protocolar
 
 ### 1. AI Context Builder avancado
 Criar/fortalecer modulo em `src/engines/ai/contextBuilder` para consolidar:

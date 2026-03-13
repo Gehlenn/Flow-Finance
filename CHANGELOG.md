@@ -1,5 +1,96 @@
 # 📝 CHANGELOG - Flow Finance
 
+## [0.5.1v] - 2026-03-13
+
+### 🔄 Protocolo de Transição (Open Finance)
+**Status:** Iniciado e validado tecnicamente
+
+#### ✨ Open Finance Firebase-first
+- Persistencia Open Finance consolidada em Firebase (`OPEN_FINANCE_STORE_DRIVER=firebase`)
+- Webhook Pluggy validado com comportamento esperado `401/401/202`
+- Prova de persistencia apos restart aprovada em ambiente local
+
+#### 🛡️ Hardening de configuracao
+- Removida tolerancia ao valor invalido de provider (`luggy`)
+- Fallback seguro para `mock` com warning de configuracao
+- Teste unitario dedicado para evitar regressao
+
+#### ✅ Checklist tecnico do protocolo
+- `cd backend && npm run build`: verde
+- `npm run lint`: verde
+- `npm test`: verde (`263/263`)
+- `npm run test:coverage:critical`: verde (`100/98.9/100/100`)
+- `npm run test:e2e`: verde com backend ativo (`33 passed`, `32 skipped`)
+
+#### 🧾 Observacao de versionamento
+- Label de transicao: `0.5.1v` (documental)
+- SemVer tecnico do pacote permanece no ciclo `0.6.x` para nao quebrar compatibilidade de build/distribuicao.
+
+---
+
+## [0.6.2] - 2026-03-11
+
+### 🔍 Auditoria Geral & Hardening v0.6.2
+**Status:** Post-audit hardening v0.6.1
+
+#### ✅ Achados de Auditoria
+- **Arquitetura**: 9.2/10 - Clean layers bem implementadas
+- **Segurança**: 9.0/10 - JWT, CORS, rate-limit, Zod validation robusta
+- **Performance**: 7.8/10 - Bundle OK (~305KB), AI latência 1-3s
+- **Testes**: 5.2/10 - Cobertura 46.35% (meta 98% bloqueador para v0.6.3)
+
+#### 🔧 Correções Rápidas
+- ✅ Adicionado `z.number().max(999999999)` em TransactionSchema
+- ✅ Corrigido typo em description (v0.6.1v → v0.6.2)
+- ✅ Logging CORS melhorado para debug produção
+
+#### 📋 Vulnerabilidades Identificadas (para v0.6.3+)
+1. 🔴 Cobertura testes <20%: openBankingService, aiMemory, AIMemoryEngine
+2. 🟠 JWT em localStorage (XSS risk) → HttpOnly cookies recomendado
+3. 🟠 Sem cache categorias IA → IndexedDB + Redis
+4. 🟡 Recurring detection inflexível → Fuzzy matching
+5. 🟡 Sem GC aiMemory → Auto-gc >1000 items
+
+#### 🧪 Testes
+- ✅ 193/193 testes passando
+- ⚠️ Cobertura 46.35% vs meta 98% **BLOQUEADOR v0.6.3**
+
+#### 📚 Documentação
+- Gerado: `AUDITORIA_THOROUGH_2026-03-11.md` (51 findings)
+- Roadmap: FASE 1 (testes), FASE 2 (segurança), FASE 3 (otimização)
+
+---
+
+## [0.6.1] - 2026-03-10
+
+### 🔄 Transição 0.6.1v
+**Status:** Em transição controlada
+
+#### ✨ Open Finance real
+- Backend banking publicado em `backend/src/controllers/bankingController.ts` e `backend/src/routes/banking.ts`
+- Integração Pluggy backend-first com `connect-token`, conectores dinâmicos, sync, disconnect e webhook
+- Rotas banking protegidas com JWT, mantendo `health` e webhook como endpoints públicos controlados
+- Frontend de Open Banking atualizado para Pluggy Connect com fallback local para ambiente sem backend
+
+#### ✨ Hardening operacional
+- Novos health checks de IO e runtime desktop/mobile adicionados ao projeto e ao workflow de deploy
+- `playwright.config.ts` ajustado para porta dedicada `4173` e execução estável dos checks de runtime
+- Teste de health de Open Banking tornado determinístico em ambiente de cobertura, sem dependência de backend remoto
+
+#### ✨ Preparação de escala
+- Store opcional `memory/postgres` criada para conexões bancárias
+- Migration explícita criada em `backend/sql/migrations/001_create_bank_connections.sql`
+- PostgreSQL permanece desativado por padrão, preservando Firebase como base principal atual
+
+#### ✅ Validação
+- `npm run build` verde
+- `cd backend && npm run build` verde
+- `npm run health:runtime` verde
+- `npm run health:runtime:mobile` verde
+- `npm run test:coverage` verde na suíte, com baseline de cobertura total elevada de `22.58%` para `46.35%`
+
+---
+
 ## [0.6.0] - 2026-03-10
 
 ### 🧠 Inteligencia Financeira - Transicao de Fase

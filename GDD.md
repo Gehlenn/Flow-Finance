@@ -2,8 +2,8 @@
 
 ## Documento de Design e Mecânicas
 
-**Versão**: 0.3.0  
-**Data**: 8 de Março de 2026  
+**Versão**: 0.5.1v  
+**Data**: 13 de Março de 2026  
 **Escopo**: Flow Finance - Intelligent Cash Flow Management App (iOS/Android/Web)
 
 ---
@@ -21,6 +21,7 @@ Se tornar o app de finança pessoal #1 em uso intuitivo e IA assistiva em portug
 - ⚡ **Velocidade**: Transação em < 2 segundos
 - 🔐 **Segurança**: AES-256 encryption, zero cloud exposure
 - 📊 **Insights**: Recomendações automáticas baseadas em padrões
+- 🏦 **Open Finance Seguro**: Conexão bancária via backend protegido com Pluggy e fallback controlado
 
 ---
 

@@ -21,6 +21,101 @@
 
 ## CHECKPOINT DE TRANSICAO v0.6.0
 
+## CHECKPOINT DE TRANSICAO v0.6.1
+
+## CHECKPOINT DE TRANSICAO v0.5.1v
+
+### 🟢 B009 - Provider Open Finance aceitava valor invalido
+**ID**: B009  
+**Versão Identificada**: v0.5.1v-transition  
+**Severidade**: 🟠 ALTA  
+**Impacto**: typo de configuracao podia habilitar comportamento nao intencional no fluxo Open Finance  
+
+**Descricao**:
+- o controller aceitava `luggy` como equivalente a `pluggy`
+- isso mascarava erro de ambiente ao inves de explicitar configuracao invalida
+
+**Causa Raiz**:
+- regra permissiva em `isPluggyEnabled()`
+
+**Solucao Aplicada**:
+- validacao estrita para providers suportados (`mock` | `pluggy`)
+- fallback para `mock` com warning de configuracao
+- teste unitario em `tests/unit/open-finance-provider-mode.test.ts`
+
+**Status**: 🟢 CORRIGIDO  
+**Data de Correcao**: 13 Mar 2026
+
+---
+
+### 🟢 B010 - Inicializacao repetida de Firestore settings
+**ID**: B010  
+**Versão Identificada**: v0.5.1v-transition  
+**Severidade**: 🟠 ALTA  
+**Impacto**: rota de migracao para Firebase podia retornar `503` em runtime  
+
+**Descricao**:
+- novas instancias do adapter podiam chamar `firestore.settings()` novamente
+- Firestore rejeita reconfiguracao apos primeira inicializacao
+
+**Causa Raiz**:
+- ausencia de guarda global para aplicacao unica de settings
+
+**Solucao Aplicada**:
+- adicao de guarda `applyFirestoreSettingsOnce(...)`
+- teste unitario dedicado em `tests/unit/open-finance-firebase-admin-adapter.test.ts`
+
+**Status**: 🟢 CORRIGIDO  
+**Data de Correcao**: 13 Mar 2026
+
+---
+
+### 🟢 B007 - Health check de Open Banking dependia de backend remoto
+**ID**: B007  
+**Versão Identificada**: v0.6.1-transition  
+**Severidade**: 🟠 ALTA  
+**Impacto**: `npm run test:coverage` falhava de forma não determinística no fluxo de Open Banking  
+
+**Descrição**:
+- o teste de health do Open Banking disparava chamadas reais para o backend configurado em produção
+- em ambiente de coverage, a suíte podia exceder timeout antes do fallback local
+
+**Causa Raiz**:
+- decisão `backend-first` ativa também durante execução do Vitest
+- dependência de rede externa dentro de um teste que deveria ser unitário/health local
+
+**Solução Aplicada**:
+- desabilitar o caminho de backend banking durante `MODE=test`, salvo override explícito
+- preservar o comportamento de produção e manter o fallback local determinístico nos testes
+
+**Status**: 🟢 CORRIGIDO  
+**Data de Correção**: 10 Mar 2026
+
+---
+
+### 🔴 B008 - Cobertura abaixo da meta protocolar
+**ID**: B008  
+**Versão Identificada**: v0.6.1-transition  
+**Severidade**: 🔴 CRÍTICA  
+**Impacto**: protocolo de transição não pode ser considerado concluído integralmente  
+
+**Descrição**:
+- baseline aferida por `npm run test:coverage` ficou em `46.35%` global após a primeira rodada de reforço
+- a meta obrigatória registrada no protocolo do projeto é `98%`
+
+**Causa Raiz**:
+- cobertura concentrada em engines e fluxos críticos recém-testados
+- grandes áreas ainda sem testes automatizados: memória de IA, importação financeira, storage API, runtime e serviços auxiliares
+
+**Solução Planejada**:
+- expandir testes para `services/integrations/openBankingService.ts`, `src/ai/aiMemory.ts`, `src/ai/memory/AIMemoryEngine.ts`, `src/ai/memory/AIMemoryStore.ts` e `src/finance/cashflowPredictor.ts`
+- manter a estratégia de coverage por domínio crítico para ganhar previsibilidade e atacar módulos com maior lacuna primeiro
+
+**Status**: 🔴 ABERTO  
+**Data de Registro**: 10 Mar 2026
+
+---
+
 ### 🟢 B006 - Coverage command without provider dependency
 **ID**: B006  
 **Versão Identificada**: v0.6.0-transition  

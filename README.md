@@ -1,8 +1,8 @@
 # Flow Finance - Controle de Fluxo de Caixa Inteligente
 
-**Versão:** 0.6.0  
-**Última Atualização:** 10 de Março de 2026  
-**Status:** Production-Ready ✅
+**Versão:** 0.5.1v (Open Finance Transition Label)  
+**Última Atualização:** 13 de Março de 2026  
+**Status:** Transição Controlada ✅
 
 Bem-vindo ao **Flow Finance**, uma aplicação moderna para gestão financeira pessoal e profissional, equipada com um assistente de IA (GPT-4) para facilitar o lançamento de despesas e receitas.
 
@@ -17,7 +17,7 @@ O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvol
 -   **Análise Financeira Automatizada:** Pipeline de IA para insights, detecção de riscos, perfil financeiro, money map e previsão de cashflow.
 -   **Gestão de Transações:** Adicione, edite, categorize e importe transações (CSV/OFX).
 -   **Metas e Alertas:** Defina objetivos financeiros e receba alertas inteligentes de gastos.
--   **Open Banking (Mock):** Simulação de sincronização bancária automática.
+-   **Open Banking (Pluggy + Mock):** Fluxo real via backend protegido com fallback local para desenvolvimento.
 -   **Scanner de Recibos:** OCR para extrair dados de comprovantes (Gemini Vision).
 -   **Central de Apoio:** Acesso rápido a suporte via IA, contato e documentos legais.
 -   **Modo Escuro/Claro:** Interface adaptável à sua preferência.
@@ -25,10 +25,10 @@ O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvol
 
 ---
 
-## 📦 Stack Tecnológica (v0.6.0)
+## 📦 Stack Tecnológica (v0.5.1v)
 
 ### Frontend
-- **React 18** + **TypeScript 5.3**
+- **React 19** + **TypeScript 5.8**
 - **Vite 6** (build otimizado)
 - **TailwindCSS 3** (UI responsiva)
 - **Firebase SDK** (Auth + Firestore)
@@ -36,11 +36,11 @@ O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvol
 - **Capacitor** (iOS/Android deployment)
 
 ### Backend
-- **Node.js 20** + **Express 5**
+- **Node.js 20** + **Express 4**
 - **TypeScript 5.3**
 - **OpenAI SDK** (GPT-4 para consultas financeiras)
 - **Gemini SDK** (OCR de recibos - opcional)
-- **PostgreSQL** (dados relacionais - opcional)
+- **PostgreSQL** (persistência futura opcional para Open Finance)
 - **JWT** (autenticação stateless)
 - **Pino** (logging estruturado)
 
@@ -108,6 +108,13 @@ O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvol
    # Terminal 2: Backend
    cd backend && npm run dev
    ```
+
+### ✅ Checkpoint de Transição 0.6.1v
+
+- Health checks de IO e runtime incorporados ao pipeline de deploy
+- Open Finance com backend banking, Pluggy Connect, JWT nas rotas e webhook público protegido por segredo opcional
+- Camada opcional de persistência PostgreSQL preparada e desligada por padrão
+- Baseline atual de cobertura medida em `36.2%`, ainda abaixo da meta protocolar de `98%`
 
 ### 🏗️ Build Manual
 

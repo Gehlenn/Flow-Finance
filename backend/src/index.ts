@@ -15,6 +15,7 @@ import { apiLimiter } from './middleware/rateLimit';
 import authRoutes from './routes/auth';
 import aiRoutes from './routes/ai';
 import saasRoutes from './routes/saas';
+import bankingRoutes from './routes/banking';
 
 // ─── INITIALIZATION ──────────────────────────────────────────────────────────
 
@@ -68,6 +69,8 @@ app.use(helmet());
 const defaultOrigins = [
   'http://localhost:3078',
   'http://127.0.0.1:3078',
+  'http://localhost:4173',
+  'http://127.0.0.1:4173',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'https://flow-finance-frontend-nine.vercel.app', // Production frontend
@@ -78,7 +81,10 @@ const configuredOrigins = (process.env.FRONTEND_URL || '')
   .map((o) => o.trim())
   .filter(Boolean);
 
-const allowedOrigins = configuredOrigins.length > 0 ? configuredOrigins : defaultOrigins;
+const allowedOrigins = Array.from(new Set([
+  ...defaultOrigins,
+  ...configuredOrigins,
+]));
 
 logger.info({ allowedOrigins, environment: process.env.NODE_ENV }, 'CORS allowed origins configured');
 
@@ -137,14 +143,14 @@ app.get('/health', (_req: Request, res: Response) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    version: process.env.APP_VERSION || '0.4.0'
+    version: process.env.APP_VERSION || '0.6.2'
   });
 });
 
 // API version
 app.get('/api/version', (_req: Request, res: Response) => {
   res.json({
-    version: process.env.APP_VERSION || '0.6.0',
+    version: process.env.APP_VERSION || '0.6.2',
     environment: process.env.NODE_ENV || 'development'
   });
 });
@@ -154,7 +160,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     service: 'flow-finance-api',
-    version: process.env.APP_VERSION || '0.6.0',
+    version: process.env.APP_VERSION || '0.6.2',
   });
 });
 
@@ -166,6 +172,9 @@ app.use('/api/ai', aiRoutes);
 
 // SaaS routes (usage + billing hooks)
 app.use('/api/saas', saasRoutes);
+
+// Banking routes (Open Finance integration)
+app.use('/api/banking', bankingRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
