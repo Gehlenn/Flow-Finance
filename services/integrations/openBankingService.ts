@@ -56,6 +56,46 @@ function getApiErrorStatus(error: unknown): number | null {
   return match ? Number(match[1]) : null;
 }
 
+function collectErrorTokens(error: unknown, seen = new Set<unknown>()): string[] {
+  if (error == null) return [];
+  if (typeof error === 'string') return [error];
+  if (typeof error !== 'object') return [String(error)];
+  if (seen.has(error)) return [];
+  seen.add(error);
+
+  const tokens: string[] = [];
+  const obj = error as Record<string, unknown>;
+
+  for (const key of ['message', 'code', 'error', 'type']) {
+    const value = obj[key];
+    if (typeof value === 'string' && value.trim()) {
+      tokens.push(value);
+    }
+  }
+
+  for (const value of Object.values(obj)) {
+    if (typeof value === 'object' || typeof value === 'string') {
+      tokens.push(...collectErrorTokens(value, seen));
+    }
+  }
+
+  return tokens;
+}
+
+export function mapPluggyConnectErrorMessage(error: unknown): string {
+  const merged = collectErrorTokens(error).join(' ').toUpperCase();
+
+  if (merged.includes('TRIAL_CLIENT_ITEM_CREATE_NOT_ALLOWED')) {
+    return 'Sua credencial Pluggy esta em modo de teste. Use um conector sandbox ou solicite habilitacao de contas reais no painel da Pluggy.';
+  }
+
+  if (merged.includes('INVALID_CONNECT_TOKEN') || merged.includes('CONNECT_TOKEN')) {
+    return 'Token de conexao da Pluggy expirou ou e invalido. Atualize a tela e tente novamente.';
+  }
+
+  return 'Conexao Pluggy cancelada ou invalida. Tente novamente.';
+}
+
 function shouldUseLocalMockFallback(error: unknown): boolean {
   const status = getApiErrorStatus(error);
 
@@ -370,7 +410,7 @@ export async function syncTransactions(
       const result = await apiRequest<SyncResult & { transactions?: Partial<Transaction>[] }>(API_ENDPOINTS.BANKING.SYNC, {
         method: 'POST',
         body: JSON.stringify({ connectionId, days }),
-        retries: 1,
+        retries: 0,
       });
 
       if (result.transactions?.length) {

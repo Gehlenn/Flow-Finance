@@ -11,6 +11,7 @@ import {
   disconnectBank,
   fullSync,
   formatLastSync,
+  mapPluggyConnectErrorMessage,
   getBankingHealth,
   listPluggyConnectors,
   PluggyConnector,
@@ -412,16 +413,22 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
       setView('list');
       setPluggyConnectToken(await createPluggyConnectToken(userId));
     } catch (err) {
-      setActionError('Falha ao conectar com Pluggy. Verifique autenticação e tente novamente.');
-      console.error('Falha ao registrar item Pluggy no backend:', err);
+      const message = mapPluggyConnectErrorMessage(err);
+      setActionError(message);
+      if (!/modo de teste|sandbox/i.test(message)) {
+        console.error('Falha ao registrar item Pluggy no backend:', err);
+      }
     } finally {
       setConnectingBank(null);
     }
   };
 
   const handlePluggyError = (error: unknown) => {
-    setActionError('Conexão Pluggy cancelada ou inválida. Tente novamente.');
-    console.error('Erro no Pluggy Connect:', error);
+    const message = mapPluggyConnectErrorMessage(error);
+    setActionError(message);
+    if (!/modo de teste|sandbox/i.test(message)) {
+      console.error('Erro no Pluggy Connect:', error);
+    }
   };
 
   // ── Connect ────────────────────────────────────────────────────────────────

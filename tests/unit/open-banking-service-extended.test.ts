@@ -73,6 +73,7 @@ import {
   reloadConnections,
   listPluggyConnectors,
   formatLastSync,
+  mapPluggyConnectErrorMessage,
 } from '../../services/integrations/openBankingService';
 
 import { getProvider } from '../../services/integrations/mockBankProvider';
@@ -418,6 +419,11 @@ describe('openBankingService - Extended Coverage', () => {
       last_sync: '2026-03-12T01:00:00.000Z',
       balance: 777,
     });
+    expect(apiRequestMock).toHaveBeenLastCalledWith('/api/banking/sync', {
+      method: 'POST',
+      body: JSON.stringify({ connectionId: conn.id, days: 7 }),
+      retries: 0,
+    });
   });
 
   it('syncTransactions marca erro quando backend retorna erro sem transacoes', async () => {
@@ -675,6 +681,35 @@ describe('openBankingService - Extended Coverage', () => {
     });
   });
 
+  it('syncTransactions usa mensagem padrao no backend quando erro nao possui message em producao', async () => {
+    vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+    vi.stubEnv('MODE', 'production');
+
+    apiRequestMock.mockResolvedValueOnce({
+      id: 'conn_backend_prod_no_message',
+      user_id: 'u-prod-no-message',
+      provider: 'pluggy',
+      bank_name: 'Banco Sem Mensagem',
+      bank_logo: '',
+      bank_color: '#7a7a7a',
+      connection_status: 'connected',
+      external_account_id: 'ext-prod-no-message',
+      created_at: '2026-03-12T00:00:00.000Z',
+    });
+
+    const conn = await connectBank('nubank', 'u-prod-no-message');
+    apiRequestMock.mockRejectedValueOnce({});
+
+    const result = await syncTransactions(conn.id, [], 'u-prod-no-message', vi.fn());
+
+    expect(result.transactions_imported).toBe(0);
+    expect(result.error).toBe('Erro ao sincronizar com o backend.');
+    expect(getConnection(conn.id)).toMatchObject({
+      connection_status: 'error',
+      error_message: 'Erro ao sincronizar com o backend.',
+    });
+  });
+
   it('syncTransactions remove conexao mock em producao e nao importa dados', async () => {
     vi.stubEnv('MODE', 'production');
 
@@ -723,6 +758,45 @@ describe('openBankingService - Extended Coverage', () => {
 
     expect(result.error).toMatch(/Conexão não encontrada no backend/i);
     expect(getConnection(conn.id)).toBeNull();
+    expect(apiRequestMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('mapPluggyConnectErrorMessage traduz erro de trial para orientacao amigavel', () => {
+    const message = mapPluggyConnectErrorMessage({
+      message: 'TRIAL_CLIENT_ITEM_CREATE_NOT_ALLOWED',
+      data: { detail: 'only sandbox connectors allowed' },
+    });
+
+    expect(message).toMatch(/modo de teste/i);
+    expect(message).toMatch(/sandbox/i);
+  });
+
+  it('mapPluggyConnectErrorMessage traduz problema de token invalido', () => {
+    const message = mapPluggyConnectErrorMessage({ error: { code: 'INVALID_CONNECT_TOKEN' } });
+    expect(message).toMatch(/token/i);
+  });
+
+  it('mapPluggyConnectErrorMessage retorna mensagem generica para erro desconhecido', () => {
+    const message = mapPluggyConnectErrorMessage({ foo: 'bar' });
+    expect(message).toMatch(/cancelada|invalida/i);
+  });
+
+  it('mapPluggyConnectErrorMessage tolera payload circular sem quebrar', () => {
+    const circular: any = { message: 'unknown_error' };
+    circular.self = circular;
+
+    const message = mapPluggyConnectErrorMessage(circular);
+    expect(message).toMatch(/cancelada|invalida/i);
+  });
+
+  it('mapPluggyConnectErrorMessage aceita erro em formato string', () => {
+    const message = mapPluggyConnectErrorMessage('TRIAL_CLIENT_ITEM_CREATE_NOT_ALLOWED');
+    expect(message).toMatch(/modo de teste/i);
+  });
+
+  it('mapPluggyConnectErrorMessage aceita erro primitivo nao objeto', () => {
+    const message = mapPluggyConnectErrorMessage(503 as any);
+    expect(message).toMatch(/cancelada|invalida/i);
   });
 
   it('reloadConnections reconcilia cache local com lista do backend', async () => {
