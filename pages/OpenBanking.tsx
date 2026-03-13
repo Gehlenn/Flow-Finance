@@ -4,7 +4,7 @@ import { Transaction } from '../types';
 import { Account } from '../models/Account';
 import { BankConnection, BRAZILIAN_BANKS, BankOption, SyncResult } from '../models/BankConnection';
 import {
-  getConnections,
+  reloadConnections,
   connectBank,
   connectPluggyItem,
   createPluggyConnectToken,
@@ -314,12 +314,20 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
   const [pluggyConnectToken, setPluggyConnectToken] = useState<string | null>(null);
   const [pluggyConnectors, setPluggyConnectors] = useState<PluggyConnector[]>([]);
 
-  const reload = useCallback(() => setConnections(getConnections(userId)), [userId]);
-  useEffect(() => { reload(); }, [reload]);
+  const reload = useCallback(async () => {
+    const fresh = await reloadConnections(userId);
+    setConnections(fresh);
+  }, [userId]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
   // Auto-refresh last_sync labels every 30s
   useEffect(() => {
-    const t = setInterval(reload, 30000);
+    const t = setInterval(() => {
+      void reload();
+    }, 30000);
     return () => clearInterval(t);
   }, [reload]);
 
@@ -382,7 +390,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
 
     try {
       await connectPluggyItem(bankId, userId, itemId);
-      reload();
+      await reload();
       setView('list');
       setPluggyConnectToken(await createPluggyConnectToken(userId));
     } catch (err) {
@@ -402,7 +410,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
     setConnectingBank(bank.id);
     try {
       await connectBank(bank.id, userId);
-      reload();
+      await reload();
       setView('list');
     } catch (err: any) {
       console.error('Connect failed:', err);
@@ -415,7 +423,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
 
   const handleDisconnect = async (id: string) => {
     await disconnectBank(id);
-    reload();
+    await reload();
   };
 
   // ── Sync single ────────────────────────────────────────────────────────────
@@ -423,7 +431,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
   const handleSync = async (id: string) => {
     if (syncingIds.has(id)) return;
     setSyncingIds(prev => new Set([...prev, id]));
-    reload(); // show syncing status
+    await reload(); // show syncing status
     try {
       const result = await fullSync(
         id,
@@ -436,7 +444,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
       setLastResults(prev => ({ ...prev, [id]: result }));
     } finally {
       setSyncingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
-      reload();
+      await reload();
     }
   };
 

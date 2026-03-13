@@ -146,9 +146,17 @@ export async function apiRequest<T>(
     } catch (error: any) {
       clearTimeout(timeoutId);
       lastError = error;
+
+      const statusMatch = String(error?.message ?? '').match(/API Error\s+(\d{3})/);
+      const statusCode = statusMatch ? Number(statusMatch[1]) : null;
       
       // Don't retry on auth errors or non-network issues
       if (error.message?.includes('401') || error.message?.includes('403')) {
+        throw error;
+      }
+
+      // 4xx errors are typically deterministic (except 429 rate-limit)
+      if (statusCode !== null && statusCode >= 400 && statusCode < 500 && statusCode !== 429) {
         throw error;
       }
 

@@ -102,7 +102,20 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
     }
   };
 
+  const ensureHasGeneratedItems = (count: number, kind: 'transaction' | 'reminder') => {
+    if (count > 0) {
+      return;
+    }
+
+    if (kind === 'transaction') {
+      throw new Error('Nenhuma transação foi gerada pela IA');
+    }
+
+    throw new Error('Nenhum lembrete foi gerado pela IA');
+  };
+
   const handleSuccess = () => {
+    setIsLoading(false);
     setIsSuccess(true);
     setTimeout(() => {
       onClose();
@@ -123,6 +136,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
 
       if (output.intent === 'transaction') {
         const txData = output.data as TransactionData[];
+        ensureHasGeneratedItems(txData.length, 'transaction');
         const withAccount = txData.map((t) => ({
           ...t,
           account_id: selectedAccountId,
@@ -132,6 +146,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
         onAddTransactions(withAccount);
       } else if (output.intent === 'reminder') {
         const reminderData = output.data as ReminderData[];
+        ensureHasGeneratedItems(reminderData.length, 'reminder');
         const reminders: Partial<Reminder>[] = reminderData.map((item) => ({
           title: item.title,
           date: item.date,
@@ -191,6 +206,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
           (b, m, t) => gemini.current.parseFinancialImage(b, m, t)
         );
         const txData = output.data as TransactionData[];
+        ensureHasGeneratedItems(txData.length, 'transaction');
         const withAccount = txData.map((t) => ({
           ...t,
           account_id: selectedAccountId,
@@ -232,7 +248,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
 
         <div className="p-8 flex-1">
           {error && (
-            <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-2xl text-rose-500 text-[10px] font-bold flex items-center gap-2">
+            <div role="alert" className="mb-4 p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-2xl text-rose-500 text-[10px] font-bold flex items-center gap-2">
                <X size={14} className="shrink-0" /> {error}
             </div>
           )}

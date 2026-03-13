@@ -111,6 +111,24 @@ export function getConnections(userId: string): BankConnection[] {
   return readConnections().filter(c => c.user_id === userId);
 }
 
+export async function reloadConnections(userId: string): Promise<BankConnection[]> {
+  const local = getConnections(userId);
+  if (!hasBackendBanking()) return local;
+
+  try {
+    const remote = await apiRequest<BankConnection[]>(
+      `${API_ENDPOINTS.BANKING.CONNECTIONS}?userId=${encodeURIComponent(userId)}`,
+      { method: 'GET', retries: 0, silent: true },
+    );
+
+    const otherUsers = readConnections().filter((c) => c.user_id !== userId);
+    writeConnections([...otherUsers, ...remote]);
+    return remote;
+  } catch {
+    return local;
+  }
+}
+
 export function getConnection(id: string): BankConnection | null {
   return readConnections().find(c => c.id === id) ?? null;
 }
@@ -323,7 +341,19 @@ export async function syncTransactions(
       });
 
       return result;
-    } catch {
+    } catch (error: any) {
+      const message = String(error?.message ?? '');
+      if (message.includes('API Error 404')) {
+        writeConnections(readConnections().filter((c) => c.id !== connectionId));
+        return {
+          connection_id: connectionId,
+          transactions_imported: 0,
+          balance_updated: false,
+          synced_at: new Date().toISOString(),
+          error: 'Conexão não encontrada no backend. Atualize a lista e reconecte o banco.',
+        };
+      }
+
       // Fallback to local mock flow
     }
   }
