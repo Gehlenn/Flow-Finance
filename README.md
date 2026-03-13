@@ -218,6 +218,7 @@ aws ecs create-service --cluster flow-finance --service-name flow-finance-servic
 ### 📋 Checklist de Produção
 
 - [ ] Variáveis de ambiente configuradas
+- [ ] Regras Firestore aplicadas (`firestore.rules`) no projeto `komodo-flow`
 - [ ] Banco PostgreSQL provisionado
 - [ ] Redis provisionado
 - [ ] Chaves API configuradas (Gemini, Sentry)

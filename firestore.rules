@@ -1,0 +1,47 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isCurrentUser(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function ownerFieldMatchesAuth() {
+      return isSignedIn()
+        && request.resource.data.user_id is string
+        && request.resource.data.user_id == request.auth.uid;
+    }
+
+    // Main user profile document synced by App.tsx
+    match /users/{userId} {
+      allow read, write: if isCurrentUser(userId);
+    }
+
+    // Per-user accounts collection
+    match /accounts/{accountId} {
+      allow create: if ownerFieldMatchesAuth();
+      allow read, delete: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.user_id == request.auth.uid
+        && request.resource.data.user_id == request.auth.uid;
+    }
+
+    // Per-user transactions collection
+    match /transactions/{transactionId} {
+      allow create: if ownerFieldMatchesAuth();
+      allow read, delete: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.user_id == request.auth.uid
+        && request.resource.data.user_id == request.auth.uid;
+    }
+
+    // Deny by default for every other collection
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
