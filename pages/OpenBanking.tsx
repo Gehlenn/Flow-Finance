@@ -1,13 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { PluggyConnect } from 'react-pluggy-connect';
 import { Transaction } from '../types';
 import { Account } from '../models/Account';
 import { BankConnection, BRAZILIAN_BANKS, BankOption, SyncResult } from '../models/BankConnection';
 import {
   getConnections,
   connectBank,
+  connectPluggyItem,
+  createPluggyConnectToken,
   disconnectBank,
   fullSync,
   formatLastSync,
+  getBankingHealth,
+  listPluggyConnectors,
+  PluggyConnector,
 } from '../services/integrations/openBankingService';
 import { runBankSync, getSyncStatusSummary, getLastSyncReport, formatSyncDuration } from '../src/finance/bankSyncEngine';
 import {
@@ -49,8 +55,8 @@ const StatusPill: React.FC<{ status: BankConnection['connection_status'] }> = ({
 // ─── Bank logo circle ─────────────────────────────────────────────────────────
 
 const BankLogo: React.FC<{ bank: BankOption | BankConnection; size?: 'sm' | 'md' | 'lg' }> = ({ bank, size = 'md' }) => {
-  const logo = 'bank_logo' in bank ? bank.bank_logo : bank.logo;
-  const color = 'bank_color' in bank ? bank.bank_color : bank.color;
+  const logo = 'bank_name' in bank ? bank.bank_logo : bank.logo;
+  const color = 'bank_name' in bank ? bank.bank_color : bank.color;
   const sizes = { sm: 'w-9 h-9 text-lg', md: 'w-12 h-12 text-2xl', lg: 'w-16 h-16 text-3xl' };
   return (
     <div
@@ -162,8 +168,23 @@ const BankPicker: React.FC<{
   connectedIds: Set<string>;
   connecting: string | null;
   onConnect: (bank: BankOption) => void;
+  pluggyEnabled: boolean;
+  pluggyConnectToken: string | null;
+  pluggyConnectors: PluggyConnector[];
+  onPluggySuccess: (data: unknown) => void;
+  onPluggyError: (error: unknown) => void;
   onBack: () => void;
-}> = ({ connectedIds, connecting, onConnect, onBack }) => (
+}> = ({
+  connectedIds,
+  connecting,
+  onConnect,
+  pluggyEnabled,
+  pluggyConnectToken,
+  pluggyConnectors,
+  onPluggySuccess,
+  onPluggyError,
+  onBack,
+}) => (
   <div className="flex flex-col gap-4">
     <div className="flex items-center gap-3">
       <button
@@ -182,12 +203,32 @@ const BankPicker: React.FC<{
     <div className="flex items-start gap-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl border border-emerald-100 dark:border-emerald-500/20">
       <ShieldCheck size={14} className="text-emerald-500 shrink-0 mt-0.5" />
       <div>
-        <p className="text-[9px] font-black text-emerald-700 dark:text-emerald-300">Conexão segura simulada</p>
+        <p className="text-[9px] font-black text-emerald-700 dark:text-emerald-300">
+          {pluggyEnabled ? 'Conexão segura Pluggy ativa' : 'Conexão segura simulada'}
+        </p>
         <p className="text-[8px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5 leading-relaxed">
-          Ambiente de demonstração com dados fictícios. Nenhuma credencial bancária real é solicitada.
+          {pluggyEnabled
+            ? 'Token gerado no backend e credenciais protegidas no servidor. Nenhum CLIENT_ID/SECRET é exposto no navegador.'
+            : 'Ambiente de demonstração com dados fictícios. Nenhuma credencial bancária real é solicitada.'}
         </p>
       </div>
     </div>
+
+    {pluggyEnabled && pluggyConnectToken && (
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-4">
+        <p className="text-[9px] font-black text-slate-700 dark:text-slate-200 mb-2">Conectar com Pluggy Connect</p>
+        <div className="w-full [&>button]:w-full [&>button]:rounded-xl [&>button]:bg-indigo-600 [&>button]:hover:bg-indigo-700 [&>button]:text-white [&>button]:font-black [&>button]:text-xs [&>button]:py-3 [&>button]:transition-colors">
+          <PluggyConnect
+            connectToken={pluggyConnectToken}
+            includeSandbox
+            allowFullscreen={false}
+            onSuccess={onPluggySuccess as any}
+            onError={onPluggyError as any}
+            connectorIds={pluggyConnectors.slice(0, 30).map((c) => c.id)}
+          />
+        </div>
+      </div>
+    )}
 
     {/* Bank grid */}
     <div className="grid grid-cols-2 gap-3">
@@ -233,16 +274,21 @@ const BankPicker: React.FC<{
 
     {/* Future providers */}
     <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700 p-4">
-      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">Integrações futuras</p>
+      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">Conectores disponíveis</p>
       <div className="flex gap-2 flex-wrap">
-        {['Pluggy', 'Belvo', 'TrueLayer'].map(p => (
+        {(pluggyConnectors.length
+          ? pluggyConnectors.slice(0, 10).map((c) => c.name)
+          : ['Pluggy', 'Belvo', 'TrueLayer'])
+          .map(p => (
           <span key={p} className="px-3 py-1.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-[8px] font-black text-slate-400 uppercase tracking-widest">
             {p}
           </span>
-        ))}
+          ))}
       </div>
       <p className="text-[8px] text-slate-400 font-bold mt-2 leading-relaxed">
-        A arquitetura provider permite integrar qualquer API Open Banking sem reescrever o código.
+        {pluggyEnabled
+          ? 'Fluxo real Pluggy ativo: o widget gera Item e o backend registra a conexão com segurança.'
+          : 'A arquitetura provider permite integrar qualquer API Open Banking sem reescrever o código.'}
       </p>
     </div>
   </div>
@@ -264,6 +310,9 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
   const [connectingBank, setConnectingBank] = useState<string | null>(null);
   const [lastResults, setLastResults] = useState<Record<string, SyncResult>>({});
   const [syncAllLoading, setSyncAllLoading] = useState(false);
+  const [pluggyEnabled, setPluggyEnabled] = useState(false);
+  const [pluggyConnectToken, setPluggyConnectToken] = useState<string | null>(null);
+  const [pluggyConnectors, setPluggyConnectors] = useState<PluggyConnector[]>([]);
 
   const reload = useCallback(() => setConnections(getConnections(userId)), [userId]);
   useEffect(() => { reload(); }, [reload]);
@@ -273,6 +322,79 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
     const t = setInterval(reload, 30000);
     return () => clearInterval(t);
   }, [reload]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPluggyData = async () => {
+      const health = await getBankingHealth();
+      const isAvailable = Boolean(health?.providerMode === 'pluggy' && health?.pluggyConfigured);
+
+      if (cancelled) return;
+
+      setPluggyEnabled(isAvailable);
+      if (!isAvailable) {
+        setPluggyConnectToken(null);
+        return;
+      }
+
+      const [connectors, token] = await Promise.all([
+        listPluggyConnectors(),
+        createPluggyConnectToken(userId).catch(() => null),
+      ]);
+
+      if (cancelled) return;
+      setPluggyConnectors(connectors);
+      setPluggyConnectToken(token);
+    };
+
+    if (view === 'add') {
+      loadPluggyData().catch((err) => console.error('Falha ao carregar Pluggy:', err));
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, view]);
+
+  const normalizeBankId = (value: string): string => (
+    value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 48) || 'pluggy-bank'
+  );
+
+  const handlePluggySuccess = async (payload: unknown) => {
+    const data = payload as { item?: { id?: string; connector?: { name?: string } } };
+    const itemId = data?.item?.id;
+
+    if (!itemId) {
+      console.error('Pluggy success sem itemId:', payload);
+      return;
+    }
+
+    const connectorName = data?.item?.connector?.name || 'Pluggy';
+    const bankId = normalizeBankId(connectorName);
+    setConnectingBank(bankId);
+
+    try {
+      await connectPluggyItem(bankId, userId, itemId);
+      reload();
+      setView('list');
+      setPluggyConnectToken(await createPluggyConnectToken(userId));
+    } catch (err) {
+      console.error('Falha ao registrar item Pluggy no backend:', err);
+    } finally {
+      setConnectingBank(null);
+    }
+  };
+
+  const handlePluggyError = (error: unknown) => {
+    console.error('Erro no Pluggy Connect:', error);
+  };
 
   // ── Connect ────────────────────────────────────────────────────────────────
 
@@ -369,6 +491,11 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
           connectedIds={connectedIds}
           connecting={connectingBank}
           onConnect={handleConnect}
+          pluggyEnabled={pluggyEnabled}
+          pluggyConnectToken={pluggyConnectToken}
+          pluggyConnectors={pluggyConnectors}
+          onPluggySuccess={handlePluggySuccess}
+          onPluggyError={handlePluggyError}
           onBack={() => setView('list')}
         />
       )}
@@ -466,7 +593,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
             <div className="flex gap-2 mt-3 flex-wrap">
               {[
                 { name: 'MockBankProvider', status: 'Ativo', color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10' },
-                { name: 'PluggyProvider',   status: 'Futuro', color: 'text-slate-400 bg-slate-100 dark:bg-slate-700' },
+                { name: 'PluggyProvider',   status: pluggyEnabled ? 'Ativo' : 'Parcial', color: pluggyEnabled ? 'text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' : 'text-amber-500 bg-amber-50 dark:bg-amber-500/10' },
                 { name: 'BelvoProvider',    status: 'Futuro', color: 'text-slate-400 bg-slate-100 dark:bg-slate-700' },
                 { name: 'TrueLayerProvider',status: 'Futuro', color: 'text-slate-400 bg-slate-100 dark:bg-slate-700' },
               ].map(p => (

@@ -1,8 +1,8 @@
 {
   "name": "flow-finance",
-  "description": "Flow Finance - Intelligent Cash Flow Control App (v0.6.0)",
+  "description": "Flow Finance - Intelligent Cash Flow Control App (v0.6.2)",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.6.2",
   "type": "module",
   "scripts": {
     "setup": "node setup.js",
@@ -19,6 +19,11 @@
     "test": "vitest run --exclude tests/e2e/**",
     "test:watch": "vitest --exclude tests/e2e/**",
     "test:coverage": "vitest run --coverage --exclude tests/e2e/**",
+    "test:coverage:critical": "vitest run --config vitest.critical.config.ts",
+    "health:io": "vitest run tests/health/io-integrations.health.test.ts",
+    "health:runtime": "playwright test tests/e2e/runtime-console-health.spec.ts --project=chromium --workers=1",
+    "health:runtime:mobile": "playwright test tests/e2e/runtime-console-health.spec.ts --project=\"Mobile Chrome\" --project=\"Mobile Safari\" --workers=1",
+    "health:all": "npm run health:io ; npm run health:runtime ; npm run health:runtime:mobile",
     "teste:e2e": "npm run test:e2e",
     "test:e2e": "playwright test",
     "setup:mobile": "cap add android && cap add ios && cap sync",
@@ -44,6 +49,7 @@
     "lucide-react": "0.563.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-pluggy-connect": "^2.12.0",
     "recharts": "3.7.0"
   },
   "devDependencies": {
@@ -53,6 +59,8 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^22.14.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.0.0",
     "@vitest/coverage-v8": "^4.0.18",
     "autoprefixer": "^10.4.27",

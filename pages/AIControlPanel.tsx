@@ -1170,10 +1170,10 @@ const SystemStats: React.FC<{ transactions: Transaction[]; accounts: Account[]; 
       {[
         { label: 'Transações',     value: transactions.length,       icon: <ArrowRight size={9} />, color: 'text-indigo-400' },
         { label: 'Contas',         value: accounts.length,           icon: <Database size={9} />,   color: 'text-sky-400' },
-        { label: 'Memórias',       value: stats.memories_stored,     icon: <Brain size={9} />,      color: 'text-violet-400' },
-        { label: 'Padrões',        value: stats.patterns_detected,   icon: <GitBranch size={9} />,  color: 'text-amber-400' },
+        { label: 'Memórias',       value: stats.memory_count,        icon: <Brain size={9} />,      color: 'text-violet-400' },
+        { label: 'Padrões',        value: stats.pattern_count,       icon: <GitBranch size={9} />,  color: 'text-amber-400' },
         { label: 'Eventos',        value: events.length,             icon: <Activity size={9} />,   color: 'text-emerald-400' },
-        { label: 'Insights+',      value: stats.insights_enhanced,   icon: <Sparkles size={9} />,   color: 'text-rose-400' },
+        { label: 'Insights+',      value: stats.is_learning ? stats.pattern_count : 0, icon: <Sparkles size={9} />,   color: 'text-rose-400' },
       ].map(({ label, value, icon, color }) => (
         <div key={label} className="flex items-center gap-2 px-3 py-2 bg-black/30 border border-slate-700/40 rounded-lg">
           <span className={color}>{icon}</span>

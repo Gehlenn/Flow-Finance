@@ -39,6 +39,11 @@ export const API_ENDPOINTS = {
 
   // Bank sync endpoints
   BANKING: {
+    BANKS: `${BACKEND_BASE_URL}/api/banking/banks`,
+    CONNECTORS: `${BACKEND_BASE_URL}/api/banking/connectors`,
+    CONNECTIONS: `${BACKEND_BASE_URL}/api/banking/connections`,
+    HEALTH: `${BACKEND_BASE_URL}/api/banking/health`,
+    CONNECT_TOKEN: `${BACKEND_BASE_URL}/api/banking/connect-token`,
     CONNECT: `${BACKEND_BASE_URL}/api/banking/connect`,
     SYNC: `${BACKEND_BASE_URL}/api/banking/sync`,
     DISCONNECT: `${BACKEND_BASE_URL}/api/banking/disconnect`,
@@ -84,7 +89,7 @@ export function getAuthHeaders(): Record<string, string> {
   return {
     'Content-Type': 'application/json',
     'Authorization': token ? `Bearer ${token}` : '',
-    'X-Client-Version': '0.1.0',
+    'X-Client-Version': '0.6.1',
     'X-Client-Platform': getPlatform(),
   };
 }

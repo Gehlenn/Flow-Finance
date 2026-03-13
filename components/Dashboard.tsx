@@ -371,14 +371,14 @@ const Dashboard: React.FC<DashboardProps> = ({
               <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center">
                 <GraduationCap size={18} className="text-white" />
               </div>
-              {adaptiveStats.isLearning && (
+              {adaptiveStats.is_learning && (
                 <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-white dark:border-slate-800 animate-pulse" />
               )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-black text-slate-900 dark:text-white leading-none">AI Learning</p>
               <p className="text-[8px] font-bold text-slate-400 mt-0.5">
-                {adaptiveStats.isLearning
+                {adaptiveStats.is_learning
                   ? 'Seu assistente financeiro está aprendendo seus hábitos de gasto.'
                   : 'Adicione mais transações para ativar o aprendizado.'}
               </p>
@@ -386,11 +386,11 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           {/* Stats grid */}
-          {adaptiveStats.isLearning && (
+          {adaptiveStats.is_learning && (
             <div className="grid grid-cols-3 gap-px bg-slate-100 dark:bg-slate-700 border-t border-slate-100 dark:border-slate-700">
               {[
-                { label: 'Padrões', value: adaptiveStats.patternCount },
-                { label: 'Memórias', value: adaptiveStats.memoryCount },
+                { label: 'Padrões', value: adaptiveStats.pattern_count },
+                { label: 'Memórias', value: adaptiveStats.memory_count },
                 { label: 'Transações', value: transactions.filter(t => !t.generated).length },
               ].map(({ label, value }) => (
                 <div key={label} className="bg-white dark:bg-slate-800 px-4 py-3 text-center">
@@ -402,18 +402,18 @@ const Dashboard: React.FC<DashboardProps> = ({
           )}
 
           {/* Learning progress bar */}
-          {adaptiveStats.isLearning && (
+          {adaptiveStats.is_learning && (
             <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-700">
               <div className="flex items-center justify-between mb-1.5">
                 <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Nível de aprendizado</p>
                 <p className="text-[7px] font-black text-indigo-500">
-                  {adaptiveStats.patternCount >= 5 ? 'Avançado' : adaptiveStats.patternCount >= 3 ? 'Intermediário' : 'Iniciante'}
+                  {adaptiveStats.pattern_count >= 5 ? 'Avançado' : adaptiveStats.pattern_count >= 3 ? 'Intermediário' : 'Iniciante'}
                 </p>
               </div>
               <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-1000"
-                  style={{ width: `${Math.min(100, (adaptiveStats.patternCount / 5) * 100)}%` }}
+                  style={{ width: `${Math.min(100, (adaptiveStats.pattern_count / 5) * 100)}%` }}
                 />
               </div>
             </div>

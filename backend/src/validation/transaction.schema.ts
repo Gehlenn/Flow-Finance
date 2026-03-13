@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const TransactionSchema = z.object({
-  amount: z.number().finite(),
+  amount: z.number().finite().max(999999999),
   description: z.string().min(1),
   category: z.enum(['Pessoal', 'Trabalho', 'Negócio', 'Investimento']),
   type: z.enum(['Receita', 'Despesa']),

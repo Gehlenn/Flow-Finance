@@ -23,6 +23,7 @@ import { FinancialEventEmitter } from '../../src/events/eventEngine';
 import { classifyImportedTransactions } from '../../src/finance/importService';
 import { learnMemory } from '../../src/ai/aiMemory';
 import { makeId } from '../../utils/helpers';
+import { API_ENDPOINTS, apiRequest } from '../../src/config/api.config';
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 
@@ -35,6 +36,73 @@ function readConnections(): BankConnection[] {
 
 function writeConnections(conns: BankConnection[]): void {
   localStorage.setItem(CONNECTIONS_KEY, JSON.stringify(conns));
+}
+
+function hasBackendBanking(): boolean {
+  if (import.meta.env.MODE === 'test' && !import.meta.env.VITE_ENABLE_TEST_BACKEND_BANKING) {
+    return false;
+  }
+
+  return Boolean(API_ENDPOINTS.BANKING.CONNECT);
+}
+
+export interface BankingHealth {
+  status: 'ok' | string;
+  providerMode: string;
+  pluggyConfigured: boolean;
+  totalUsersWithConnections: number;
+  timestamp: string;
+}
+
+export interface PluggyConnector {
+  id: number;
+  name: string;
+  imageUrl?: string;
+  primaryColor?: string;
+  country?: string;
+}
+
+export async function getBankingHealth(): Promise<BankingHealth | null> {
+  if (!hasBackendBanking()) return null;
+  try {
+    return await apiRequest<BankingHealth>(API_ENDPOINTS.BANKING.HEALTH, { method: 'GET', retries: 1 });
+  } catch {
+    return null;
+  }
+}
+
+export async function listPluggyConnectors(): Promise<PluggyConnector[]> {
+  if (!hasBackendBanking()) return [];
+  try {
+    return await apiRequest<PluggyConnector[]>(API_ENDPOINTS.BANKING.CONNECTORS, { method: 'GET', retries: 1 });
+  } catch {
+    return [];
+  }
+}
+
+export async function createPluggyConnectToken(clientUserId?: string): Promise<string> {
+  const payload = clientUserId ? { clientUserId } : {};
+  const response = await apiRequest<{ accessToken: string }>(API_ENDPOINTS.BANKING.CONNECT_TOKEN, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    retries: 1,
+  });
+
+  return response.accessToken;
+}
+
+export async function connectPluggyItem(
+  bankId: string,
+  userId: string,
+  itemId: string,
+): Promise<BankConnection> {
+  const conn = await apiRequest<BankConnection>(API_ENDPOINTS.BANKING.CONNECT, {
+    method: 'POST',
+    body: JSON.stringify({ bankId, userId, itemId }),
+    retries: 1,
+  });
+  saveConnection(conn);
+  return conn;
 }
 
 
@@ -67,6 +135,20 @@ export async function connectBank(
   bankId: string,
   userId: string
 ): Promise<BankConnection> {
+  if (hasBackendBanking()) {
+    try {
+      const conn = await apiRequest<BankConnection>(API_ENDPOINTS.BANKING.CONNECT, {
+        method: 'POST',
+        body: JSON.stringify({ bankId, userId }),
+        retries: 1,
+      });
+      saveConnection(conn);
+      return conn;
+    } catch {
+      // Fallback to local mock flow
+    }
+  }
+
   const bankMeta = BRAZILIAN_BANKS.find(b => b.id === bankId);
   if (!bankMeta) throw new Error(`Banco "${bankId}" não encontrado no catálogo.`);
 
@@ -100,6 +182,18 @@ export async function connectBank(
 export async function disconnectBank(connectionId: string): Promise<void> {
   const conn = getConnection(connectionId);
   if (!conn) return;
+
+  if (hasBackendBanking()) {
+    try {
+      await apiRequest<{ success: boolean }>(API_ENDPOINTS.BANKING.DISCONNECT, {
+        method: 'POST',
+        body: JSON.stringify({ connectionId, userId: conn.user_id }),
+        retries: 1,
+      });
+    } catch {
+      // Fallback to local mock flow
+    }
+  }
 
   try {
     const provider = getProvider(conn.provider as ProviderKey);
@@ -200,6 +294,39 @@ export async function syncTransactions(
   const conn = getConnection(connectionId);
   if (!conn || !conn.external_account_id) {
     return { connection_id: connectionId, transactions_imported: 0, balance_updated: false, synced_at: new Date().toISOString(), error: 'Conexão não encontrada.' };
+  }
+
+  if (hasBackendBanking()) {
+    try {
+      const result = await apiRequest<SyncResult & { transactions?: Partial<Transaction>[] }>(API_ENDPOINTS.BANKING.SYNC, {
+        method: 'POST',
+        body: JSON.stringify({ connectionId, userId, days }),
+        retries: 1,
+      });
+
+      if (result.transactions?.length) {
+        onNewTransactions(result.transactions);
+      }
+
+      const nextStatus: BankConnection['connection_status'] = result.error ? 'error' : 'connected';
+      updateStatus(connectionId, nextStatus, {
+        last_sync: result.synced_at,
+        balance: result.new_balance,
+        error_message: result.error,
+      });
+
+      FinancialEventEmitter.bankTransactionsSynced({
+        connection_id: connectionId,
+        bank_name: conn.bank_name,
+        count: result.transactions_imported,
+        days,
+        synced_at: result.synced_at,
+      });
+
+      return result;
+    } catch {
+      // Fallback to local mock flow
+    }
   }
 
   updateStatus(connectionId, 'syncing');

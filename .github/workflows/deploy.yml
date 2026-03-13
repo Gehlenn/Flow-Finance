@@ -37,6 +37,17 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Install Playwright browsers for health checks
+      run: npx playwright install --with-deps chromium webkit
+
+    - name: Run IO integration health checks
+      run: npm run health:io
+
+    - name: Run runtime console health checks (desktop + mobile)
+      run: |
+        npm run health:runtime
+        npm run health:runtime:mobile
+
     - name: Run tests
       run: npm run test
 

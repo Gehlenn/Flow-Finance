@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, ShieldCheck, FileText, Copyright } from 'lucide-react';
+import { X, ShieldCheck, Copyright } from 'lucide-react';
 
 interface LegalModalProps {
   type: 'privacy_terms' | 'copyright';
@@ -94,8 +94,7 @@ const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
         <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl">
-              {type === 'privacy' && <ShieldCheck size={20} />}
-              {type === 'terms' && <FileText size={20} />}
+              {type === 'privacy_terms' && <ShieldCheck size={20} />}
               {type === 'copyright' && <Copyright size={20} />}
             </div>
             <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight">{getTitle()}</h3>

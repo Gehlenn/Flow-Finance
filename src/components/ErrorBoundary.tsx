@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { Component, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { reportError } from '../config/sentry';
 
@@ -88,7 +88,7 @@ function DefaultErrorFallback({ error, onReset }: { error: Error | null; onReset
   );
 }
 
-class ErrorBoundaryComponent extends React.Component<Props, State> {
+class ErrorBoundaryComponent extends Component<Props, State> {
   state: State = {
     hasError: false,
     error: null,

@@ -108,7 +108,7 @@ export function analyzeMerchantCategories(transactions: Transaction[]): Map<stri
       // At least 2 transactions to establish pattern
       const totalSpent = txs.reduce((sum, t) => sum + t.amount, 0);
       const avgAmount = totalSpent / txs.length;
-      const category = txs[0].category || Category.OUTROS;
+      const category = txs[0].category || Category.PESSOAL;
       
       // Calculate monthly frequency
       const firstDate = Math.min(...txs.map((t) => new Date(t.date).getTime()));
@@ -185,7 +185,7 @@ export function analyzeRecurringExpenses(transactions: Transaction[]): Map<strin
 
         recurring.set(merchant, {
           merchantName: merchant,
-          category: txs[0].category || Category.OUTROS,
+          category: txs[0].category || Category.PESSOAL,
           amount: avgAmount,
           frequency,
           nextExpectedDate: nextDate.toISOString(),
@@ -368,11 +368,19 @@ export function analyzeTimePatterns(transactions: Transaction[]): Map<string, Ti
       const avgAmount = txs.reduce((s, t) => s + t.amount, 0) / txs.length;
       const frequency = txs.length;
       const categories = [...new Set(txs.map((t) => t.category))];
+      const avgHour = txs.reduce((sum, t) => sum + new Date(t.date).getHours(), 0) / txs.length;
+      const timeframe: TimePatternValue['timeframe'] = avgHour < 12
+        ? 'morning'
+        : avgHour < 18
+          ? 'afternoon'
+          : avgHour < 22
+            ? 'evening'
+            : 'night';
 
       const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
       patterns.set(`day_${day}`, {
-        timeframe: day === 0 || day === 6 ? 'weekend' : 'weekday',
+        timeframe,
         dayOfWeek: day,
         avgAmount,
         frequency,

@@ -20,7 +20,7 @@ export const initSentry = () => {
   Sentry.init({
     dsn,
     environment: process.env.NODE_ENV || 'development',
-    release: process.env.APP_VERSION || '0.1.0',
+    release: process.env.APP_VERSION || '0.6.1',
 
     // Performance monitoring
     integrations: [

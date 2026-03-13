@@ -74,6 +74,91 @@ openssl rand -base64 32
 [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 ```
 
+### Open Finance persistence drivers
+
+Open Finance banking connections can run with three drivers:
+
+1. `memory`: fast for local development, but data is lost on restart.
+2. `firebase`: recommended default for persistence without PostgreSQL.
+3. `postgres`: optional SQL persistence for scale-out.
+
+Set in `backend/.env`:
+
+```env
+OPEN_FINANCE_STORE_DRIVER=firebase
+OPEN_FINANCE_POSTGRES_ENABLED=false
+
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk@your-project.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+FIREBASE_DATABASE_URL=
+```
+
+When keeping PostgreSQL ready but disabled:
+
+```env
+OPEN_FINANCE_STORE_DRIVER=memory
+OPEN_FINANCE_POSTGRES_ENABLED=false
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE
+```
+
+If you decide to activate PostgreSQL later, run migration:
+
+```bash
+psql "$DATABASE_URL" -f sql/migrations/001_create_bank_connections.sql
+```
+
+#### Migrating current user connections to Firebase
+
+With backend running in `memory`, call:
+
+`POST /api/banking/migrate/firebase`
+
+Requires auth token and migrates only the authenticated user's in-memory connections to Firebase.
+
+#### Staging / production variables (Firebase-first)
+
+Use the same set in staging and production backend environments:
+
+```env
+OPEN_FINANCE_PROVIDER=pluggy
+OPEN_FINANCE_STORE_DRIVER=firebase
+OPEN_FINANCE_POSTGRES_ENABLED=false
+
+PLUGGY_CLIENT_ID=your_pluggy_client_id
+PLUGGY_CLIENT_SECRET=your_pluggy_client_secret
+PLUGGY_WEBHOOK_SECRET=generate_a_strong_random_secret
+
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk@your-project.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+
+FRONTEND_URL=https://your-frontend-domain
+```
+
+Promotion checklist:
+
+1. `/api/banking/health` returns `persistenceDriver=firebase` and `persistenceReady=true`.
+2. `POST /api/banking/webhooks/pluggy` returns `401/401/202` for no secret / invalid secret / valid secret.
+3. A connected bank remains listed after backend restart.
+
+#### Persistence proof after restart
+
+The Firebase store was validated locally after restart. For fully real-bank validation, a manual run is still required because bank credentials and MFA/consent cannot be automated safely from this workspace.
+
+#### Manual real-bank validation
+
+Use this sequence in staging or production-like environment:
+
+1. Log in with a controlled test user.
+2. Open the Open Banking page.
+3. Generate a Pluggy connect-token.
+4. Complete bank consent and MFA in the Pluggy widget.
+5. Confirm the created connection through `GET /api/banking/connections`.
+6. Restart the backend.
+7. Confirm the same connection is still returned after restart.
+8. Validate webhook protection with no secret / invalid secret / valid secret.
+
 ### Running the Server
 
 **Development (with auto-reload):**

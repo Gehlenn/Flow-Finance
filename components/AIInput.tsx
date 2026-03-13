@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GeminiService } from '../services/geminiService';
-import { Transaction, TransactionType, Category, ReminderData, TransactionData } from '../types';
+import { Transaction, TransactionType, Category, Reminder, ReminderData, ReminderType, TransactionData } from '../types';
 import { Account, ACCOUNT_TYPE_LABELS } from '../models/Account';
 import { interpretText, interpretImage } from '../src/ai/aiInterpreter';
 import { 
@@ -12,10 +12,27 @@ import {
 interface AIInputProps {
   onClose: () => void;
   onAddTransactions: (items: Partial<Transaction>[]) => void;
-  onAddReminders: (items: ReminderData[]) => void;
+  onAddReminders: (items: Partial<Reminder>[]) => void;
   accounts?: Account[];
   userId?: string;
 }
+
+const REMINDER_TYPE_MAP: Record<string, ReminderType> = {
+  pessoal: ReminderType.PESSOAL,
+  trabalho: ReminderType.TRABALHO,
+  negocio: ReminderType.NEGOCIO,
+  negócio: ReminderType.NEGOCIO,
+  investimento: ReminderType.INVESTIMENTO,
+  saude: ReminderType.SAUDE,
+  saúde: ReminderType.SAUDE,
+};
+
+const REMINDER_PRIORITY_MAP: Record<string, Reminder['priority']> = {
+  baixa: 'baixa',
+  media: 'media',
+  média: 'media',
+  alta: 'alta',
+};
 
 const TIPS = [
   { text: "Gastei 50 reais no Uber hoje", icon: <TrendingUp size={12}/> },
@@ -114,7 +131,15 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
         }));
         onAddTransactions(withAccount);
       } else if (output.intent === 'reminder') {
-        onAddReminders(output.data);
+        const reminderData = output.data as ReminderData[];
+        const reminders: Partial<Reminder>[] = reminderData.map((item) => ({
+          title: item.title,
+          date: item.date,
+          amount: item.amount,
+          type: REMINDER_TYPE_MAP[item.type?.toLowerCase?.() ?? ''] || ReminderType.PESSOAL,
+          priority: REMINDER_PRIORITY_MAP[item.priority?.toLowerCase?.() ?? ''] || 'media',
+        }));
+        onAddReminders(reminders);
       } else {
         throw new Error('intent desconhecido');
       }

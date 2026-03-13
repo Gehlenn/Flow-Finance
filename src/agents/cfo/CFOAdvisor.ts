@@ -4,7 +4,8 @@ import { classifyFinancialProfile } from '../../engines/ai/financialProfileClass
 import { runAIOrchestrator } from '../../engines/ai/aiOrchestrator';
 import { FinancialAutopilot } from '../../engines/autopilot/financialAutopilot';
 import { createUserContext } from '../../context/UserContext';
-import { Transaction } from '../../../types';
+import { Category, Transaction, TransactionType } from '../../../types';
+import { Transaction as DomainTransaction } from '../../domain/entities';
 import { AICFOAgent } from './AICFOAgent';
 import { CFOPlanner } from './CFOPlanner';
 import { TransactionRepository } from '../../repositories';
@@ -31,9 +32,26 @@ export class CFOAdvisor {
 
   constructor(private readonly transactionRepository?: TransactionRepository) {}
 
+  private normalizeDomainTransactions(transactions: DomainTransaction[]): Transaction[] {
+    return transactions.map((tx) => ({
+      id: tx.id,
+      amount: tx.amount,
+      type: tx.type === 'income' ? TransactionType.RECEITA : TransactionType.DESPESA,
+      category: Object.values(Category).includes(tx.category as Category)
+        ? (tx.category as Category)
+        : Category.PESSOAL,
+      description: tx.description,
+      date: tx.date instanceof Date ? tx.date.toISOString() : new Date(tx.date).toISOString(),
+      merchant: tx.merchant,
+      generated: tx.isGenerated,
+    }));
+  }
+
   async advise(input: CFOAdvisorInput): Promise<CFOAdvisorResult> {
     const transactions = input.transactions ||
-      (this.transactionRepository ? await this.transactionRepository.getByUser(input.userId) : []);
+      (this.transactionRepository
+        ? this.normalizeDomainTransactions(await this.transactionRepository.getByUser(input.userId))
+        : []);
 
     const userContext = createUserContext({ userId: input.userId });
 

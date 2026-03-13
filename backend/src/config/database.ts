@@ -7,17 +7,26 @@
 import { Pool } from 'pg';
 import logger from './logger';
 
-const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'flowfinance',
-  user: process.env.DB_USER || 'flowfinance',
-  password: process.env.DB_PASSWORD || 'flowfinance_password',
-  max: parseInt(process.env.DB_MAX_CONNECTIONS || '20'),
-  idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000'),
-  connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '2000'),
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-};
+const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
+const dbConfig = hasDatabaseUrl
+  ? {
+      connectionString: process.env.DATABASE_URL,
+      max: parseInt(process.env.DB_MAX_CONNECTIONS || '20'),
+      idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000'),
+      connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '2000'),
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    }
+  : {
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      database: process.env.DB_NAME || 'flowfinance',
+      user: process.env.DB_USER || 'flowfinance',
+      password: process.env.DB_PASSWORD || 'flowfinance_password',
+      max: parseInt(process.env.DB_MAX_CONNECTIONS || '20'),
+      idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000'),
+      connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '2000'),
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    };
 
 // Create connection pool
 export const pool = new Pool(dbConfig);

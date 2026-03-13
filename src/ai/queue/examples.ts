@@ -3,8 +3,10 @@
  * Demonstrates how to use the AI Task Queue in different scenarios
  */
 
+import React from 'react';
 import { aiTaskQueue, AITaskType, AITaskPriority } from './index';
-import { Transaction, Account } from '../../../types';
+import { Transaction } from '../../../types';
+import type { Account } from '../../domain/entities';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EXAMPLE 1: Basic usage in a React component

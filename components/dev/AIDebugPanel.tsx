@@ -169,6 +169,9 @@ const FinancialEventsTab: React.FC = () => {
         ) : events.map(ev => {
           const meta = EVENT_META[ev.type] ?? { color: 'text-slate-500 bg-slate-50', label: ev.type, icon: <Activity size={12} /> };
           const isExp = expandedId === ev.id;
+          const payload = (ev.payload ?? {}) as Record<string, unknown>;
+          const description = typeof payload.description === 'string' ? payload.description : null;
+          const count = typeof payload.count === 'number' ? payload.count : undefined;
           return (
             <div key={ev.id} className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
               <button className="w-full text-left px-4 py-3 flex items-center gap-3" onClick={() => setExpandedId(isExp ? null : ev.id)}>
@@ -177,8 +180,8 @@ const FinancialEventsTab: React.FC = () => {
                   <span className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md ${meta.color}`}>{meta.label}</span>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="flex items-center gap-1 text-[8px] text-slate-400"><Clock size={8} />{formatTime(ev.created_at)}</span>
-                    {ev.payload?.description && <span className="text-[8px] text-slate-500 font-bold truncate max-w-[120px]">{ev.payload.description}</span>}
-                    {ev.payload?.count !== undefined && <span className="text-[8px] text-slate-400">{ev.payload.count} item{ev.payload.count !== 1 ? 's' : ''}</span>}
+                    {description && <span className="text-[8px] text-slate-500 font-bold truncate max-w-[120px]">{description}</span>}
+                    {count !== undefined && <span className="text-[8px] text-slate-400">{count} item{count !== 1 ? 's' : ''}</span>}
                   </div>
                 </div>
                 <div className="text-slate-300 shrink-0">{isExp ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</div>

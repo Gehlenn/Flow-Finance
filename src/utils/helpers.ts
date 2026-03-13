@@ -1,7 +1,13 @@
 // utility helpers shared across the app
 
 export function makeId(length = 9): string {
-  return Math.random().toString(36).substr(2, length);
+  let result = '';
+
+  while (result.length < length) {
+    result += Math.random().toString(36).slice(2);
+  }
+
+  return result.slice(0, length);
 }
 
 export function formatCurrency(
@@ -10,6 +16,36 @@ export function formatCurrency(
   options: Intl.NumberFormatOptions = { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }
 ): string {
   return new Intl.NumberFormat(locale, options).format(value);
+}
+
+export function convertCurrency(
+  amount: number,
+  fromCurrency: string,
+  toCurrency: string,
+  rates: Record<string, number>
+): number {
+  if (!Number.isFinite(amount)) {
+    throw new Error('Amount must be a finite number');
+  }
+
+  const from = fromCurrency.toUpperCase();
+  const to = toCurrency.toUpperCase();
+
+  if (from === to) return amount;
+
+  const fromRate = rates[from];
+  const toRate = rates[to];
+
+  if (!fromRate || !toRate) {
+    throw new Error(`Missing exchange rate for ${!fromRate ? from : to}`);
+  }
+
+  // Convert amount to a common base then to target currency.
+  const baseAmount = amount / fromRate;
+  const converted = baseAmount * toRate;
+
+  // Keep deterministic precision for financial UI calculations.
+  return Number(converted.toFixed(2));
 }
 
 export function getMonthTransactions<T extends { date: string }>(

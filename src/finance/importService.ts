@@ -95,6 +95,27 @@ function parseAmount(raw: string | number): number {
   return Math.abs(parseFloat(s.replace(',', '')));
 }
 
+function parseSignedAmount(raw: string | number): number {
+  if (typeof raw === 'number') return raw;
+
+  const source = String(raw).trim();
+  const negative = source.includes('-');
+  const normalized = source.replace(/[R$\s+-]/g, '');
+
+  let absolute: number;
+  if (/\.\d{3},\d{2}/.test(normalized)) {
+    absolute = parseFloat(normalized.replace(/\./g, '').replace(',', '.'));
+  } else if (/^\d+,\d{2}$/.test(normalized)) {
+    absolute = parseFloat(normalized.replace(',', '.'));
+  } else if (/^\d+\.\d{2}$/.test(normalized)) {
+    absolute = parseFloat(normalized);
+  } else {
+    absolute = parseFloat(normalized.replace(',', ''));
+  }
+
+  return (negative ? -1 : 1) * absolute;
+}
+
 /** Detecta tipo por sinal ou palavras-chave */
 function inferType(raw: string, amount: number, signedAmount?: number): TransactionType {
   // Sinal negativo = despesa
@@ -128,9 +149,10 @@ function markDuplicates(
 
 export function parseOFX(content: string): ImportedTransaction[] {
   const results: ImportedTransaction[] = [];
+  const trimmed = content.trimStart();
 
   // Suporta OFX/QFX SGML (não XML) e OFX XML
-  const isXml = content.trimStart().startsWith('<?xml') || content.includes('<OFX>');
+  const isXml = trimmed.startsWith('<?xml') || /<\/(DTPOSTED|DTUSER|TRNAMT|MEMO|NAME|AMOUNT)>/i.test(content);
 
   if (isXml) {
     // XML OFX: usar regex para extrair STMTTRNs
@@ -159,24 +181,26 @@ export function parseOFX(content: string): ImportedTransaction[] {
     let inTx = false;
 
     for (const line of lines) {
+      if (line === '<STMTTRN>') { inTx = true; currentTx = {}; continue; }
+      if (line === '</STMTTRN>' && inTx) {
+        const rawAmt = (currentTx as any)._amt ?? '0';
+        const signedAmt = parseSignedAmount(rawAmt);
+        const amount = Math.abs(signedAmt);
+        if (amount > 0) {
+          results.push({
+            raw_date:        parseDate((currentTx as any)._date ?? ''),
+            raw_amount:      amount,
+            raw_description: ((currentTx as any)._memo || (currentTx as any)._name || 'Transação importada').trim(),
+            raw_type:        signedAmt < 0 ? TransactionType.DESPESA : TransactionType.RECEITA,
+            selected: true,
+          });
+        }
+        inTx = false;
+        continue;
+      }
+
       const tagMatch = line.match(/^<([^>]+)>(.*)$/);
       if (!tagMatch) {
-        if (line === '<STMTTRN>') { inTx = true; currentTx = {}; }
-        if (line === '</STMTTRN>' && inTx) {
-          const rawAmt = (currentTx as any)._amt ?? '0';
-          const signedAmt = parseFloat(rawAmt.replace(',', '.'));
-          const amount = Math.abs(signedAmt);
-          if (amount > 0) {
-            results.push({
-              raw_date:        parseDate((currentTx as any)._date ?? ''),
-              raw_amount:      amount,
-              raw_description: ((currentTx as any)._memo || (currentTx as any)._name || 'Transação importada').trim(),
-              raw_type:        signedAmt < 0 ? TransactionType.DESPESA : TransactionType.RECEITA,
-              selected: true,
-            });
-          }
-          inTx = false;
-        }
         continue;
       }
 
@@ -250,7 +274,7 @@ export function parseCSV(content: string): ImportedTransaction[] {
       if (credit > 0) { rawAmount = credit; signedAmt = credit; }
     } else if (colAmt >= 0) {
       const raw = cols[colAmt] ?? '';
-      const parsed = parseFloat(raw.replace(/[R$.\s]/g, '').replace(',', '.'));
+      const parsed = parseSignedAmount(raw);
       rawAmount = Math.abs(parsed);
       signedAmt = parsed;
     } else {
@@ -346,6 +370,15 @@ export async function classifyImportedTransactions(
   userId: string
 ): Promise<ImportedTransaction[]> {
   if (transactions.length === 0) return transactions;
+
+  if (!process.env.GEMINI_API_KEY) {
+    return transactions.map((item) => ({
+      ...item,
+      category: item.category ?? Category.PESSOAL,
+      confidence: item.confidence ?? 0.3,
+      type: item.type ?? item.raw_type,
+    }));
+  }
 
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
 

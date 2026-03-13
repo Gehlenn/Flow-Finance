@@ -101,15 +101,16 @@ export function predictCashflow(
   }
 
   // 6. Extrair checkpoints e extremos
-  const at = (days: number) => daily_balances[days - 1]?.balance ?? current_balance;
+  const at = (days: number) => daily_balances[days - 1].balance;
+  const firstDailyBalance = daily_balances[0];
 
   const lowest_point = daily_balances.reduce(
     (min, d) => d.balance < min.balance ? d : min,
-    daily_balances[0] ?? { date: isoDate(now), balance: current_balance }
+    firstDailyBalance
   );
   const highest_point = daily_balances.reduce(
     (max, d) => d.balance > max.balance ? d : max,
-    daily_balances[0] ?? { date: isoDate(now), balance: current_balance }
+    firstDailyBalance
   );
 
   const result: ExtendedCashflowPrediction = {
