@@ -60,6 +60,7 @@ import { auth, db, onAuthStateChanged } from './services/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { getAccounts, createAccount, updateAccount } from './services/firebaseOptimized';
 import { API_ENDPOINTS } from './src/config/api.config';
+import { isSyncPermissionError, shouldDisplaySyncConnectionError } from './src/utils/syncError';
 
 type Tab = 'dashboard' | 'history' | 'assistant' | 'flow' | 'settings' | 'accounts' | 'insights' | 'cfo' | 'autopilot' | 'goals' | 'scanner' | 'import' | 'openbanking' | 'aicontrol' | 'analytics' | 'performance';
 
@@ -232,8 +233,16 @@ const App: React.FC = () => {
       }
       setIsInitialLoading(false);
     }, (error) => {
-      console.error("Erro na conexão com Firestore:", error);
-      setSyncStatus('error');
+      if (isSyncPermissionError(error)) {
+        console.warn("Permissão/autenticação insuficiente no Firestore:", error);
+      } else {
+        console.error("Erro na conexão com Firestore:", error);
+      }
+      if (shouldDisplaySyncConnectionError(error)) {
+        setSyncStatus('error');
+      } else {
+        setSyncStatus('idle');
+      }
       setIsInitialLoading(false);
     });
 
@@ -253,8 +262,16 @@ const App: React.FC = () => {
     try {
       await setDoc(userDocRef, updates, { merge: true });
     } catch (e) {
-      console.error("Erro ao sincronizar:", e);
-      setSyncStatus('error');
+      if (isSyncPermissionError(e)) {
+        console.warn("Sincronização bloqueada por permissão/autenticação:", e);
+      } else {
+        console.error("Erro ao sincronizar:", e);
+      }
+      if (shouldDisplaySyncConnectionError(e)) {
+        setSyncStatus('error');
+      } else {
+        setSyncStatus('idle');
+      }
     }
   }, [userId]);
 
