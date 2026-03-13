@@ -675,6 +675,32 @@ describe('openBankingService - Extended Coverage', () => {
     });
   });
 
+  it('syncTransactions remove conexao mock em producao e nao importa dados', async () => {
+    vi.stubEnv('MODE', 'production');
+
+    localStorage.setItem('flow_bank_connections', JSON.stringify([
+      {
+        id: 'conn_mock_sync_prod',
+        user_id: 'u-prod-mock-sync',
+        provider: 'mock',
+        bank_name: 'Mock Bank',
+        bank_logo: '🏦',
+        bank_color: '#000000',
+        connection_status: 'connected',
+        external_account_id: 'mock_ext_sync_prod',
+        created_at: '2026-03-12T00:00:00.000Z',
+      },
+    ]));
+
+    const imported: any[] = [];
+    const result = await syncTransactions('conn_mock_sync_prod', [], 'u-prod-mock-sync', (txs) => imported.push(...txs));
+
+    expect(result.transactions_imported).toBe(0);
+    expect(result.error).toMatch(/Conexão local de teste removida/i);
+    expect(imported).toEqual([]);
+    expect(getConnection('conn_mock_sync_prod')).toBeNull();
+  });
+
   it('remove conexao local obsoleta quando backend retorna 404 no sync', async () => {
     vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
 
@@ -766,6 +792,29 @@ describe('openBankingService - Extended Coverage', () => {
 
     expect(local).toHaveLength(1);
     expect(local[0].id).toBe(conn.id);
+  });
+
+  it('reloadConnections remove conexoes mock em producao', async () => {
+    vi.stubEnv('MODE', 'production');
+
+    localStorage.setItem('flow_bank_connections', JSON.stringify([
+      {
+        id: 'conn_mock_prod',
+        user_id: 'u-prod-clean',
+        provider: 'mock',
+        bank_name: 'Mock Bank',
+        bank_logo: '🏦',
+        bank_color: '#000000',
+        connection_status: 'connected',
+        external_account_id: 'mock_ext_prod',
+        created_at: '2026-03-12T00:00:00.000Z',
+      },
+    ]));
+
+    const cleaned = await reloadConnections('u-prod-clean');
+
+    expect(cleaned).toEqual([]);
+    expect(getConnections('u-prod-clean')).toEqual([]);
   });
 
   it('syncTransactions continua mesmo se o registro for removido antes do updateStatus final', async () => {

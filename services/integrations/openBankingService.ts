@@ -139,7 +139,17 @@ export function getConnections(userId: string): BankConnection[] {
 }
 
 export async function reloadConnections(userId: string): Promise<BankConnection[]> {
-  const local = getConnections(userId);
+  let local = getConnections(userId);
+
+  if (isProductionRuntime()) {
+    const cleanedLocal = local.filter((c) => c.provider !== 'mock');
+    if (cleanedLocal.length !== local.length) {
+      const otherUsers = readConnections().filter((c) => c.user_id !== userId);
+      writeConnections([...otherUsers, ...cleanedLocal]);
+      local = cleanedLocal;
+    }
+  }
+
   if (!hasBackendBanking()) return local;
 
   try {
@@ -342,6 +352,17 @@ export async function syncTransactions(
   const conn = getConnection(connectionId);
   if (!conn || !conn.external_account_id) {
     return { connection_id: connectionId, transactions_imported: 0, balance_updated: false, synced_at: new Date().toISOString(), error: 'Conexão não encontrada.' };
+  }
+
+  if (isProductionRuntime() && conn.provider === 'mock') {
+    writeConnections(readConnections().filter((c) => c.id !== connectionId));
+    return {
+      connection_id: connectionId,
+      transactions_imported: 0,
+      balance_updated: false,
+      synced_at: new Date().toISOString(),
+      error: 'Conexão local de teste removida. Conecte novamente usando o fluxo real.',
+    };
   }
 
   if (hasBackendBanking()) {
