@@ -366,6 +366,14 @@ describe('openBankingService - Extended Coverage', () => {
     expect(getProvider).toHaveBeenCalled();
   });
 
+  it('connectBank nao faz fallback local quando backend retorna 401', async () => {
+    vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+    apiRequestMock.mockRejectedValueOnce(new Error('API Error 401: unauthorized'));
+
+    await expect(connectBank('nubank', 'u-no-fallback-401')).rejects.toThrow(/401/);
+    expect(getConnections('u-no-fallback-401')).toHaveLength(0);
+  });
+
   it('syncTransactions usa resultado do backend e atualiza status conectado', async () => {
     vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
 
@@ -598,6 +606,35 @@ describe('openBankingService - Extended Coverage', () => {
 
     expect(result.transactions_imported).toBe(2);
     expect(imported).toHaveLength(2);
+  });
+
+  it('syncTransactions nao faz fallback local quando backend retorna 401', async () => {
+    vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+
+    apiRequestMock.mockResolvedValueOnce({
+      id: 'conn_backend_401',
+      user_id: 'u-401',
+      provider: 'pluggy',
+      bank_name: 'Banco 401',
+      bank_logo: '',
+      bank_color: '#717171',
+      connection_status: 'connected',
+      external_account_id: 'ext-401',
+      created_at: '2026-03-12T00:00:00.000Z',
+    });
+
+    const conn = await connectBank('nubank', 'u-401');
+    apiRequestMock.mockRejectedValueOnce(new Error('API Error 401: unauthorized'));
+
+    const imported: any[] = [];
+    const result = await syncTransactions(conn.id, [], 'u-401', (txs) => imported.push(...txs));
+
+    expect(result.transactions_imported).toBe(0);
+    expect(result.error).toMatch(/401/);
+    expect(imported).toEqual([]);
+    expect(getConnection(conn.id)).toMatchObject({
+      connection_status: 'error',
+    });
   });
 
   it('remove conexao local obsoleta quando backend retorna 404 no sync', async () => {

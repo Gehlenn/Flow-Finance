@@ -46,6 +46,24 @@ function hasBackendBanking(): boolean {
   return Boolean(API_ENDPOINTS.BANKING.CONNECT);
 }
 
+function getApiErrorStatus(error: unknown): number | null {
+  const message = String((error as any)?.message ?? '');
+  const match = message.match(/API Error\s+(\d{3})/);
+  return match ? Number(match[1]) : null;
+}
+
+function shouldUseLocalMockFallback(error: unknown): boolean {
+  const status = getApiErrorStatus(error);
+
+  // Client errors are deterministic and should be surfaced to the user.
+  if (status !== null && status >= 400 && status < 500) {
+    return false;
+  }
+
+  // Unknown errors and 5xx are eligible for local fallback in development.
+  return true;
+}
+
 export interface BankingHealth {
   status: 'ok' | string;
   providerMode: string;
@@ -161,7 +179,11 @@ export async function connectBank(
       });
       saveConnection(conn);
       return conn;
-    } catch {
+    } catch (error: unknown) {
+      if (!shouldUseLocalMockFallback(error)) {
+        throw error;
+      }
+
       // Fallback to local mock flow
     }
   }
@@ -351,6 +373,19 @@ export async function syncTransactions(
           balance_updated: false,
           synced_at: new Date().toISOString(),
           error: 'Conexão não encontrada no backend. Atualize a lista e reconecte o banco.',
+        };
+      }
+
+      if (!shouldUseLocalMockFallback(error)) {
+        updateStatus(connectionId, 'error', {
+          error_message: message || 'Erro ao sincronizar com o backend.',
+        });
+        return {
+          connection_id: connectionId,
+          transactions_imported: 0,
+          balance_updated: false,
+          synced_at: new Date().toISOString(),
+          error: message || 'Erro ao sincronizar com o backend.',
         };
       }
 

@@ -310,6 +310,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
   const [connectingBank, setConnectingBank] = useState<string | null>(null);
   const [lastResults, setLastResults] = useState<Record<string, SyncResult>>({});
   const [syncAllLoading, setSyncAllLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [pluggyEnabled, setPluggyEnabled] = useState(false);
   const [pluggyConnectToken, setPluggyConnectToken] = useState<string | null>(null);
   const [pluggyConnectors, setPluggyConnectors] = useState<PluggyConnector[]>([]);
@@ -389,11 +390,13 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
     setConnectingBank(bankId);
 
     try {
+      setActionError(null);
       await connectPluggyItem(bankId, userId, itemId);
       await reload();
       setView('list');
       setPluggyConnectToken(await createPluggyConnectToken(userId));
     } catch (err) {
+      setActionError('Falha ao conectar com Pluggy. Verifique autenticação e tente novamente.');
       console.error('Falha ao registrar item Pluggy no backend:', err);
     } finally {
       setConnectingBank(null);
@@ -401,6 +404,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
   };
 
   const handlePluggyError = (error: unknown) => {
+    setActionError('Conexão Pluggy cancelada ou inválida. Tente novamente.');
     console.error('Erro no Pluggy Connect:', error);
   };
 
@@ -409,10 +413,12 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
   const handleConnect = async (bank: BankOption) => {
     setConnectingBank(bank.id);
     try {
+      setActionError(null);
       await connectBank(bank.id, userId);
       await reload();
       setView('list');
     } catch (err: any) {
+      setActionError('Não foi possível conectar no banco real. Verifique login/token e tente novamente.');
       console.error('Connect failed:', err);
     } finally {
       setConnectingBank(null);
@@ -433,6 +439,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
     setSyncingIds(prev => new Set([...prev, id]));
     await reload(); // show syncing status
     try {
+      setActionError(null);
       const result = await fullSync(
         id,
         transactions,
@@ -441,6 +448,9 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
         onNewTransactions,
         onUpdateAccount,
       );
+      if (result.error) {
+        setActionError(result.error);
+      }
       setLastResults(prev => ({ ...prev, [id]: result }));
     } finally {
       setSyncingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
@@ -492,6 +502,13 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
           <Building2 size={20} />
         </div>
       </div>
+
+      {actionError && (
+        <div role="alert" className="flex items-start gap-2 px-4 py-3 rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+          <AlertCircle size={14} className="shrink-0 mt-0.5" />
+          <p className="text-[10px] font-bold leading-relaxed">{actionError}</p>
+        </div>
+      )}
 
       {/* View: Add bank */}
       {view === 'add' && (
