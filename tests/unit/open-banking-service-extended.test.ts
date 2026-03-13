@@ -374,6 +374,14 @@ describe('openBankingService - Extended Coverage', () => {
     expect(getConnections('u-no-fallback-401')).toHaveLength(0);
   });
 
+  it('connectBank nao faz fallback local em producao quando backend retorna 500', async () => {
+    vi.stubEnv('MODE', 'production');
+    apiRequestMock.mockRejectedValueOnce(new Error('API Error 500: backend down'));
+
+    await expect(connectBank('nubank', 'u-no-fallback-prod-500')).rejects.toThrow(/500/);
+    expect(getConnections('u-no-fallback-prod-500')).toHaveLength(0);
+  });
+
   it('syncTransactions usa resultado do backend e atualiza status conectado', async () => {
     vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
 
@@ -631,6 +639,36 @@ describe('openBankingService - Extended Coverage', () => {
 
     expect(result.transactions_imported).toBe(0);
     expect(result.error).toMatch(/401/);
+    expect(imported).toEqual([]);
+    expect(getConnection(conn.id)).toMatchObject({
+      connection_status: 'error',
+    });
+  });
+
+  it('syncTransactions nao faz fallback local em producao quando backend retorna 500', async () => {
+    vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+    vi.stubEnv('MODE', 'production');
+
+    apiRequestMock.mockResolvedValueOnce({
+      id: 'conn_backend_prod_500',
+      user_id: 'u-prod-500',
+      provider: 'pluggy',
+      bank_name: 'Banco 500',
+      bank_logo: '',
+      bank_color: '#7a7a7a',
+      connection_status: 'connected',
+      external_account_id: 'ext-prod-500',
+      created_at: '2026-03-12T00:00:00.000Z',
+    });
+
+    const conn = await connectBank('nubank', 'u-prod-500');
+    apiRequestMock.mockRejectedValueOnce(new Error('API Error 500: backend down'));
+
+    const imported: any[] = [];
+    const result = await syncTransactions(conn.id, [], 'u-prod-500', (txs) => imported.push(...txs));
+
+    expect(result.transactions_imported).toBe(0);
+    expect(result.error).toMatch(/500/);
     expect(imported).toEqual([]);
     expect(getConnection(conn.id)).toMatchObject({
       connection_status: 'error',

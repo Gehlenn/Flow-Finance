@@ -46,6 +46,10 @@ function hasBackendBanking(): boolean {
   return Boolean(API_ENDPOINTS.BANKING.CONNECT);
 }
 
+function isProductionRuntime(): boolean {
+  return import.meta.env.MODE === 'production';
+}
+
 function getApiErrorStatus(error: unknown): number | null {
   const message = String((error as any)?.message ?? '');
   const match = message.match(/API Error\s+(\d{3})/);
@@ -54,6 +58,11 @@ function getApiErrorStatus(error: unknown): number | null {
 
 function shouldUseLocalMockFallback(error: unknown): boolean {
   const status = getApiErrorStatus(error);
+
+  // In production, do not mask backend failures with mock data.
+  if (isProductionRuntime()) {
+    return false;
+  }
 
   // Client errors are deterministic and should be surfaced to the user.
   if (status !== null && status >= 400 && status < 500) {
