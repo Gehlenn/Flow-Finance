@@ -111,10 +111,11 @@ function getPlatform(): string {
 
 export async function apiRequest<T>(
   endpoint: string,
-  options?: RequestInit & { timeout?: number; retries?: number }
+  options?: RequestInit & { timeout?: number; retries?: number; silent?: boolean }
 ): Promise<T> {
-  const timeout = options?.timeout || API_CONFIG.TIMEOUT;
-  const maxRetries = options?.retries || API_CONFIG.RETRY_ATTEMPTS;
+  const timeout = options?.timeout ?? API_CONFIG.TIMEOUT;
+  const maxRetries = options?.retries ?? API_CONFIG.RETRY_ATTEMPTS;
+  const silent = options?.silent === true;
   
   const headers = {
     ...getAuthHeaders(),
@@ -152,13 +153,17 @@ export async function apiRequest<T>(
       }
 
       if (attempt < maxRetries) {
-        console.warn(`[API] Request to ${endpoint} failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying...`);
+        if (!silent) {
+          console.warn(`[API] Request to ${endpoint} failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying...`);
+        }
         await new Promise(resolve => setTimeout(resolve, API_CONFIG.RETRY_DELAY * (attempt + 1)));
       }
     }
   }
 
-  console.error(`[API] Request to ${endpoint} failed after ${maxRetries + 1} attempts:`, lastError);
+  if (!silent) {
+    console.error(`[API] Request to ${endpoint} failed after ${maxRetries + 1} attempts:`, lastError);
+  }
   throw lastError;
 }
 

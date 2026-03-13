@@ -140,24 +140,34 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!userId) return;
     const loadAccounts = async () => {
-      const data = await getAccounts(userId);
-      if (data.length === 0) {
-        const defaultAcc: Account = {
-          id: Math.random().toString(36).substr(2, 9),
-          user_id: userId,
-          name: 'Carteira',
-          type: 'cash',
-          balance: 0,
-          currency: 'BRL',
-          created_at: new Date().toISOString(),
-        };
-        await createAccount(defaultAcc);
-        setAccounts([defaultAcc]);
-      } else {
-        setAccounts(data);
+      try {
+        const data = await getAccounts(userId);
+        if (data.length === 0) {
+          const defaultAcc: Account = {
+            id: Math.random().toString(36).substr(2, 9),
+            user_id: userId,
+            name: 'Carteira',
+            type: 'cash',
+            balance: 0,
+            currency: 'BRL',
+            created_at: new Date().toISOString(),
+          };
+          await createAccount(defaultAcc);
+          setAccounts([defaultAcc]);
+        } else {
+          setAccounts(data);
+        }
+      } catch (error) {
+        if (isSyncPermissionError(error)) {
+          console.warn('Leitura/gravação de contas bloqueada por permissão/autenticação:', error);
+          setAccounts([]);
+          return;
+        }
+
+        console.error('Falha ao carregar contas do usuário:', error);
       }
     };
-    loadAccounts();
+    void loadAccounts();
   }, [userId]);
 
   // 1. Escutar Mudanças na Autenticação
@@ -180,7 +190,11 @@ const App: React.FC = () => {
           void fetch(API_ENDPOINTS.AUTH.LOGIN, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: user.email, password: 'firebase-session' }),
+            body: JSON.stringify({
+              email: user.email,
+              password: 'firebase-session',
+              userId: user.uid,
+            }),
           })
             .then(async (res) => {
               if (!res.ok) {
@@ -314,9 +328,19 @@ const App: React.FC = () => {
     await auth.signOut();
   }, [userId]);
 
-  const handleUpdateAccount = useCallback(async (updated: Account) => {
-    await updateAccount(updated);
-    setAccounts(prev => prev.map(a => a.id === updated.id ? updated : a));
+  const handleUpdateAccount = useCallback((updated: Account) => {
+    void updateAccount(updated)
+      .then(() => {
+        setAccounts(prev => prev.map(a => a.id === updated.id ? updated : a));
+      })
+      .catch((error) => {
+        if (isSyncPermissionError(error)) {
+          console.warn('Atualização de conta bloqueada por permissão/autenticação:', error);
+          return;
+        }
+
+        console.error('Falha ao atualizar conta:', error);
+      });
   }, []);
 
   const renderActiveTab = () => {

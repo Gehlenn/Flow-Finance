@@ -22,6 +22,30 @@ import {
   StrategicReport,
 } from '../types';
 
+function buildInterpretFallbackResponse(): InterpretResponse {
+  return {
+    intent: 'transaction',
+    data: [],
+  };
+}
+
+function buildInsightsFallbackResponse(type: 'daily' | 'strategic'): GenerateInsightsResponse {
+  if (type === 'daily') {
+    return { insights: [] };
+  }
+
+  return {
+    report: {
+      summary: 'Não foi possível gerar o relatório estratégico agora.',
+      strengths: [],
+      weaknesses: [],
+      risks: [],
+      opportunities: [],
+      actions: [],
+    },
+  };
+}
+
 // ─── INTERPRET — Parse smart input (text → transactions/reminders) ─────────────
 
 export const interpretController = asyncHandler(async (req: Request, res: Response) => {
@@ -62,8 +86,8 @@ Responda em JSON estruturado conforme o schema.`;
 
     res.json(response);
   } catch (error) {
-    logger.error({ error, userId: req.userId }, 'Interpret error');
-    throw new AppError(500, 'Failed to interpret input', { error: error instanceof Error ? error.message : 'Unknown error' });
+    logger.warn({ error, userId: req.userId }, 'Interpret unavailable, returning fallback response');
+    res.json(buildInterpretFallbackResponse());
   }
 });
 
@@ -180,8 +204,8 @@ Responda em JSON estruturado.`;
 
     res.json(response);
   } catch (error) {
-    logger.error({ error, userId: req.userId }, 'Generate insights error');
-    throw new AppError(500, 'Failed to generate insights');
+    logger.warn({ error, userId: req.userId, type }, 'Generate insights unavailable, returning fallback response');
+    res.json(buildInsightsFallbackResponse(type));
   }
 });
 

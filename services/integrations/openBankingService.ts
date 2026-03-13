@@ -81,10 +81,9 @@ export async function listPluggyConnectors(): Promise<PluggyConnector[]> {
 }
 
 export async function createPluggyConnectToken(clientUserId?: string): Promise<string> {
-  const payload = clientUserId ? { clientUserId } : {};
   const response = await apiRequest<{ accessToken: string }>(API_ENDPOINTS.BANKING.CONNECT_TOKEN, {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify({}),
     retries: 1,
   });
 
@@ -98,7 +97,7 @@ export async function connectPluggyItem(
 ): Promise<BankConnection> {
   const conn = await apiRequest<BankConnection>(API_ENDPOINTS.BANKING.CONNECT, {
     method: 'POST',
-    body: JSON.stringify({ bankId, userId, itemId }),
+    body: JSON.stringify({ bankId, itemId }),
     retries: 1,
   });
   saveConnection(conn);
@@ -139,7 +138,7 @@ export async function connectBank(
     try {
       const conn = await apiRequest<BankConnection>(API_ENDPOINTS.BANKING.CONNECT, {
         method: 'POST',
-        body: JSON.stringify({ bankId, userId }),
+        body: JSON.stringify({ bankId }),
         retries: 1,
       });
       saveConnection(conn);
@@ -187,7 +186,7 @@ export async function disconnectBank(connectionId: string): Promise<void> {
     try {
       await apiRequest<{ success: boolean }>(API_ENDPOINTS.BANKING.DISCONNECT, {
         method: 'POST',
-        body: JSON.stringify({ connectionId, userId: conn.user_id }),
+        body: JSON.stringify({ connectionId }),
         retries: 1,
       });
     } catch {
@@ -300,7 +299,7 @@ export async function syncTransactions(
     try {
       const result = await apiRequest<SyncResult & { transactions?: Partial<Transaction>[] }>(API_ENDPOINTS.BANKING.SYNC, {
         method: 'POST',
-        body: JSON.stringify({ connectionId, userId, days }),
+        body: JSON.stringify({ connectionId, days }),
         retries: 1,
       });
 

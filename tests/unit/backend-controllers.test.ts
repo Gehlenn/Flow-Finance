@@ -6,7 +6,9 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as aiConfig from '../../backend/src/config/ai';
-import { cfoController } from '../../backend/src/controllers/aiController';
+import { cfoController, generateInsightsController, interpretController } from '../../backend/src/controllers/aiController';
+import { loginController } from '../../backend/src/controllers/authController';
+import { decodeToken } from '../../backend/src/middleware/auth';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -105,6 +107,63 @@ describe('CFO Controller', () => {
     const error = next.mock.calls[0][0];
     expect(error.statusCode).toBe(500);
     expect(error.message).toContain('Failed to generate CFO response');
+  });
+});
+
+describe('AI Fallback Controllers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('interpretController retorna fallback quando provedor falha', async () => {
+    vi.spyOn(aiConfig, 'generateContent').mockRejectedValueOnce(new Error('provider offline'));
+
+    const req = createMockRequest({ text: 'gastei 50 no mercado' });
+    const res = createMockResponse();
+
+    interpretController(req as any, res as any, vi.fn());
+    await flushAsyncHandler();
+
+    expect(res.json).toHaveBeenCalledWith({ intent: 'transaction', data: [] });
+  });
+
+  it('generateInsightsController retorna fallback daily quando provedor falha', async () => {
+    vi.spyOn(aiConfig, 'generateContent').mockRejectedValueOnce(new Error('provider offline'));
+
+    const req = createMockRequest({
+      transactions: [{ amount: 10, description: 'mercado', category: 'Pessoal', type: 'Despesa' }],
+      type: 'daily',
+    });
+    const res = createMockResponse();
+
+    generateInsightsController(req as any, res as any, vi.fn());
+    await flushAsyncHandler();
+
+    expect(res.json).toHaveBeenCalledWith({ insights: [] });
+  });
+});
+
+describe('Auth Controller', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('loginController preserva userId informado pelo frontend', async () => {
+    const req = createMockRequest({
+      email: 'firebase-user@flow.test',
+      password: 'firebase-session',
+      userId: 'firebase-uid-123',
+    });
+    const res = createMockResponse();
+
+    loginController(req as any, res as any, vi.fn());
+    await flushAsyncHandler();
+
+    const payload = res.json.mock.calls[0][0];
+    const decoded = decodeToken(payload.token);
+
+    expect(payload.user.userId).toBe('firebase-uid-123');
+    expect(decoded?.userId).toBe('firebase-uid-123');
   });
 });
 

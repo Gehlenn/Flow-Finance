@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Account, AccountType, ACCOUNT_TYPE_LABELS, DEFAULT_ACCOUNT } from '../models/Account';
 import { getAccounts, createAccount, deleteAccount } from '../services/firebaseOptimized';
+import { isSyncPermissionError } from '../src/utils/syncError';
 import {
   Landmark, Wallet, CreditCard, TrendingUp,
   Plus, Trash2, X, Check, Loader2,
@@ -59,6 +60,13 @@ const Accounts: React.FC<AccountsProps> = ({ userId, hideValues }) => {
       } else {
         setAccounts(data);
       }
+    } catch (error) {
+      if (isSyncPermissionError(error)) {
+        console.warn('Contas bloqueadas por permissão/autenticação no Firestore:', error);
+        setAccounts([]);
+      } else {
+        console.error('Falha ao carregar contas:', error);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -83,17 +91,34 @@ const Accounts: React.FC<AccountsProps> = ({ userId, hideValues }) => {
       created_at: new Date().toISOString(),
     };
 
-    await createAccount(newAccount);
-    setAccounts(prev => [...prev, newAccount]);
-    setForm({ name: '', type: 'cash', balance: '' });
-    setShowForm(false);
-    setIsSaving(false);
+    try {
+      await createAccount(newAccount);
+      setAccounts(prev => [...prev, newAccount]);
+      setForm({ name: '', type: 'cash', balance: '' });
+      setShowForm(false);
+    } catch (error) {
+      if (isSyncPermissionError(error)) {
+        console.warn('Criação de conta bloqueada por permissão/autenticação:', error);
+      } else {
+        console.error('Falha ao criar conta:', error);
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (accounts.length <= 1) return; // Sempre manter ao menos 1
-    await deleteAccount(id, userId);
-    setAccounts(prev => prev.filter(a => a.id !== id));
+    try {
+      await deleteAccount(id, userId);
+      setAccounts(prev => prev.filter(a => a.id !== id));
+    } catch (error) {
+      if (isSyncPermissionError(error)) {
+        console.warn('Remoção de conta bloqueada por permissão/autenticação:', error);
+      } else {
+        console.error('Falha ao remover conta:', error);
+      }
+    }
   };
 
   const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0);

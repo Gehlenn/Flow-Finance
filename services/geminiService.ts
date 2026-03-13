@@ -13,6 +13,9 @@ import { InterpretResponse } from '../types';
 import { Transaction, Reminder } from "../types";
 import { API_ENDPOINTS, apiRequest } from "../src/config/api.config";
 
+type DailyInsightsApiResponse = { insights?: any[] } | any[];
+type StrategicInsightsApiResponse = { report?: any } | any;
+
 export class GeminiService {
   /**
    * Process smart input text to extract transactions or reminders
@@ -24,6 +27,8 @@ export class GeminiService {
         API_ENDPOINTS.AI.INTERPRET,
         {
           method: 'POST',
+          retries: 0,
+          silent: true,
           body: JSON.stringify({
             text,
             // Include memory context if available
@@ -32,7 +37,7 @@ export class GeminiService {
         }
       );
     } catch (error) {
-      console.error('[AIService] processSmartInput failed:', error);
+      console.warn('[AIService] processSmartInput unavailable, using safe fallback');
       // Return empty result instead of crashing
       return { intent: 'transaction', data: [] };
     }
@@ -67,18 +72,22 @@ export class GeminiService {
    */
   async generateDailyInsights(transactions: Transaction[]): Promise<any[]> {
     try {
-      return await apiRequest(
+      const response = await apiRequest<DailyInsightsApiResponse>(
         API_ENDPOINTS.AI.GENERATE_INSIGHTS,
         {
           method: 'POST',
+          retries: 0,
+          silent: true,
           body: JSON.stringify({
             transactions,
             type: 'daily',
           }),
         }
       );
+
+      return Array.isArray(response) ? response : (response.insights || []);
     } catch (error) {
-      console.error('[AIService] generateDailyInsights failed:', error);
+      console.warn('[AIService] generateDailyInsights unavailable, using empty fallback');
       return [];
     }
   }
@@ -108,18 +117,22 @@ export class GeminiService {
    */
   async generateStrategicReport(transactions: Transaction[]): Promise<any> {
     try {
-      return await apiRequest(
+      const response = await apiRequest<StrategicInsightsApiResponse>(
         API_ENDPOINTS.AI.GENERATE_INSIGHTS,
         {
           method: 'POST',
+          retries: 0,
+          silent: true,
           body: JSON.stringify({
             transactions,
             type: 'strategic',
           }),
         }
       );
+
+      return Array.isArray(response) ? response : (response.report ?? response);
     } catch (error) {
-      console.error('[AIService] generateStrategicReport failed:', error);
+      console.warn('[AIService] generateStrategicReport unavailable, using null fallback');
       return null;
     }
   }

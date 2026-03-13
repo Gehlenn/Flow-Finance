@@ -36,6 +36,31 @@ describe('IO Health Check - API contracts', () => {
     expect(result.ok).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
+
+  it('apiRequest should avoid retry logs when silent mode is enabled', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ message: 'Failed to generate insights' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      apiRequest('http://localhost:3999/ai', {
+        method: 'POST',
+        retries: 0,
+        silent: true,
+      })
+    ).rejects.toThrow(/API Error 500/i);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
 });
 
 describe('IO Health Check - AI proxy integration', () => {
@@ -68,6 +93,27 @@ describe('IO Health Check - AI proxy integration', () => {
     expect(Array.isArray(interpret.data)).toBe(true);
     expect(tokens).toBe(0);
     expect(cfo.answer).toBe('');
+  });
+
+  it('GeminiService should unwrap backend insights payloads', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({ insights: [{ title: 'Alerta', description: 'Teste', type: 'alerta' }] }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+    );
+
+    const service = new GeminiService();
+    const result = await service.generateDailyInsights([
+      { amount: 10, description: 'mercado', category: 'Pessoal', type: 'Despesa' } as any,
+    ]);
+
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe('Alerta');
   });
 });
 

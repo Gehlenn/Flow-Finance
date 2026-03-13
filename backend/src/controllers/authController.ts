@@ -23,7 +23,7 @@ declare global {
  * Returns: { token: string, expiresIn: number, user: { userId: string, email: string } }
  */
 export const loginController = asyncHandler(async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { email, password, userId: requestedUserId } = req.body;
 
   if (!email || !password) {
     throw new AppError(400, 'Email and password are required');
@@ -35,7 +35,9 @@ export const loginController = asyncHandler(async (req: Request, res: Response) 
   // 2. Hash provided password and compare to stored hash
   // 3. Return error if mismatch
   
-  const userId = Buffer.from(email).toString('base64').substring(0, 20);
+  const userId = typeof requestedUserId === 'string' && requestedUserId.trim().length > 0
+    ? requestedUserId.trim()
+    : Buffer.from(email).toString('base64').substring(0, 20);
   
   logger.info({ email }, 'User login attempt');
 
