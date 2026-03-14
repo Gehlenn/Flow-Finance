@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Transaction } from '../types';
+import { Transaction, TransactionType } from '../types';
 import { Account } from '../models/Account';
 
 // Services
@@ -31,6 +31,11 @@ import { generateMonthlyReport, FinancialReport } from '../src/finance/reportEng
 import { simulateFinancialScenario, FinancialSimulationResult, SimulationScenario } from '../src/ai/financialSimulator';
 import { getAuditLogs, AUDIT_EVENTS, AuditLogEntry } from '../src/security/auditLogService';
 import MetricsViewer from '../components/MetricsViewer';
+import { detectSubscriptions as detectRecurringSubscriptions } from '../src/engines/finance/subscriptionDetector';
+import { calculateFinancialHealth } from '../src/engines/finance/financialHealth/financialHealthEngine';
+import { calculateGoalPlan } from '../src/engines/finance/smartGoals/smartGoalsEngine';
+import { recommendGoalAdjustment } from '../src/engines/finance/smartGoals/goalRecommendationEngine';
+import { buildFinancialTimeline as buildTimelineAI } from '../src/engines/finance/timeline/financialTimelineEngine';
 
 // Icons
 import {
@@ -1188,6 +1193,141 @@ const SystemStats: React.FC<{ transactions: Transaction[]; accounts: Account[]; 
   );
 };
 
+const FinancialHealthTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }) => {
+  const prediction = useMemo(() => buildCashflowPrediction(transactions), [transactions]);
+  const subscriptions = useMemo(() =>
+    detectRecurringSubscriptions(
+      transactions.map((t) => ({
+        date: t.date,
+        amount: t.type === TransactionType.DESPESA ? -Math.abs(t.amount) : t.amount,
+        description: t.description,
+        merchant: t.merchant,
+      }))
+    ),
+  [transactions]);
+
+  const expenseRatio = prediction.projected_income > 0
+    ? prediction.projected_expenses / prediction.projected_income
+    : 1;
+  const savingsRate = prediction.projected_income > 0
+    ? (prediction.projected_income - prediction.projected_expenses) / prediction.projected_income
+    : 0;
+
+  const score = useMemo(() => calculateFinancialHealth({
+    expenseRatio,
+    savingsRate,
+    forecast: { in30Days: prediction.balance_30_days },
+    subscriptionCount: subscriptions.length,
+  }), [expenseRatio, savingsRate, prediction.balance_30_days, subscriptions.length]);
+
+  return (
+    <div className="flex flex-col h-full">
+      <SectionHeader icon={<Shield size={11} />} title="Financial Health" />
+      <div className="p-4 space-y-3 overflow-y-auto">
+        <div className="bg-slate-800/40 border border-slate-700/50 rounded p-4">
+          <p className="font-mono text-[9px] text-slate-400 uppercase tracking-widest">Score</p>
+          <p className="font-mono text-[22px] font-bold text-emerald-400">{score.score} / 100</p>
+          <p className="font-mono text-[9px] text-slate-300 uppercase tracking-wider mt-1">{score.status}</p>
+        </div>
+
+        <div className="bg-slate-900/40 border border-slate-700/50 rounded p-3">
+          <p className="font-mono text-[8px] text-slate-500 uppercase tracking-widest mb-2">Alertas</p>
+          {score.alerts.length === 0
+            ? <p className="font-mono text-[9px] text-emerald-400">Nenhum alerta crítico detectado.</p>
+            : score.alerts.map((alert, idx) => (
+              <p key={idx} className="font-mono text-[9px] text-amber-300 mb-1">• {alert}</p>
+            ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SmartGoalsTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }) => {
+  const prediction = useMemo(() => buildCashflowPrediction(transactions), [transactions]);
+
+  const goalPlan = useMemo(() => calculateGoalPlan({
+    targetAmount: 10000,
+    currentAmount: Math.max(0, prediction.current_balance),
+    targetDate: new Date(new Date().getFullYear(), new Date().getMonth() + 12, 1).toISOString(),
+  }), [prediction.current_balance]);
+
+  const health = useMemo(() => calculateFinancialHealth({
+    expenseRatio: prediction.projected_income > 0 ? prediction.projected_expenses / prediction.projected_income : 1,
+    savingsRate: prediction.projected_income > 0 ? (prediction.projected_income - prediction.projected_expenses) / prediction.projected_income : 0,
+    forecast: { in30Days: prediction.balance_30_days },
+  }), [prediction]);
+
+  const recommendation = useMemo(() => recommendGoalAdjustment(
+    goalPlan,
+    { in30Days: prediction.balance_30_days },
+    { score: health.score }
+  ), [goalPlan, prediction.balance_30_days, health.score]);
+
+  return (
+    <div className="flex flex-col h-full">
+      <SectionHeader icon={<Target size={11} />} title="Smart Goals Preview" />
+      <div className="p-4 space-y-3 overflow-y-auto">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-slate-800/40 rounded p-3">
+            <p className="font-mono text-[8px] text-slate-500">Restante</p>
+            <p className="font-mono text-[12px] text-emerald-400">R$ {goalPlan.remaining.toFixed(2)}</p>
+          </div>
+          <div className="bg-slate-800/40 rounded p-3">
+            <p className="font-mono text-[8px] text-slate-500">Economia mensal</p>
+            <p className="font-mono text-[12px] text-amber-400">
+              {goalPlan.recommendedMonthlySavings === null
+                ? 'N/A'
+                : `R$ ${goalPlan.recommendedMonthlySavings.toFixed(2)}`}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-slate-900/40 border border-slate-700/50 rounded p-3">
+          <p className="font-mono text-[8px] text-slate-500 uppercase tracking-widest mb-1">Recomendação IA</p>
+          <p className="font-mono text-[9px] text-slate-200">{recommendation}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const FinancialTimelineTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }) => {
+  const timeline = useMemo(() => buildTimelineAI(
+    transactions.map((t) => ({
+      date: t.date,
+      amount: t.type === TransactionType.RECEITA ? t.amount : -Math.abs(t.amount),
+      category: String(t.category),
+      merchant: t.merchant,
+    }))
+  ), [transactions]);
+
+  return (
+    <div className="flex flex-col h-full">
+      <SectionHeader icon={<Calendar size={11} />} title="Financial Timeline" count={timeline.length} />
+      <div className="overflow-y-auto divide-y divide-slate-800/60">
+        {timeline.map((item) => (
+          <div key={item.month} className="px-4 py-3">
+            <p className="font-mono text-[9px] text-sky-300 font-bold">{item.month}</p>
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              <p className="font-mono text-[8px] text-emerald-400">+ R$ {item.income.toFixed(2)}</p>
+              <p className="font-mono text-[8px] text-rose-400">- R$ {item.expenses.toFixed(2)}</p>
+              <p className={`font-mono text-[8px] ${item.balance >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                Saldo: R$ {item.balance.toFixed(2)}
+              </p>
+            </div>
+          </div>
+        ))}
+        {timeline.length === 0 && (
+          <div className="px-4 py-6">
+            <p className="font-mono text-[9px] text-slate-500">Sem dados suficientes para timeline.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 interface AIControlPanelProps {
@@ -1196,7 +1336,7 @@ interface AIControlPanelProps {
   userId: string;
 }
 
-type PanelTab = 'stats' | 'memory' | 'insights' | 'autopilot' | 'events' | 'logs' | 'subscriptions' | 'moneymap' | 'leaks' | 'report' | 'simulation' | 'audit' | 'parser' | 'graph' | 'metrics';
+type PanelTab = 'stats' | 'memory' | 'insights' | 'autopilot' | 'events' | 'logs' | 'subscriptions' | 'moneymap' | 'leaks' | 'report' | 'simulation' | 'audit' | 'parser' | 'graph' | 'metrics' | 'health' | 'goals' | 'timeline';
 
 const TAB_CONFIG: Array<{ id: PanelTab; label: string; icon: React.ReactNode }> = [
   { id: 'stats',         label: 'Stats',         icon: <Layers size={11} />       },
@@ -1214,6 +1354,9 @@ const TAB_CONFIG: Array<{ id: PanelTab; label: string; icon: React.ReactNode }> 
   { id: 'parser',        label: 'Parser',        icon: <FileText size={11} />     },
   { id: 'graph',         label: 'Graph',         icon: <Network size={11} />      },
   { id: 'metrics',       label: 'Metrics',       icon: <BarChart3 size={11} />    },
+  { id: 'health',        label: 'Health',        icon: <Shield size={11} />       },
+  { id: 'goals',         label: 'Goals',         icon: <Target size={11} />       },
+  { id: 'timeline',      label: 'Timeline',      icon: <Calendar size={11} />     },
 ];
 
 const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts, userId }) => {
@@ -1243,6 +1386,9 @@ const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts,
       case 'simulation':    return <SimulationTab transactions={transactions} accounts={accounts} />;
       case 'audit':         return <AuditTab />;
       case 'metrics':       return <MetricsViewer />;
+      case 'health':        return <FinancialHealthTab transactions={transactions} />;
+      case 'goals':         return <SmartGoalsTab transactions={transactions} />;
+      case 'timeline':      return <FinancialTimelineTab transactions={transactions} />;
       default:              return null;
     }
   };
