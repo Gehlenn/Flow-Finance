@@ -1,7 +1,7 @@
 # FLOW FINANCE - ROADMAP OFICIAL
 
-**Data:** 10 de Marco de 2026
-**Status Atual:** v0.6.3 (Event Listeners + Cache + Observabilidade)
+**Data:** 14 de Marco de 2026
+**Status Atual:** v0.5.2v (Transicao iniciada; baseline tecnico em v0.6.x)
 **Meta Estrategica:** v1.0 publico com AI Financial Assistant completo
 
 ## Visao por Fases
@@ -41,6 +41,13 @@
 ---
 
 ## v0.6.x - Inteligencia Financeira (fase atual)
+
+### Checkpoint 0.5.2v
+- Protocolo de transicao formalmente iniciado e documentado
+- Hardening de SaaS/services com `AppError`, validadores e repository de assinatura
+- Observabilidade do orquestrador de IA estendida (call/error/latency)
+- E2E Pluggy estabilizado para indisponibilidade local de backend (skip controlado)
+- Lint, testes e cobertura critica aprovados no recorte protocolar
 
 ### Checkpoint 0.6.3
 - Event-driven listeners registrados (autopilot, AI queue, forecast, audit, cache)

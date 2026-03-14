@@ -151,6 +151,10 @@ test.describe('Open Banking - Pluggy Connect', () => {
       test.skip(true, 'Não foi possível autenticar no backend para validar connect-token.');
     }
 
+    if (authResult.status !== 'ok') {
+      return;
+    }
+
     const tokenProbe = await probeConnectToken(request, authResult.context.userId, authResult.context.token);
     testInfo.annotations.push({
       type: 'pluggy-connect-token',

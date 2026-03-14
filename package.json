@@ -1,6 +1,6 @@
 {
   "name": "flow-finance",
-  "description": "Flow Finance - Intelligent Cash Flow Control App (v0.6.2)",
+  "description": "Flow Finance - Intelligent Cash Flow Control App (transition label v0.5.2v)",
   "private": true,
   "version": "0.6.2",
   "type": "module",

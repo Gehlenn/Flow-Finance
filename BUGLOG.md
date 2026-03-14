@@ -25,6 +25,30 @@
 
 ## CHECKPOINT DE TRANSICAO v0.5.1v
 
+## CHECKPOINT DE TRANSICAO v0.5.2v
+
+### 🟢 B011 - E2E Pluggy falhava por indisponibilidade local do backend
+**ID**: B011  
+**Versão Identificada**: v0.5.2v-transition  
+**Severidade**: 🟡 MEDIA  
+**Impacto**: falso-negativo no fluxo E2E de Open Banking em ambientes sem API local ativa  
+
+**Descricao**:
+- o cenario E2E de Pluggy podia falhar com `ECONNREFUSED` ao tentar autenticar em `localhost:3001`
+- a falha era de infraestrutura local e nao de regra de negocio do fluxo
+
+**Causa Raiz**:
+- bootstrap do teste assumia backend local disponivel em todas as execucoes
+
+**Solucao Aplicada**:
+- tratamento explicito para backend indisponivel com `skip` controlado e anotacao de motivo
+- manutencao de falha real para regressao funcional (nao mascarada)
+
+**Status**: 🟢 CORRIGIDO  
+**Data de Correcao**: 14 Mar 2026
+
+---
+
 ### 🟢 B009 - Provider Open Finance aceitava valor invalido
 **ID**: B009  
 **Versão Identificada**: v0.5.1v-transition  

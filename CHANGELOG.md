@@ -1,5 +1,29 @@
 # 📝 CHANGELOG - Flow Finance
 
+## [0.5.2v] - 2026-03-14
+
+### 🔄 Protocolo de Transicao (Iniciado)
+**Status:** Em execucao controlada
+
+#### ✅ Entregas tecnicas consolidadas nesta transicao
+- Hardening de servicos SaaS com `AppError` padronizado para limites, permissoes e features
+- Validadores dedicados para transacao e metas (`transactionValidator`, `goalValidator`)
+- Repository dedicado para assinaturas com injecao no container de aplicacao
+- Observabilidade no `aiOrchestrator` com metricas de chamada, erro e latencia
+- Ajuste do E2E Pluggy para evitar falso-negativo quando backend local estiver indisponivel
+
+#### ✅ Validacoes executadas
+- `npm run lint`: verde
+- `npm test`: verde
+- `npm run test:coverage:critical`: verde (`99.76%` statements / `98.3%` branches)
+- `npx playwright test tests/e2e/open-banking-pluggy.spec.ts --project=chromium --workers=1 --reporter=line`: verde/skip controlado conforme disponibilidade do backend local
+
+#### 🧾 Regra de versionamento aplicada
+- Label documental de transicao atualizada para `0.5.2v`
+- Ciclo tecnico de pacotes permanece em `0.6.x` para preservar compatibilidade de build e distribuicao
+
+---
+
 ## [0.6.3] - 2026-03-14
 
 ### 🏗️ Arquitetura Evoluida — Event Listeners, Cache e Observabilidade
