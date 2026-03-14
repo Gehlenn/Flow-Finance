@@ -1,7 +1,7 @@
 # FLOW FINANCE - ROADMAP OFICIAL
 
 **Data:** 10 de Marco de 2026
-**Status Atual:** v0.5.1v-transition (Open Finance Firebase-first validado)
+**Status Atual:** v0.6.3 (Event Listeners + Cache + Observabilidade)
 **Meta Estrategica:** v1.0 publico com AI Financial Assistant completo
 
 ## Visao por Fases
@@ -41,6 +41,13 @@
 ---
 
 ## v0.6.x - Inteligencia Financeira (fase atual)
+
+### Checkpoint 0.6.3
+- Event-driven listeners registrados (autopilot, AI queue, forecast, audit, cache)
+- Cache financeiro Map-based com TTL e invalidacao reativa por prefixo
+- AI Observabilidade avancada (buffer circular, MetricsViewer, resumos por tipo)
+- Log estruturado de versao no bootstrap frontend e backend
+- Lint verde, cobertura critica >= 98%
 
 ### Checkpoint 0.5.1v
 - health checks de IO e runtime estabilizados no deploy

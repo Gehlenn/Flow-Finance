@@ -1,5 +1,41 @@
 # 📝 CHANGELOG - Flow Finance
 
+## [0.6.3] - 2026-03-14
+
+### 🏗️ Arquitetura Evoluida — Event Listeners, Cache e Observabilidade
+
+#### ✨ Event-Driven Listeners (`src/events/listeners/`)
+- `autopilotListener` — dispara analise do `FinancialAutopilot` em eventos financeiros
+- `aiQueueListener` — encaminha transacoes e eventos criticos para `AITaskQueue`
+- `forecastListener` — reprocessa previsoes de cashflow ao detectar transacao criada
+- `auditListener` — registra todos os eventos financeiros em `auditLogService`
+- `cacheInvalidationListener` — invalida cache financeiro ao detectar mutacoes
+- `registerListeners` — ponto central de bootstrap dos listeners
+
+#### ⚡ Camada de Cache Financeiro (`src/cache/financialCache.ts`)
+- Cache Map-based com TTL configuravel por entrada
+- Invalidacao por prefixo (ex: `cache.invalidateByPrefix('cashflow:')`)
+- API: `get`, `set`, `invalidate`, `invalidateByPrefix`, `clear`, `size`
+- Integracao com `cacheInvalidationListener` para invalidacao reativa
+
+#### 🔭 AI Observabilidade avancada (`src/observability/aiMetrics.ts`)
+- Buffer circular com limite de 200 registros por tipo de metrica
+- Tipos suportados: `ai_call`, `ai_error`, `ai_latency`, `cache_hit`, `cache_miss`, `event_processed`
+- API: `recordAIMetric`, `getAIMetrics`, `getAIMetricsSummary`, `clearAIMetrics`
+- Componente `MetricsViewer` integrado ao `AIControlPanel` para visualizacao em tempo real
+
+#### 🛠️ Polimento e Bootstrap
+- Log estruturado de versao no bootstrap frontend e backend
+- Endpoints `GET /api/health` e `GET /api/version` verificados e ativados
+- Nomenclaturas padronizadas (cashflow vs cashflowPrediction)
+
+#### ✅ Checklist tecnico
+- `npm run lint`: verde
+- `npm test`: verde
+- `npm run test:coverage:critical`: verde (≥ 98%)
+
+---
+
 ## [0.5.1v] - 2026-03-13
 
 ### 🔄 Protocolo de Transição (Open Finance)

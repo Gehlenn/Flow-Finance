@@ -30,6 +30,7 @@ import { detectFinancialLeaks, FinancialLeak } from '../src/ai/leakDetector';
 import { generateMonthlyReport, FinancialReport } from '../src/finance/reportEngine';
 import { simulateFinancialScenario, FinancialSimulationResult, SimulationScenario } from '../src/ai/financialSimulator';
 import { getAuditLogs, AUDIT_EVENTS, AuditLogEntry } from '../src/security/auditLogService';
+import MetricsViewer from '../components/MetricsViewer';
 
 // Icons
 import {
@@ -1195,7 +1196,7 @@ interface AIControlPanelProps {
   userId: string;
 }
 
-type PanelTab = 'stats' | 'memory' | 'insights' | 'autopilot' | 'events' | 'logs' | 'subscriptions' | 'moneymap' | 'leaks' | 'report' | 'simulation' | 'audit' | 'parser' | 'graph';
+type PanelTab = 'stats' | 'memory' | 'insights' | 'autopilot' | 'events' | 'logs' | 'subscriptions' | 'moneymap' | 'leaks' | 'report' | 'simulation' | 'audit' | 'parser' | 'graph' | 'metrics';
 
 const TAB_CONFIG: Array<{ id: PanelTab; label: string; icon: React.ReactNode }> = [
   { id: 'stats',         label: 'Stats',         icon: <Layers size={11} />       },
@@ -1212,6 +1213,7 @@ const TAB_CONFIG: Array<{ id: PanelTab; label: string; icon: React.ReactNode }> 
   { id: 'audit',         label: 'Audit',         icon: <Shield size={11} />       },
   { id: 'parser',        label: 'Parser',        icon: <FileText size={11} />     },
   { id: 'graph',         label: 'Graph',         icon: <Network size={11} />      },
+  { id: 'metrics',       label: 'Metrics',       icon: <BarChart3 size={11} />    },
 ];
 
 const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts, userId }) => {
@@ -1240,6 +1242,7 @@ const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts,
       case 'report':        return <ReportTab transactions={transactions} />;
       case 'simulation':    return <SimulationTab transactions={transactions} accounts={accounts} />;
       case 'audit':         return <AuditTab />;
+      case 'metrics':       return <MetricsViewer />;
       default:              return null;
     }
   };

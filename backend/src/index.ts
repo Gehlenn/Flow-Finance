@@ -143,14 +143,14 @@ app.get('/health', (_req: Request, res: Response) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    version: process.env.APP_VERSION || '0.6.2'
+    version: process.env.APP_VERSION || '0.6.3'
   });
 });
 
 // API version
 app.get('/api/version', (_req: Request, res: Response) => {
   res.json({
-    version: process.env.APP_VERSION || '0.6.2',
+    version: process.env.APP_VERSION || '0.6.3',
     environment: process.env.NODE_ENV || 'development'
   });
 });
@@ -160,7 +160,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     service: 'flow-finance-api',
-    version: process.env.APP_VERSION || '0.6.2',
+    version: process.env.APP_VERSION || '0.6.3',
   });
 });
 
@@ -207,6 +207,10 @@ if (process.env.VERCEL !== '1') {
         allowedOrigins,
       },
       'Backend API server running'
+    );
+    logger.info(
+      { version: process.env.APP_VERSION || '0.6.3', build: 'event-listeners+cache+observability' },
+      '[Bootstrap] Flow Finance backend v0.6.3 iniciado'
     );
   });
 
