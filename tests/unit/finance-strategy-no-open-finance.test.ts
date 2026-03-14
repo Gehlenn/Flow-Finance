@@ -11,7 +11,7 @@ import {
 import { categorizationRules } from '../../src/engines/finance/categorization/categorizationRules';
 import { aiCategorizeTransaction } from '../../src/engines/finance/categorization/aiCategorizerFallback';
 import { detectAmount, detectDate, detectMerchant, parseReceiptText } from '../../src/ocr/receiptParser';
-import { detectSubscriptions } from '../../src/engines/finance/subscriptionDetector';
+import { detectSubscriptions } from '../../src/engines/finance/subscriptionDetector/subscriptionDetector';
 import { calculateFinancialHealth } from '../../src/engines/finance/financialHealth/financialHealthEngine';
 import { calculateGoalPlan } from '../../src/engines/finance/smartGoals/smartGoalsEngine';
 import { recommendGoalAdjustment } from '../../src/engines/finance/smartGoals/goalRecommendationEngine';

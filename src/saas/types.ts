@@ -4,6 +4,12 @@ export type UserRole = 'member' | 'admin';
 
 export type ResourceKind = 'transactions' | 'aiQueries' | 'bankConnections';
 
+export type FeatureKey =
+  | 'advancedInsights'
+  | 'multiBankSync'
+  | 'adminConsole'
+  | 'prioritySupport';
+
 export interface SaaSContext {
   userId: string;
   role: UserRole;

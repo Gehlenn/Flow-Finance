@@ -14,7 +14,7 @@ import {
   SubscriptionService,
   BankConnectionService,
 } from '../app/services';
-import { AccountRepository, GoalRepository, TransactionRepository } from '../repositories';
+import { AccountRepository, GoalRepository, SubscriptionRepository, TransactionRepository } from '../repositories';
 import { PlanName, UserRole } from '../saas';
 import { configureBillingTransport } from '../saas/billingHooks';
 import { configureUsageStoreAdapter } from '../saas/usageTracker';
@@ -39,6 +39,7 @@ export class AppContainer {
   private transactionRepository: TransactionRepository;
   private accountRepository: AccountRepository;
   private goalRepository: GoalRepository;
+  private subscriptionRepository: SubscriptionRepository;
 
   constructor(config: AppConfig) {
     // Initialize storage provider
@@ -51,6 +52,7 @@ export class AppContainer {
     this.transactionRepository = new TransactionRepository(this.storageProvider);
     this.accountRepository = new AccountRepository(this.storageProvider);
     this.goalRepository = new GoalRepository(this.storageProvider);
+    this.subscriptionRepository = new SubscriptionRepository(this.storageProvider);
 
     if (config.storageProvider === 'api') {
       void configureUsageStoreAdapter(createHttpUsageStoreAdapter(config.apiUrl));
@@ -145,7 +147,12 @@ export class AppContainer {
   getSubscriptionService(userId: string, saasOptions: ServiceSaaSOptions = {}): SubscriptionService {
     const key = `subscription_${userId}`;
     if (!this.services.has(key)) {
-      this.services.set(key, new SubscriptionService(this.storageProvider, userId, saasOptions));
+      this.services.set(
+        key,
+        new SubscriptionService(this.storageProvider, userId, saasOptions, {
+          subscriptionRepository: this.subscriptionRepository,
+        })
+      );
     }
     return this.services.get(key);
   }

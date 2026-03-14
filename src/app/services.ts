@@ -7,7 +7,7 @@
 
 import { Transaction, Account, FinancialGoal, User, Subscription, BankConnection } from '../domain/entities';
 import { StorageProvider } from '../storage/StorageProvider';
-import { AccountRepository, GoalRepository, TransactionRepository } from '../repositories';
+import { AccountRepository, GoalRepository, SubscriptionRepository, TransactionRepository } from '../repositories';
 import { simulateFinancialScenario } from '../ai/financialSimulator';
 import { FinancialEventEmitter } from '../events/eventEngine';
 import {
@@ -23,8 +23,13 @@ import {
 } from '../events/financialEvents';
 import { logAuditEvent } from '../security/auditLogService';
 import { TransactionType, Category } from '../../types';
+import { AppError } from '../errors/AppError';
+import { validateTransactionInput } from '../validators/transactionValidator';
+import { validateGoalInput } from '../validators/goalValidator';
+import { logError, logInfo } from '../utils/logger';
 import {
   assertCanPerform,
+  assertFeatureEnabled,
   assertWithinPlanLimit,
   emitBillingHook,
   getCurrentUsage,
@@ -43,6 +48,7 @@ interface ServiceRepositories {
   transactionRepository?: TransactionRepository;
   accountRepository?: AccountRepository;
   goalRepository?: GoalRepository;
+  subscriptionRepository?: SubscriptionRepository;
 }
 
 async function resolveSaaSContext(
@@ -131,6 +137,8 @@ export class TransactionService {
     const currentUsage = getCurrentUsage(this.userId, 'transactions');
     assertWithinPlanLimit(saasContext, 'transactions', currentUsage);
 
+    validateTransactionInput(transactionData);
+
     // Domain validation
     const transaction: Transaction = {
       ...transactionData,
@@ -142,6 +150,12 @@ export class TransactionService {
 
     // Save transaction
     await this.transactionRepository.create(transaction);
+    logInfo('Transaction created', {
+      userId: this.userId,
+      transactionId: transaction.id,
+      amount: transaction.amount,
+      type: transaction.type,
+    });
 
     // Audit log
     logAuditEvent('transaction_created', 'transaction', transaction.id, {
@@ -194,7 +208,7 @@ export class TransactionService {
     const existing = transactions.find((tx) => tx.id === transactionId);
 
     if (!existing) {
-      throw new Error('Transaction not found');
+      throw new AppError('Transaction not found', 404, { transactionId });
     }
 
     const updated: Transaction = {
@@ -225,7 +239,11 @@ export class TransactionService {
         const transaction = await this.createTransaction(txData);
         imported.push(transaction);
       } catch (error) {
-        console.error('Failed to import transaction:', error);
+        logError('Failed to import transaction', {
+          userId: this.userId,
+          txData,
+          error,
+        });
       }
     }
 
@@ -243,7 +261,7 @@ export class TransactionService {
     const existing = transactions.find((tx) => tx.id === transactionId);
 
     if (!existing) {
-      throw new Error('Transaction not found');
+      throw new AppError('Transaction not found', 404, { transactionId });
     }
 
     await this.transactionRepository.delete(transactionId);
@@ -302,7 +320,7 @@ export class AccountService {
     const account = accounts.find(acc => acc.id === accountId);
 
     if (!account) {
-      throw new Error('Account not found');
+      throw new AppError('Account not found', 404, { accountId });
     }
 
     const oldBalance = account.balance;
@@ -350,6 +368,8 @@ export class GoalService {
     const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
     assertCanPerform(saasContext, 'goals:create');
 
+    validateGoalInput(goalData);
+
     const goal: FinancialGoal = {
       ...goalData,
       id: `goal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -360,6 +380,11 @@ export class GoalService {
     };
 
     await this.goalRepository.create(goal);
+    logInfo('Goal created', {
+      userId: this.userId,
+      goalId: goal.id,
+      targetAmount: goal.targetAmount,
+    });
 
     logAuditEvent('goal_created', 'goal', goal.id, {
       name: goal.name,
@@ -395,7 +420,7 @@ export class GoalService {
     const goal = goals.find(g => g.id === goalId);
 
     if (!goal) {
-      throw new Error('Goal not found');
+      throw new AppError('Goal not found', 404, { goalId });
     }
 
     goal.currentAmount = currentAmount;
@@ -442,11 +467,16 @@ export class SimulationService {
 }
 
 export class SubscriptionService {
+  private readonly subscriptionRepository: SubscriptionRepository;
+
   constructor(
     private storage: StorageProvider,
     private userId: string,
-    private saasOptions: ServiceSaaSOptions = {}
-  ) {}
+    private saasOptions: ServiceSaaSOptions = {},
+    repositories: ServiceRepositories = {}
+  ) {
+    this.subscriptionRepository = repositories.subscriptionRepository || new SubscriptionRepository(storage);
+  }
 
   async createSubscription(subscriptionData: Omit<Subscription, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Subscription> {
     const saasContext = await resolveSaaSContext(this.storage, this.userId, this.saasOptions);
@@ -460,7 +490,7 @@ export class SubscriptionService {
       updatedAt: new Date(),
     };
 
-    await this.storage.saveSubscription(subscription);
+    await this.subscriptionRepository.create(subscription);
 
     logAuditEvent('subscription_created', 'subscription', subscription.id, {
       name: subscription.name,
@@ -472,7 +502,7 @@ export class SubscriptionService {
   }
 
   async getSubscriptions(): Promise<Subscription[]> {
-    return this.storage.getSubscriptions(this.userId);
+    return this.subscriptionRepository.getByUser(this.userId);
   }
 
   async updateSubscription(subscriptionId: string, updates: Partial<Subscription>): Promise<void> {
@@ -483,7 +513,7 @@ export class SubscriptionService {
     const subscription = subscriptions.find(sub => sub.id === subscriptionId);
 
     if (!subscription) {
-      throw new Error('Subscription not found');
+      throw new AppError('Subscription not found', 404, { subscriptionId });
     }
 
     const updatedSubscription: Subscription = {
@@ -492,7 +522,7 @@ export class SubscriptionService {
       updatedAt: new Date(),
     };
 
-    await this.storage.saveSubscription(updatedSubscription);
+    await this.subscriptionRepository.create(updatedSubscription);
 
     logAuditEvent('subscription_updated', 'subscription', subscriptionId, {
       fields: Object.keys(updates),
@@ -507,10 +537,10 @@ export class SubscriptionService {
     const subscription = subscriptions.find(sub => sub.id === subscriptionId);
 
     if (!subscription) {
-      throw new Error('Subscription not found');
+      throw new AppError('Subscription not found', 404, { subscriptionId });
     }
 
-    await this.storage.deleteSubscription(subscriptionId);
+    await this.subscriptionRepository.delete(subscriptionId);
 
     logAuditEvent('subscription_deleted', 'subscription', subscriptionId, {
       name: subscription.name,
@@ -530,6 +560,11 @@ export class BankConnectionService {
     assertCanPerform(saasContext, 'bankConnections:create');
 
     const currentConnections = (await this.storage.getBankConnections(this.userId)).length;
+
+    if (currentConnections >= 1) {
+      assertFeatureEnabled(saasContext, 'multiBankSync');
+    }
+
     assertWithinPlanLimit(saasContext, 'bankConnections', currentConnections);
 
     const connection: BankConnection = {
@@ -573,7 +608,7 @@ export class BankConnectionService {
     const connection = connections.find(conn => conn.id === connectionId);
 
     if (!connection) {
-      throw new Error('Bank connection not found');
+      throw new AppError('Bank connection not found', 404, { connectionId });
     }
 
     const updatedConnection: BankConnection = {
@@ -597,7 +632,7 @@ export class BankConnectionService {
     const connection = connections.find(conn => conn.id === connectionId);
 
     if (!connection) {
-      throw new Error('Bank connection not found');
+      throw new AppError('Bank connection not found', 404, { connectionId });
     }
 
     await this.storage.deleteBankConnection(connectionId);

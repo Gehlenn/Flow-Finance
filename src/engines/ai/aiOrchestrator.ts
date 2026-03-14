@@ -10,6 +10,7 @@ import { detectSubscriptions } from '../finance/subscriptionDetector';
 import { calculateFinancialHealth } from '../finance/financialHealth/financialHealthEngine';
 import { buildSmartGoalPlan } from '../finance/smartGoals';
 import { buildFinancialTimeline as buildTimelineAI } from '../finance/timeline';
+import { recordAIMetric } from '../../observability/aiMetrics';
 
 export interface AIOrchestratorInsight {
   timestamp: string;
@@ -31,106 +32,133 @@ export async function runAIOrchestrator(input: AIContextInput): Promise<{
   decision: ReturnType<typeof makeAIDecision>;
 }> {
   const start = Date.now();
+  recordAIMetric('ai_call', 1, { engine: 'aiOrchestrator', userId: input.userContext.userId });
 
-  const patterns = financialPatternDetector.detectPatterns(input.transactions);
-  const moneyMap = moneyMapEngine.generate(input.transactions);
+  try {
+    const patterns = financialPatternDetector.detectPatterns(input.transactions);
+    const moneyMap = moneyMapEngine.generate(input.transactions);
 
-  const context = buildAIContext(input);
-  const cashflowForecast = cashflowPredictionEngine.predict({
-    balance: context.balance,
-    transactions: input.transactions,
-    patterns,
-  });
+    const context = buildAIContext(input);
+    const cashflowForecast = cashflowPredictionEngine.predict({
+      balance: context.balance,
+      transactions: input.transactions,
+      patterns,
+    });
 
-  const subscriptions = detectSubscriptions(
-    input.transactions.map((tx) => ({
-      amount: tx.amount,
-      date: tx.date,
-      merchant: tx.merchant,
-      description: tx.description,
-    })),
-  );
+    const subscriptions = detectSubscriptions(
+      input.transactions.map((tx) => ({
+        amount: tx.amount,
+        date: tx.date,
+        merchant: tx.merchant,
+        description: tx.description,
+      })),
+    );
 
-  const dominantCategoryShare = (moneyMap[0]?.percentage ?? 0) / 100;
-  const expenseRatio = context.monthlyIncome > 0
-    ? context.monthlySpending / context.monthlyIncome
-    : 1;
-  const savingsRate = context.monthlyIncome > 0
-    ? (context.monthlyIncome - context.monthlySpending) / context.monthlyIncome
-    : 0;
+    const dominantCategoryShare = (moneyMap[0]?.percentage ?? 0) / 100;
+    const expenseRatio = context.monthlyIncome > 0
+      ? context.monthlySpending / context.monthlyIncome
+      : 1;
+    const savingsRate = context.monthlyIncome > 0
+      ? (context.monthlyIncome - context.monthlySpending) / context.monthlyIncome
+      : 0;
 
-  const financialHealth = calculateFinancialHealth({
-    expenseRatio,
-    savingsRate,
-    forecast: { in30Days: cashflowForecast.in30Days },
-    subscriptionCount: subscriptions.length,
-    dominantCategoryShare,
-  });
+    const financialHealth = calculateFinancialHealth({
+      expenseRatio,
+      savingsRate,
+      forecast: { in30Days: cashflowForecast.in30Days },
+      subscriptionCount: subscriptions.length,
+      dominantCategoryShare,
+    });
 
-  const smartGoalsPreview = buildSmartGoalPlan({
-    goalAmount: context.monthlyIncome * 6,
-    currentAmount: Math.max(0, context.balance),
-    monthsToGoal: 12,
-    monthlyIncome: context.monthlyIncome,
-    monthlyExpenses: context.monthlySpending,
-  });
+    const smartGoalsPreview = buildSmartGoalPlan({
+      goalAmount: context.monthlyIncome * 6,
+      currentAmount: Math.max(0, context.balance),
+      monthsToGoal: 12,
+      monthlyIncome: context.monthlyIncome,
+      monthlyExpenses: context.monthlySpending,
+    });
 
-  const timelineAI = buildTimelineAI(
-    input.transactions.map((tx) => ({
-      date: tx.date,
-      amount: tx.type === 'Receita' ? tx.amount : -Math.abs(tx.amount),
-      category: String(tx.category),
-      merchant: tx.merchant,
-    })),
-  );
+    const timelineAI = buildTimelineAI(
+      input.transactions.map((tx) => ({
+        date: tx.date,
+        amount: tx.type === 'Receita' ? tx.amount : -Math.abs(tx.amount),
+        category: String(tx.category),
+        merchant: tx.merchant,
+      })),
+    );
 
-  aiMemoryEngine.updateMemory(patterns, input.userContext.userId, { moneyMap });
-  const decision = makeAIDecision(context);
+    aiMemoryEngine.updateMemory(patterns, input.userContext.userId, { moneyMap });
+    const decision = makeAIDecision(context);
 
-  const enrichedMemory = {
-    ...(input.memory || {}),
-    financialProfile: context.financialProfile,
-    timelineTotals: context.timeline.totals,
-    moneyMap,
-    cashflowForecast,
-    subscriptions,
-    financialHealth,
-    smartGoalsPreview,
-    timelineAI,
-  };
+    const enrichedMemory = {
+      ...(input.memory || {}),
+      financialProfile: context.financialProfile,
+      timelineTotals: context.timeline.totals,
+      moneyMap,
+      cashflowForecast,
+      subscriptions,
+      financialHealth,
+      smartGoalsPreview,
+      timelineAI,
+    };
 
-  eventBus.emit(AI_TASK_COMPLETED, {
-    taskId: `ai_${Date.now()}`,
-    engine: 'aiOrchestrator',
-    userId: context.userId,
-    durationMs: Date.now() - start,
-    success: true,
-  });
+    const durationMs = Date.now() - start;
 
-  lastInsights.unshift({
-    timestamp: new Date().toISOString(),
-    userId: context.userId,
-    decision,
-    profile: context.financialProfile,
-    timelineTotals: context.timeline.totals,
-    moneyMap,
-    cashflowForecast,
-    subscriptions,
-    financialHealth,
-    timelineAI,
-  });
+    eventBus.emit(AI_TASK_COMPLETED, {
+      taskId: `ai_${Date.now()}`,
+      engine: 'aiOrchestrator',
+      userId: context.userId,
+      durationMs,
+      success: true,
+    });
 
-  if (lastInsights.length > 50) {
-    lastInsights.splice(50);
+    lastInsights.unshift({
+      timestamp: new Date().toISOString(),
+      userId: context.userId,
+      decision,
+      profile: context.financialProfile,
+      timelineTotals: context.timeline.totals,
+      moneyMap,
+      cashflowForecast,
+      subscriptions,
+      financialHealth,
+      timelineAI,
+    });
+
+    if (lastInsights.length > 50) {
+      lastInsights.splice(50);
+    }
+
+    return {
+      context: {
+        ...context,
+        memory: enrichedMemory,
+      },
+      decision,
+    };
+  } catch (error) {
+    eventBus.emit(AI_TASK_COMPLETED, {
+      taskId: `ai_${Date.now()}`,
+      engine: 'aiOrchestrator',
+      userId: input.userContext.userId,
+      durationMs: Date.now() - start,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+
+    recordAIMetric('ai_error', 1, {
+      engine: 'aiOrchestrator',
+      userId: input.userContext.userId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    throw error;
+  } finally {
+    recordAIMetric('ai_latency', Date.now() - start, {
+      engine: 'aiOrchestrator',
+      userId: input.userContext.userId,
+    });
   }
-
-  return {
-    context: {
-      ...context,
-      memory: enrichedMemory,
-    },
-    decision,
-  };
 }
 
 export function getLastInsights(): AIOrchestratorInsight[] {
