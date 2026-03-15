@@ -99,7 +99,7 @@ export class UserService {
   async updateUser(userId: string, updates: Partial<User>): Promise<User> {
     const user = await this.getUser(userId);
     if (!user) {
-      throw new Error('User not found');
+      throw new AppError('User not found', 404, { userId });
     }
 
     const updatedUser: User = {

@@ -16,8 +16,9 @@ export function validateTransactionInput(
     throw new AppError('Transaction description is required', 400, { field: 'description' });
   }
 
-  if (transactionData.type !== 'income' && transactionData.type !== 'expense') {
-    throw new AppError('Transaction type must be income or expense', 400, { field: 'type' });
+  const validTypes = ['income', 'expense', 'Receita', 'Despesa'];
+  if (!validTypes.includes(transactionData.type as string)) {
+    throw new AppError('Transaction type must be income, expense, Receita or Despesa', 400, { field: 'type' });
   }
 
   if (!(transactionData.date instanceof Date) || Number.isNaN(transactionData.date.getTime())) {
