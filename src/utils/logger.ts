@@ -1,3 +1,5 @@
+import { addBreadcrumb, reportError, reportMessage } from '../config/sentry';
+
 type LogLevel = 'INFO' | 'WARN' | 'ERROR' | 'DEBUG';
 
 const REDACTED_VALUE = '[REDACTED]';
@@ -15,6 +17,22 @@ interface LogPayload {
   data?: unknown;
   meta?: LogMeta;
   ts: string;
+}
+
+function toSentryLevel(level: LogLevel): 'error' | 'warning' | 'info' | 'debug' {
+  if (level === 'ERROR') {
+    return 'error';
+  }
+
+  if (level === 'WARN') {
+    return 'warning';
+  }
+
+  if (level === 'DEBUG') {
+    return 'debug';
+  }
+
+  return 'info';
 }
 
 function sanitizeData(input: unknown): unknown {
@@ -38,13 +56,34 @@ function sanitizeData(input: unknown): unknown {
 }
 
 function write(level: LogLevel, message: string, data?: unknown, meta?: LogMeta): void {
+  const sanitizedData = sanitizeData(data);
+  const sanitizedMeta = sanitizeData(meta) as LogMeta | undefined;
+
   const payload: LogPayload = {
     level,
     message,
-    data: sanitizeData(data),
-    meta: sanitizeData(meta) as LogMeta | undefined,
+    data: sanitizedData,
+    meta: sanitizedMeta,
     ts: new Date().toISOString(),
   };
+
+  const sentryContext = {
+    ...((sanitizedMeta ?? {}) as Record<string, unknown>),
+    level,
+    ...(sanitizedData !== undefined ? { data: sanitizedData } : {}),
+  };
+
+  if (level === 'ERROR') {
+    if (data instanceof Error) {
+      reportError(data, sentryContext);
+    } else {
+      reportMessage(message, 'error', sentryContext);
+    }
+  } else {
+    reportMessage(message, toSentryLevel(level), sentryContext);
+  }
+
+  addBreadcrumb(message, 'logger', toSentryLevel(level));
 
   if (level === 'ERROR') {
     console.error(`[${level}]`, payload);

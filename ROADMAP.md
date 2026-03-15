@@ -56,6 +56,7 @@
 - Cache financeiro Map-based com TTL e invalidacao reativa por prefixo
 - AI Observabilidade avancada (buffer circular, MetricsViewer, resumos por tipo)
 - Log estruturado de versao no bootstrap frontend e backend
+- A004 concluido: logger com sink estruturado no Sentry, redaction e fallback em console
 - Lint verde, cobertura critica >= 98%
 - D1 concluido: AI Context Builder avancado com score de confianca e qualidade de contexto
 - D2 concluido: Pattern Detector com confianca por insight e testes de fronteira para picos/recorrencia

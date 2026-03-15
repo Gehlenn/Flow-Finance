@@ -16,7 +16,7 @@
 - `SubscriptionRepository` com `update()` explicito e uso em `SubscriptionService.updateSubscription`
 - `resolveSaaSContext` com memoizacao TTL e deduplicacao de chamadas concorrentes
 - `errorHandler` do backend com sanitizacao de `details` e redaction de campos sensiveis
-- Logger com redaction automatica de chaves sensiveis e suporte a metadados (`correlationId`, `scope`)
+- Logger com redaction automatica de chaves sensiveis, metadados (`correlationId`, `scope`) e sink estruturado integrado ao Sentry com fallback em console
 - Novos testes: `logger.test.ts` e `backend-error-handler.test.ts`
 
 #### ✅ Sprint 2 consolidada (readiness + D1/D2 funcionais)
