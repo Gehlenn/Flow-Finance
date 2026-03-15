@@ -307,7 +307,7 @@ describe('openBankingService - Extended Coverage', () => {
     expect(apiRequestMock).toHaveBeenNthCalledWith(2, '/api/banking/connectors', { method: 'GET', retries: 1 });
     expect(apiRequestMock).toHaveBeenNthCalledWith(3, '/api/banking/connect-token', {
       method: 'POST',
-      body: JSON.stringify({ clientUserId: 'user-backend' }),
+      body: JSON.stringify({}),
       retries: 1,
     });
   });
@@ -538,7 +538,7 @@ describe('openBankingService - Extended Coverage', () => {
 
     expect(apiRequestMock).toHaveBeenLastCalledWith('/api/banking/disconnect', {
       method: 'POST',
-      body: JSON.stringify({ connectionId: conn.id, userId: 'u-disconnect-success' }),
+      body: JSON.stringify({ connectionId: conn.id }),
       retries: 1,
     });
     expect(getConnection(conn.id)).toBeNull();
