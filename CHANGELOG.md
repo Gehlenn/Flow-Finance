@@ -12,6 +12,13 @@
 - Observabilidade no `aiOrchestrator` com metricas de chamada, erro e latencia
 - Ajuste do E2E Pluggy para evitar falso-negativo quando backend local estiver indisponivel
 
+#### ✅ Sprint 1 concluida (A003-A006)
+- `SubscriptionRepository` com `update()` explicito e uso em `SubscriptionService.updateSubscription`
+- `resolveSaaSContext` com memoizacao TTL e deduplicacao de chamadas concorrentes
+- `errorHandler` do backend com sanitizacao de `details` e redaction de campos sensiveis
+- Logger com redaction automatica de chaves sensiveis e suporte a metadados (`correlationId`, `scope`)
+- Novos testes: `logger.test.ts` e `backend-error-handler.test.ts`
+
 #### ✅ Validacoes executadas
 - `npm run lint`: verde
 - `npm test`: verde

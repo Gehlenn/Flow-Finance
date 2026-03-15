@@ -116,6 +116,7 @@ O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvol
 - Observabilidade de IA ampliada com metricas de chamada, erro e latencia
 - E2E do Pluggy estabilizado com skip controlado quando backend local nao estiver disponivel
 - Cobertura critica validada em `99.76%` statements e `98.3%` branches no recorte protocolar
+- Sprint 1 concluida: `SubscriptionRepository.update()`, memoizacao de `resolveSaaSContext`, sanitizacao de `AppError.details` e redaction no logger
 
 > Nota de versionamento: a label documental desta transicao e `0.5.2v`, enquanto o ciclo tecnico interno de pacotes permanece na trilha `0.6.x` para compatibilidade operacional.
 

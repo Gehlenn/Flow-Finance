@@ -2,6 +2,38 @@ import { Request, Response, NextFunction } from 'express';
 import logger from '../config/logger';
 import { ErrorResponse } from '../types';
 
+const REDACTED_VALUE = '[REDACTED]';
+const SENSITIVE_KEY_PATTERN = /(password|token|authorization|secret|api[-_]?key|access[-_]?key)/i;
+
+function sanitizeDetails(details?: Record<string, any>): Record<string, any> | undefined {
+  if (!details) {
+    return undefined;
+  }
+
+  const sanitizeValue = (value: unknown): unknown => {
+    if (Array.isArray(value)) {
+      return value.map((item) => sanitizeValue(item));
+    }
+
+    if (value && typeof value === 'object') {
+      const obj = value as Record<string, unknown>;
+      const sanitized: Record<string, unknown> = {};
+      for (const [key, innerValue] of Object.entries(obj)) {
+        if (SENSITIVE_KEY_PATTERN.test(key)) {
+          sanitized[key] = REDACTED_VALUE;
+        } else {
+          sanitized[key] = sanitizeValue(innerValue);
+        }
+      }
+      return sanitized;
+    }
+
+    return value;
+  };
+
+  return sanitizeValue(details) as Record<string, any>;
+}
+
 export class AppError extends Error {
   constructor(
     public statusCode: number,
@@ -21,6 +53,7 @@ export function errorHandler(
 ): void {
   const statusCode = error instanceof AppError ? error.statusCode : 500;
   const message = error.message || 'Internal server error';
+  const sanitizedDetails = error instanceof AppError ? sanitizeDetails(error.details) : undefined;
 
   logger.error(
     {
@@ -28,7 +61,7 @@ export function errorHandler(
         name: error.name,
         message: error.message,
         stack: error.stack,
-        ...(error instanceof AppError && { details: error.details }),
+        ...(sanitizedDetails && { details: sanitizedDetails }),
       },
       url: req.url,
       method: req.method,
@@ -43,6 +76,7 @@ export function errorHandler(
     message,
     timestamp: new Date().toISOString(),
     path: req.path,
+    ...(statusCode < 500 && sanitizedDetails && { details: sanitizedDetails }),
   };
 
   res.status(statusCode).json(response);

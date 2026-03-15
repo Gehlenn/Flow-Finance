@@ -51,11 +51,33 @@ interface ServiceRepositories {
   subscriptionRepository?: SubscriptionRepository;
 }
 
+const SAAS_CONTEXT_TTL_MS = 30_000;
+const saasContextCache = new Map<string, { context: SaaSContext; cachedAt: number }>();
+const saasContextPending = new Map<string, Promise<SaaSContext>>();
+
+function getSaaSContextCacheKey(userId: string, options: ServiceSaaSOptions): string {
+  return `${userId}:${options.role || 'member'}:${options.plan || 'auto'}`;
+}
+
 async function resolveSaaSContext(
   storage: StorageProvider,
   userId: string,
   options: ServiceSaaSOptions
 ): Promise<SaaSContext> {
+  const cacheKey = getSaaSContextCacheKey(userId, options);
+  const now = Date.now();
+  const cached = saasContextCache.get(cacheKey);
+
+  if (cached && (now - cached.cachedAt) < SAAS_CONTEXT_TTL_MS) {
+    return cached.context;
+  }
+
+  const pending = saasContextPending.get(cacheKey);
+  if (pending) {
+    return pending;
+  }
+
+  const resolver = (async () => {
   let plan = options.plan;
 
   if (!plan) {
@@ -64,11 +86,24 @@ async function resolveSaaSContext(
     plan = planName === 'pro' ? 'pro' : 'free';
   }
 
-  return {
+    const context = {
     userId,
     role: options.role || 'member',
     plan,
-  };
+    };
+
+    saasContextCache.set(cacheKey, {
+      context,
+      cachedAt: Date.now(),
+    });
+
+    return context;
+  })().finally(() => {
+    saasContextPending.delete(cacheKey);
+  });
+
+  saasContextPending.set(cacheKey, resolver);
+  return resolver;
 }
 
 export class UserService {
@@ -522,7 +557,7 @@ export class SubscriptionService {
       updatedAt: new Date(),
     };
 
-    await this.subscriptionRepository.create(updatedSubscription);
+    await this.subscriptionRepository.update(updatedSubscription);
 
     logAuditEvent('subscription_updated', 'subscription', subscriptionId, {
       fields: Object.keys(updates),

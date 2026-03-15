@@ -12,6 +12,10 @@ export class SubscriptionRepository {
     await this.storage.saveSubscription(subscription);
   }
 
+  async update(subscription: Subscription): Promise<void> {
+    await this.storage.saveSubscription(subscription);
+  }
+
   async delete(subscriptionId: string): Promise<void> {
     await this.storage.deleteSubscription(subscriptionId);
   }

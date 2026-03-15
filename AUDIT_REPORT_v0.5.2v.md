@@ -70,7 +70,7 @@ export class AppError extends Error {
 
 ✅ **Aprovado.** Herda de `Error` corretamente com `name` explícito para facilitar `instanceof` e serialização. O campo `details: unknown` é seguro — evita exposição acidental de tipos internos via serialização automática.
 
-⚠️ **Observação leve:** `details` exposto nas respostas da API deve passar por filtro antes de chegar ao cliente para evitar vazamento de informação de infraestrutura.
+✅ **Evolução aplicada:** `details` agora é sanitizado no backend com redaction de chaves sensíveis e só é retornado em respostas 4xx.
 
 ---
 
@@ -91,7 +91,7 @@ export function validateTransactionInput(
 
 ✅ `validateGoalInput` segue o mesmo padrão com cobertura de `name`, `targetAmount`, `currentAmount` e `targetDate`.
 
-⚠️ **Nota:** A validação de `type` no `transactionValidator` usa `'income' | 'expense'` literais enquanto o domínio usa `TransactionType.RECEITA/DESPESA`. Há uma discrepância que pode gerar erro de validação para transações criadas com os tipos do enum legado. Requer atenção na issue abaixo.
+✅ **Evolução aplicada:** validação de `type` aceita `'income'`, `'expense'`, `'Receita'` e `'Despesa'` para compatibilidade com o domínio legado.
 
 ---
 
@@ -102,13 +102,14 @@ export class SubscriptionRepository {
   constructor(private readonly storage: StorageProvider) {}
   async getByUser(userId: string): Promise<Subscription[]> { ... }
   async create(subscription: Subscription): Promise<void> { ... }
+  async update(subscription: Subscription): Promise<void> { ... }
   async delete(subscriptionId: string): Promise<void> { ... }
 }
 ```
 
 ✅ **Aprovado.** Desacopla os serviços do `StorageProvider` diretamente. Injetável via `ServiceRepositories`. Implementação mínima e correta.
 
-⚠️ **Observação:** `updateSubscription` no `SubscriptionService` usa `create()` para persistir a atualização (padrão upsert via storage). Isso é funcionalmente correto mas semanticamente confuso. Considerar `update()` dedicado em iteração futura.
+✅ **Evolução aplicada:** `SubscriptionService.updateSubscription` agora usa `subscriptionRepository.update()` explícito.
 
 ---
 
@@ -152,21 +153,21 @@ finally { recordAIMetric('ai_latency', Date.now() - start, { ... }); }
 function write(level: LogLevel, message: string, data?: unknown): void { ... }
 ```
 
-✅ **Aprovado** para o escopo atual. Estrutura consistente com timestamp ISO.
+✅ **Aprovado** para o escopo atual. Estrutura consistente com timestamp ISO, metadados opcionais e redaction automática de campos sensíveis.
 
-⚠️ **Observação:** Implementação usa `console.*` diretamente. Para produção, considerar sink estruturado (Pino/Winston) ou integração com Sentry para correlação de logs com erros rastreados. Registrado como melhoria futura.
+⚠️ **Observação residual:** Implementação ainda usa `console.*` como sink final. Recomendada integração com Pino/Winston/Sentry para correlação completa em produção.
 
 ---
 
-### 3.7 UserService.updateUser — Erro genérico residual
+### 3.7 UserService.updateUser — Padronização concluída
 
 ```typescript
 if (!user) {
-  throw new Error('User not found');
+  throw new AppError('User not found', 404, { userId });
 }
 ```
 
-⚠️ **Issue identificada:** `updateUser` em `UserService` ainda usa `new Error` genérico enquanto todos os outros services foram migrados para `AppError`. Inconsistência menor mas rastreável.
+✅ **Concluído:** `UserService` alinhado ao padrão `AppError` como os demais serviços da aplicação.
 
 ---
 
@@ -176,7 +177,7 @@ if (!user) {
 |---|---|---|
 | Injeção de dados (SQL/NoSQL) | ✅ Sem risco direto | Abstração via StorageProvider; sem query string manual |
 | XSS via inputs financeiros | ✅ Mitigado | `description` só é validado por presença/comprimento; não é renderizado como HTML no fluxo de validação |
-| Exposição de detalhes internos via erro | ⚠️ Atenção | `AppError.details` não é filtrado antes da resposta HTTP no backend; avaliar sanitização |
+| Exposição de detalhes internos via erro | ✅ Mitigado | `AppError.details` sanitizado por middleware com redaction e retorno restrito a 4xx |
 | Permissões SaaS | ✅ Correto | `assertCanPerform`, `assertFeatureEnabled`, `assertWithinPlanLimit` com códigos HTTP semânticos |
 | Auditoria de ações | ✅ Preservada | `logAuditEvent` chamado em todas as operações de criação, atualização e exclusão |
 | Logs de credenciais | ✅ Seguro | `logInfo` em criação de transação registra apenas `transactionId`, `amount` e `type`; nenhum dado sensível |
@@ -188,7 +189,7 @@ if (!user) {
 | Ponto | Avaliação |
 |---|---|
 | Validação síncrona antes de I/O | ✅ Correto — falha antes de qualquer chamada async |
-| Resolução de SaaSContext por chamada | ⚠️ Cache candidato — `resolveSaaSContext` chama `getUser` a cada operação; pode ser memoizado por request |
+| Resolução de SaaSContext por chamada | ✅ Mitigado | memoização com TTL e deduplicação de promises em `resolveSaaSContext` |
 | Metrics buffer circular (200 entradas) | ✅ Protegido contra crescimento ilimitado |
 | `lastInsights` com splice(50) | ✅ Bounded corretamente |
 
@@ -214,15 +215,17 @@ helpers            |  100.00 |   100.00 |  100.00 | 100.00
 
 ### 6.2 Suíte geral
 
-- **Test Files:** 33 passando
-- **Tests:** 341 passando, 0 falhas
+- **Test Files:** 35 passando
+- **Tests:** 346 passando, 0 falhas
 
 ### 6.3 Novos testes desta transição
 
 | Arquivo | Casos | Cobertura |
 |---|---|---|
 | `validators-and-errors.test.ts` | 5 casos | `AppError`, `validateTransactionInput`, `validateGoalInput` |
-| `saas-hardening-and-observability.test.ts` | 6 casos | `assertCanPerform`, `assertWithinPlanLimit`, `assertFeatureEnabled`, `SubscriptionRepository`, `runAIOrchestrator` métricas |
+| `saas-hardening-and-observability.test.ts` | 7 casos | `assertCanPerform`, `assertWithinPlanLimit`, `assertFeatureEnabled`, `SubscriptionRepository`, `runAIOrchestrator` métricas |
+| `backend-error-handler.test.ts` | 2 casos | sanitização de `AppError.details` e retorno condicional por status |
+| `logger.test.ts` | 2 casos | redaction de dados sensíveis e roteamento por nível |
 
 ### 6.4 E2E — Open Banking Pluggy
 
@@ -238,10 +241,10 @@ helpers            |  100.00 |   100.00 |  100.00 | 100.00
 |---|---|---|---|
 | A001 | ~~🟡 Baixa~~ | `UserService.updateUser` usa `new Error` genérico | ✅ **Corrigido** — migrado para `AppError` 404 |
 | A002 | ~~🟡 Baixa~~ | `validateTransactionInput` valida `type` como `'income'\|'expense'` literal, diferente do `TransactionType` do domínio | ✅ **Corrigido** — aceita `'income'`, `'expense'`, `'Receita'` e `'Despesa'` |
-| A003 | 🟡 Baixa | `SubscriptionRepository.create` é usado tanto para criar quanto para atualizar (upsert implícito) | Adicionar método `update` dedicado |
-| A004 | 🟡 Baixa | `logger.ts` usa `console.*` — sem structured sink externo | Integrar com Pino ou redirecionar para Sentry |
-| A005 | ⚪ Info | `resolveSaaSContext` resolve `getUser` por chamada de serviço | Memoizar por request em caso de alta frequência |
-| A006 | ⚪ Info | `AppError.details` não é filtrado no handler HTTP do backend | Avaliar sanitização antes de serializar na resposta |
+| A003 | ~~🟡 Baixa~~ | `SubscriptionRepository.create` era usado para update implícito | ✅ **Corrigido** — método `update()` dedicado criado e usado no serviço |
+| A004 | 🟡 Baixa | `logger.ts` ainda usa `console.*` como sink final | Integrar com Pino/Sentry no próximo ciclo |
+| A005 | ~~⚪ Info~~ | `resolveSaaSContext` resolvia `getUser` por chamada | ✅ **Corrigido** — memoização com TTL e deduplicação de chamadas concorrentes |
+| A006 | ~~⚪ Info~~ | `AppError.details` não era filtrado no handler HTTP | ✅ **Corrigido** — sanitização + retorno apenas em 4xx |
 
 ---
 
@@ -250,9 +253,9 @@ helpers            |  100.00 |   100.00 |  100.00 | 100.00
 | Checagem | Resultado |
 |---|---|
 | `npm run lint` | ✅ |
-| `npm test` | ✅ 341/341 |
+| `npm test` | ✅ 346/346 |
 | `npm run test:coverage:critical` | ✅ 99.76% stmts / 98.3% branches |
-| `cd backend && npm run build` | ✅ (último build registrado: 14/03/2026) |
+| `cd backend && npm run build` | ✅ (último build registrado: 15/03/2026) |
 | E2E Pluggy | ✅ skip controlado sem backend local |
 
 ---
