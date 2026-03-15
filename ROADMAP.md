@@ -49,6 +49,7 @@
 - E2E Pluggy estabilizado para indisponibilidade local de backend (skip controlado)
 - Lint, testes e cobertura critica aprovados no recorte protocolar
 - Sprint 1 de hardening finalizada (A003-A006) com testes e build backend validados
+- Sprint 2 iniciada com suíte de readiness cobrindo os 6 pilares da fase 0.6.x
 
 ### Checkpoint 0.6.3
 - Event-driven listeners registrados (autopilot, AI queue, forecast, audit, cache)

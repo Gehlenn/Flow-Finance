@@ -215,8 +215,8 @@ helpers            |  100.00 |   100.00 |  100.00 | 100.00
 
 ### 6.2 Suíte geral
 
-- **Test Files:** 35 passando
-- **Tests:** 346 passando, 0 falhas
+- **Test Files:** 36 passando
+- **Tests:** 348 passando, 0 falhas
 
 ### 6.3 Novos testes desta transição
 

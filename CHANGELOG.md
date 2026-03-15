@@ -19,6 +19,11 @@
 - Logger com redaction automatica de chaves sensiveis e suporte a metadados (`correlationId`, `scope`)
 - Novos testes: `logger.test.ts` e `backend-error-handler.test.ts`
 
+#### ✅ Sprint 2 iniciada (readiness dos 6 pilares)
+- Nova suíte `financial-intelligence-readiness.test.ts` validando: Context Builder, Pattern Detector, Timeline, Profile Classifier, Cashflow Prediction e Money Map
+- Consistência entre engines e `aiOrchestrator` validada com cenários integrados
+- Estado atual de testes elevado para `348/348` verdes
+
 #### ✅ Validacoes executadas
 - `npm run lint`: verde
 - `npm test`: verde
