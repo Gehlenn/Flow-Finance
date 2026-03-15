@@ -28,6 +28,13 @@
 
 ### 🏗️ Arquitetura Evoluida — Event Listeners, Cache e Observabilidade
 
+#### 🔒 Hardening tecnico consolidado na trilha 0.6.3
+- `AppError` padronizado para permissoes, limites de plano e recursos indisponiveis
+- Validadores de entrada para transacoes e metas integrados aos servicos de aplicacao
+- `SubscriptionRepository` introduzido para reduzir acoplamento direto com storage
+- `aiOrchestrator` fortalecido com metricas de chamada, erro e latencia
+- Teste E2E do Pluggy ajustado para skip controlado quando a API local nao estiver disponivel
+
 #### ✨ Event-Driven Listeners (`src/events/listeners/`)
 - `autopilotListener` — dispara analise do `FinancialAutopilot` em eventos financeiros
 - `aiQueueListener` — encaminha transacoes e eventos criticos para `AITaskQueue`
@@ -57,6 +64,11 @@
 - `npm run lint`: verde
 - `npm test`: verde
 - `npm run test:coverage:critical`: verde (≥ 98%)
+- Pacotes tecnicos sincronizados em `0.6.3`
+
+#### 🧾 Relacao com a transicao documental
+- Release label externa/documental: `0.5.2v`
+- Release tecnica interna de build/distribuicao: `0.6.3`
 
 ---
 
