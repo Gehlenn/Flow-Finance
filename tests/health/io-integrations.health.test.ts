@@ -61,6 +61,26 @@ describe('IO Health Check - API contracts', () => {
     expect(warnSpy).not.toHaveBeenCalled();
     expect(errorSpy).not.toHaveBeenCalled();
   });
+
+  it('apiRequest should not retry deterministic 404 errors', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ message: 'Connection not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      apiRequest('http://localhost:3999/banking/sync', {
+        method: 'POST',
+        retries: 2,
+      })
+    ).rejects.toThrow(/API Error 404/i);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('IO Health Check - AI proxy integration', () => {

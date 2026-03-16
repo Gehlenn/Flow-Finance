@@ -1,6 +1,6 @@
 {
   "name": "flow-finance-api",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Flow Finance Backend API - Gemini Proxy & Auth Server",
   "main": "dist/index.js",
   "scripts": {

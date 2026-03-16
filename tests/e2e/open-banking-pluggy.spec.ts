@@ -13,24 +13,39 @@ interface BackendAuthContext {
   userId: string;
 }
 
-async function createBackendAuthToken(request: APIRequestContext, email: string): Promise<BackendAuthContext | null> {
-  const response = await request.post(`${BACKEND_BASE_URL}/api/auth/login`, {
-    data: { email, password: 'e2e-password' },
-    timeout: 5000,
-  });
+type BackendAuthResult =
+  | { status: 'ok'; context: BackendAuthContext }
+  | { status: 'unavailable'; message: string }
+  | { status: 'invalid'; message: string };
+
+async function createBackendAuthToken(request: APIRequestContext, email: string): Promise<BackendAuthResult> {
+  let response;
+
+  try {
+    response = await request.post(`${BACKEND_BASE_URL}/api/auth/login`, {
+      data: { email, password: 'e2e-password' },
+      timeout: 5000,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'erro desconhecido';
+    return { status: 'unavailable', message };
+  }
 
   if (!response.ok()) {
-    return null;
+    return { status: 'invalid', message: `login status ${response.status()}` };
   }
 
   const payload = await response.json() as { token?: string; user?: { userId?: string } };
   if (!payload.token || !payload.user?.userId) {
-    return null;
+    return { status: 'invalid', message: 'resposta de login sem token/userId' };
   }
 
   return {
-    token: payload.token,
-    userId: payload.user.userId,
+    status: 'ok',
+    context: {
+      token: payload.token,
+      userId: payload.user.userId,
+    },
   };
 }
 
@@ -118,13 +133,29 @@ async function ensureOpenBankNavigation(page: Page, testInfo: TestInfo): Promise
 test.describe('Open Banking - Pluggy Connect', () => {
   test('deve validar connect-token e abrir a área de conexão do Pluggy', async ({ page, request }, testInfo) => {
     const authEmail = `e2e+pluggy-auth-${Date.now()}@flowfinance.test`;
-    const authContext = await createBackendAuthToken(request, authEmail);
+    const authResult = await createBackendAuthToken(request, authEmail);
 
-    if (!authContext) {
+    if (authResult.status === 'unavailable') {
+      testInfo.annotations.push({
+        type: 'backend-unavailable',
+        description: authResult.message,
+      });
+      test.skip(true, 'Backend indisponível para validar Open Banking nesta execução.');
+    }
+
+    if (authResult.status === 'invalid') {
+      testInfo.annotations.push({
+        type: 'backend-auth',
+        description: authResult.message,
+      });
       test.skip(true, 'Não foi possível autenticar no backend para validar connect-token.');
     }
 
-    const tokenProbe = await probeConnectToken(request, authContext!.userId, authContext!.token);
+    if (authResult.status !== 'ok') {
+      return;
+    }
+
+    const tokenProbe = await probeConnectToken(request, authResult.context.userId, authResult.context.token);
     testInfo.annotations.push({
       type: 'pluggy-connect-token',
       description: `${tokenProbe.status}: ${tokenProbe.message}`,

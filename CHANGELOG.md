@@ -1,5 +1,92 @@
 # 📝 CHANGELOG - Flow Finance
 
+## [0.5.2v] - 2026-03-14
+
+### 🔄 Protocolo de Transicao (Iniciado)
+**Status:** Em execucao controlada
+
+#### ✅ Entregas tecnicas consolidadas nesta transicao
+- Hardening de servicos SaaS com `AppError` padronizado para limites, permissoes e features
+- Validadores dedicados para transacao e metas (`transactionValidator`, `goalValidator`)
+- Repository dedicado para assinaturas com injecao no container de aplicacao
+- Observabilidade no `aiOrchestrator` com metricas de chamada, erro e latencia
+- Ajuste do E2E Pluggy para evitar falso-negativo quando backend local estiver indisponivel
+
+#### ✅ Sprint 1 concluida (A003-A006)
+- `SubscriptionRepository` com `update()` explicito e uso em `SubscriptionService.updateSubscription`
+- `resolveSaaSContext` com memoizacao TTL e deduplicacao de chamadas concorrentes
+- `errorHandler` do backend com sanitizacao de `details` e redaction de campos sensiveis
+- Logger com redaction automatica de chaves sensiveis, metadados (`correlationId`, `scope`) e sink estruturado integrado ao Sentry com fallback em console
+- Novos testes: `logger.test.ts` e `backend-error-handler.test.ts`
+
+#### ✅ Sprint 2 consolidada (readiness + D1/D2 funcionais)
+- Nova suíte `financial-intelligence-readiness.test.ts` validando: Context Builder, Pattern Detector, Timeline, Profile Classifier, Cashflow Prediction e Money Map
+- Consistência entre engines e `aiOrchestrator` validada com cenários integrados
+- `advancedContextBuilder` enriquecido com qualidade de dados, confianca e resumo financeiro recente
+- `financialPatternDetector` evoluido com insights e score de confianca para recorrencia e picos semanais
+- Testes de fronteira ampliados para evitar falso positivo em picos semanais e recorrencia insuficiente
+- Estado atual de testes elevado para `352/352` verdes
+
+#### ✅ Validacoes executadas
+- `npm run lint`: verde
+- `npm test`: verde
+- `npm run test:coverage:critical`: verde (`99.76%` statements / `98.3%` branches)
+- `npx playwright test tests/e2e/open-banking-pluggy.spec.ts --project=chromium --workers=1 --reporter=line`: verde/skip controlado conforme disponibilidade do backend local
+
+#### 🧾 Regra de versionamento aplicada
+- Label documental de transicao atualizada para `0.5.2v`
+- Ciclo tecnico de pacotes permanece em `0.6.x` para preservar compatibilidade de build e distribuicao
+
+---
+
+## [0.6.3] - 2026-03-14
+
+### 🏗️ Arquitetura Evoluida — Event Listeners, Cache e Observabilidade
+
+#### 🔒 Hardening tecnico consolidado na trilha 0.6.3
+- `AppError` padronizado para permissoes, limites de plano e recursos indisponiveis
+- Validadores de entrada para transacoes e metas integrados aos servicos de aplicacao
+- `SubscriptionRepository` introduzido para reduzir acoplamento direto com storage
+- `aiOrchestrator` fortalecido com metricas de chamada, erro e latencia
+- Teste E2E do Pluggy ajustado para skip controlado quando a API local nao estiver disponivel
+
+#### ✨ Event-Driven Listeners (`src/events/listeners/`)
+- `autopilotListener` — dispara analise do `FinancialAutopilot` em eventos financeiros
+- `aiQueueListener` — encaminha transacoes e eventos criticos para `AITaskQueue`
+- `forecastListener` — reprocessa previsoes de cashflow ao detectar transacao criada
+- `auditListener` — registra todos os eventos financeiros em `auditLogService`
+- `cacheInvalidationListener` — invalida cache financeiro ao detectar mutacoes
+- `registerListeners` — ponto central de bootstrap dos listeners
+
+#### ⚡ Camada de Cache Financeiro (`src/cache/financialCache.ts`)
+- Cache Map-based com TTL configuravel por entrada
+- Invalidacao por prefixo (ex: `cache.invalidateByPrefix('cashflow:')`)
+- API: `get`, `set`, `invalidate`, `invalidateByPrefix`, `clear`, `size`
+- Integracao com `cacheInvalidationListener` para invalidacao reativa
+
+#### 🔭 AI Observabilidade avancada (`src/observability/aiMetrics.ts`)
+- Buffer circular com limite de 200 registros por tipo de metrica
+- Tipos suportados: `ai_call`, `ai_error`, `ai_latency`, `cache_hit`, `cache_miss`, `event_processed`
+- API: `recordAIMetric`, `getAIMetrics`, `getAIMetricsSummary`, `clearAIMetrics`
+- Componente `MetricsViewer` integrado ao `AIControlPanel` para visualizacao em tempo real
+
+#### 🛠️ Polimento e Bootstrap
+- Log estruturado de versao no bootstrap frontend e backend
+- Endpoints `GET /api/health` e `GET /api/version` verificados e ativados
+- Nomenclaturas padronizadas (cashflow vs cashflowPrediction)
+
+#### ✅ Checklist tecnico
+- `npm run lint`: verde
+- `npm test`: verde
+- `npm run test:coverage:critical`: verde (≥ 98%)
+- Pacotes tecnicos sincronizados em `0.6.3`
+
+#### 🧾 Relacao com a transicao documental
+- Release label externa/documental: `0.5.2v`
+- Release tecnica interna de build/distribuicao: `0.6.3`
+
+---
+
 ## [0.5.1v] - 2026-03-13
 
 ### 🔄 Protocolo de Transição (Open Finance)

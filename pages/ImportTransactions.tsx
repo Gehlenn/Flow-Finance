@@ -4,6 +4,7 @@ import {
   runImportPipeline, toTransactions, detectFormat,
   ImportResult, ImportedTransaction, ImportFormat,
 } from '../src/finance/importService';
+import { saveMerchantCategoryLearning } from '../src/engines/finance/categorization/aiCategorizerFallback';
 import { FinancialEventEmitter } from '../src/events/eventEngine';
 import {
   Upload, FileText, FileSpreadsheet, FileScan, X, Check,
@@ -239,10 +240,18 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
 
   // ── Import confirm ─────────────────────────────────────────────────────────
 
-  const handleImport = () => {
+  const handleImport = async () => {
     setPhase('importing');
     const toImport = toTransactions(items);
     if (toImport.length === 0) { setPhase('preview'); return; }
+
+    const selectedItems = items.filter(i => i.selected && !i.duplicate);
+    await Promise.all(
+      selectedItems.map(async (item) => {
+        if (!item.merchant || !item.category) return;
+        await saveMerchantCategoryLearning(userId, item.merchant, item.category, 0.95);
+      })
+    );
 
     onAddTransactions(toImport);
     setImportedCount(toImport.length);

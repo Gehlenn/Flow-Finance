@@ -1,8 +1,8 @@
 # Flow Finance - Controle de Fluxo de Caixa Inteligente
 
-**Versão:** 0.5.1v (Open Finance Transition Label)  
-**Última Atualização:** 13 de Março de 2026  
-**Status:** Transição Controlada ✅
+**Versão:** 0.5.2v (Open Finance Transition Label)  
+**Última Atualização:** 14 de Março de 2026  
+**Status:** Protocolo de Transição Iniciado ✅
 
 Bem-vindo ao **Flow Finance**, uma aplicação moderna para gestão financeira pessoal e profissional, equipada com um assistente de IA (GPT-4) para facilitar o lançamento de despesas e receitas.
 
@@ -25,7 +25,7 @@ O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvol
 
 ---
 
-## 📦 Stack Tecnológica (v0.5.1v)
+## 📦 Stack Tecnológica (v0.5.2v)
 
 ### Frontend
 - **React 19** + **TypeScript 5.8**
@@ -109,12 +109,16 @@ O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvol
    cd backend && npm run dev
    ```
 
-### ✅ Checkpoint de Transição 0.6.1v
+### ✅ Checkpoint de Transição 0.5.2v
 
-- Health checks de IO e runtime incorporados ao pipeline de deploy
-- Open Finance com backend banking, Pluggy Connect, JWT nas rotas e webhook público protegido por segredo opcional
-- Camada opcional de persistência PostgreSQL preparada e desligada por padrão
-- Baseline atual de cobertura medida em `36.2%`, ainda abaixo da meta protocolar de `98%`
+- Hardening SaaS aplicado com padronizacao de erros de permissao, limite e feature
+- Validadores de entrada para transacoes e metas adicionados ao fluxo de servicos
+- Observabilidade de IA ampliada com metricas de chamada, erro e latencia
+- E2E do Pluggy estabilizado com skip controlado quando backend local nao estiver disponivel
+- Cobertura critica validada em `99.76%` statements e `98.3%` branches no recorte protocolar
+- Sprint 1 concluida: `SubscriptionRepository.update()`, memoizacao de `resolveSaaSContext`, sanitizacao de `AppError.details` e redaction no logger
+
+> Nota de versionamento: a label documental desta transicao e `0.5.2v`, enquanto o ciclo tecnico interno de pacotes permanece na trilha `0.6.x` para compatibilidade operacional.
 
 ### 🏗️ Build Manual
 
@@ -218,6 +222,7 @@ aws ecs create-service --cluster flow-finance --service-name flow-finance-servic
 ### 📋 Checklist de Produção
 
 - [ ] Variáveis de ambiente configuradas
+- [ ] Regras Firestore aplicadas (`firestore.rules`) no projeto `komodo-flow`
 - [ ] Banco PostgreSQL provisionado
 - [ ] Redis provisionado
 - [ ] Chaves API configuradas (Gemini, Sentry)

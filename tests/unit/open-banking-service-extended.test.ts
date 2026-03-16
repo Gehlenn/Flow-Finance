@@ -48,6 +48,7 @@ vi.mock('../../src/config/api.config', async () => {
     API_ENDPOINTS: {
       BANKING: {
         HEALTH: '/api/banking/health',
+        CONNECTIONS: '/api/banking/connections',
         CONNECT_TOKEN: '/api/banking/connect-token',
         CONNECT: '/api/banking/connect',
         SYNC: '/api/banking/sync',
@@ -69,8 +70,10 @@ import {
   fullSync,
   getConnection,
   getConnections,
+  reloadConnections,
   listPluggyConnectors,
   formatLastSync,
+  mapPluggyConnectErrorMessage,
 } from '../../services/integrations/openBankingService';
 
 import { getProvider } from '../../services/integrations/mockBankProvider';
@@ -364,6 +367,22 @@ describe('openBankingService - Extended Coverage', () => {
     expect(getProvider).toHaveBeenCalled();
   });
 
+  it('connectBank nao faz fallback local quando backend retorna 401', async () => {
+    vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+    apiRequestMock.mockRejectedValueOnce(new Error('API Error 401: unauthorized'));
+
+    await expect(connectBank('nubank', 'u-no-fallback-401')).rejects.toThrow(/401/);
+    expect(getConnections('u-no-fallback-401')).toHaveLength(0);
+  });
+
+  it('connectBank nao faz fallback local em producao quando backend retorna 500', async () => {
+    vi.stubEnv('MODE', 'production');
+    apiRequestMock.mockRejectedValueOnce(new Error('API Error 500: backend down'));
+
+    await expect(connectBank('nubank', 'u-no-fallback-prod-500')).rejects.toThrow(/500/);
+    expect(getConnections('u-no-fallback-prod-500')).toHaveLength(0);
+  });
+
   it('syncTransactions usa resultado do backend e atualiza status conectado', async () => {
     vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
 
@@ -399,6 +418,11 @@ describe('openBankingService - Extended Coverage', () => {
       connection_status: 'connected',
       last_sync: '2026-03-12T01:00:00.000Z',
       balance: 777,
+    });
+    expect(apiRequestMock).toHaveBeenLastCalledWith('/api/banking/sync', {
+      method: 'POST',
+      body: JSON.stringify({ connectionId: conn.id, days: 7 }),
+      retries: 0,
     });
   });
 
@@ -598,6 +622,275 @@ describe('openBankingService - Extended Coverage', () => {
     expect(imported).toHaveLength(2);
   });
 
+  it('syncTransactions nao faz fallback local quando backend retorna 401', async () => {
+    vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+
+    apiRequestMock.mockResolvedValueOnce({
+      id: 'conn_backend_401',
+      user_id: 'u-401',
+      provider: 'pluggy',
+      bank_name: 'Banco 401',
+      bank_logo: '',
+      bank_color: '#717171',
+      connection_status: 'connected',
+      external_account_id: 'ext-401',
+      created_at: '2026-03-12T00:00:00.000Z',
+    });
+
+    const conn = await connectBank('nubank', 'u-401');
+    apiRequestMock.mockRejectedValueOnce(new Error('API Error 401: unauthorized'));
+
+    const imported: any[] = [];
+    const result = await syncTransactions(conn.id, [], 'u-401', (txs) => imported.push(...txs));
+
+    expect(result.transactions_imported).toBe(0);
+    expect(result.error).toMatch(/401/);
+    expect(imported).toEqual([]);
+    expect(getConnection(conn.id)).toMatchObject({
+      connection_status: 'error',
+    });
+  });
+
+  it('syncTransactions nao faz fallback local em producao quando backend retorna 500', async () => {
+    vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+    vi.stubEnv('MODE', 'production');
+
+    apiRequestMock.mockResolvedValueOnce({
+      id: 'conn_backend_prod_500',
+      user_id: 'u-prod-500',
+      provider: 'pluggy',
+      bank_name: 'Banco 500',
+      bank_logo: '',
+      bank_color: '#7a7a7a',
+      connection_status: 'connected',
+      external_account_id: 'ext-prod-500',
+      created_at: '2026-03-12T00:00:00.000Z',
+    });
+
+    const conn = await connectBank('nubank', 'u-prod-500');
+    apiRequestMock.mockRejectedValueOnce(new Error('API Error 500: backend down'));
+
+    const imported: any[] = [];
+    const result = await syncTransactions(conn.id, [], 'u-prod-500', (txs) => imported.push(...txs));
+
+    expect(result.transactions_imported).toBe(0);
+    expect(result.error).toMatch(/500/);
+    expect(imported).toEqual([]);
+    expect(getConnection(conn.id)).toMatchObject({
+      connection_status: 'error',
+    });
+  });
+
+  it('syncTransactions usa mensagem padrao no backend quando erro nao possui message em producao', async () => {
+    vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+    vi.stubEnv('MODE', 'production');
+
+    apiRequestMock.mockResolvedValueOnce({
+      id: 'conn_backend_prod_no_message',
+      user_id: 'u-prod-no-message',
+      provider: 'pluggy',
+      bank_name: 'Banco Sem Mensagem',
+      bank_logo: '',
+      bank_color: '#7a7a7a',
+      connection_status: 'connected',
+      external_account_id: 'ext-prod-no-message',
+      created_at: '2026-03-12T00:00:00.000Z',
+    });
+
+    const conn = await connectBank('nubank', 'u-prod-no-message');
+    apiRequestMock.mockRejectedValueOnce({});
+
+    const result = await syncTransactions(conn.id, [], 'u-prod-no-message', vi.fn());
+
+    expect(result.transactions_imported).toBe(0);
+    expect(result.error).toBe('Erro ao sincronizar com o backend.');
+    expect(getConnection(conn.id)).toMatchObject({
+      connection_status: 'error',
+      error_message: 'Erro ao sincronizar com o backend.',
+    });
+  });
+
+  it('syncTransactions remove conexao mock em producao e nao importa dados', async () => {
+    vi.stubEnv('MODE', 'production');
+
+    localStorage.setItem('flow_bank_connections', JSON.stringify([
+      {
+        id: 'conn_mock_sync_prod',
+        user_id: 'u-prod-mock-sync',
+        provider: 'mock',
+        bank_name: 'Mock Bank',
+        bank_logo: '🏦',
+        bank_color: '#000000',
+        connection_status: 'connected',
+        external_account_id: 'mock_ext_sync_prod',
+        created_at: '2026-03-12T00:00:00.000Z',
+      },
+    ]));
+
+    const imported: any[] = [];
+    const result = await syncTransactions('conn_mock_sync_prod', [], 'u-prod-mock-sync', (txs) => imported.push(...txs));
+
+    expect(result.transactions_imported).toBe(0);
+    expect(result.error).toMatch(/Conexão local de teste removida/i);
+    expect(imported).toEqual([]);
+    expect(getConnection('conn_mock_sync_prod')).toBeNull();
+  });
+
+  it('remove conexao local obsoleta quando backend retorna 404 no sync', async () => {
+    vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+
+    apiRequestMock.mockResolvedValueOnce({
+      id: 'conn_404',
+      user_id: 'u404',
+      provider: 'pluggy',
+      bank_name: 'Banco 404',
+      bank_logo: '',
+      bank_color: '#333333',
+      connection_status: 'connected',
+      external_account_id: 'ext-404',
+      created_at: '2026-03-12T00:00:00.000Z',
+    });
+
+    const conn = await connectBank('nubank', 'u404');
+    apiRequestMock.mockRejectedValueOnce(new Error('API Error 404: Connection not found'));
+
+    const result = await syncTransactions(conn.id, [], 'u404', vi.fn());
+
+    expect(result.error).toMatch(/Conexão não encontrada no backend/i);
+    expect(getConnection(conn.id)).toBeNull();
+    expect(apiRequestMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('mapPluggyConnectErrorMessage traduz erro de trial para orientacao amigavel', () => {
+    const message = mapPluggyConnectErrorMessage({
+      message: 'TRIAL_CLIENT_ITEM_CREATE_NOT_ALLOWED',
+      data: { detail: 'only sandbox connectors allowed' },
+    });
+
+    expect(message).toMatch(/modo de teste/i);
+    expect(message).toMatch(/sandbox/i);
+  });
+
+  it('mapPluggyConnectErrorMessage traduz problema de token invalido', () => {
+    const message = mapPluggyConnectErrorMessage({ error: { code: 'INVALID_CONNECT_TOKEN' } });
+    expect(message).toMatch(/token/i);
+  });
+
+  it('mapPluggyConnectErrorMessage retorna mensagem generica para erro desconhecido', () => {
+    const message = mapPluggyConnectErrorMessage({ foo: 'bar' });
+    expect(message).toMatch(/cancelada|invalida/i);
+  });
+
+  it('mapPluggyConnectErrorMessage tolera payload circular sem quebrar', () => {
+    const circular: any = { message: 'unknown_error' };
+    circular.self = circular;
+
+    const message = mapPluggyConnectErrorMessage(circular);
+    expect(message).toMatch(/cancelada|invalida/i);
+  });
+
+  it('mapPluggyConnectErrorMessage aceita erro em formato string', () => {
+    const message = mapPluggyConnectErrorMessage('TRIAL_CLIENT_ITEM_CREATE_NOT_ALLOWED');
+    expect(message).toMatch(/modo de teste/i);
+  });
+
+  it('mapPluggyConnectErrorMessage aceita erro primitivo nao objeto', () => {
+    const message = mapPluggyConnectErrorMessage(503 as any);
+    expect(message).toMatch(/cancelada|invalida/i);
+  });
+
+  it('reloadConnections reconcilia cache local com lista do backend', async () => {
+    vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+
+    apiRequestMock.mockResolvedValueOnce({
+      id: 'conn_local_old',
+      user_id: 'u-reload',
+      provider: 'pluggy',
+      bank_name: 'Banco Antigo',
+      bank_logo: '',
+      bank_color: '#111111',
+      connection_status: 'connected',
+      created_at: '2026-03-12T00:00:00.000Z',
+    });
+
+    await connectBank('nubank', 'u-reload');
+
+    apiRequestMock.mockResolvedValueOnce([
+      {
+        id: 'conn_backend_new',
+        user_id: 'u-reload',
+        provider: 'pluggy',
+        bank_name: 'Banco Novo',
+        bank_logo: '',
+        bank_color: '#222222',
+        connection_status: 'connected',
+        created_at: '2026-03-12T01:00:00.000Z',
+      },
+    ]);
+
+    const fresh = await reloadConnections('u-reload');
+
+    expect(fresh).toHaveLength(1);
+    expect(fresh[0].id).toBe('conn_backend_new');
+    expect(getConnections('u-reload').map((c) => c.id)).toEqual(['conn_backend_new']);
+  });
+
+  it('reloadConnections retorna cache local quando backend de conexoes falha', async () => {
+    vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+
+    apiRequestMock.mockResolvedValueOnce({
+      id: 'conn_local_keep',
+      user_id: 'u-reload-fallback',
+      provider: 'pluggy',
+      bank_name: 'Banco Local',
+      bank_logo: '',
+      bank_color: '#999999',
+      connection_status: 'connected',
+      created_at: '2026-03-12T00:00:00.000Z',
+    });
+
+    await connectBank('nubank', 'u-reload-fallback');
+
+    apiRequestMock.mockRejectedValueOnce(new Error('connections endpoint down'));
+
+    const fallback = await reloadConnections('u-reload-fallback');
+
+    expect(fallback).toHaveLength(1);
+    expect(fallback[0].id).toBe('conn_local_keep');
+    expect(getConnections('u-reload-fallback')[0].id).toBe('conn_local_keep');
+  });
+
+  it('reloadConnections retorna local quando backend está desabilitado', async () => {
+    const conn = await connectBank('nubank', 'u-local-only');
+    const local = await reloadConnections('u-local-only');
+
+    expect(local).toHaveLength(1);
+    expect(local[0].id).toBe(conn.id);
+  });
+
+  it('reloadConnections remove conexoes mock em producao', async () => {
+    vi.stubEnv('MODE', 'production');
+
+    localStorage.setItem('flow_bank_connections', JSON.stringify([
+      {
+        id: 'conn_mock_prod',
+        user_id: 'u-prod-clean',
+        provider: 'mock',
+        bank_name: 'Mock Bank',
+        bank_logo: '🏦',
+        bank_color: '#000000',
+        connection_status: 'connected',
+        external_account_id: 'mock_ext_prod',
+        created_at: '2026-03-12T00:00:00.000Z',
+      },
+    ]));
+
+    const cleaned = await reloadConnections('u-prod-clean');
+
+    expect(cleaned).toEqual([]);
+    expect(getConnections('u-prod-clean')).toEqual([]);
+  });
+
   it('syncTransactions continua mesmo se o registro for removido antes do updateStatus final', async () => {
     const conn = await connectBank('nubank', 'u-status-missing');
     const imported: any[] = [];
@@ -610,6 +903,45 @@ describe('openBankingService - Extended Coverage', () => {
     expect(result.transactions_imported).toBe(2);
     expect(imported).toHaveLength(2);
     expect(getConnection(conn.id)).toBeNull();
+  });
+
+  it('syncTransactions continua em fallback local mesmo com erro backend sem message', async () => {
+    vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+
+    apiRequestMock.mockResolvedValueOnce({
+      id: 'conn_no_message_backend',
+      user_id: 'u-no-message-backend',
+      provider: 'pluggy',
+      bank_name: 'Banco Sem Mensagem',
+      bank_logo: '',
+      bank_color: '#ababab',
+      connection_status: 'connected',
+      external_account_id: 'ext-no-message-backend',
+      created_at: '2026-03-12T00:00:00.000Z',
+    });
+
+    const conn = await connectBank('nubank', 'u-no-message-backend');
+    apiRequestMock.mockRejectedValueOnce({});
+
+    const result = await syncTransactions(conn.id, [], 'u-no-message-backend', vi.fn());
+    expect(result.transactions_imported).toBe(2);
+  });
+
+  it('syncAccounts usa mensagem padrão quando erro não possui campo message', async () => {
+    vi.mocked(getProvider).mockReturnValue({
+      connect: vi.fn().mockResolvedValue({ external_id: 'id_accounts_default_error' }),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+      fetchAccounts: vi.fn().mockRejectedValue({}),
+      fetchTransactions: vi.fn().mockResolvedValue([]),
+    } as any);
+
+    const conn = await connectBank('nubank', 'u-accounts-default-error');
+
+    await expect(syncAccounts(conn.id, [], vi.fn())).rejects.toEqual({});
+    expect(getConnection(conn.id)).toMatchObject({
+      connection_status: 'error',
+      error_message: 'Erro ao sincronizar contas.',
+    });
   });
 
   it('syncTransactions usa fallbacks dos campos classificados quando a IA retorna payload parcial', async () => {

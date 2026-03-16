@@ -2,9 +2,14 @@
 
 ## Documento de Design e Mecânicas
 
-**Versão**: 0.5.1v  
-**Data**: 13 de Março de 2026  
+**Versão**: 0.5.2v  
+**Data**: 14 de Março de 2026  
 **Escopo**: Flow Finance - Intelligent Cash Flow Management App (iOS/Android/Web)
+
+### Status de Transicao 0.5.2v
+- Protocolo iniciado com foco em hardening de dominio e confiabilidade operacional
+- Validacao critica concluida com lint, testes unitarios e cobertura de fluxos sensiveis
+- Fluxo Open Banking E2E ajustado para evitar falso-negativo de infraestrutura local
 
 ---
 

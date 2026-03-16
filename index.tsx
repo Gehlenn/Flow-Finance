@@ -5,6 +5,7 @@ import './src/styles/tailwind.css';
 import { initializeRuntimeGuard } from './src/runtime/runtimeGuard';
 import { aiTaskQueue } from './src/ai/queue';
 import { initializeFinancialEventPipeline } from './src/events/financialEventPipeline';
+import { registerEventListeners } from './src/events/listeners/registerListeners';
 import { AIControlPanel } from './src/debug/aiPanel/AIControlPanel';
 
 (window as any).process = (window as any).process || { env: {} };
@@ -41,6 +42,19 @@ async function initializeApp() {
   } catch (error) {
     console.error('[App] Financial Event Pipeline initialization failed:', error);
   }
+
+  try {
+    registerEventListeners();
+  } catch (error) {
+    console.error('[App] Event listeners registration failed:', error);
+  }
+
+  // ─── VERSION LOG ────────────────────────────────────────────────────────────
+
+  console.info(
+    `%c[Flow Finance] v0.6.3 | ${import.meta.env.MODE} | event-listeners + cache + observability`,
+    'color: #34d399; font-weight: bold;'
+  );
 
   // ─── SERVICE WORKER AUTO-UPDATE ─────────────────────────────────────────────
 

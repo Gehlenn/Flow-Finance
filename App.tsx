@@ -107,6 +107,7 @@ const App: React.FC = () => {
   const [showAIInput, setShowAIInput] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const [cloudSyncEnabled, setCloudSyncEnabled] = useState(true);
   
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -174,6 +175,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
+        setCloudSyncEnabled(true);
         setUserId(user.uid);
         setUserEmail(user.email);
         setIsLoggedIn(true);
@@ -249,6 +251,7 @@ const App: React.FC = () => {
     }, (error) => {
       if (isSyncPermissionError(error)) {
         console.warn("Permissão/autenticação insuficiente no Firestore:", error);
+        setCloudSyncEnabled(false);
       } else {
         console.error("Erro na conexão com Firestore:", error);
       }
@@ -270,7 +273,7 @@ const App: React.FC = () => {
   }, [theme]);
 
   const syncToCloud = useCallback(async (updates: Record<string, unknown>) => {
-    if (!userId) return;
+    if (!userId || !cloudSyncEnabled) return;
     setSyncStatus('syncing');
     const userDocRef = doc(db, 'users', userId);
     try {
@@ -278,6 +281,7 @@ const App: React.FC = () => {
     } catch (e) {
       if (isSyncPermissionError(e)) {
         console.warn("Sincronização bloqueada por permissão/autenticação:", e);
+        setCloudSyncEnabled(false);
       } else {
         console.error("Erro ao sincronizar:", e);
       }
@@ -287,7 +291,7 @@ const App: React.FC = () => {
         setSyncStatus('idle');
       }
     }
-  }, [userId]);
+  }, [userId, cloudSyncEnabled]);
 
   const handleLogin = (email: string) => {
     setUserEmail(email);

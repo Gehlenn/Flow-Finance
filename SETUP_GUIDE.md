@@ -72,6 +72,31 @@
   - API Key
   - Auth Domain
   - Project ID
+
+### Firestore Security Rules (Required for app sync)
+
+This repository now tracks rules at `firestore.rules` for the collections used by the app (`users`, `accounts`, `transactions`).
+
+1. Install Firebase CLI:
+   ```bash
+   npm i -g firebase-tools
+   ```
+
+2. Login and select project:
+   ```bash
+   firebase login
+   firebase use komodo-flow
+   ```
+
+3. Deploy rules:
+   ```bash
+   firebase deploy --only firestore:rules --project komodo-flow
+   ```
+
+4. Validate quickly in app:
+   - Login with a user.
+   - Create/update account or transaction.
+   - Confirm no `permission-denied` in console.
   - Storage Bucket
 
 ---

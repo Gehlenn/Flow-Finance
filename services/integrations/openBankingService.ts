@@ -46,6 +46,73 @@ function hasBackendBanking(): boolean {
   return Boolean(API_ENDPOINTS.BANKING.CONNECT);
 }
 
+function isProductionRuntime(): boolean {
+  return import.meta.env.MODE === 'production';
+}
+
+function getApiErrorStatus(error: unknown): number | null {
+  const message = String((error as any)?.message ?? '');
+  const match = message.match(/API Error\s+(\d{3})/);
+  return match ? Number(match[1]) : null;
+}
+
+function collectErrorTokens(error: unknown, seen = new Set<unknown>()): string[] {
+  if (error == null) return [];
+  if (typeof error === 'string') return [error];
+  if (typeof error !== 'object') return [String(error)];
+  if (seen.has(error)) return [];
+  seen.add(error);
+
+  const tokens: string[] = [];
+  const obj = error as Record<string, unknown>;
+
+  for (const key of ['message', 'code', 'error', 'type']) {
+    const value = obj[key];
+    if (typeof value === 'string' && value.trim()) {
+      tokens.push(value);
+    }
+  }
+
+  for (const value of Object.values(obj)) {
+    if (typeof value === 'object' || typeof value === 'string') {
+      tokens.push(...collectErrorTokens(value, seen));
+    }
+  }
+
+  return tokens;
+}
+
+export function mapPluggyConnectErrorMessage(error: unknown): string {
+  const merged = collectErrorTokens(error).join(' ').toUpperCase();
+
+  if (merged.includes('TRIAL_CLIENT_ITEM_CREATE_NOT_ALLOWED')) {
+    return 'Sua credencial Pluggy esta em modo de teste. Use um conector sandbox ou solicite habilitacao de contas reais no painel da Pluggy.';
+  }
+
+  if (merged.includes('INVALID_CONNECT_TOKEN') || merged.includes('CONNECT_TOKEN')) {
+    return 'Token de conexao da Pluggy expirou ou e invalido. Atualize a tela e tente novamente.';
+  }
+
+  return 'Conexao Pluggy cancelada ou invalida. Tente novamente.';
+}
+
+function shouldUseLocalMockFallback(error: unknown): boolean {
+  const status = getApiErrorStatus(error);
+
+  // In production, do not mask backend failures with mock data.
+  if (isProductionRuntime()) {
+    return false;
+  }
+
+  // Client errors are deterministic and should be surfaced to the user.
+  if (status !== null && status >= 400 && status < 500) {
+    return false;
+  }
+
+  // Unknown errors and 5xx are eligible for local fallback in development.
+  return true;
+}
+
 export interface BankingHealth {
   status: 'ok' | string;
   providerMode: string;
@@ -111,6 +178,34 @@ export function getConnections(userId: string): BankConnection[] {
   return readConnections().filter(c => c.user_id === userId);
 }
 
+export async function reloadConnections(userId: string): Promise<BankConnection[]> {
+  let local = getConnections(userId);
+
+  if (isProductionRuntime()) {
+    const cleanedLocal = local.filter((c) => c.provider !== 'mock');
+    if (cleanedLocal.length !== local.length) {
+      const otherUsers = readConnections().filter((c) => c.user_id !== userId);
+      writeConnections([...otherUsers, ...cleanedLocal]);
+      local = cleanedLocal;
+    }
+  }
+
+  if (!hasBackendBanking()) return local;
+
+  try {
+    const remote = await apiRequest<BankConnection[]>(
+      `${API_ENDPOINTS.BANKING.CONNECTIONS}?userId=${encodeURIComponent(userId)}`,
+      { method: 'GET', retries: 0, silent: true },
+    );
+
+    const otherUsers = readConnections().filter((c) => c.user_id !== userId);
+    writeConnections([...otherUsers, ...remote]);
+    return remote;
+  } catch {
+    return local;
+  }
+}
+
 export function getConnection(id: string): BankConnection | null {
   return readConnections().find(c => c.id === id) ?? null;
 }
@@ -143,7 +238,11 @@ export async function connectBank(
       });
       saveConnection(conn);
       return conn;
-    } catch {
+    } catch (error: unknown) {
+      if (!shouldUseLocalMockFallback(error)) {
+        throw error;
+      }
+
       // Fallback to local mock flow
     }
   }
@@ -295,12 +394,23 @@ export async function syncTransactions(
     return { connection_id: connectionId, transactions_imported: 0, balance_updated: false, synced_at: new Date().toISOString(), error: 'Conexão não encontrada.' };
   }
 
+  if (isProductionRuntime() && conn.provider === 'mock') {
+    writeConnections(readConnections().filter((c) => c.id !== connectionId));
+    return {
+      connection_id: connectionId,
+      transactions_imported: 0,
+      balance_updated: false,
+      synced_at: new Date().toISOString(),
+      error: 'Conexão local de teste removida. Conecte novamente usando o fluxo real.',
+    };
+  }
+
   if (hasBackendBanking()) {
     try {
       const result = await apiRequest<SyncResult & { transactions?: Partial<Transaction>[] }>(API_ENDPOINTS.BANKING.SYNC, {
         method: 'POST',
         body: JSON.stringify({ connectionId, days }),
-        retries: 1,
+        retries: 0,
       });
 
       if (result.transactions?.length) {
@@ -323,7 +433,32 @@ export async function syncTransactions(
       });
 
       return result;
-    } catch {
+    } catch (error: any) {
+      const message = String(error?.message ?? '');
+      if (message.includes('API Error 404')) {
+        writeConnections(readConnections().filter((c) => c.id !== connectionId));
+        return {
+          connection_id: connectionId,
+          transactions_imported: 0,
+          balance_updated: false,
+          synced_at: new Date().toISOString(),
+          error: 'Conexão não encontrada no backend. Atualize a lista e reconecte o banco.',
+        };
+      }
+
+      if (!shouldUseLocalMockFallback(error)) {
+        updateStatus(connectionId, 'error', {
+          error_message: message || 'Erro ao sincronizar com o backend.',
+        });
+        return {
+          connection_id: connectionId,
+          transactions_imported: 0,
+          balance_updated: false,
+          synced_at: new Date().toISOString(),
+          error: message || 'Erro ao sincronizar com o backend.',
+        };
+      }
+
       // Fallback to local mock flow
     }
   }
