@@ -19,6 +19,12 @@ import { generateMonthlyReport, FinancialReport } from '../src/finance/reportEng
 import { getSyncStatusSummary } from '../src/finance/bankSyncEngine';
 import { simulateFinancialScenario, FinancialSimulationResult } from '../src/ai/financialSimulator';
 import { calculateCashflowSummary } from '../src/engines/finance/cashflowEngine';
+import {
+  buildFinancialTimeline,
+  detectBalanceTrend,
+  detectTimelineAnomalies,
+} from '../src/engines/finance/financialTimeline';
+import { classifyFinancialProfile } from '../src/engines/ai/financialProfileClassifier';
 import { 
   Eye, EyeOff, BrainCircuit, Loader2, Landmark, LayoutDashboard,
   ArrowUpRight, ArrowDownRight, Wallet, CreditCard,
@@ -187,6 +193,27 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   const summary = useMemo(
     () => calculateCashflowSummary(filteredTransactions),
+    [filteredTransactions]
+  );
+
+  // ── D3/D4 Engine Insights ────────────────────────────────────────────────
+  const financialTimeline = useMemo(
+    () => buildFinancialTimeline(filteredTransactions),
+    [filteredTransactions]
+  );
+
+  const balanceTrend = useMemo(
+    () => detectBalanceTrend(financialTimeline),
+    [financialTimeline]
+  );
+
+  const timelineAnomalies = useMemo(
+    () => detectTimelineAnomalies(financialTimeline),
+    [financialTimeline]
+  );
+
+  const financialProfile = useMemo(
+    () => classifyFinancialProfile(filteredTransactions),
     [filteredTransactions]
   );
 
@@ -468,6 +495,80 @@ const Dashboard: React.FC<DashboardProps> = ({
               <AlertTriangle size={11} className="text-rose-500 shrink-0" />
               <p className="text-[8px] text-rose-600 dark:text-rose-400 font-bold">
                 Saldo pode ficar negativo em {new Date(cashflowForecast.lowest_point.date).toLocaleDateString('pt-BR')}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── D3/D4 FINANCIAL INTELLIGENCE WIDGET ─────────────────────────── */}
+      {filteredTransactions.length >= 3 && financialProfile.profile !== 'Undefined' && (
+        <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center gap-3 px-5 pt-5 pb-4">
+            <div className="w-9 h-9 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center shrink-0">
+              <BrainCircuit size={16} className="text-indigo-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Inteligência Financeira</p>
+              <p className="text-xs font-black text-slate-800 dark:text-white mt-0.5">Perfil · Tendência · Anomalias</p>
+            </div>
+            {/* Trend badge */}
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
+              balanceTrend === 'growing'
+                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                : balanceTrend === 'declining'
+                ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                : 'bg-slate-50 dark:bg-slate-700 text-slate-500'
+            }`}>
+              {balanceTrend === 'growing' ? <TrendingUp size={9} /> : balanceTrend === 'declining' ? <TrendingDown size={9} /> : <Minus size={9} />}
+              {balanceTrend === 'growing' ? 'Crescendo' : balanceTrend === 'declining' ? 'Queda' : 'Estável'}
+            </div>
+          </div>
+
+          {/* Profile + Confidence */}
+          <div className="grid grid-cols-2 gap-px bg-slate-100 dark:bg-slate-700 border-t border-slate-100 dark:border-slate-700">
+            <div className="bg-white dark:bg-slate-800 px-4 py-3">
+              <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">Perfil</p>
+              <p className="text-sm font-black text-slate-900 dark:text-white leading-none">{financialProfile.profile}</p>
+            </div>
+            <div className="bg-white dark:bg-slate-800 px-4 py-3">
+              <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">Confiança</p>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${
+                      financialProfile.confidence >= 0.7 ? 'bg-emerald-500' :
+                      financialProfile.confidence >= 0.4 ? 'bg-amber-500' : 'bg-rose-400'
+                    }`}
+                    style={{ width: `${Math.round(financialProfile.confidence * 100)}%` }}
+                  />
+                </div>
+                <p className="text-[10px] font-black text-slate-600 dark:text-slate-300 shrink-0">
+                  {Math.round(financialProfile.confidence * 100)}%
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Insights */}
+          {financialProfile.insights.length > 0 && (
+            <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-700 flex flex-col gap-2">
+              {financialProfile.insights.slice(0, 2).map((insight, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <Lightbulb size={11} className="text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-slate-600 dark:text-slate-300 font-medium leading-snug">{insight}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Anomalies (if any) */}
+          {timelineAnomalies.length > 0 && (
+            <div className="mx-4 mb-4 flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-500/10 rounded-2xl">
+              <AlertTriangle size={11} className="text-amber-500 shrink-0" />
+              <p className="text-[8px] text-amber-700 dark:text-amber-400 font-bold">
+                {timelineAnomalies.length} anomali{timelineAnomalies.length === 1 ? 'a' : 'as'} detectada{timelineAnomalies.length === 1 ? '' : 's'} na timeline
               </p>
             </div>
           )}
