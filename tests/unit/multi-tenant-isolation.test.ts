@@ -264,7 +264,7 @@ describe('Isolamento multi-tenant — fluxo completo same-user (regressão)', ()
     await flush();
 
     // Não deve ter retornado 401 ou 403
-    const statusCalls = connectRes.status.mock.calls.map((c: number[][]) => c[0]);
+    const statusCalls = connectRes.status.mock.calls.map((c: [number]) => c[0]);
     expect(statusCalls.every((s: number) => s < 400 || s === 201)).toBe(true);
 
     const listReq = req({}, userId, { userId });

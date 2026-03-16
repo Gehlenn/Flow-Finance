@@ -1,16 +1,24 @@
-type ResourceKind = 'transactions' | 'aiQueries' | 'bankConnections';
+export type ResourceKind = 'transactions' | 'aiQueries' | 'bankConnections';
 
-type UsageSnapshot = {
+export type UsageSnapshot = {
   transactions: number;
   aiQueries: number;
   bankConnections: number;
 };
 
-type BillingHookPayload = {
+export type PlanId = 'free' | 'pro';
+
+export type BillingHookEvent =
+  | 'usage_recorded'
+  | 'limit_reached'
+  | 'upgrade_required'
+  | 'plan_changed';
+
+export type BillingHookPayload = {
   userId: string;
-  plan: 'free' | 'pro';
-  event: 'usage_recorded' | 'limit_reached' | 'upgrade_required';
-  resource: ResourceKind;
+  plan: PlanId;
+  event: BillingHookEvent;
+  resource?: ResourceKind;
   amount: number;
   at: string;
   metadata?: Record<string, unknown>;
@@ -21,19 +29,19 @@ const billingHooksByUser = new Map<string, BillingHookPayload[]>();
 
 // ─── Plan limits ─────────────────────────────────────────────────────────────
 
-export const PLAN_LIMITS: Record<'free' | 'pro', UsageSnapshot> = {
+export const PLAN_LIMITS: Record<PlanId, UsageSnapshot> = {
   free: { transactions: 500, aiQueries: 100, bankConnections: 1 },
   pro:  { transactions: 10000, aiQueries: 5000, bankConnections: 20 },
 };
 
 // In-memory plan store (userId → plan). Pode ser substituído por DB futuramente.
-const userPlans = new Map<string, 'free' | 'pro'>();
+const userPlans = new Map<string, PlanId>();
 
-export function getUserPlan(userId: string): 'free' | 'pro' {
+export function getUserPlan(userId: string): PlanId {
   return userPlans.get(userId) || 'free';
 }
 
-export function setUserPlan(userId: string, plan: 'free' | 'pro'): void {
+export function setUserPlan(userId: string, plan: PlanId): void {
   userPlans.set(userId, plan);
 }
 
@@ -95,4 +103,8 @@ export function appendBillingHook(userId: string, payload: BillingHookPayload): 
 
 export function getBillingHookCount(userId: string): number {
   return (billingHooksByUser.get(userId) || []).length;
+}
+
+export function getBillingHooksForUser(userId: string): BillingHookPayload[] {
+  return [...(billingHooksByUser.get(userId) || [])];
 }

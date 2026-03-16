@@ -13,9 +13,13 @@ export const UsageUpsertSchema = z.object({
 export const BillingHookSchema = z.object({
   userId: z.string().min(1),
   plan: z.enum(['free', 'pro']),
-  event: z.enum(['usage_recorded', 'limit_reached', 'upgrade_required']),
-  resource: z.enum(['transactions', 'aiQueries', 'bankConnections']),
-  amount: z.number(),
+  event: z.enum(['usage_recorded', 'limit_reached', 'upgrade_required', 'plan_changed']),
+  resource: z.enum(['transactions', 'aiQueries', 'bankConnections']).optional(),
+  amount: z.number().min(0),
   at: z.string().min(1),
   metadata: z.record(z.unknown()).optional(),
+});
+
+export const PlanChangeSchema = z.object({
+  plan: z.enum(['free', 'pro']),
 });
