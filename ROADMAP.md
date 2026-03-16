@@ -248,3 +248,19 @@ AI Queue
 Repositories
  |
 Database
+
+---
+
+## Atualizacao 2026-03-16 (executado)
+
+### Sprint 2 concluido
+- [x] D1 Advanced Context Builder
+- [x] D2 Financial Pattern Detector
+- [x] D3 Financial Timeline (trend + anomaly)
+- [x] D4 Financial Profile Classifier (confidence + insights)
+- [x] A004 Observability (logger sink Sentry)
+
+### Proximo bloco recomendado
+- [ ] D5 Integracao de insights D3/D4 na camada de UI (dashboard e assistente)
+- [ ] D6 Exposicao de metricas D3/D4 em endpoint/backend para consumo mobile
+- [ ] D7 Hardening E2E Open Banking com fixture autenticada estavel (reduzir skips)
