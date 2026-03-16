@@ -21,6 +21,30 @@
 
 ## CHECKPOINT DE TRANSICAO v0.6.0
 
+## CHECKPOINT DE TRANSICAO v0.6.5
+
+### 🟢 B012 - E2E Pluggy skip intermitente por email dinamico por-teste
+**ID**: B012  
+**Versao Identificada**: v0.6.4  
+**Severidade**: 🟡 MEDIA  
+**Impacto**: teste Pluggy E2E fazia skip com status `invalid` ao usar email efemero de timestamp — mesmo com backend disponivel  
+
+**Descricao**:
+- `createBackendAuthToken` criava email `e2e+pluggy-auth-{Date.now()}@...` a cada execucao
+- a logica de userId derivado nao era consistente entre chamadas de teste
+
+**Causa Raiz**:
+- email dinamico por-teste sem garantia de persistencia de userId entre chamadas sequenciais
+
+**Solucao Aplicada**:
+- `tests/e2e/fixtures/auth.ts`: `getFixtureAuthToken` com email fixo `e2e-pluggy-fixture@flowfinance.test` configuravel via `E2E_PLUGGY_USER_EMAIL`
+- spec substituido para usar o fixture em vez da funcao local
+
+**Status**: 🟢 CORRIGIDO  
+**Data de Correcao**: 16 Mar 2026
+
+---
+
 ## CHECKPOINT DE TRANSICAO v0.6.1
 
 ## CHECKPOINT DE TRANSICAO v0.5.1v

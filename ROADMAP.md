@@ -61,6 +61,18 @@
 - D1 concluido: AI Context Builder avancado com score de confianca e qualidade de contexto
 - D2 concluido: Pattern Detector com confianca por insight e testes de fronteira para picos/recorrencia
 
+### Checkpoint 0.6.4
+- D3 concluido: Financial Timeline Engine — `aggregateByMonth`, `detectBalanceTrend` (regressao linear), `detectTimelineAnomalies` (2x mediana)
+- D4 concluido: Financial Profile Classifier — confidence, topCategories, insights acionaveis, perfil `Undefined`
+- A004 lint fix: `AICFOAgent.ts` importa `FinancialProfile` centralizado
+- 377/377 testes; cobertura critica 99.76%/98.3%
+
+### Checkpoint 0.6.5 (atual)
+- D5 concluido: Widget de Inteligencia Financeira no Dashboard — tendencia, perfil, confidence, insights, anomalias
+- D6 concluido: Endpoint backend `POST /api/finance/metrics` com auth e validacao
+- D7 concluido: Fixture E2E Pluggy com email fixo via env var (fix intermitencia B010-E2E)
+- 387/387 testes; cobertura critica 99.76%/98.3%; lint verde
+
 ### Checkpoint 0.5.1v
 - health checks de IO e runtime estabilizados no deploy
 - Open Finance real com Pluggy, JWT, webhook protegido e persistencia Firebase

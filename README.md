@@ -1,8 +1,8 @@
 # Flow Finance - Controle de Fluxo de Caixa Inteligente
 
-**Versão:** 0.5.2v (Open Finance Transition Label)  
-**Última Atualização:** 14 de Março de 2026  
-**Status:** Protocolo de Transição Iniciado ✅
+**Versão:** 0.6.5  
+**Última Atualização:** 16 de Março de 2026  
+**Status:** Sprint 2 concluída — Financial Intelligence UI + Backend Metrics ✅
 
 Bem-vindo ao **Flow Finance**, uma aplicação moderna para gestão financeira pessoal e profissional, equipada com um assistente de IA (GPT-4) para facilitar o lançamento de despesas e receitas.
 

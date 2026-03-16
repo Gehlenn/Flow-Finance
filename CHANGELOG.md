@@ -1,5 +1,34 @@
 # 📝 CHANGELOG - Flow Finance
 
+## [0.6.5] - 2026-03-16
+
+### Sprint 2 — D5/D6/D7: Financial Intelligence UI, Backend Metrics, E2E Auth Fixture
+
+#### ✨ D5 — Widget de Inteligencia Financeira no Dashboard
+- Importados `buildFinancialTimeline`, `detectBalanceTrend`, `detectTimelineAnomalies` (engine D3) e `classifyFinancialProfile` (engine D4) no Dashboard
+- 4 novos `useMemo` hooks: `financialTimeline`, `balanceTrend`, `timelineAnomalies`, `financialProfile`
+- Novo widget "Inteligencia Financeira": badge de tendencia de saldo (Crescendo / Queda / Estavel), perfil financeiro do usuario com barra de confianca colorida, insights acionaveis do classificador D4, alerta de anomalias detectadas na timeline
+
+#### 🔌 D6 — Endpoint Backend `POST /api/finance/metrics`
+- `backend/src/controllers/financeController.ts`: logica de computacao pura auto-contida — timeline por dia, regressao linear para tendencia, deteccao de picos (2x mediana), classificador de perfil (Saver/Spender/Balanced/RiskTaker/Undefined)
+- `backend/src/routes/finance.ts`: rota protegida com `authMiddleware`
+- `backend/src/index.ts`: montado em `/api/finance`; validacao de input: deve ser array, limite 2000 items
+
+#### 🛡️ D7 — Fixture E2E Pluggy Auth Estavel (fix B010-E2E)
+- `tests/e2e/fixtures/auth.ts`: funcao `getFixtureAuthToken` usa email fixo via `E2E_PLUGGY_USER_EMAIL` env var (configuravel por ambiente), eliminando email dinamico por-teste que causava skip intermitente
+- `tests/e2e/open-banking-pluggy.spec.ts`: removida funcao local `createBackendAuthToken`; substituida pelo import do fixture
+
+#### 🧪 Testes
+- `tests/unit/finance-controller.test.ts`: 10 testes cobrindo validacao de input, profiles, timeline, trends, anomalias, topCategories e sanitizacao de dados invalidos
+
+#### ✅ Validacoes executadas
+- `npm run lint`: verde
+- `npm test`: 387/387 verde
+- `npm run test:coverage:critical`: `99.76%` statements / `98.3%` branches
+- Backend build: verde
+
+---
+
 ## [0.5.2v] - 2026-03-14
 
 ### 🔄 Protocolo de Transicao (Iniciado)
