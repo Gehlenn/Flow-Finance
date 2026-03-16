@@ -18,6 +18,7 @@ import saasRoutes from './routes/saas';
 import bankingRoutes from './routes/banking';
 import financeRoutes from './routes/finance';
 import adminRoutes from './routes/admin';
+import syncRoutes from './routes/sync';
 
 // ─── INITIALIZATION ──────────────────────────────────────────────────────────
 
@@ -128,7 +129,12 @@ app.use((_req: Request, _res: Response, next: NextFunction) => {
 });
 
 // Body parser
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+  limit: '10mb',
+  verify: (req: Request, _res: Response, buf: Buffer) => {
+    req.rawBody = buf.toString('utf8');
+  },
+}));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // JSON validation middleware (catches malformed JSON)
@@ -180,6 +186,9 @@ app.use('/api/banking', bankingRoutes);
 
 // Finance metrics routes (D3/D4 computations)
 app.use('/api/finance', financeRoutes);
+
+// Cloud sync routes (accounts/transactions/goals/subscriptions)
+app.use('/api/sync', syncRoutes);
 
 // Admin routes (audit log, etc.)
 app.use('/api/admin', adminRoutes);

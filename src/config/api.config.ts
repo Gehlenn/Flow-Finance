@@ -66,7 +66,16 @@ export const API_ENDPOINTS = {
   // SaaS endpoints
   SAAS: {
     USAGE: `${BACKEND_BASE_URL}/api/saas/usage`,
+    PLANS: `${BACKEND_BASE_URL}/api/saas/plans`,
+    PLAN_CHANGE: `${BACKEND_BASE_URL}/api/saas/plan`,
     BILLING_HOOKS: `${BACKEND_BASE_URL}/api/saas/billing-hooks`,
+    STRIPE_CHECKOUT_SESSION: `${BACKEND_BASE_URL}/api/saas/stripe/checkout-session`,
+    STRIPE_PORTAL_SESSION: `${BACKEND_BASE_URL}/api/saas/stripe/portal-session`,
+  },
+
+  SYNC: {
+    PUSH: `${BACKEND_BASE_URL}/api/sync/push`,
+    PULL: `${BACKEND_BASE_URL}/api/sync/pull`,
   },
 };
 

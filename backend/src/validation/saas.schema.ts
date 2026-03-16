@@ -23,3 +23,11 @@ export const BillingHookSchema = z.object({
 export const PlanChangeSchema = z.object({
   plan: z.enum(['free', 'pro']),
 });
+
+export const StripeCheckoutSchema = z.object({
+  returnUrl: z.string().url(),
+});
+
+export const StripePortalSchema = z.object({
+  returnUrl: z.string().url(),
+});

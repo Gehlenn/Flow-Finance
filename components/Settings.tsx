@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   User, LogOut, ShieldCheck, Moon, Sliders, Sun, Edit2, 
   ChevronRight, Phone, FileText, BrainCircuit, X, Loader2, Send, Info,
@@ -9,6 +9,7 @@ import LegalModal from './LegalModal';
 import { GoogleGenAI } from "@google/genai";
 import { auth, googleProvider, appleProvider, linkWithPopup } from '../services/firebase';
 import { AuthProvider } from 'firebase/auth';
+import { API_ENDPOINTS, getAuthHeaders } from '../src/config/api.config';
 
 interface SettingsProps {
   userName: string | null;
@@ -35,11 +36,128 @@ const Settings: React.FC<SettingsProps> = ({
   const [isGeneratingSupport, setIsGeneratingSupport] = useState(false);
 
   const [isAnimatingTheme, setIsAnimatingTheme] = useState(false);
+  const [billingLoading, setBillingLoading] = useState(true);
+  const [billingBusy, setBillingBusy] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<'free' | 'pro'>('free');
+  const [planName, setPlanName] = useState('Free');
+  const [monthlyUsageSummary, setMonthlyUsageSummary] = useState<string>('0 transações • 0 IA • 0 conexões');
+
+  useEffect(() => {
+    void loadBillingOverview();
+  }, []);
 
   const handleThemeChange = (t: 'light' | 'dark') => {
     setIsAnimatingTheme(true);
     onThemeChange(t);
     setTimeout(() => setIsAnimatingTheme(false), 700);
+  };
+
+  const loadBillingOverview = async () => {
+    setBillingLoading(true);
+    setBillingError(null);
+    try {
+      const [plansResponse, usageResponse] = await Promise.all([
+        fetch(API_ENDPOINTS.SAAS.PLANS, {
+          method: 'GET',
+          headers: getAuthHeaders(),
+        }),
+        fetch(API_ENDPOINTS.SAAS.USAGE, {
+          method: 'GET',
+          headers: getAuthHeaders(),
+        }),
+      ]);
+
+      if (!plansResponse.ok) {
+        throw new Error(`Falha ao carregar planos (${plansResponse.status})`);
+      }
+
+      const plansBody = await plansResponse.json() as {
+        currentPlan: 'free' | 'pro';
+        plans: Array<{ id: 'free' | 'pro'; name: string }>;
+      };
+
+      setCurrentPlan(plansBody.currentPlan);
+      const active = plansBody.plans.find((p) => p.id === plansBody.currentPlan);
+      setPlanName(active?.name || (plansBody.currentPlan === 'pro' ? 'Pro' : 'Free'));
+
+      if (usageResponse.ok) {
+        const usageBody = await usageResponse.json() as {
+          usage?: Record<string, { transactions: number; aiQueries: number; bankConnections: number }>;
+        };
+        const monthKey = getCurrentMonthKey();
+        const monthUsage = usageBody.usage?.[monthKey] || { transactions: 0, aiQueries: 0, bankConnections: 0 };
+        setMonthlyUsageSummary(
+          `${monthUsage.transactions} transações • ${monthUsage.aiQueries} IA • ${monthUsage.bankConnections} conexões`,
+        );
+      }
+    } catch (error) {
+      console.error(error);
+      setBillingError('Não foi possível carregar seu plano agora.');
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  const handleUpgrade = async () => {
+    setBillingBusy(true);
+    setBillingError(null);
+    try {
+      const response = await fetch(API_ENDPOINTS.SAAS.STRIPE_CHECKOUT_SESSION, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ returnUrl: window.location.href }),
+      });
+
+      if (response.ok) {
+        const body = await response.json() as { url?: string | null };
+        if (body.url) {
+          window.location.assign(body.url);
+          return;
+        }
+      }
+
+      const fallback = await fetch(API_ENDPOINTS.SAAS.PLAN_CHANGE, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ plan: 'pro' }),
+      });
+
+      if (!fallback.ok) {
+        throw new Error(`Falha no fallback de upgrade (${fallback.status})`);
+      }
+
+      await loadBillingOverview();
+    } catch (error) {
+      console.error(error);
+      setBillingError('Não foi possível iniciar o upgrade.');
+    } finally {
+      setBillingBusy(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    setBillingBusy(true);
+    setBillingError(null);
+    try {
+      const response = await fetch(API_ENDPOINTS.SAAS.STRIPE_PORTAL_SESSION, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ returnUrl: window.location.href }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Falha ao abrir portal (${response.status})`);
+      }
+
+      const body = await response.json() as { url: string };
+      window.location.assign(body.url);
+    } catch (error) {
+      console.error(error);
+      setBillingError('Portal indisponível para sua conta neste momento.');
+    } finally {
+      setBillingBusy(false);
+    }
   };
 
   const handleAiSupport = async () => {
@@ -111,6 +229,44 @@ const Settings: React.FC<SettingsProps> = ({
                <Edit2 size={12}/> Editar Nome
              </button>
            </div>
+        </div>
+
+        <div className="space-y-4 border-t border-slate-50 dark:border-slate-700 pt-6">
+          <div className="flex items-center justify-between px-1">
+            <h4 className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-widest">Plano & Consumo</h4>
+            <span className={`text-[9px] font-black uppercase tracking-widest ${currentPlan === 'pro' ? 'text-emerald-500' : 'text-indigo-500'}`}>
+              {currentPlan.toUpperCase()}
+            </span>
+          </div>
+
+          <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 space-y-2">
+            {billingLoading ? (
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Carregando plano...</p>
+            ) : (
+              <>
+                <p className="text-sm font-black text-slate-800 dark:text-white">Plano atual: {planName}</p>
+                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-widest">Uso no mês: {monthlyUsageSummary}</p>
+              </>
+            )}
+            {billingError && <p className="text-[10px] font-bold text-rose-500">{billingError}</p>}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={handleUpgrade}
+              disabled={billingBusy || billingLoading || currentPlan === 'pro'}
+              className="p-4 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+            >
+              {billingBusy ? 'Processando...' : currentPlan === 'pro' ? 'Plano Pro Ativo' : 'Fazer Upgrade'}
+            </button>
+            <button
+              onClick={handleManageSubscription}
+              disabled={billingBusy || billingLoading}
+              className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-100 text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+            >
+              Gerenciar Plano
+            </button>
+          </div>
         </div>
 
         {/* Vincular Contas Sociais - Nova Funcionalidade */}
@@ -290,5 +446,11 @@ const Settings: React.FC<SettingsProps> = ({
     </div>
   );
 };
+
+function getCurrentMonthKey(): string {
+  const now = new Date();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+  return `${now.getUTCFullYear()}-${month}`;
+}
 
 export default Settings;

@@ -18,6 +18,7 @@ declare global {
       userId?: string;
       userEmail?: string;
       userExp?: number;
+      rawBody?: string;
     }
   }
 }
