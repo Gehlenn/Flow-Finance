@@ -5,19 +5,24 @@
 
 ## Prioridade Imediata
 
-1. Consolidacao da fase 0.6.x
+1. Open Banking Pluggy - bloco final de go-live
+- fechar runtime com provider pluggy + persistencia firebase + webhook secret no ambiente oficial
+- estabilizar E2E dedicado sem skip no cenario principal
+- validar restart sem perda de conexoes e registrar evidencias de operacao
+
+2. Consolidacao da fase 0.6.x
 - validar consumo do advanced context builder nos modulos de produto
 - estabilizar contratos entre orquestrador, CFO e Autopilot
 
-2. Exposicao em produto
+3. Exposicao em produto
 - levar cashflow prediction e money map para Dashboard, Insights e fluxos assistidos
 - transformar dados de debug em UI de produto quando fizer sentido
 
-3. Aprendizado e memoria
+4. Aprendizado e memoria
 - refinar persistencia de SPENDING_PATTERN e recorrencias
 - adicionar sinais de confianca e expiracao para distribuicao por categoria
 
-4. Cobertura de integracao
+5. Cobertura de integracao
 - adicionar testes para advancedContextBuilder e viewers internos
 - ampliar cenarios de previsao e dominancia por categoria
 
