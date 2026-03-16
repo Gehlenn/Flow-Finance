@@ -1,4 +1,4 @@
-import { UserContext } from '../../context/UserContext';
+﻿import { UserContext } from '../../context/UserContext';
 import { aiTaskQueue } from '../../ai/queue/AITaskQueue';
 import { aiMemoryStore } from '../../ai/memory/AIMemoryStore';
 import { AIMemoryType } from '../../ai/memory/memoryTypes';
@@ -93,3 +93,142 @@ export function analyzeFinancialHealth(context: FinancialHealthContext): string[
     userId: context.userContext.userId,
   }).map((alert) => alert.message);
 }
+
+// â”€â”€â”€ A3: PriorizaÃ§Ã£o de aÃ§Ãµes por risco + impacto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export type ActionPriority = 'critica' | 'alta' | 'media' | 'baixa';
+
+export interface PrioritizedAction {
+  id: string;
+  priority: ActionPriority;
+  priorityScore: number;    // 0..100 (maior = mais urgente)
+  impactScore: number;      // 0..100 (maior impacto financeiro)
+  riskScore: number;        // 0..100 (maior risco se ignorado)
+  title: string;
+  description: string;
+  suggestedCut?: number;    // valor R$ sugerido de corte (quando aplicÃ¡vel)
+  category?: string;
+}
+
+export interface PrioritizedActionsResult {
+  actions: PrioritizedAction[];
+  topAction: PrioritizedAction | null;
+}
+
+/**
+ * Prioriza aÃ§Ãµes financeiras acionÃ¡veis por risco Ã— impacto.
+ * Consome alerts do FinancialAutopilot e dados de budget para gerar cortes sugeridos.
+ */
+export function prioritizeActions(
+  monthlyIncome: number,
+  monthlyExpenses: number,
+  currentBalance: number,
+  transactions: Transaction[] = [],
+  profile: string = 'Undefined',
+): PrioritizedActionsResult {
+  const actions: PrioritizedAction[] = [];
+  const savingsRate = monthlyIncome > 0
+    ? (monthlyIncome - monthlyExpenses) / monthlyIncome
+    : 0;
+
+  // AÃ§Ã£o 1: Saldo negativo â€” risco crÃ­tico
+  if (currentBalance < 0) {
+    actions.push({
+      id: 'negative_balance',
+      priority: 'critica',
+      priorityScore: 100,
+      impactScore: 95,
+      riskScore: 100,
+      title: 'Recompor saldo negativo',
+      description: `Saldo negativo de R$ ${Math.abs(currentBalance).toFixed(2)}. Prioridade maxima: corte imediato de gastos nao essenciais.`,
+      suggestedCut: Math.abs(currentBalance),
+    });
+  }
+
+  // AÃ§Ã£o 2: Gastos > Receita â€” overspending
+  if (monthlyExpenses > monthlyIncome) {
+    const overshoot = monthlyExpenses - monthlyIncome;
+    actions.push({
+      id: 'overspending',
+      priority: 'critica',
+      priorityScore: 90,
+      impactScore: 90,
+      riskScore: 85,
+      title: 'Reduzir despesas abaixo da receita',
+      description: `Despesas superam receita em R$ ${overshoot.toFixed(2)}/mes. Corte necessario para equilibrar o fluxo.`,
+      suggestedCut: Number(overshoot.toFixed(2)),
+    });
+  }
+
+  // AÃ§Ã£o 3: Taxa de poupanÃ§a baixa
+  if (savingsRate < 0.1 && monthlyIncome > 0) {
+    const targetCut = monthlyExpenses - monthlyIncome * 0.85; // poupar 15%
+    actions.push({
+      id: 'low_savings',
+      priority: 'alta',
+      priorityScore: 75,
+      impactScore: 70,
+      riskScore: 65,
+      title: 'Aumentar taxa de poupanca',
+      description: `Poupanca atual: ${(savingsRate * 100).toFixed(0)}% (meta 15%). Corte necessario: R$ ${Math.max(0, targetCut).toFixed(2)}/mes.`,
+      suggestedCut: Number(Math.max(0, targetCut).toFixed(2)),
+    });
+  }
+
+  // AÃ§Ã£o 4: Categoria dominante (>35% das despesas)
+  if (transactions.length > 0) {
+    const dominant = moneyMapEngine.getDominantCategory(transactions);
+    if (dominant && dominant.percentage >= 35) {
+      const dominantAmount = monthlyExpenses * (dominant.percentage / 100);
+      const suggestedCut = Number((dominantAmount * 0.15).toFixed(2)); // cortar 15% da categoria
+      actions.push({
+        id: 'dominant_category',
+        priority: dominant.percentage >= 50 ? 'alta' : 'media',
+        priorityScore: Math.round(dominant.percentage * 1.2),
+        impactScore: Math.round(dominant.percentage),
+        riskScore: dominant.percentage >= 50 ? 60 : 40,
+        title: `Revisar gastos em ${dominant.category}`,
+        description: `${dominant.category} representa ${Math.round(dominant.percentage)}% das despesas. Corte sugerido de 15%: R$ ${suggestedCut.toFixed(2)}.`,
+        suggestedCut,
+        category: String(dominant.category),
+      });
+    }
+  }
+
+  // AÃ§Ã£o 5: Perfil Spender com poupanÃ§a positiva â€” oportunidade de investimento
+  if (profile === 'Saver' && savingsRate >= 0.2) {
+    const investable = Number((monthlyIncome * savingsRate * 0.5).toFixed(2));
+    actions.push({
+      id: 'invest_surplus',
+      priority: 'baixa',
+      priorityScore: 30,
+      impactScore: 60,
+      riskScore: 10,
+      title: 'Alocar excedente em investimentos',
+      description: `Perfil Saver com poupanca de ${(savingsRate * 100).toFixed(0)}%. Considere alocar R$ ${investable.toFixed(2)}/mes em renda variavel ou fixa.`,
+      suggestedCut: 0,
+    });
+  }
+
+  // Se nenhuma aÃ§Ã£o crÃ­tica â†’ aÃ§Ã£o de manutenÃ§Ã£o
+  if (actions.length === 0) {
+    actions.push({
+      id: 'maintain_health',
+      priority: 'baixa',
+      priorityScore: 20,
+      impactScore: 30,
+      riskScore: 10,
+      title: 'Manter saude financeira',
+      description: 'Financas equilibradas. Continue monitorando para antecipar mudancas de perfil.',
+    });
+  }
+
+  // Ordenar por priorityScore decrescente
+  actions.sort((a, b) => b.priorityScore - a.priorityScore);
+
+  return {
+    actions,
+    topAction: actions[0] ?? null,
+  };
+}
+
