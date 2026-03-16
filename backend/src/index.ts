@@ -16,6 +16,7 @@ import authRoutes from './routes/auth';
 import aiRoutes from './routes/ai';
 import saasRoutes from './routes/saas';
 import bankingRoutes from './routes/banking';
+import financeRoutes from './routes/finance';
 
 // ─── INITIALIZATION ──────────────────────────────────────────────────────────
 
@@ -175,6 +176,9 @@ app.use('/api/saas', saasRoutes);
 
 // Banking routes (Open Finance integration)
 app.use('/api/banking', bankingRoutes);
+
+// Finance metrics routes (D3/D4 computations)
+app.use('/api/finance', financeRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

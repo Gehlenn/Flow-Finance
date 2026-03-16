@@ -1,4 +1,5 @@
 import { test, expect, APIRequestContext, Page, TestInfo } from '@playwright/test';
+import { getFixtureAuthToken } from './fixtures/auth';
 
 const BACKEND_BASE_URL = process.env.PLAYWRIGHT_BACKEND_URL || 'http://localhost:3001';
 
@@ -7,47 +8,6 @@ type TokenProbeResult =
   | { status: 'invalid'; message: string }
   | { status: 'not-configured'; message: string }
   | { status: 'backend-unavailable'; message: string };
-
-interface BackendAuthContext {
-  token: string;
-  userId: string;
-}
-
-type BackendAuthResult =
-  | { status: 'ok'; context: BackendAuthContext }
-  | { status: 'unavailable'; message: string }
-  | { status: 'invalid'; message: string };
-
-async function createBackendAuthToken(request: APIRequestContext, email: string): Promise<BackendAuthResult> {
-  let response;
-
-  try {
-    response = await request.post(`${BACKEND_BASE_URL}/api/auth/login`, {
-      data: { email, password: 'e2e-password' },
-      timeout: 5000,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'erro desconhecido';
-    return { status: 'unavailable', message };
-  }
-
-  if (!response.ok()) {
-    return { status: 'invalid', message: `login status ${response.status()}` };
-  }
-
-  const payload = await response.json() as { token?: string; user?: { userId?: string } };
-  if (!payload.token || !payload.user?.userId) {
-    return { status: 'invalid', message: 'resposta de login sem token/userId' };
-  }
-
-  return {
-    status: 'ok',
-    context: {
-      token: payload.token,
-      userId: payload.user.userId,
-    },
-  };
-}
 
 async function probeConnectToken(
   request: APIRequestContext,
@@ -132,8 +92,8 @@ async function ensureOpenBankNavigation(page: Page, testInfo: TestInfo): Promise
 
 test.describe('Open Banking - Pluggy Connect', () => {
   test('deve validar connect-token e abrir a área de conexão do Pluggy', async ({ page, request }, testInfo) => {
-    const authEmail = `e2e+pluggy-auth-${Date.now()}@flowfinance.test`;
-    const authResult = await createBackendAuthToken(request, authEmail);
+    // D7: usa fixture de auth estável em vez de email dinâmico (fix B010)
+    const authResult = await getFixtureAuthToken(request);
 
     if (authResult.status === 'unavailable') {
       testInfo.annotations.push({
