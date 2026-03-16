@@ -74,6 +74,7 @@ export const API_ENDPOINTS = {
   },
 
   SYNC: {
+    HEALTH: `${BACKEND_BASE_URL}/api/sync/health`,
     PUSH: `${BACKEND_BASE_URL}/api/sync/push`,
     PULL: `${BACKEND_BASE_URL}/api/sync/pull`,
   },

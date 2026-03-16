@@ -61,10 +61,12 @@ import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { getAccounts, createAccount, updateAccount } from './services/firebaseOptimized';
 import { API_ENDPOINTS } from './src/config/api.config';
 import { isSyncPermissionError, shouldDisplaySyncConnectionError } from './src/utils/syncError';
+import { getE2EAuthBootstrap } from './src/utils/e2eAuthBootstrap';
 
 type Tab = 'dashboard' | 'history' | 'assistant' | 'flow' | 'settings' | 'accounts' | 'insights' | 'cfo' | 'autopilot' | 'goals' | 'scanner' | 'import' | 'openbanking' | 'aicontrol' | 'analytics' | 'performance';
 
 const IS_DEV = import.meta.env.DEV;
+const INITIAL_LOADING_TIMEOUT_MS = 4000;
 
 // ─── Platform Detection ───────────────────────────────────────────────────────
 
@@ -97,6 +99,10 @@ if (typeof window !== 'undefined') {
 }
 
 const App: React.FC = () => {
+  const e2eBootstrap = typeof window === 'undefined'
+    ? null
+    : getE2EAuthBootstrap(window.location.search, window.localStorage, IS_DEV);
+  const isE2EBootstrapActive = Boolean(e2eBootstrap);
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -173,6 +179,18 @@ const App: React.FC = () => {
 
   // 1. Escutar Mudanças na Autenticação
   useEffect(() => {
+    if (isE2EBootstrapActive && e2eBootstrap) {
+      setCloudSyncEnabled(false);
+      setUserId(e2eBootstrap.userId);
+      setUserEmail(e2eBootstrap.userEmail);
+      setUserName(e2eBootstrap.userName);
+      setIsLoggedIn(true);
+      localStorage.setItem('auth_token', e2eBootstrap.token);
+      addBreadcrumb(`E2E auth bootstrap enabled for ${e2eBootstrap.userEmail}`, 'auth', 'info');
+      setIsInitialLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCloudSyncEnabled(true);
@@ -227,10 +245,24 @@ const App: React.FC = () => {
       }
     });
     return () => unsubscribe();
-  }, [userId]);
+  }, [isE2EBootstrapActive]);
+
+  useEffect(() => {
+    if (!isInitialLoading || isE2EBootstrapActive) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      addBreadcrumb('Initial loading timeout fallback triggered', 'app', 'warning');
+      setIsInitialLoading(false);
+    }, INITIAL_LOADING_TIMEOUT_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isInitialLoading, isE2EBootstrapActive]);
 
   // 2. Sincronização em Tempo Real com Firestore
   useEffect(() => {
+    if (isE2EBootstrapActive) return;
     if (!userId) return;
 
     const userDocRef = doc(db, 'users', userId);
@@ -264,7 +296,7 @@ const App: React.FC = () => {
     });
 
     return () => unsubSnapshot();
-  }, [userId]);
+  }, [userId, isE2EBootstrapActive]);
 
   // Aplicar tema escuro/claro
   useEffect(() => {

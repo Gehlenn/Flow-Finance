@@ -15,10 +15,25 @@ async function isAuthenticatedShell(page: Page): Promise<boolean> {
   return false;
 }
 
+async function waitForAuthResolution(page: Page): Promise<void> {
+  await expect.poll(async () => {
+    const hasAuthGate =
+      (await page.getByRole('button', { name: /Cadastre-se|Sign up/i }).count()) > 0 ||
+      (await page.getByPlaceholder('Seu e-mail').count()) > 0;
+    const hasShell = await isAuthenticatedShell(page);
+    const hasSplash = (await page.locator('body').getByText(/Iniciando|Loading|Flow Finan/i).count()) > 0;
+
+    if (hasAuthGate) return 'auth';
+    if (hasShell) return 'shell';
+    if (hasSplash) return 'splash';
+    return 'unknown';
+  }, { timeout: 7000, intervals: [250, 500, 1000] }).not.toBe('unknown');
+}
+
 test.describe('Authentication Flow', () => {
   test('should load either auth gate or authenticated shell', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForAuthResolution(page);
 
     const hasAuthGate =
       (await page.getByRole('button', { name: /Cadastre-se|Sign up/i }).count()) > 0 ||
@@ -38,7 +53,7 @@ test.describe('Authentication Flow', () => {
 
   test('should open sign-up form when auth gate is visible', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForAuthResolution(page);
 
     const signUpTrigger = page.getByRole('button', { name: /Cadastre-se|Sign up/i });
     if (!(await signUpTrigger.count())) {
@@ -52,7 +67,7 @@ test.describe('Authentication Flow', () => {
 
   test('should expose accessible labels in login and recovery forms when auth gate is visible', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForAuthResolution(page);
 
     const signUpTrigger = page.getByRole('button', { name: /Cadastre-se|Sign up/i });
     if (!(await signUpTrigger.count())) {

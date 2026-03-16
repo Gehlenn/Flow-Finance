@@ -21,6 +21,7 @@ export const env = {
   GOOGLE_OAUTH_REDIRECT_URI: process.env.GOOGLE_OAUTH_REDIRECT_URI || 'http://localhost:3001/api/auth/oauth/google/callback',
   OAUTH_STATE_TTL_SECONDS: process.env.OAUTH_STATE_TTL_SECONDS || '600',
   OAUTH_MOCK_MODE: process.env.OAUTH_MOCK_MODE || '',
+  CLOUD_SYNC_STORE_DRIVER: process.env.CLOUD_SYNC_STORE_DRIVER || '',
   OPEN_FINANCE_STORE_DRIVER: process.env.OPEN_FINANCE_STORE_DRIVER || '',
   OPEN_FINANCE_POSTGRES_ENABLED: process.env.OPEN_FINANCE_POSTGRES_ENABLED || 'false',
   DATABASE_URL: process.env.DATABASE_URL || '',
