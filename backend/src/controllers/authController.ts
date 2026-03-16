@@ -9,6 +9,7 @@ import {
   revokeRefreshToken,
   revokeUserRefreshTokens,
 } from '../services/auth/refreshTokenStore';
+import { recordAuditEvent } from '../services/admin/auditLog';
 
 // Extend Express Request interface
 declare global {
@@ -52,6 +53,15 @@ export const loginController = asyncHandler(async (req: Request, res: Response) 
     const decodedToken = decodeToken(accessToken) as JWTPayload;
     const refresh = issueRefreshToken(userId, email);
 
+    recordAuditEvent({
+      userId,
+      email,
+      action: 'auth.login',
+      status: 'success',
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+
     res.json({
       token: accessToken,
       accessToken,
@@ -65,6 +75,7 @@ export const loginController = asyncHandler(async (req: Request, res: Response) 
     });
   } catch (error) {
     logger.error({ error, email }, 'Login error');
+    recordAuditEvent({ email, action: 'auth.login_failed', status: 'failure', ip: req.ip });
     throw new AppError(500, 'Failed to generate authentication token');
   }
 });
@@ -90,6 +101,13 @@ export const refreshController = asyncHandler(async (req: Request, res: Response
       const decodedToken = decodeToken(accessToken) as JWTPayload;
 
       logger.debug({ userId: rotated.userId }, 'Refresh token rotated');
+
+      recordAuditEvent({
+        userId: rotated.userId,
+        action: 'auth.token_refresh',
+        status: 'success',
+        ip: req.ip,
+      });
 
       res.json({
         token: accessToken,
@@ -188,6 +206,14 @@ export const logoutController = asyncHandler(async (req: Request, res: Response)
     revokeRefreshToken(refreshToken);
   }
   const revokedCount = req.userId ? revokeUserRefreshTokens(req.userId) : 0;
+
+  recordAuditEvent({
+    userId: req.userId,
+    action: 'auth.logout',
+    status: 'success',
+    ip: req.ip,
+    metadata: { revokedCount: revokedCount + (refreshToken ? 1 : 0) },
+  });
 
   res.json({
     success: true,

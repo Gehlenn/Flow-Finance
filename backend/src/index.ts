@@ -17,6 +17,7 @@ import aiRoutes from './routes/ai';
 import saasRoutes from './routes/saas';
 import bankingRoutes from './routes/banking';
 import financeRoutes from './routes/finance';
+import adminRoutes from './routes/admin';
 
 // ─── INITIALIZATION ──────────────────────────────────────────────────────────
 
@@ -179,6 +180,9 @@ app.use('/api/banking', bankingRoutes);
 
 // Finance metrics routes (D3/D4 computations)
 app.use('/api/finance', financeRoutes);
+
+// Admin routes (audit log, etc.)
+app.use('/api/admin', adminRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
