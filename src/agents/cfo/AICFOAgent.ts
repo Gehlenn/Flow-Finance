@@ -3,13 +3,14 @@ import { aiMemoryStore } from '../../ai/memory/AIMemoryStore';
 import { Transaction } from '../../../types';
 import { FinancialPatterns, financialPatternDetector } from '../../engines/finance/patternDetector/financialPatternDetector';
 import { cashflowPredictionEngine } from '../../engines/finance/cashflowPrediction/cashflowPredictionEngine';
+import { FinancialProfile } from '../../engines/ai/financialProfileClassifier';
 
 export interface CFOFinancialState {
   balance: number;
   income: number;
   expenses: number;
   userId?: string;
-  profile?: 'Saver' | 'Spender' | 'Balanced' | 'Risk Taker';
+  profile?: FinancialProfile;
   transactions?: Transaction[];
   patterns?: FinancialPatterns;
 }
