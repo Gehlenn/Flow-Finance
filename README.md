@@ -513,3 +513,22 @@ const unsubscribe = subscribeToEvent('risk_detected', (event) => {
 // Cleanup:
 unsubscribe();
 ```
+
+---
+
+## Status Tecnico Atual (2026-03-16)
+
+### Entregas concluidas
+- Sprint 2 D1-D4 concluida
+- Observability A004 concluida (logger com sink Sentry)
+- Main validada com lint, testes, cobertura critica e E2E
+
+### Motores financeiros recentes
+- Financial Timeline: agregacao mensal, trend detection e anomalias
+- Financial Profile Classifier: perfil, confidence, topCategories e insights acionaveis
+
+### Evidencias de validacao
+- npm run lint: OK
+- npm test: 377/377
+- npm run test:coverage:critical: 99.76% stmts / 98.3% branches
+- npm run test:e2e: 30 passed / 35 skipped

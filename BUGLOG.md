@@ -596,3 +596,11 @@ export function App() {
 **Documento Finalizado**: 8 de Março de 2026  
 **Próxima Auditoria**: v0.4.0 (15 de Março)  
 **Responsável**: QA Team
+
+---
+
+## [B010] | E2E Pluggy com skip intermitente por autenticacao dinamica | Login com email unico pode retornar status invalido em alguns ambientes | Guard de skip mantido e execucao principal preservada | v0.6.4
+
+- Tipo: Test reliability
+- Impacto: nao bloqueia pipeline principal, mas reduz sinal de validacao do fluxo Pluggy isolado
+- Acao proposta: criar fixture de usuario e token dedicados para E2E Pluggy

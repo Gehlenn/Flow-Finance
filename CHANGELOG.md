@@ -582,3 +582,18 @@ Esta versão marca a transição completa para produção com IA GPT-4, autentic
 - [ ] Full feature set
 - [ ] Compliance audit
 - [ ] App Store submissions
+
+---
+
+## [0.6.4] - 2026-03-16
+
+### Sprint 2 - D3/D4 (entregue)
+- D3: Financial Timeline com agregacao mensal (aggregateByMonth), tendencia de saldo (detectBalanceTrend) e anomalias (detectTimelineAnomalies).
+- D4: Financial Profile Classifier com confidence, topCategories, insights e perfil Undefined para dados insuficientes.
+- Ajuste de tipagem no agente CFO para usar tipo centralizado de perfil financeiro.
+
+### Validacao da release
+- lint: OK (npm run lint)
+- testes: 377/377 passing (npm test)
+- cobertura critica: 99.76% stmts / 98.3% branches (npm run test:coverage:critical)
+- e2e: 30 passed / 35 skipped (npm run test:e2e)
