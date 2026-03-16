@@ -5,6 +5,8 @@ export interface JWTPayload {
   email: string;
   iat: number;
   exp: number;
+  tokenType?: 'access' | 'refresh';
+  jti?: string;
 }
 
 // ─── COMMON TYPES ────────────────────────────────────────────────────────────

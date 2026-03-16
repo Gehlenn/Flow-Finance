@@ -1,8 +1,14 @@
 import { Request, Response } from 'express';
-import { generateToken, decodeToken } from '../middleware/auth';
+import { generateAccessToken, decodeToken } from '../middleware/auth';
 import logger from '../config/logger';
 import { AppError, asyncHandler } from '../middleware/errorHandler';
 import { JWTPayload } from '../types';
+import {
+  issueRefreshToken,
+  rotateRefreshToken,
+  revokeRefreshToken,
+  revokeUserRefreshTokens,
+} from '../services/auth/refreshTokenStore';
 
 // Extend Express Request interface
 declare global {
@@ -42,12 +48,16 @@ export const loginController = asyncHandler(async (req: Request, res: Response) 
   logger.info({ email }, 'User login attempt');
 
   try {
-    const token = generateToken(userId, email);
-    const decodedToken = decodeToken(token) as JWTPayload;
+    const accessToken = generateAccessToken(userId, email);
+    const decodedToken = decodeToken(accessToken) as JWTPayload;
+    const refresh = issueRefreshToken(userId, email);
 
     res.json({
-      token,
+      token: accessToken,
+      accessToken,
+      refreshToken: refresh.refreshToken,
       expiresIn: decodedToken.exp - Math.floor(Date.now() / 1000),
+      refreshExpiresIn: refresh.expiresIn,
       user: {
         userId,
         email
@@ -63,26 +73,57 @@ export const loginController = asyncHandler(async (req: Request, res: Response) 
  * REFRESH — Refresh JWT token
  * POST /api/auth/refresh
  *
- * Headers: Authorization: Bearer <old_token>
- * Returns: { token: string, expiresIn: number }
+ * Body: { refreshToken: string }
+ * Also supports backward-compatible Authorization: Bearer <access_token>
+ * Returns: { token: string, accessToken: string, expiresIn: number, refreshToken?: string }
  */
 export const refreshController = asyncHandler(async (req: Request, res: Response) => {
-  if (!req.userId || !req.userEmail) {
-    throw new AppError(401, 'Authorization required');
-  }
-
-  logger.debug({ userId: req.userId }, 'Token refresh request');
+  const providedRefreshToken = typeof req.body?.refreshToken === 'string'
+    ? req.body.refreshToken
+    : null;
 
   try {
-    const newToken = generateToken(req.userId, req.userEmail);
-    const decodedToken = decodeToken(newToken) as JWTPayload;
+    // Preferred path: rotation using refresh token.
+    if (providedRefreshToken) {
+      const rotated = rotateRefreshToken(providedRefreshToken);
+      const accessToken = generateAccessToken(rotated.userId, rotated.email);
+      const decodedToken = decodeToken(accessToken) as JWTPayload;
+
+      logger.debug({ userId: rotated.userId }, 'Refresh token rotated');
+
+      res.json({
+        token: accessToken,
+        accessToken,
+        refreshToken: rotated.refreshToken,
+        expiresIn: decodedToken.exp - Math.floor(Date.now() / 1000),
+        refreshExpiresIn: rotated.refreshExpiresIn,
+      });
+      return;
+    }
+
+    // Backward-compatible path: access token in Authorization header.
+    if (!req.userId || !req.userEmail) {
+      throw new AppError(401, 'Refresh token or valid authorization is required');
+    }
+
+    logger.debug({ userId: req.userId }, 'Legacy access-token refresh request');
+    const accessToken = generateAccessToken(req.userId, req.userEmail);
+    const decodedToken = decodeToken(accessToken) as JWTPayload;
 
     res.json({
-      token: newToken,
-      expiresIn: decodedToken.exp - Math.floor(Date.now() / 1000)
+      token: accessToken,
+      accessToken,
+      expiresIn: decodedToken.exp - Math.floor(Date.now() / 1000),
     });
   } catch (error) {
-    logger.error({ error, userId: req.userId }, 'Refresh error');
+    logger.error({ error, userId: req.userId, hasRefreshToken: !!providedRefreshToken }, 'Refresh error');
+    if (error instanceof AppError) {
+      throw error;
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.toLowerCase().includes('invalid') || message.toLowerCase().includes('expired')) {
+      throw new AppError(401, message);
+    }
     throw new AppError(500, 'Failed to refresh authentication token');
   }
 });
@@ -128,7 +169,11 @@ export const validateController = asyncHandler(async (req: Request, res: Respons
  * Returns: { success: boolean, message: string }
  */
 export const logoutController = asyncHandler(async (req: Request, res: Response) => {
-  if (!req.userId) {
+  const refreshToken = typeof req.body?.refreshToken === 'string'
+    ? req.body.refreshToken
+    : null;
+
+  if (!req.userId && !refreshToken) {
     throw new AppError(401, 'Authorization required');
   }
 
@@ -139,8 +184,14 @@ export const logoutController = asyncHandler(async (req: Request, res: Response)
   // 2. Invalidate refresh tokens in database
   // 3. Clear user session data
   
+  if (refreshToken) {
+    revokeRefreshToken(refreshToken);
+  }
+  const revokedCount = req.userId ? revokeUserRefreshTokens(req.userId) : 0;
+
   res.json({
     success: true,
-    message: 'Logged out successfully. Please clear the token on the client side.'
+    revokedRefreshTokens: revokedCount + (refreshToken ? 1 : 0),
+    message: 'Logged out successfully. Please clear tokens on the client side.'
   });
 });

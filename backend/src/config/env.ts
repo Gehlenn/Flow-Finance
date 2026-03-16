@@ -14,6 +14,8 @@ export const env = {
   OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-4',
   OPENAI_MAX_TOKENS: process.env.OPENAI_MAX_TOKENS || '4096',
   JWT_SECRET: process.env.JWT_SECRET || 'dev-secret-key-change-in-production',
+  JWT_ACCESS_EXPIRES_IN: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
+  JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
   OPEN_FINANCE_STORE_DRIVER: process.env.OPEN_FINANCE_STORE_DRIVER || '',
   OPEN_FINANCE_POSTGRES_ENABLED: process.env.OPEN_FINANCE_POSTGRES_ENABLED || 'false',
   DATABASE_URL: process.env.DATABASE_URL || '',

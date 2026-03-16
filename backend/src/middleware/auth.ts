@@ -5,6 +5,10 @@ import logger from '../config/logger';
 import { setUser, addBreadcrumb } from '../config/sentry';
 import { JWTPayload } from '../types';
 
+function makeTokenId(): string {
+  return `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
 declare global {
   namespace Express {
     interface Request {
@@ -28,6 +32,10 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     
     try {
       const payload = jwt.verify(token, env.JWT_SECRET) as JWTPayload;
+      if (payload.tokenType && payload.tokenType !== 'access') {
+        res.status(401).json({ message: 'Invalid access token type' });
+        return;
+      }
       req.userId = payload.userId;
       req.userEmail = payload.email;
       req.userExp = payload.exp;
@@ -64,8 +72,11 @@ export function optionalAuthMiddleware(req: Request, res: Response, next: NextFu
       
       try {
         const payload = jwt.verify(token, env.JWT_SECRET) as JWTPayload;
-        req.userId = payload.userId;
-        req.userEmail = payload.email;
+        if (!payload.tokenType || payload.tokenType === 'access') {
+          req.userId = payload.userId;
+          req.userEmail = payload.email;
+          req.userExp = payload.exp;
+        }
       } catch (error) {
         // Silently fail for optional auth
         logger.debug('Optional auth token invalid');
@@ -79,13 +90,35 @@ export function optionalAuthMiddleware(req: Request, res: Response, next: NextFu
   }
 }
 
-export function generateToken(userId: string, email: string, expiresIn: string | number = '7d'): string {
+export function generateAccessToken(
+  userId: string,
+  email: string,
+  expiresIn: string | number = env.JWT_ACCESS_EXPIRES_IN,
+): string {
   const options: jwt.SignOptions = { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] };
   return jwt.sign(
-    { userId, email },
+    { userId, email, tokenType: 'access' },
     env.JWT_SECRET as string,
     options
   );
+}
+
+export function generateRefreshToken(
+  userId: string,
+  email: string,
+  expiresIn: string | number = env.JWT_REFRESH_EXPIRES_IN,
+): string {
+  const options: jwt.SignOptions = { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] };
+  return jwt.sign(
+    { userId, email, tokenType: 'refresh', jti: makeTokenId() },
+    env.JWT_SECRET as string,
+    options
+  );
+}
+
+// Backward compatibility for existing callers/tests.
+export function generateToken(userId: string, email: string, expiresIn?: string | number): string {
+  return generateAccessToken(userId, email, expiresIn);
 }
 
 export function decodeToken(token: string): JWTPayload | null {

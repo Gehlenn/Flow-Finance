@@ -7,8 +7,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as aiConfig from '../../backend/src/config/ai';
 import { cfoController, generateInsightsController, interpretController } from '../../backend/src/controllers/aiController';
-import { loginController } from '../../backend/src/controllers/authController';
+import { loginController, logoutController, refreshController } from '../../backend/src/controllers/authController';
 import { decodeToken } from '../../backend/src/middleware/auth';
+import { getRefreshStoreSize, resetRefreshStoreForTests } from '../../backend/src/services/auth/refreshTokenStore';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,8 @@ function createMockRequest(body: any, userId: string = 'test-user') {
   return {
     body,
     userId,
+    userEmail: 'test@flow.finance',
+    headers: {},
   };
 }
 
@@ -146,6 +149,7 @@ describe('AI Fallback Controllers', () => {
 describe('Auth Controller', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetRefreshStoreForTests();
   });
 
   it('loginController preserva userId informado pelo frontend', async () => {
@@ -164,6 +168,92 @@ describe('Auth Controller', () => {
 
     expect(payload.user.userId).toBe('firebase-uid-123');
     expect(decoded?.userId).toBe('firebase-uid-123');
+  });
+
+  it('loginController retorna accessToken e refreshToken', async () => {
+    const req = createMockRequest({
+      email: 'refresh-user@flow.test',
+      password: '123456',
+    });
+    const res = createMockResponse();
+
+    loginController(req as any, res as any, vi.fn());
+    await flushAsyncHandler();
+
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.token).toBeTruthy();
+    expect(payload.accessToken).toBeTruthy();
+    expect(payload.refreshToken).toBeTruthy();
+    expect(payload.refreshExpiresIn).toBeGreaterThan(0);
+    expect(getRefreshStoreSize()).toBe(1);
+  });
+
+  it('refreshController rotaciona refresh token e invalida o token anterior', async () => {
+    const loginReq = createMockRequest({
+      email: 'rotate-user@flow.test',
+      password: '123456',
+    });
+    const loginRes = createMockResponse();
+    const next = vi.fn();
+
+    loginController(loginReq as any, loginRes as any, next);
+    await flushAsyncHandler();
+
+    const loginPayload = loginRes.json.mock.calls[0][0];
+    const oldRefreshToken = loginPayload.refreshToken as string;
+
+    const refreshReq = createMockRequest({ refreshToken: oldRefreshToken });
+    const refreshRes = createMockResponse();
+    const refreshNext = vi.fn();
+    refreshController(refreshReq as any, refreshRes as any, refreshNext);
+    await flushAsyncHandler();
+
+    expect(refreshNext).not.toHaveBeenCalled();
+    const refreshPayload = refreshRes.json.mock.calls[0][0];
+    expect(refreshPayload.accessToken).toBeTruthy();
+    expect(refreshPayload.refreshToken).toBeTruthy();
+    expect(refreshPayload.refreshToken).not.toBe(oldRefreshToken);
+
+    // Reuso do refresh token antigo deve falhar.
+    const reusedReq = createMockRequest({ refreshToken: oldRefreshToken });
+    const reusedRes = createMockResponse();
+    const reusedNext = vi.fn();
+    refreshController(reusedReq as any, reusedRes as any, reusedNext);
+    await flushAsyncHandler();
+
+    expect(reusedNext).toHaveBeenCalled();
+    const reusedErr = reusedNext.mock.calls[0][0];
+    expect(reusedErr.statusCode).toBe(401);
+  });
+
+  it('logoutController revoga refresh token informado', async () => {
+    const loginReq = createMockRequest({
+      email: 'logout-user@flow.test',
+      password: '123456',
+    });
+    const loginRes = createMockResponse();
+    loginController(loginReq as any, loginRes as any, vi.fn());
+    await flushAsyncHandler();
+
+    const payload = loginRes.json.mock.calls[0][0];
+    const refreshToken = payload.refreshToken as string;
+
+    const logoutReq = createMockRequest({ refreshToken }, payload.user.userId);
+    const logoutRes = createMockResponse();
+    logoutController(logoutReq as any, logoutRes as any, vi.fn());
+    await flushAsyncHandler();
+
+    expect(logoutRes.json).toHaveBeenCalled();
+
+    const refreshReq = createMockRequest({ refreshToken });
+    const refreshRes = createMockResponse();
+    const refreshNext = vi.fn();
+    refreshController(refreshReq as any, refreshRes as any, refreshNext);
+    await flushAsyncHandler();
+
+    expect(refreshNext).toHaveBeenCalled();
+    const err = refreshNext.mock.calls[0][0];
+    expect(err.statusCode).toBe(401);
   });
 });
 

@@ -28,7 +28,7 @@ router.post('/login', authLimiter, validate(LoginSchema), loginController);
  * Headers: Authorization: Bearer <old_token>
  * Returns: { token: string, expiresIn: number }
  */
-router.post('/refresh', authMiddleware, refreshController);
+router.post('/refresh', optionalAuthMiddleware, refreshController);
 
 /**
  * GET /api/auth/validate
@@ -46,6 +46,6 @@ router.get('/validate', optionalAuthMiddleware, validateController);
  * Headers: Authorization: Bearer <token>
  * Returns: { success: boolean, message: string }
  */
-router.post('/logout', authMiddleware, logoutController);
+router.post('/logout', optionalAuthMiddleware, logoutController);
 
 export default router;
