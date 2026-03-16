@@ -130,6 +130,23 @@ function resolveAuthenticatedUserId(req: Request, res: Response, candidateUserId
   return authenticatedUserId;
 }
 
+/**
+ * Asserts that a connection's stored user_id matches the authenticated user.
+ * Returns false and sends 403 if ownership is violated — defense-in-depth
+ * against any store inconsistency that could put cross-tenant records in a user's list.
+ */
+function assertConnectionOwnership(
+  connection: BankConnection,
+  userId: string,
+  res: Response,
+): boolean {
+  if (connection.user_id !== userId) {
+    res.status(403).json({ message: 'Access to this connection is forbidden' });
+    return false;
+  }
+  return true;
+}
+
 function parseConnectorMap(): Record<string, number> {
   if (!env.PLUGGY_BANK_CONNECTORS) {
     return {};
@@ -425,7 +442,16 @@ export const disconnectBankController = asyncHandler(async (req: Request, res: R
   const current = await getConnectionsForUserAsync(resolvedUserId);
   const connection = current.find((conn) => conn.id === connectionId);
 
-  if (isPluggyEnabled() && connection?.provider === 'pluggy' && connection.external_account_id) {
+  if (!connection) {
+    res.status(404).json({ message: 'Connection not found' });
+    return;
+  }
+
+  if (!assertConnectionOwnership(connection, resolvedUserId, res)) {
+    return;
+  }
+
+  if (isPluggyEnabled() && connection.provider === 'pluggy' && connection.external_account_id) {
     try {
       await pluggyClient.deleteItem(connection.external_account_id);
     } catch (error: unknown) {
@@ -457,6 +483,10 @@ export const syncBankController = asyncHandler(async (req: Request, res: Respons
 
   if (idx < 0) {
     res.status(404).json({ message: 'Connection not found' });
+    return;
+  }
+
+  if (!assertConnectionOwnership(current[idx], resolvedUserId, res)) {
     return;
   }
 

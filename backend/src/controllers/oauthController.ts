@@ -28,7 +28,7 @@ export const googleOAuthCallbackController = asyncHandler(async (req: Request, r
   }
 
   try {
-    const profile = completeGoogleOAuthCallback({ code, state });
+    const profile = await completeGoogleOAuthCallback({ code, state });
 
     const accessToken = generateAccessToken(profile.providerUserId, profile.email);
     const accessPayload = decodeToken(accessToken) as JWTPayload | null;
