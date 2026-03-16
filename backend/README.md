@@ -202,7 +202,10 @@ Generate JWT token.
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIs...",
-  "expiresIn": 604800,
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
+  "expiresIn": 900,
+  "refreshExpiresIn": 2592000,
   "user": {
     "userId": "dXNlckBleGFtcG...",
     "email": "user@example.com"
@@ -216,9 +219,16 @@ Generate JWT token.
 
 #### `POST /api/auth/refresh`
 
-Refresh expired token.
+Refresh access token.
 
-**Headers:**
+**Request (preferred):**
+```json
+{
+  "refreshToken": "<refresh_token>"
+}
+```
+
+**Legacy mode (still supported):**
 ```
 Authorization: Bearer <old_token>
 ```
@@ -227,7 +237,55 @@ Authorization: Bearer <old_token>
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIs...",
-  "expiresIn": 604800
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
+  "expiresIn": 900,
+  "refreshExpiresIn": 2592000
+}
+```
+
+---
+
+#### `GET /api/auth/oauth/google/start`
+
+Starts Google OAuth scaffold flow and returns URL + state.
+
+**Response:**
+```json
+{
+  "provider": "google",
+  "authUrl": "https://accounts.google.com/o/oauth2/v2/auth?...",
+  "state": "a1b2c3...",
+  "expiresIn": 600,
+  "mockMode": true
+}
+```
+
+---
+
+#### `GET /api/auth/oauth/google/callback`
+
+OAuth callback endpoint.
+
+**Query:**
+```
+code=<oauth_code>&state=<oauth_state>
+```
+
+**Response:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
+  "user": {
+    "userId": "google_...",
+    "email": "google-user@flowfinance.test"
+  },
+  "oauth": {
+    "provider": "google",
+    "linked": true
+  }
 }
 ```
 
@@ -258,18 +316,18 @@ Authorization: Bearer <token>  (optional)
 
 #### `POST /api/auth/logout`
 
-Logout (client should discard token).
+Logout and revoke refresh tokens.
 
-**Headers:**
-```
-Authorization: Bearer <token>
-```
+**Request (at least one):**
+- `Authorization: Bearer <access_token>`
+- body `{ "refreshToken": "<refresh_token>" }`
 
 **Response:**
 ```json
 {
   "success": true,
-  "message": "Logged out successfully. Please clear the token on the client side."
+  "revokedRefreshTokens": 1,
+  "message": "Logged out successfully. Please clear tokens on the client side."
 }
 ```
 

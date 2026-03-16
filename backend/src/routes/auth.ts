@@ -7,6 +7,7 @@ import {
   validateController,
   logoutController
 } from '../controllers/authController';
+import { googleOAuthCallbackController, startGoogleOAuthController } from '../controllers/oauthController';
 import { validate } from '../middleware/validate';
 import { LoginSchema } from '../validation/user.schema';
 
@@ -20,6 +21,18 @@ const router = Router();
  * Returns: { token: string, expiresIn: number, user: { userId: string, email: string } }
  */
 router.post('/login', authLimiter, validate(LoginSchema), loginController);
+
+/**
+ * GET /api/auth/oauth/google/start
+ * Inicia fluxo OAuth Google e retorna URL autorizada + state
+ */
+router.get('/oauth/google/start', authLimiter, startGoogleOAuthController);
+
+/**
+ * GET /api/auth/oauth/google/callback
+ * Callback OAuth Google (scaffold mock-first)
+ */
+router.get('/oauth/google/callback', authLimiter, googleOAuthCallbackController);
 
 /**
  * POST /api/auth/refresh
