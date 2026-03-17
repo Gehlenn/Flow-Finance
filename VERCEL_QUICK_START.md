@@ -112,7 +112,7 @@ VITE_FIREBASE_PROJECT_ID=komodo-flow
 
 ### Required for Backend (API)
 ```env
-OPENAI_API_KEY=sk-proj-...
+OPENAI_API_KEY=your_openai_api_key_here
 FIREBASE_PROJECT_ID=komodo-flow
 FIREBASE_CLIENT_EMAIL=...@iam.gserviceaccount.com
 FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----...

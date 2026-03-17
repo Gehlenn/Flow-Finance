@@ -207,7 +207,7 @@ O projeto Flow Finance completou com sucesso a transição para a versão 0.4.0 
 
 ```bash
 # Editar backend/.env
-OPENAI_API_KEY=sk-proj-SUA_CHAVE_AQUI
+OPENAI_API_KEY=your_openai_api_key_here
 ```
 
 ---

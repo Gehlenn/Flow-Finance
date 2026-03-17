@@ -7,13 +7,13 @@ import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "fire
  * Firebase Configuration - Optimized for Production
  */
 const firebaseConfig = {
-  apiKey: "AIzaSyDoEJZbiGeC_tRum31PDlBuYUzlOaEmTrk",
-  authDomain: "komodo-flow.firebaseapp.com",
-  projectId: "komodo-flow",
-  storageBucket: "komodo-flow.firebasestorage.app",
-  messagingSenderId: "160845603769",
-  appId: "1:160845603769:web:da3e9ac2fe80387357cc68",
-  measurementId: "G-X9ZKDT6VK9"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "your_firebase_web_api_key_here",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "your-project.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "your-project-id",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "your-project.appspot.com",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "000000000000",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:000000000000:web:yourfirebaseappid",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ""
 };
 
 // Lazy initialization

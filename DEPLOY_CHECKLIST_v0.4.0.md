@@ -115,7 +115,7 @@ vercel --prod
 
 **Environment Variables Vercel (Frontend):**
 ```
-VITE_FIREBASE_API_KEY=AIzaSyDoEJZbiGeC_tRum31PDlBuYUzlOaEmTrk
+VITE_FIREBASE_API_KEY=your_firebase_web_api_key_here
 VITE_FIREBASE_AUTH_DOMAIN=komodo-flow.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=komodo-flow
 VITE_FIREBASE_STORAGE_BUCKET=komodo-flow.firebasestorage.app

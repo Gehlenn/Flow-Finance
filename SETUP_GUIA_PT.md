@@ -13,7 +13,7 @@
 
 ### Passo 3: Adicione ao .env.local
 ```env
-OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+OPENAI_API_KEY=your_openai_api_key_here
 ```
 
 **Custo**: ~$0.03 por 1K tokens (muito barato)
@@ -39,7 +39,7 @@ OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 ### Opção B: Web Config (Frontend)
 ```env
-VITE_FIREBASE_API_KEY=AIzaSyDoEJZbiGeC_tRum31PDlBuYUzlOaEmTrk
+VITE_FIREBASE_API_KEY=your_firebase_web_api_key_here
 VITE_FIREBASE_PROJECT_ID=komodo-flow
 VITE_FIREBASE_AUTH_DOMAIN=komodo-flow.firebaseapp.com
 VITE_FIREBASE_STORAGE_BUCKET=komodo-flow.firebasestorage.app
