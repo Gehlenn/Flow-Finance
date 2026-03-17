@@ -167,6 +167,11 @@ Expected in persisted mode:
 
 ### Stripe sandbox checkout and webhook
 
+Status atual:
+- Stripe nao e prioridade operacional nesta fase.
+- Open Finance e billing externo estao em espera por viabilidade economica.
+- Manter `ALLOW_MOCK_BILLING_UPDATES=true` em ambientes locais quando a intencao for apenas validar UX/plano.
+
 Use Stripe test credentials only.
 
 Set in `backend/.env`:
@@ -198,6 +203,10 @@ Manual validation flow:
 The Firebase store was validated locally after restart. For fully real-bank validation, a manual run is still required because bank credentials and MFA/consent cannot be automated safely from this workspace.
 
 #### Manual real-bank validation
+
+Observacao de produto:
+- Open Finance foi colocado em standby estrategico por custo operacional do Pluggy.
+- Antes de executar esta trilha, confirme que `DISABLE_OPEN_FINANCE=false` e que o custo ja foi aprovado para a fase do produto.
 
 Use this sequence in staging or production-like environment:
 

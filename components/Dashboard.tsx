@@ -19,12 +19,7 @@ import { generateMonthlyReport, FinancialReport } from '../src/finance/reportEng
 import { getSyncStatusSummary } from '../src/finance/bankSyncEngine';
 import { simulateFinancialScenario, FinancialSimulationResult } from '../src/ai/financialSimulator';
 import { calculateCashflowSummary } from '../src/engines/finance/cashflowEngine';
-import {
-  buildFinancialTimeline,
-  detectBalanceTrend,
-  detectTimelineAnomalies,
-} from '../src/engines/finance/financialTimeline';
-import { classifyFinancialProfile } from '../src/engines/ai/financialProfileClassifier';
+import { buildDashboardFinancialIntelligence } from '../src/app/dashboardFinancialIntelligence';
 import { 
   Eye, EyeOff, BrainCircuit, Loader2, Landmark, LayoutDashboard,
   ArrowUpRight, ArrowDownRight, Wallet, CreditCard,
@@ -196,26 +191,19 @@ const Dashboard: React.FC<DashboardProps> = ({
     [filteredTransactions]
   );
 
-  // ── D3/D4 Engine Insights ────────────────────────────────────────────────
-  const financialTimeline = useMemo(
-    () => buildFinancialTimeline(filteredTransactions),
-    [filteredTransactions]
+  const dashboardIntelligence = useMemo(
+    () => buildDashboardFinancialIntelligence({
+      userId,
+      accounts,
+      transactions: filteredTransactions,
+    }),
+    [accounts, filteredTransactions, userId]
   );
 
-  const balanceTrend = useMemo(
-    () => detectBalanceTrend(financialTimeline),
-    [financialTimeline]
-  );
-
-  const timelineAnomalies = useMemo(
-    () => detectTimelineAnomalies(financialTimeline),
-    [financialTimeline]
-  );
-
-  const financialProfile = useMemo(
-    () => classifyFinancialProfile(filteredTransactions),
-    [filteredTransactions]
-  );
+  const balanceTrend = dashboardIntelligence.balanceTrend;
+  const timelineAnomalies = dashboardIntelligence.timelineAnomalies;
+  const financialProfile = dashboardIntelligence.context.base.financialProfile;
+  const advancedConfidencePct = Math.round(dashboardIntelligence.context.confidence.overall * 100);
 
   const totalBalance = useMemo(() => accounts.reduce((s, a) => s + Math.abs(a.balance), 0), [accounts]);
 
@@ -336,35 +324,34 @@ const Dashboard: React.FC<DashboardProps> = ({
             onClick={onNavigateToOpenFinance}
             className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl flex items-center justify-center gap-3 text-[9px] font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
           >
-            <Landmark size={16} /> Gerenciar Contas Bancárias
-
-                    {/* Account Distribution Bars */}
-                    {selectedAccountId === 'all' && accounts.length > 1 && (
-                      <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
-                        <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-3">Distribuição por Conta</p>
-                        <div className="space-y-2.5">
-                          {accounts.map(acc => {
-                            const pct = totalBalance > 0 ? (Math.abs(acc.balance) / totalBalance) * 100 : 0;
-                            const typeColors: Record<string, string> = {
-                              bank: 'bg-blue-500',
-                              cash: 'bg-emerald-500',
-                              credit_card: 'bg-violet-500',
-                              investment: 'bg-amber-500',
-                            };
-                            return (
-                              <button key={acc.id} onClick={() => setSelectedAccountId(acc.id)} className="w-full flex items-center gap-2 group">
-                                <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 w-20 truncate text-left group-hover:text-indigo-500 transition-colors">{acc.name}</span>
-                                <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                                  <div className={`h-full ${typeColors[acc.type] ?? 'bg-indigo-500'} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
-                                </div>
-                                <span className="text-[9px] font-black text-slate-400 shrink-0">{hideValues ? '••••' : formatVal(acc.balance)}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
+            <Wallet size={16} /> Gerenciar Contas
           </button>
+
+          {selectedAccountId === 'all' && accounts.length > 1 && (
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+              <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-3">Distribuição por Conta</p>
+              <div className="space-y-2.5">
+                {accounts.map(acc => {
+                  const pct = totalBalance > 0 ? (Math.abs(acc.balance) / totalBalance) * 100 : 0;
+                  const typeColors: Record<string, string> = {
+                    bank: 'bg-blue-500',
+                    cash: 'bg-emerald-500',
+                    credit_card: 'bg-violet-500',
+                    investment: 'bg-amber-500',
+                  };
+                  return (
+                    <button key={acc.id} onClick={() => setSelectedAccountId(acc.id)} className="w-full flex items-center gap-2 group">
+                      <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 w-20 truncate text-left group-hover:text-indigo-500 transition-colors">{acc.name}</span>
+                      <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div className={`h-full ${typeColors[acc.type] ?? 'bg-indigo-500'} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-[9px] font-black text-slate-400 shrink-0">{hideValues ? '••••' : formatVal(acc.balance)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -533,22 +520,36 @@ const Dashboard: React.FC<DashboardProps> = ({
               <p className="text-sm font-black text-slate-900 dark:text-white leading-none">{financialProfile.profile}</p>
             </div>
             <div className="bg-white dark:bg-slate-800 px-4 py-3">
-              <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">Confiança</p>
+              <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">Confiança do Contexto</p>
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-700 ${
-                      financialProfile.confidence >= 0.7 ? 'bg-emerald-500' :
-                      financialProfile.confidence >= 0.4 ? 'bg-amber-500' : 'bg-rose-400'
+                      dashboardIntelligence.context.confidence.overall >= 0.7 ? 'bg-emerald-500' :
+                      dashboardIntelligence.context.confidence.overall >= 0.4 ? 'bg-amber-500' : 'bg-rose-400'
                     }`}
-                    style={{ width: `${Math.round(financialProfile.confidence * 100)}%` }}
+                    style={{ width: `${advancedConfidencePct}%` }}
                   />
                 </div>
                 <p className="text-[10px] font-black text-slate-600 dark:text-slate-300 shrink-0">
-                  {Math.round(financialProfile.confidence * 100)}%
+                  {advancedConfidencePct}%
                 </p>
               </div>
             </div>
+          </div>
+
+          <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-700 flex flex-wrap gap-2">
+            {dashboardIntelligence.dominantCategoryLabel && (
+              <span className="px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-[8px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">
+                Categoria dominante: {dashboardIntelligence.dominantCategoryLabel}
+              </span>
+            )}
+            <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
+              Recorrências: {dashboardIntelligence.recurringCount}
+            </span>
+            <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
+              Qualidade de dados: {dashboardIntelligence.merchantCoveragePercent}% merchants
+            </span>
           </div>
 
           {/* Insights */}

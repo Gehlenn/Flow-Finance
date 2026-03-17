@@ -7,6 +7,7 @@ type TokenProbeResult =
   | { status: 'valid'; message: string }
   | { status: 'invalid'; message: string }
   | { status: 'not-configured'; message: string }
+  | { status: 'disabled'; message: string }
   | { status: 'backend-unavailable'; message: string };
 
 async function probeConnectToken(
@@ -16,6 +17,10 @@ async function probeConnectToken(
 ): Promise<TokenProbeResult> {
   try {
     const healthRes = await request.get(`${BACKEND_BASE_URL}/api/banking/health`, { timeout: 5000 });
+    if (healthRes.status() === 503) {
+      return { status: 'disabled', message: 'Open Finance desativado por decisao de negocio.' };
+    }
+
     if (!healthRes.ok()) {
       return { status: 'backend-unavailable', message: `health status ${healthRes.status()}` };
     }
@@ -150,6 +155,10 @@ test.describe('Open Banking - Pluggy Connect', () => {
       type: 'pluggy-connect-token',
       description: `${tokenProbe.status}: ${tokenProbe.message}`,
     });
+
+    if (tokenProbe.status === 'disabled') {
+      test.skip(true, 'Open Finance desativado por decisao de negocio nesta fase do produto.');
+    }
 
     // Com autenticação backend válida, connect-token não pode falhar por credenciais Bearer.
     expect(tokenProbe.message).not.toMatch(/status 401|status 403/i);

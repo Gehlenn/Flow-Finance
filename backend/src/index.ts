@@ -19,6 +19,7 @@ import bankingRoutes from './routes/banking';
 import financeRoutes from './routes/finance';
 import adminRoutes from './routes/admin';
 import syncRoutes from './routes/sync';
+import { featureGateOpenFinance } from './middleware/featureGate';
 
 // ─── INITIALIZATION ──────────────────────────────────────────────────────────
 
@@ -182,7 +183,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/saas', saasRoutes);
 
 // Banking routes (Open Finance integration)
-app.use('/api/banking', bankingRoutes);
+app.use('/api/banking', featureGateOpenFinance, bankingRoutes);
 
 // Finance metrics routes (D3/D4 computations)
 app.use('/api/finance', financeRoutes);

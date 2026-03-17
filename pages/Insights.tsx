@@ -3,6 +3,7 @@ import { Transaction } from '../types';
 import { runAIPipelineSync } from '../src/ai/aiOrchestrator';
 import { AIInsight } from '../src/ai/insightGenerator';
 import { FinancialRiskAlert } from '../src/ai/riskAnalyzer';
+import { buildProductFinancialIntelligence } from '../src/app/productFinancialIntelligence';
 import {
   Sparkles, TrendingUp, TrendingDown, ShieldAlert,
   Lightbulb, PiggyBank, AlertTriangle, CheckCircle2,
@@ -92,9 +93,13 @@ const Insights: React.FC<InsightsProps> = ({ transactions, userId = 'local', hid
     () => runAIPipelineSync(transactions, userId),
     [transactions, userId]
   );
+  const intelligence = useMemo(
+    () => buildProductFinancialIntelligence({ userId, transactions }),
+    [transactions, userId]
+  );
 
   const { financial_state, profile: profileResult, risks, insights, health_score, health_label } = pipeline;
-  const prediction = financial_state.cashflow_prediction;
+  const prediction = intelligence.context.cashflowForecast;
 
   const fmt = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -157,9 +162,9 @@ const Insights: React.FC<InsightsProps> = ({ transactions, userId = 'local', hid
           {/* ── Projeção Rápida ─────────────────────────────────────────── */}
           <div className="bg-slate-900 dark:bg-slate-800 rounded-[2rem] p-6 grid grid-cols-3 gap-3">
             {[
-              { label: 'Hoje', value: prediction.current_balance },
-              { label: '7 dias', value: prediction.balance_7_days },
-              { label: '30 dias', value: prediction.balance_30_days },
+              { label: 'Hoje', value: prediction.currentBalance },
+              { label: '7 dias', value: prediction.in7Days },
+              { label: '30 dias', value: prediction.in30Days },
             ].map(({ label, value }) => (
               <div key={label} className="flex flex-col gap-1 items-center text-center">
                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
@@ -168,6 +173,29 @@ const Insights: React.FC<InsightsProps> = ({ transactions, userId = 'local', hid
                 </p>
               </div>
             ))}
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-5 border border-slate-100 dark:border-slate-700 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <Brain size={16} className="text-indigo-500" />
+              <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Contexto Avançado</h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <span className="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-[8px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">
+                Confiança {Math.round(intelligence.context.confidence.overall * 100)}%
+              </span>
+              <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
+                Recorrências {intelligence.recurringCount}
+              </span>
+              <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
+                Dados {intelligence.merchantCoveragePercent}%
+              </span>
+              {intelligence.dominantCategoryLabel && (
+                <span className="px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 text-[8px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-300">
+                  {intelligence.dominantCategoryLabel}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* ── Seção 1: Insights Financeiros ───────────────────────────── */}

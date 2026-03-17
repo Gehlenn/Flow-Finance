@@ -1,5 +1,16 @@
 # Open Finance Go Live Plan
 
+## Status Atual
+- Standby estrategico desde 16 de Marco de 2026.
+- Motivo: custo Pluggy acima de R$ 1.000/mes, inviavel para a fase atual do produto.
+- Estado operacional: endpoints protegidos por feature gate com `DISABLE_OPEN_FINANCE=true`.
+- Infraestrutura, codigo e testes foram preservados para reativacao futura.
+
+## Como interpretar este documento agora
+- Este plano nao e mais um checklist de execucao imediata.
+- Ele passa a ser um guia de reativacao quando o produto tiver receita para sustentar Open Finance.
+- Enquanto a flag `DISABLE_OPEN_FINANCE=true` estiver ativa, qualquer trilha de go-live deve ser considerada pausada.
+
 ## Objetivo
 Levar o fluxo Open Finance (Pluggy) para operacao estavel e validada ponta a ponta, com seguranca, persistencia e observabilidade.
 

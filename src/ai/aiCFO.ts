@@ -22,6 +22,7 @@ import { CashflowPrediction } from './riskAnalyzer';
 import { learnMemory } from './aiMemory';
 import { buildFinancialGraph, graphToAIContext, getTopMerchants, getCategorySpending } from './financialGraph';
 import { getSpendingPatterns, getUserBehaviors, getFinancialProfile, getMerchantCategories } from './memory';
+import { ProductFinancialIntelligence } from '../app/productFinancialIntelligence';
 
 // ─── PART 2 — Response Model ──────────────────────────────────────────────────
 
@@ -86,7 +87,8 @@ export function buildFinancialContext(
   transactions: Transaction[],
   prediction: CashflowPrediction,
   insights: AIInsight[],
-  userId: string = 'local'
+  userId: string = 'local',
+  intelligence?: ProductFinancialIntelligence,
 ): string {
   const fmt = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -125,6 +127,23 @@ export function buildFinancialContext(
   const insightLines = insights.length > 0
     ? insights.slice(0, 3).map(i => `  - [${i.type}] ${i.message}`).join('\n')
     : '  - Nenhum insight disponível';
+
+  const advancedForecast = intelligence?.context.cashflowForecast;
+  const advancedProfile = intelligence?.context.base.financialProfile;
+  const advancedLines = intelligence
+    ? [
+        '=== CONTEXTO AVANCADO DE IA ===',
+        `CONFIANCA GERAL: ${(intelligence.context.confidence.overall * 100).toFixed(0)}%`,
+        `PADROES RECORRENTES: ${intelligence.recurringCount}`,
+        `QUALIDADE DOS DADOS (merchant coverage): ${intelligence.merchantCoveragePercent}%`,
+        `TENDENCIA DO SALDO: ${intelligence.balanceTrend}`,
+        `ANOMALIAS NA TIMELINE: ${intelligence.timelineAnomalies.length}`,
+        `CATEGORIA DOMINANTE: ${intelligence.dominantCategoryLabel || 'Sem dominancia clara'}`,
+        advancedProfile
+          ? `PERFIL FINANCEIRO ENGINE: ${advancedProfile.profile} (${(advancedProfile.confidence * 100).toFixed(0)}% de confianca)`
+          : 'PERFIL FINANCEIRO ENGINE: indisponivel',
+      ].join('\n')
+    : '';
 
   // PART 5 — Graph context
   let graphContext = '';
@@ -198,8 +217,9 @@ MÊS ATUAL:
   - Resultado: ${fmt(monthIncome - monthExpenses)}
 
 PROJEÇÕES:
-  - Em 7 dias: ${fmt(prediction.balance_7_days)}
-  - Em 30 dias: ${fmt(prediction.balance_30_days)}
+  - Em 7 dias: ${fmt(advancedForecast?.in7Days ?? prediction.balance_7_days)}
+  - Em 30 dias: ${fmt(advancedForecast?.in30Days ?? prediction.balance_30_days)}
+  - Em 90 dias: ${fmt(advancedForecast?.in90Days ?? prediction.balance_30_days)}
   - Receita projetada/mês: ${fmt(prediction.projected_income)}
   - Despesa projetada/mês: ${fmt(prediction.projected_expenses)}
 
@@ -209,7 +229,7 @@ MAIOR CATEGORIA DE GASTOS:
 INSIGHTS RECENTES:
 ${insightLines}
 
-TOTAL DE TRANSAÇÕES REGISTRADAS: ${baseTxs.length}${graphContext}
+TOTAL DE TRANSAÇÕES REGISTRADAS: ${baseTxs.length}${advancedLines ? `\n\n${advancedLines}` : ''}${graphContext}
 `.trim();
 }
 

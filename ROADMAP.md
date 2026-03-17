@@ -4,6 +4,29 @@
 **Status Atual:** v0.5.2v (Transicao iniciada; baseline tecnico em v0.6.x)
 **Meta Estrategica:** v1.0 publico com AI Financial Assistant completo
 
+---
+
+## ⚠️ DECISAO ESTRATEGICA: Open Finance (Pluggy) DESATIVADO
+
+**Data:** 16 de Marco de 2026  
+**Motivo:** Custo operacional Pluggy >R$ 1.000/mes — inviavel economicamente na fase pré-receita  
+**Status:** Infraestrutura mantida intacta com feature gate simples (`DISABLE_OPEN_FINANCE=true` no backend)  
+**Reativacao:** Quando aplicacao atingir SMU (Single Monthly Unit) receita justificando custo  
+
+**Mudancas:**
+- Endpoint `/api/banking/*` retorna HTTP 503 Service Unavailable quando `DISABLE_OPEN_FINANCE=true`
+- Middleware `featureGateOpenFinance` em `backend/src/middleware/featureGate.ts`
+- Flag obrigatoria em `backend/.env` para reativacao; padrão = desativado
+- Codigo fonte mantido para reativacao zero-effort
+
+**Impacto:**
+- ✅ Stripe Billing: Desativado tambem (pular por enquanto; manter mock billing sim)
+- ✅ Core IA: Intacto (AI Context Builder, Pattern Detector, Timeline, Classifier)
+- ✅ Testes: Validados pós-desativacao sem regressao
+- ✅ Caminho crédito/débito: Funciona via entrada manual + IA
+
+---
+
 ## Visao por Fases
 
 - `0.5.x` -> Hardening (qualidade e arquitetura)

@@ -23,6 +23,34 @@
 
 ## CHECKPOINT DE TRANSICAO v0.6.5
 
+### ⚪ D001 - Open Finance (Pluggy) desativado por custo operacional proibitivo
+**ID**: D001  
+**Versao Identificada**: v0.6.5  
+**Severidade**: 🔴 CRITICA (economica, nao tecnica)  
+**Impacto**: Feature comercial desativada; receita = zero; custo Pluggy = >R$ 1.000/mes  
+
+**Descricao**:
+- Pluggy passou de plano gratuito para pago durante desenvolvimento
+- Custo mensal >R$ 1.000 impossibilita monetizacao e viabilidade economica pre-receita
+- Decisao estrategica: desativar temporariamente ate atingir SMU (Single Monthly Unit receita)
+
+**Causa Raiz**:
+- Mudanca de modelo de Pluggy (free tier descontinuado)
+- App ainda em fase pré-monetizacao (v0.5.x hardening)
+
+**Solucao Aplicada**:
+- Feature gate simples: `DISABLE_OPEN_FINANCE=true` em `backend/.env`
+- Middleware `featureGateOpenFinance` retorna HTTP 503 quando desativado
+- Infraestrutura mantida 100% intacta para reativacao zero-effort
+- Codigo fonte + testes + documentacao preservados para reativacao futura
+- Stripe Billing: Desativado tambem (mock billing ativo)
+
+**Status**: ⚪ WONTFIX (estrategico; nao e bug, e decisao de negocio)  
+**Data de Decisao**: 16 Mar 2026  
+**Reativacao Prevista**: Quando receita mensal justificar custo (estimado v0.9.x+)
+
+---
+
 ### 🟢 B012 - E2E Pluggy skip intermitente por email dinamico por-teste
 **ID**: B012  
 **Versao Identificada**: v0.6.4  
