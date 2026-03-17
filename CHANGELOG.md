@@ -1,5 +1,72 @@
 # 📝 CHANGELOG - Flow Finance
 
+## [0.6.8] - 2026-03-17
+
+### Sprint 2 — Hardening de Entrega e Confiabilidade de Fluxo
+
+#### ✅ CI/CD: deploy com fail-fast e preflight operacional
+- workflow de deploy endurecido em `.github/workflows/deploy.yml` com:
+	- resolucao explicita de `DEPLOY_PLATFORM`
+	- falha antecipada para alvo invalido
+	- validacao obrigatoria de secrets por plataforma (`railway`, `render`, `aws`)
+	- preflight summary com contexto operacional (sem exposicao de segredo)
+	- notificacoes Slack tolerantes a webhook ausente (skip seguro)
+
+#### ✅ Open Banking E2E: menor intermitencia no fluxo Pluggy
+- `tests/e2e/open-banking-pluggy.spec.ts` estabilizado para lidar com dois estados de UI:
+	- jornada vazia (`Conectar Banco`)
+	- jornada com conexoes existentes (`Adicionar banco`)
+- comportamento agora evita falso-negativo por estado visual nao deterministico e preserva validacao backend de `connect-token`
+
+#### ✅ Produto: feedback explicito do usuario para sinais de IA
+- `src/app/productFinancialIntelligence.ts` ganhou `signalFeedbackTargets`
+- `components/Dashboard.tsx` ganhou acoes `util` / `nao util` nos sinais priorizados
+- feedback grava aprendizado via `recordMemoryFeedback` para recorrencia, picos e dominancia de categoria
+
+#### ✅ Observabilidade no frontend: requestId propagado em erros de integracao
+- `src/config/api.config.ts` passou a emitir `ApiRequestError` com `statusCode`, `requestId`, `routeScope` e `details`
+- `services/integrations/openBankingService.ts` passa a anexar `requestId` nas mensagens de erro Pluggy quando presente
+
+#### 🧪 Validacoes executadas
+- `npx vitest run tests/unit/dashboard-financial-intelligence.test.ts tests/unit/open-banking-service-extended.test.ts tests/unit/ai-memory-engine.test.ts`: verde (74/74)
+- `npm run lint`: verde
+- `npx playwright test tests/e2e/open-banking-pluggy.spec.ts --project=chromium --workers=1 --reporter=line`: skip controlado (sem falha)
+
+## [0.6.7] - 2026-03-17
+
+### Sprint 2 — Produto + Memoria + Contratos Backend
+
+#### ✅ Produto: sinais de inteligencia internalizados no Dashboard
+- `src/app/productFinancialIntelligence.ts` agora expõe sinais priorizados de produto:
+	- `dominantCategorySharePercent`
+	- `weeklySpikeCount`
+	- `forecastDirection` (`improving|declining|stable`)
+	- `productSignals` com mensagens acionaveis
+- `components/Dashboard.tsx` passou a renderizar bloco `Sinais priorizados` e badge de picos semanais no widget de Inteligencia Financeira
+- `tests/unit/dashboard-financial-intelligence.test.ts` expandido para cobrir novos campos
+
+#### ✅ Memoria: feedback explicito + decaimento contextual
+- `src/ai/memory/AIMemoryEngine.ts` ganhou API de feedback explicito:
+	- `recordMemoryFeedback(userId, type, key, feedback, context?)`
+- metadados de memoria reforcados com:
+	- `contextDecayMultiplier`
+	- `feedbackCount`, `lastFeedback`, `lastFeedbackContext`, `lastFeedbackAt`
+- `src/ai/memory/AIMemoryStore.ts` aplica decaimento ponderado por `contextDecayMultiplier` e expõe `runDecayCycle()` para validacao deterministica
+- `tests/unit/ai-memory-engine.test.ts` expandido para feedback e decaimento contextual
+
+#### ✅ Backend: contrato e observabilidade de erro endurecidos
+- novo middleware `backend/src/middleware/requestContext.ts` injeta `requestId` (com propagacao de `x-request-id`) e `routeScope`
+- `backend/src/index.ts` inclui contexto de requisicao em logs e resposta 404
+- `backend/src/middleware/auth.ts` retorna `requestId` e `routeScope` em erros de autenticacao
+- `backend/src/middleware/errorHandler.ts` passa a logar e retornar `requestId` e `routeScope`
+- `backend/src/types/index.ts` (`ErrorResponse`) atualizado com campos opcionais de contexto
+- `tests/unit/backend-error-handler.test.ts` validado para o novo contrato
+
+#### 🧪 Validacoes executadas
+- `npm run lint`: verde
+- `npm test`: verde (604/604)
+- `npm run test:coverage:critical`: verde (`99.76%` statements / `98.3%` branches)
+
 ## [0.6.6] - 2026-03-17
 
 ### Sprint 2 — Bloco 4 Concluido: Cobertura de Integracao

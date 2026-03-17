@@ -66,7 +66,11 @@ class AIMemoryStore {
       
       if (daysSinceUpdate > this.decayConfig.timeWindow) {
         // Apply decay
-        const decayAmount = daysSinceUpdate * this.decayConfig.decayRate;
+        const contextMultiplier =
+          typeof memory.metadata?.contextDecayMultiplier === 'number'
+            ? Math.max(0.1, memory.metadata.contextDecayMultiplier)
+            : 1;
+        const decayAmount = daysSinceUpdate * this.decayConfig.decayRate * contextMultiplier;
         memory.confidence = Math.max(0, memory.confidence - decayAmount);
         memory.strength = Math.max(0, memory.strength - decayAmount * 100);
 
@@ -265,6 +269,11 @@ class AIMemoryStore {
 
   setDecayConfig(config: Partial<MemoryDecayConfig>): void {
     this.decayConfig = { ...this.decayConfig, ...config };
+  }
+
+  runDecayCycle(): void {
+    this.applyDecay();
+    this.saveToStorage();
   }
 
   getAllMemories(): AIMemoryEntry[] {

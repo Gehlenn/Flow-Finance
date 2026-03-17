@@ -10,6 +10,7 @@ import { initSentry, sentryRequestHandler, sentryErrorHandler, addBreadcrumb } f
 import { errorHandlerMiddleware } from './middleware/errorHandler';
 import { validateJsonMiddleware } from './middleware/jsonValidation';
 import { apiLimiter } from './middleware/rateLimit';
+import { requestContextMiddleware } from './middleware/requestContext';
 
 // Routes
 import authRoutes from './routes/auth';
@@ -29,6 +30,14 @@ addBreadcrumb('Backend server initialization', 'server', 'info');
 
 const app: Application = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
+
+function getRequestContext(req: Request): { requestId?: string; routeScope?: string } {
+  const contextReq = req as Request & { requestId?: string; routeScope?: string };
+  return {
+    requestId: contextReq.requestId,
+    routeScope: contextReq.routeScope,
+  };
+}
 
 // Trust proxy for Vercel/serverless environments
 app.set('trust proxy', 1);
@@ -115,10 +124,16 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+// Request context middleware
+app.use(requestContextMiddleware);
+
 // Logging middleware
 app.use((_req: Request, _res: Response, next: NextFunction) => {
+  const requestContext = getRequestContext(_req);
   logger.info(
     {
+      requestId: requestContext.requestId,
+      routeScope: requestContext.routeScope,
       method: _req.method,
       path: _req.path,
       query: _req.query,
@@ -196,10 +211,21 @@ app.use('/api/admin', adminRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
-  logger.warn({ method: req.method, path: req.path }, 'Route not found');
+  const requestContext = getRequestContext(req);
+  logger.warn(
+    {
+      requestId: requestContext.requestId,
+      routeScope: requestContext.routeScope,
+      method: req.method,
+      path: req.path,
+    },
+    'Route not found'
+  );
   res.status(404).json({
     error: 'Not Found',
     message: `Route ${req.method} ${req.path} does not exist`,
+    requestId: requestContext.requestId,
+    routeScope: requestContext.routeScope,
     timestamp: new Date().toISOString()
   });
 });

@@ -149,6 +149,8 @@ export interface ErrorResponse {
   timestamp: string;
   statusCode: number;
   path?: string;
+  requestId?: string;
+  routeScope?: string;
   details?: Record<string, any>;
 }
 

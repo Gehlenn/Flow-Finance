@@ -17,7 +17,6 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  DEPLOY_PLATFORM: ${{ vars.DEPLOY_PLATFORM || 'none' }}
 
 jobs:
   deploy:
@@ -62,6 +61,96 @@ jobs:
         cd backend
         npm ci
         npm run build
+
+    - name: Resolve deploy target
+      id: deploy-target
+      env:
+        RAW_DEPLOY_PLATFORM: ${{ vars.DEPLOY_PLATFORM }}
+      run: |
+        PLATFORM="${RAW_DEPLOY_PLATFORM}"
+        if [ -z "$PLATFORM" ]; then
+          PLATFORM="none"
+        fi
+        echo "platform=$PLATFORM" >> "$GITHUB_OUTPUT"
+
+    - name: Validate deploy target
+      env:
+        DEPLOY_PLATFORM: ${{ steps.deploy-target.outputs.platform }}
+      run: |
+        case "$DEPLOY_PLATFORM" in
+          railway|render|aws)
+            echo "Deploy target: $DEPLOY_PLATFORM"
+            ;;
+          *)
+            echo "Invalid DEPLOY_PLATFORM: '$DEPLOY_PLATFORM'"
+            echo "Configure repository variable DEPLOY_PLATFORM as one of: railway, render, aws"
+            exit 1
+            ;;
+        esac
+
+    - name: Deployment preflight summary
+      env:
+        DEPLOY_PLATFORM: ${{ steps.deploy-target.outputs.platform }}
+        DEPLOY_ENVIRONMENT: ${{ github.event.inputs.environment || 'production' }}
+        HAS_SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+        HAS_SENTRY_DSN: ${{ secrets.SENTRY_DSN != '' }}
+      run: |
+        echo "=== DEPLOY PREFLIGHT ==="
+        echo "Repository: ${{ github.repository }}"
+        echo "Actor: ${{ github.actor }}"
+        echo "Environment: $DEPLOY_ENVIRONMENT"
+        echo "Platform: $DEPLOY_PLATFORM"
+        echo "Branch: ${{ github.ref_name }}"
+        echo "Commit: ${{ github.sha }}"
+        echo "Secrets check (boolean only):"
+        echo "  - SENTRY_DSN configured: $HAS_SENTRY_DSN"
+        echo "  - SLACK_WEBHOOK_URL configured: $HAS_SLACK_WEBHOOK"
+        echo "========================"
+
+    - name: Validate Railway secrets
+      if: ${{ steps.deploy-target.outputs.platform == 'railway' }}
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      run: |
+        if [ -z "$RAILWAY_TOKEN" ]; then
+          echo "Missing required secret: RAILWAY_TOKEN"
+          exit 1
+        fi
+
+    - name: Validate Render secrets
+      if: ${{ steps.deploy-target.outputs.platform == 'render' }}
+      env:
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+      run: |
+        if [ -z "$RENDER_API_KEY" ]; then
+          echo "Missing required secret: RENDER_API_KEY"
+          exit 1
+        fi
+        if [ -z "$RENDER_SERVICE_ID" ]; then
+          echo "Missing required secret: RENDER_SERVICE_ID"
+          exit 1
+        fi
+
+    - name: Validate AWS secrets
+      if: ${{ steps.deploy-target.outputs.platform == 'aws' }}
+      env:
+        AWS_ECS_CLUSTER: ${{ secrets.AWS_ECS_CLUSTER }}
+        AWS_ECS_SERVICE: ${{ secrets.AWS_ECS_SERVICE }}
+        AWS_REGION: ${{ secrets.AWS_REGION }}
+      run: |
+        if [ -z "$AWS_ECS_CLUSTER" ]; then
+          echo "Missing required secret: AWS_ECS_CLUSTER"
+          exit 1
+        fi
+        if [ -z "$AWS_ECS_SERVICE" ]; then
+          echo "Missing required secret: AWS_ECS_SERVICE"
+          exit 1
+        fi
+        if [ -z "$AWS_REGION" ]; then
+          echo "Missing required secret: AWS_REGION"
+          exit 1
+        fi
 
     - name: Setup Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -121,7 +210,7 @@ jobs:
         cache-to: type=gha,mode=max
 
     - name: Deploy to Railway
-      if: ${{ env.DEPLOY_PLATFORM == 'railway' }}
+      if: ${{ steps.deploy-target.outputs.platform == 'railway' }}
       run: |
         curl -X POST \
           -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
@@ -133,7 +222,7 @@ jobs:
           }'
 
     - name: Deploy to Render
-      if: ${{ env.DEPLOY_PLATFORM == 'render' }}
+      if: ${{ steps.deploy-target.outputs.platform == 'render' }}
       run: |
         curl -X POST \
           -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
@@ -142,7 +231,7 @@ jobs:
           -d '{}'
 
     - name: Deploy to AWS ECS
-      if: ${{ env.DEPLOY_PLATFORM == 'aws' }}
+      if: ${{ steps.deploy-target.outputs.platform == 'aws' }}
       run: |
         aws ecs update-service \
           --cluster ${{ secrets.AWS_ECS_CLUSTER }} \
@@ -153,6 +242,10 @@ jobs:
     - name: Notify deployment success
       if: success()
       run: |
+        if [ -z "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+          echo "SLACK_WEBHOOK_URL not configured. Skipping success notification."
+          exit 0
+        fi
         curl -X POST \
           -H 'Content-type: application/json' \
           --data '{"text":"${{ format('🚀 Flow Finance deployed successfully to {0}', github.event.inputs.environment || 'production') }}"}' \
@@ -161,6 +254,10 @@ jobs:
     - name: Notify deployment failure
       if: failure()
       run: |
+        if [ -z "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+          echo "SLACK_WEBHOOK_URL not configured. Skipping failure notification."
+          exit 0
+        fi
         curl -X POST \
           -H 'Content-type: application/json' \
           --data '{"text":"${{ format('❌ Flow Finance deployment failed to {0}', github.event.inputs.environment || 'production') }}"}' \

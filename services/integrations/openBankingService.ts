@@ -23,7 +23,7 @@ import { FinancialEventEmitter } from '../../src/events/eventEngine';
 import { classifyImportedTransactions } from '../../src/finance/importService';
 import { learnMemory } from '../../src/ai/aiMemory';
 import { makeId } from '../../utils/helpers';
-import { API_ENDPOINTS, apiRequest } from '../../src/config/api.config';
+import { API_ENDPOINTS, apiRequest, ApiRequestError } from '../../src/config/api.config';
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 
@@ -51,9 +51,22 @@ function isProductionRuntime(): boolean {
 }
 
 function getApiErrorStatus(error: unknown): number | null {
+  if (error instanceof ApiRequestError) {
+    return error.statusCode;
+  }
+
   const message = String((error as any)?.message ?? '');
   const match = message.match(/API Error\s+(\d{3})/);
   return match ? Number(match[1]) : null;
+}
+
+function extractRequestId(error: unknown): string | null {
+  if (error instanceof ApiRequestError && error.requestId) {
+    return error.requestId;
+  }
+
+  const fromObject = (error as any)?.requestId;
+  return typeof fromObject === 'string' && fromObject.trim() ? fromObject.trim() : null;
 }
 
 function collectErrorTokens(error: unknown, seen = new Set<unknown>()): string[] {
@@ -84,16 +97,18 @@ function collectErrorTokens(error: unknown, seen = new Set<unknown>()): string[]
 
 export function mapPluggyConnectErrorMessage(error: unknown): string {
   const merged = collectErrorTokens(error).join(' ').toUpperCase();
+  const requestId = extractRequestId(error);
+  const suffix = requestId ? ` (requestId: ${requestId})` : '';
 
   if (merged.includes('TRIAL_CLIENT_ITEM_CREATE_NOT_ALLOWED')) {
-    return 'Sua credencial Pluggy esta em modo de teste. Use um conector sandbox ou solicite habilitacao de contas reais no painel da Pluggy.';
+    return `Sua credencial Pluggy esta em modo de teste. Use um conector sandbox ou solicite habilitacao de contas reais no painel da Pluggy.${suffix}`;
   }
 
   if (merged.includes('INVALID_CONNECT_TOKEN') || merged.includes('CONNECT_TOKEN')) {
-    return 'Token de conexao da Pluggy expirou ou e invalido. Atualize a tela e tente novamente.';
+    return `Token de conexao da Pluggy expirou ou e invalido. Atualize a tela e tente novamente.${suffix}`;
   }
 
-  return 'Conexao Pluggy cancelada ou invalida. Tente novamente.';
+  return `Conexao Pluggy cancelada ou invalida. Tente novamente.${suffix}`;
 }
 
 function shouldUseLocalMockFallback(error: unknown): boolean {

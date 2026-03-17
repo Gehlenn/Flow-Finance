@@ -92,6 +92,28 @@ export const API_CONFIG = {
   },
 };
 
+export class ApiRequestError extends Error {
+  statusCode: number;
+  requestId?: string;
+  routeScope?: string;
+  details?: Record<string, unknown>;
+
+  constructor(params: {
+    statusCode: number;
+    message: string;
+    requestId?: string;
+    routeScope?: string;
+    details?: Record<string, unknown>;
+  }) {
+    super(params.message);
+    this.name = 'ApiRequestError';
+    this.statusCode = params.statusCode;
+    this.requestId = params.requestId;
+    this.routeScope = params.routeScope;
+    this.details = params.details;
+  }
+}
+
 // ─── Security Headers ────────────────────────────────────────────────────────
 
 export function getAuthHeaders(): Record<string, string> {
@@ -148,8 +170,20 @@ export async function apiRequest<T>(
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(`API Error ${response.status}: ${error.message || response.statusText}`);
+        const errorPayload = await response.json().catch(() => ({} as Record<string, unknown>));
+        const message = String((errorPayload as any).message || response.statusText || 'Request failed');
+        const requestIdFromBody = typeof (errorPayload as any).requestId === 'string' ? (errorPayload as any).requestId : undefined;
+        const requestIdFromHeader = response.headers.get('x-request-id') || undefined;
+
+        throw new ApiRequestError({
+          statusCode: response.status,
+          message: `API Error ${response.status}: ${message}`,
+          requestId: requestIdFromBody || requestIdFromHeader,
+          routeScope: typeof (errorPayload as any).routeScope === 'string' ? (errorPayload as any).routeScope : undefined,
+          details: typeof (errorPayload as any).details === 'object' && (errorPayload as any).details !== null
+            ? (errorPayload as any).details as Record<string, unknown>
+            : undefined,
+        });
       }
 
       return await response.json();

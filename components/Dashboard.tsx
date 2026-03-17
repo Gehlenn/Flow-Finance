@@ -20,6 +20,7 @@ import { getSyncStatusSummary } from '../src/finance/bankSyncEngine';
 import { simulateFinancialScenario, FinancialSimulationResult } from '../src/ai/financialSimulator';
 import { calculateCashflowSummary } from '../src/engines/finance/cashflowEngine';
 import { buildDashboardFinancialIntelligence } from '../src/app/dashboardFinancialIntelligence';
+import { recordMemoryFeedback } from '../src/ai/memory/AIMemoryEngine';
 import { 
   Eye, EyeOff, BrainCircuit, Loader2, Landmark, LayoutDashboard,
   ArrowUpRight, ArrowDownRight, Wallet, CreditCard,
@@ -61,6 +62,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [isConsultancyOpen, setIsConsultancyOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState<string>('all');
+  const [signalFeedbackState, setSignalFeedbackState] = useState<Record<string, 'positive' | 'negative'>>({});
   const gemini = useRef(new GeminiService());
 
   // Filtrar transações por conta selecionada
@@ -204,6 +206,18 @@ const Dashboard: React.FC<DashboardProps> = ({
   const timelineAnomalies = dashboardIntelligence.timelineAnomalies;
   const financialProfile = dashboardIntelligence.context.base.financialProfile;
   const advancedConfidencePct = Math.round(dashboardIntelligence.context.confidence.overall * 100);
+
+  const submitSignalFeedback = (label: string, feedback: 'positive' | 'negative') => {
+    const target = dashboardIntelligence.signalFeedbackTargets.find((entry) => entry.label === label);
+    if (!target) {
+      return;
+    }
+
+    const applied = recordMemoryFeedback(userId || 'local', target.type, target.key, feedback, target.context);
+    if (applied) {
+      setSignalFeedbackState((prev) => ({ ...prev, [label]: feedback }));
+    }
+  };
 
   const totalBalance = useMemo(() => accounts.reduce((s, a) => s + Math.abs(a.balance), 0), [accounts]);
 
@@ -550,7 +564,47 @@ const Dashboard: React.FC<DashboardProps> = ({
             <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
               Qualidade de dados: {dashboardIntelligence.merchantCoveragePercent}% merchants
             </span>
+            {dashboardIntelligence.weeklySpikeCount > 0 && (
+              <span className="px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-500/10 text-[8px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-300">
+                Picos semanais: {dashboardIntelligence.weeklySpikeCount}
+              </span>
+            )}
           </div>
+
+          {dashboardIntelligence.productSignals.length > 0 && (
+            <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-700">
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">Sinais priorizados</p>
+              <div className="flex flex-col gap-1.5">
+                {dashboardIntelligence.productSignals.slice(0, 3).map((signal) => (
+                  <div key={signal} className="flex items-start justify-between gap-2">
+                    <p className="text-[10px] font-semibold text-slate-700 dark:text-slate-200 leading-snug">• {signal}</p>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => submitSignalFeedback(signal, 'positive')}
+                        className={`px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wide transition-colors ${
+                          signalFeedbackState[signal] === 'positive'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+                            : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        util
+                      </button>
+                      <button
+                        onClick={() => submitSignalFeedback(signal, 'negative')}
+                        className={`px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wide transition-colors ${
+                          signalFeedbackState[signal] === 'negative'
+                            ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300'
+                            : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        nao util
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Insights */}
           {financialProfile.insights.length > 0 && (

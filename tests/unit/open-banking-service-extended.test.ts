@@ -75,6 +75,7 @@ import {
   formatLastSync,
   mapPluggyConnectErrorMessage,
 } from '../../services/integrations/openBankingService';
+import { ApiRequestError } from '../../src/config/api.config';
 
 import { getProvider } from '../../services/integrations/mockBankProvider';
 
@@ -797,6 +798,27 @@ describe('openBankingService - Extended Coverage', () => {
   it('mapPluggyConnectErrorMessage aceita erro primitivo nao objeto', () => {
     const message = mapPluggyConnectErrorMessage(503 as any);
     expect(message).toMatch(/cancelada|invalida/i);
+  });
+
+  it('mapPluggyConnectErrorMessage anexa requestId quando erro vem de ApiRequestError', () => {
+    const error = new ApiRequestError({
+      statusCode: 502,
+      message: 'API Error 502: Pluggy connect failed',
+      requestId: 'req-open-banking-1',
+      routeScope: 'banking',
+    });
+
+    const message = mapPluggyConnectErrorMessage(error);
+    expect(message).toMatch(/requestId: req-open-banking-1/i);
+  });
+
+  it('mapPluggyConnectErrorMessage anexa requestId quando presente em objeto simples', () => {
+    const message = mapPluggyConnectErrorMessage({
+      foo: 'bar',
+      requestId: 'req-open-banking-2',
+    });
+
+    expect(message).toMatch(/requestId: req-open-banking-2/i);
   });
 
   it('reloadConnections reconcilia cache local com lista do backend', async () => {

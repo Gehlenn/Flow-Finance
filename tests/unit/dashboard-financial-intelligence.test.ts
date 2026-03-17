@@ -108,6 +108,10 @@ describe('buildDashboardFinancialIntelligence', () => {
     expect(result.merchantCoveragePercent).toBeGreaterThan(70);
     expect(result.recurringCount).toBeGreaterThan(0);
     expect(result.dominantCategoryLabel).toBe(Category.PESSOAL);
+    expect(result.dominantCategorySharePercent).toBeGreaterThan(0);
+    expect(['improving', 'declining', 'stable']).toContain(result.forecastDirection);
+    expect(Array.isArray(result.productSignals)).toBe(true);
+    expect(Array.isArray(result.signalFeedbackTargets)).toBe(true);
     expect(result.context.confidence.overall).toBeGreaterThan(0);
   });
 
@@ -120,5 +124,7 @@ describe('buildDashboardFinancialIntelligence', () => {
     expect(result.context.base.accounts).toEqual([]);
     expect(result.merchantCoveragePercent).toBe(0);
     expect(result.recurringCount).toBe(0);
+    expect(result.productSignals.length).toBeGreaterThan(0);
+    expect(result.signalFeedbackTargets.length).toBe(0);
   });
 });

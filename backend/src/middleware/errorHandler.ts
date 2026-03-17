@@ -34,6 +34,14 @@ function sanitizeDetails(details?: Record<string, any>): Record<string, any> | u
   return sanitizeValue(details) as Record<string, any>;
 }
 
+function getRequestContext(req: Request): { requestId?: string; routeScope?: string } {
+  const contextReq = req as Request & { requestId?: string; routeScope?: string };
+  return {
+    requestId: contextReq.requestId,
+    routeScope: contextReq.routeScope,
+  };
+}
+
 export class AppError extends Error {
   constructor(
     public statusCode: number,
@@ -54,9 +62,12 @@ export function errorHandler(
   const statusCode = error instanceof AppError ? error.statusCode : 500;
   const message = error.message || 'Internal server error';
   const sanitizedDetails = error instanceof AppError ? sanitizeDetails(error.details) : undefined;
+  const requestContext = getRequestContext(req);
 
   logger.error(
     {
+      requestId: requestContext.requestId,
+      routeScope: requestContext.routeScope,
       error: {
         name: error.name,
         message: error.message,
@@ -76,6 +87,8 @@ export function errorHandler(
     message,
     timestamp: new Date().toISOString(),
     path: req.path,
+    requestId: requestContext.requestId,
+    routeScope: requestContext.routeScope,
     ...(statusCode < 500 && sanitizedDetails && { details: sanitizedDetails }),
   };
 

@@ -39,6 +39,11 @@ const DEFAULT_LEARNING_CONFIG: MemoryLearningConfig = {
 class AIMemoryEngine {
   private learningConfig: MemoryLearningConfig = DEFAULT_LEARNING_CONFIG;
 
+  private readonly feedbackImpact = {
+    positive: { confidence: 0.08, strength: 8 },
+    negative: { confidence: -0.12, strength: -12 },
+  };
+
   private getConfidenceBand(confidence: number): 'low' | 'medium' | 'high' {
     if (confidence >= 0.75) return 'high';
     if (confidence >= 0.5) return 'medium';
@@ -55,6 +60,22 @@ class AIMemoryEngine {
     }
 
     return 21 * 24 * 60 * 60 * 1000;
+  }
+
+  private resolveContextDecayMultiplier(type: AIMemoryType, key: string): number {
+    if (type !== AIMemoryType.SPENDING_PATTERN) {
+      return 1;
+    }
+
+    if (key === 'category_dominance') {
+      return 1.3;
+    }
+
+    if (key === 'money_map_distribution') {
+      return 1.15;
+    }
+
+    return 1;
   }
 
   private buildMemoryMetadata(
@@ -78,7 +99,31 @@ class AIMemoryEngine {
       confidenceScore: Number(confidence.toFixed(3)),
       confidenceBand: this.getConfidenceBand(confidence),
       expiresAt: now + this.resolveExpiryWindowMs(type, key),
+      contextDecayMultiplier: this.resolveContextDecayMultiplier(type, key),
     };
+  }
+
+  private applyFeedbackToMemory(
+    memory: AIMemoryEntry,
+    feedback: 'positive' | 'negative',
+    context?: string,
+  ): void {
+    const impact = this.feedbackImpact[feedback];
+    const nextConfidence = Math.min(1, Math.max(0, memory.confidence + impact.confidence));
+    const nextStrength = Math.min(100, Math.max(0, memory.strength + impact.strength));
+
+    aiMemoryStore.updateMemory(memory.id, {
+      confidence: nextConfidence,
+      strength: nextStrength,
+      metadata: {
+        ...(memory.metadata || {}),
+        confidenceBand: this.getConfidenceBand(nextConfidence),
+        feedbackCount: Number((memory.metadata?.feedbackCount || 0) + 1),
+        lastFeedback: feedback,
+        lastFeedbackContext: context || 'general',
+        lastFeedbackAt: Date.now(),
+      },
+    });
   }
 
   /**
@@ -372,6 +417,25 @@ class AIMemoryEngine {
     return aiMemoryStore.getStats(userId);
   }
 
+  recordMemoryFeedback(
+    userId: string,
+    type: AIMemoryType,
+    key: string,
+    feedback: 'positive' | 'negative',
+    context?: string,
+  ): boolean {
+    const memory = aiMemoryStore
+      .getMemoriesByType(userId, type)
+      .find((entry) => entry.key === key);
+
+    if (!memory) {
+      return false;
+    }
+
+    this.applyFeedbackToMemory(memory, feedback, context);
+    return true;
+  }
+
   /**
    * Clear all memories for a user
    */
@@ -433,6 +497,16 @@ export function hasBehavior(userId: string, behavior: UserBehaviorValue['behavio
 
 export function getMemoryStats(userId: string) {
   return aiMemoryEngine.getStats(userId);
+}
+
+export function recordMemoryFeedback(
+  userId: string,
+  type: AIMemoryType,
+  key: string,
+  feedback: 'positive' | 'negative',
+  context?: string,
+): boolean {
+  return aiMemoryEngine.recordMemoryFeedback(userId, type, key, feedback, context);
 }
 
 export function getUserMemoryProfile(userId: string) {
