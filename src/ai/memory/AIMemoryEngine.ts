@@ -39,6 +39,48 @@ const DEFAULT_LEARNING_CONFIG: MemoryLearningConfig = {
 class AIMemoryEngine {
   private learningConfig: MemoryLearningConfig = DEFAULT_LEARNING_CONFIG;
 
+  private getConfidenceBand(confidence: number): 'low' | 'medium' | 'high' {
+    if (confidence >= 0.75) return 'high';
+    if (confidence >= 0.5) return 'medium';
+    return 'low';
+  }
+
+  private resolveExpiryWindowMs(type: AIMemoryType, key: string): number {
+    if (type !== AIMemoryType.SPENDING_PATTERN) {
+      return 45 * 24 * 60 * 60 * 1000;
+    }
+
+    if (key === 'category_dominance' || key === 'money_map_distribution') {
+      return 30 * 24 * 60 * 60 * 1000;
+    }
+
+    return 21 * 24 * 60 * 60 * 1000;
+  }
+
+  private buildMemoryMetadata(
+    type: AIMemoryType,
+    key: string,
+    confidence: number,
+    now: number,
+    current?: Record<string, any>,
+  ): Record<string, any> | undefined {
+    const shouldTrackDistributionSignal =
+      type === AIMemoryType.SPENDING_PATTERN &&
+      (key === 'category_dominance' || key === 'money_map_distribution');
+
+    if (!shouldTrackDistributionSignal) {
+      return current;
+    }
+
+    return {
+      ...(current || {}),
+      signalType: 'category_distribution',
+      confidenceScore: Number(confidence.toFixed(3)),
+      confidenceBand: this.getConfidenceBand(confidence),
+      expiresAt: now + this.resolveExpiryWindowMs(type, key),
+    };
+  }
+
   /**
    * Simple update path used by event-driven/orchestrator flow.
    */
@@ -192,6 +234,7 @@ class AIMemoryEngine {
       .find((m) => m.key === key);
 
     const now = Date.now();
+    const metadata = this.buildMemoryMetadata(type, key, confidence, now, existing?.metadata);
 
     if (existing) {
       // Update existing memory
@@ -206,6 +249,7 @@ class AIMemoryEngine {
         occurrences: newOccurrences,
         updatedAt: now,
         lastObservedAt: now,
+        metadata,
       });
     } else {
       // Create new memory
@@ -221,6 +265,7 @@ class AIMemoryEngine {
         createdAt: now,
         updatedAt: now,
         lastObservedAt: now,
+        metadata,
       };
 
       aiMemoryStore.saveMemory(memory);

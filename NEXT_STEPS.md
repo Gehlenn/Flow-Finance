@@ -21,10 +21,20 @@
 - adicionar testes para advancedContextBuilder e viewers internos
 - ampliar cenarios de previsao e dominancia por categoria
 
+Status: concluido em 17/03/2026
+- testes adicionados para `advancedContextBuilder`
+- testes de integracao adicionados para viewers internos do painel de IA
+- cenarios de previsao e dominancia por categoria ampliados e validados
+
 5. Open Finance em standby estrategico
 - manter codigo, testes e infraestrutura preservados para reativacao futura
 - nao priorizar Pluggy ou Stripe enquanto custo operacional permanecer inviavel
 - reavaliar somente quando receita do produto justificar o custo mensal
+
+Status: concluido em 17/03/2026
+- gate ativo em `/api/banking` via `DISABLE_OPEN_FINANCE=true`
+- infraestrutura Pluggy/Stripe preservada no codigo para reativacao futura
+- documentacao operacional e estrategia economica alinhadas para standby
 
 ## Entregaveis Tecnicos Sugeridos
 

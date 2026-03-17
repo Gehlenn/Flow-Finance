@@ -166,6 +166,35 @@ describe('AIMemoryEngine', () => {
     aiMemoryEngine.clearUserMemories('u1');
     expect(getAIMemories('u1')).toHaveLength(0);
   });
+
+  it('stores confidence + expiration signals for category distribution patterns', () => {
+    aiMemoryEngine.updateMemory(
+      {
+        recurring: [],
+        weeklySpikes: [],
+        categoryDominance: ['Pessoal', 1200],
+        recurringInsights: [],
+        weeklySpikeInsights: [],
+        dominantCategoryShare: 0.68,
+        confidence: {
+          recurring: 0,
+          weeklySpikes: 0,
+          categoryDominance: 0.82,
+          overall: 0.27,
+        },
+      },
+      'u1',
+    );
+
+    const memories = getAIMemories('u1', AIMemoryType.SPENDING_PATTERN);
+    const categoryMemory = memories.find((m) => m.key === 'category_dominance');
+
+    expect(categoryMemory).toBeDefined();
+    expect(categoryMemory?.metadata?.signalType).toBe('category_distribution');
+    expect(categoryMemory?.metadata?.confidenceBand).toBe('high');
+    expect(typeof categoryMemory?.metadata?.expiresAt).toBe('number');
+    expect(categoryMemory!.metadata!.expiresAt).toBeGreaterThan(Date.now());
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -242,5 +271,25 @@ describe('AIMemoryStore', () => {
     expect(stats.avgConfidence).toBeCloseTo(0.7);
     expect(stats.byType[AIMemoryType.SPENDING_PATTERN]).toBe(1);
     expect(stats.byType[AIMemoryType.MERCHANT_CATEGORY]).toBe(1);
+  });
+
+  it('queryMemories ignores entries with expired metadata.expiresAt', () => {
+    aiMemoryStore.saveMemory({
+      id: 'exp1',
+      userId: 'u1',
+      type: AIMemoryType.SPENDING_PATTERN,
+      key: 'category_dominance',
+      value: { category: 'Pessoal', amount: 900 },
+      confidence: 0.9,
+      strength: 50,
+      occurrences: 2,
+      createdAt: Date.now() - 1000,
+      updatedAt: Date.now() - 1000,
+      lastObservedAt: Date.now() - 1000,
+      metadata: { expiresAt: Date.now() - 1 },
+    });
+
+    const results = aiMemoryStore.queryMemories({ userId: 'u1' });
+    expect(results.find((m) => m.id === 'exp1')).toBeUndefined();
   });
 });

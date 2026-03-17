@@ -1,5 +1,41 @@
 # 📝 CHANGELOG - Flow Finance
 
+## [0.6.6] - 2026-03-17
+
+### Sprint 2 — Bloco 4 Concluido: Cobertura de Integracao
+
+#### ✅ Cobertura ampliada do Advanced Context Builder
+- `tests/unit/advanced-context-builder.test.ts` expandido com cenarios de integracao para:
+	- confianca minima de previsao com baixa amostragem de transacoes
+	- dominancia por categoria com validacao de percentual dominante
+	- consistencia progressiva de forecast em 7/30/90 dias
+
+#### ✅ Viewers internos do painel de IA validados
+- Nova suite `tests/unit/ai-control-panel-viewers.test.tsx` cobrindo:
+	- gate de renderizacao via `VITE_AI_DEBUG_PANEL`
+	- renderizacao integrada de `AI Memory`, `Detected Patterns`, `Money Map`, `AI Task Queue` e `AI Insights`
+	- presenca de sinais de memoria, fila de tarefas e campos de previsao no fluxo real do orquestrador
+
+#### 🧪 Validacoes executadas
+- `npx vitest run tests/unit/advanced-context-builder.test.ts tests/unit/ai-control-panel-viewers.test.tsx`: verde (6/6)
+- `npm run lint`: verde
+- `npm test`: verde (601/601)
+- `npm run test:coverage:critical`: verde (`99.76%` statements / `98.3%` branches)
+
+### Sprint 2 — Bloco 5 Concluido: Open Finance em Standby Estrategico
+
+#### ✅ Standby economico formalizado sem perda de capacidade tecnica
+- gate de runtime mantido em `/api/banking` com `DISABLE_OPEN_FINANCE=true`
+- stack de Open Finance (Pluggy) e billing (Stripe) preservada para reativacao futura
+- decisao de nao priorizacao mantida enquanto custo operacional seguir inviavel
+
+#### ✅ Evidencias de preservacao
+- middleware `featureGateOpenFinance` ativo no backend
+- rotas, controladores e testes de Open Finance permanecem versionados e validos
+- documentacao de operacao/go-live mantida para retomada quando houver viabilidade
+
+---
+
 ## [0.6.5] - 2026-03-16
 
 ### Sprint 2 — D5/D6/D7: Financial Intelligence UI, Backend Metrics, E2E Auth Fixture

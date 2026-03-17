@@ -83,6 +83,25 @@ class AIMemoryStore {
     }
   }
 
+  private isExpired(memory: AIMemoryEntry): boolean {
+    const expiresAt = memory.metadata?.expiresAt;
+    return typeof expiresAt === 'number' && expiresAt <= Date.now();
+  }
+
+  private pruneExpiredMemories(): void {
+    let removed = 0;
+    for (const [id, memory] of this.memories) {
+      if (this.isExpired(memory)) {
+        this.memories.delete(id);
+        removed += 1;
+      }
+    }
+
+    if (removed > 0) {
+      this.saveToStorage();
+    }
+  }
+
   saveMemory(memory: AIMemoryEntry): void {
     // Enforce per-user limits
     const userMemories = this.getMemoriesByUser(memory.userId);
@@ -123,12 +142,14 @@ class AIMemoryStore {
   }
 
   getMemoriesByUser(userId: string): AIMemoryEntry[] {
+    this.pruneExpiredMemories();
     return Array.from(this.memories.values())
       .filter((m) => m.userId === userId)
       .sort((a, b) => b.updatedAt - a.updatedAt);
   }
 
   getMemoriesByType(userId: string, type: AIMemoryType): AIMemoryEntry[] {
+    this.pruneExpiredMemories();
     return Array.from(this.memories.values())
       .filter((m) => m.userId === userId && m.type === type)
       .sort((a, b) => b.strength - a.strength);
@@ -139,6 +160,7 @@ class AIMemoryStore {
   }
 
   queryMemories(filter: MemoryQueryFilter): AIMemoryEntry[] {
+    this.pruneExpiredMemories();
     let results = Array.from(this.memories.values()).filter((m) => m.userId === filter.userId);
 
     if (filter.type) {
