@@ -1,6 +1,12 @@
-// Serviço de autenticação base para JWT, refresh token e OAuth
-// v0.9.x SaaS foundation
+// auth/authService.ts
+import { User } from '../models/User';
 
 export class AuthService {
-  // TODO: Implementar login, registro, refresh token, OAuth
+  public static async login(username: string, password: string): Promise<User> {
+    // Implementação da lógica de login
+  }
+
+  public static async register(user: User): Promise<void> {
+    // Implementação da lógica de registro
+  }
 }
