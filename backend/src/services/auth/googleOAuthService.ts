@@ -89,10 +89,73 @@ function mockProfileFromCode(code: string): GoogleOAuthProfile {
   };
 }
 
-export function completeGoogleOAuthCallback(params: {
+interface GoogleTokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in?: number;
+  refresh_token?: string;
+  id_token?: string;
+  error?: string;
+  error_description?: string;
+}
+
+interface GoogleUserInfoResponse {
+  id: string;
+  email: string;
+  name: string;
+  picture?: string;
+  error?: { message: string };
+}
+
+async function exchangeCodeForTokens(
+  code: string,
+  redirectUri: string,
+): Promise<GoogleTokenResponse> {
+  const body = new URLSearchParams({
+    code,
+    client_id: env.GOOGLE_OAUTH_CLIENT_ID!,
+    client_secret: env.GOOGLE_OAUTH_CLIENT_SECRET!,
+    redirect_uri: redirectUri,
+    grant_type: 'authorization_code',
+  });
+
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  });
+
+  const data = (await response.json()) as GoogleTokenResponse;
+
+  if (!response.ok || data.error) {
+    throw new Error(
+      `Google token exchange failed: ${data.error_description || data.error || response.statusText}`,
+    );
+  }
+
+  return data;
+}
+
+async function fetchGoogleUserInfo(accessToken: string): Promise<GoogleUserInfoResponse> {
+  const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  const data = (await response.json()) as GoogleUserInfoResponse;
+
+  if (!response.ok || data.error) {
+    throw new Error(
+      `Google userinfo fetch failed: ${JSON.stringify(data.error)}`,
+    );
+  }
+
+  return data;
+}
+
+export async function completeGoogleOAuthCallback(params: {
   code: string;
   state: string;
-}): GoogleOAuthProfile {
+}): Promise<GoogleOAuthProfile> {
   const { code, state } = params;
 
   const consumed = consumeOAuthState(state, 'google');
@@ -105,6 +168,15 @@ export function completeGoogleOAuthCallback(params: {
     return mockProfileFromCode(code);
   }
 
-  // Scaffold de integração: troca real com Google será adicionada no C2.1.
-  throw new Error('Google OAuth real exchange not implemented in this scaffold');
+  const redirectUri = getConfiguredRedirectUri();
+  const tokens = await exchangeCodeForTokens(code, redirectUri);
+  const userInfo = await fetchGoogleUserInfo(tokens.access_token);
+
+  return {
+    provider: 'google',
+    providerUserId: userInfo.id,
+    email: userInfo.email,
+    name: userInfo.name,
+    picture: userInfo.picture,
+  };
 }

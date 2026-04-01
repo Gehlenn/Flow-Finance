@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
+import { optionalAuthMiddleware } from '../middleware/auth';
 import { authLimiter } from '../middleware/rateLimit';
 import {
   loginController,
