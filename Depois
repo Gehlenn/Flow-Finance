@@ -1,6 +1,0 @@
-function calculateBalance(transactions, type) {
-  return transactions.filter(t => t.type === type).reduce((acc, t) => acc + (type === TransactionType.RECEITA ? t.amount : -t.amount), 0);
-}
-
-const totalIncome = calculateBalance(transactions, TransactionType.RECEITA);
-const totalExpenses = calculateBalance(transactions, TransactionType.DESPESA);
