@@ -30,6 +30,7 @@ dist-ssr
 # Test results and screenshots
 test-results/
 playwright-report/
+coverage/
 debug-screenshot.png
 *.png
 *.jpg
@@ -55,6 +56,10 @@ android-sdk-tools.zip
 *.tmp
 *.temp
 *.bak
+.tmp-*.txt
+.tmp-*.log
 .vercel
 .env*.local
 .aider*
+firebase-debug.log
+flow-finance-current.zip
