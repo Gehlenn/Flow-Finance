@@ -7,6 +7,7 @@ import {
   validateController,
   logoutController
 } from '../controllers/authController';
+import { googleOAuthCallbackController, startGoogleOAuthController } from '../controllers/oauthController';
 import { validate } from '../middleware/validate';
 import { LoginSchema } from '../validation/user.schema';
 
@@ -22,13 +23,25 @@ const router = Router();
 router.post('/login', authLimiter, validate(LoginSchema), loginController);
 
 /**
+ * GET /api/auth/oauth/google/start
+ * Inicia fluxo OAuth Google e retorna URL autorizada + state
+ */
+router.get('/oauth/google/start', authLimiter, startGoogleOAuthController);
+
+/**
+ * GET /api/auth/oauth/google/callback
+ * Callback OAuth Google (scaffold mock-first)
+ */
+router.get('/oauth/google/callback', authLimiter, googleOAuthCallbackController);
+
+/**
  * POST /api/auth/refresh
  * Refresh JWT token
  *
  * Headers: Authorization: Bearer <old_token>
  * Returns: { token: string, expiresIn: number }
  */
-router.post('/refresh', authMiddleware, refreshController);
+router.post('/refresh', optionalAuthMiddleware, refreshController);
 
 /**
  * GET /api/auth/validate
@@ -46,6 +59,6 @@ router.get('/validate', optionalAuthMiddleware, validateController);
  * Headers: Authorization: Bearer <token>
  * Returns: { success: boolean, message: string }
  */
-router.post('/logout', authMiddleware, logoutController);
+router.post('/logout', optionalAuthMiddleware, logoutController);
 
 export default router;
