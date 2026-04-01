@@ -10,6 +10,7 @@ import {
 } from '../services/openFinance/bankingConnectionStore';
 import { PluggyClient } from '../services/openFinance/pluggyClient';
 import { isPluggyProviderEnabled, isSupportedOpenFinanceProvider } from '../services/openFinance/providerMode';
+import { recordAuditEvent } from '../services/admin/auditLog';
 
 type ConnectionStatus = 'connected' | 'disconnected' | 'syncing' | 'error';
 type BankProvider = 'mock' | 'pluggy' | 'belvo' | 'truelayer' | 'custom';
@@ -428,6 +429,7 @@ export const connectBankController = asyncHandler(async (req: Request, res: Resp
 
   await setConnectionsForUser(resolvedUserId, [...existing, connection]);
   logger.info({ userId: resolvedUserId, bankId, connectionId: connection.id }, 'Bank connected');
+  recordAuditEvent({ userId: resolvedUserId, action: 'banking.connect', status: 'success', resource: bankId, metadata: { connectionId: connection.id, provider: connection.provider } });
 
   res.status(201).json(connection);
 });
@@ -464,6 +466,7 @@ export const disconnectBankController = asyncHandler(async (req: Request, res: R
   await setConnectionsForUser(resolvedUserId, next);
 
   logger.info({ userId: resolvedUserId, connectionId }, 'Bank disconnected');
+  recordAuditEvent({ userId: resolvedUserId, action: 'banking.disconnect', status: 'success', resource: connectionId });
   res.json({ success: true });
 });
 

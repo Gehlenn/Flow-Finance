@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth';
 import { aiLimiter } from '../middleware/rateLimit';
+import { quotaMiddleware } from '../middleware/quota';
 import {
   interpretController,
   scanReceiptController,
@@ -35,7 +36,7 @@ router.use(aiLimiter);
  * Body: { text: string, memoryContext?: string }
  * Returns: { intent: 'transaction'|'reminder', data: TransactionData[] | ReminderData[] }
  */
-router.post('/interpret', validate(InterpretSchema), interpretController);
+router.post('/interpret', quotaMiddleware('aiQueries'), validate(InterpretSchema), interpretController);
 
 /**
  * POST /api/ai/scan-receipt
@@ -44,7 +45,7 @@ router.post('/interpret', validate(InterpretSchema), interpretController);
  * Body: { imageBase64: string, imageMimeType: string, context?: string }
  * Returns: ReceiptScanResult
  */
-router.post('/scan-receipt', validate(ScanReceiptSchema), scanReceiptController);
+router.post('/scan-receipt', quotaMiddleware('aiQueries'), validate(ScanReceiptSchema), scanReceiptController);
 
 /**
  * POST /api/ai/classify-transactions
@@ -53,7 +54,7 @@ router.post('/scan-receipt', validate(ScanReceiptSchema), scanReceiptController)
  * Body: { transactions: TransactionData[] }
  * Returns: TransactionClassification[]
  */
-router.post('/classify-transactions', validate(ClassifyTransactionsSchema), classifyTransactionsController);
+router.post('/classify-transactions', quotaMiddleware('aiQueries'), validate(ClassifyTransactionsSchema), classifyTransactionsController);
 
 /**
  * POST /api/ai/insights
@@ -62,7 +63,7 @@ router.post('/classify-transactions', validate(ClassifyTransactionsSchema), clas
  * Body: { transactions: TransactionData[], type: 'daily'|'strategic' }
  * Returns: GenerateInsightsResponse
  */
-router.post('/insights', validate(GenerateInsightsSchema), generateInsightsController);
+router.post('/insights', quotaMiddleware('aiQueries'), validate(GenerateInsightsSchema), generateInsightsController);
 
 /**
  * POST /api/ai/token-count

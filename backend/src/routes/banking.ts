@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth';
+import { quotaMiddleware } from '../middleware/quota';
 import { validate } from '../middleware/validate';
 import {
   bankingHealthController,
@@ -27,7 +28,7 @@ router.get('/connectors', listConnectorsController);
 router.get('/connections', listConnectionsController);
 
 router.post('/connect-token', validate(ConnectTokenSchema), createConnectTokenController);
-router.post('/connect', validate(ConnectBankSchema), connectBankController);
+router.post('/connect', quotaMiddleware('bankConnections'), validate(ConnectBankSchema), connectBankController);
 router.post('/migrate/firebase', migrateCurrentUserConnectionsToFirebaseController);
 router.post('/sync', validate(SyncBankSchema), syncBankController);
 router.post('/disconnect', validate(DisconnectBankSchema), disconnectBankController);

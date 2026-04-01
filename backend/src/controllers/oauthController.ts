@@ -6,12 +6,14 @@ import { completeGoogleOAuthCallback, startGoogleOAuth } from '../services/auth/
 import { generateAccessToken, decodeToken } from '../middleware/auth';
 import { issueRefreshToken } from '../services/auth/refreshTokenStore';
 import { JWTPayload } from '../types';
+import { recordAuditEvent } from '../services/admin/auditLog';
 
 export const startGoogleOAuthController = asyncHandler(async (req: Request, res: Response) => {
   const redirectUri = typeof req.query.redirectUri === 'string' ? req.query.redirectUri : undefined;
 
   try {
     const started = startGoogleOAuth(redirectUri);
+    recordAuditEvent({ action: 'auth.oauth_start', status: 'success', resource: 'google', ip: req.ip });
     res.json(started);
   } catch (error) {
     logger.error({ error }, 'Failed to start Google OAuth');
@@ -38,6 +40,15 @@ export const googleOAuthCallbackController = asyncHandler(async (req: Request, r
 
     const refresh = issueRefreshToken(profile.providerUserId, profile.email);
 
+    recordAuditEvent({
+      userId: profile.providerUserId,
+      email: profile.email,
+      action: 'auth.oauth_success',
+      status: 'success',
+      resource: 'google',
+      ip: req.ip,
+    });
+
     res.json({
       token: accessToken,
       accessToken,
@@ -58,6 +69,7 @@ export const googleOAuthCallbackController = asyncHandler(async (req: Request, r
   } catch (error) {
     logger.error({ error }, 'Failed to complete Google OAuth callback');
     const message = error instanceof Error ? error.message : 'OAuth callback failed';
+    recordAuditEvent({ action: 'auth.oauth_failed', status: 'failure', resource: 'google', ip: req.ip, metadata: { message } });
     if (message.toLowerCase().includes('state')) {
       throw new AppError(401, message);
     }
