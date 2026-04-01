@@ -559,7 +559,7 @@ wsl --install Ubuntu-22.04
 
 **Solução**:
 ```typescript
-// Adicionar tests em TEST_SUITE_v0.3.0.test.ts
+// Referência histórica arquivada em docs/archive/TEST_SUITE_v0.3.0.md
 // Seção "API REQUEST SERVICE TESTS"
 ```
 

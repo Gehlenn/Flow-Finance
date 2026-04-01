@@ -502,7 +502,7 @@ export interface PerformanceMetrics {
 **Framework**: Vitest + @testing-library/react
 
 **Testes implementados**:
-- ✅ `TEST_SUITE_v0.3.0.test.ts` (68 testes)
+- ✅ `docs/archive/TEST_SUITE_v0.3.0.md` (68 testes, suíte histórica arquivada)
 - ✅ `tests/unit/financial-calculations.test.ts` (11 testes)
 - ✅ `tests/unit/financial-pattern-detector.test.ts` (9 testes)
 - ✅ `tests/unit/money-map-engine.test.ts` (8 testes)
@@ -675,7 +675,7 @@ npm run test:e2e        # Roda Playwright
 - 🧠 Engine: [src/ai/memory/AIMemoryEngine.ts](src/ai/memory/AIMemoryEngine.ts)
 
 ### Testes
-- 📝 Main Suite: [TEST_SUITE_v0.3.0.test.ts](TEST_SUITE_v0.3.0.test.ts)
+- 📝 Main Suite: [docs/archive/TEST_SUITE_v0.3.0.md](/E:/app%20e%20jogos%20criados/Flow-Finance/docs/archive/TEST_SUITE_v0.3.0.md)
 - ✅ Unit: [tests/unit/](tests/unit/)
 - 🎭 E2E: [tests/e2e/](tests/e2e/)
 

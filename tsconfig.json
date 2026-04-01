@@ -48,8 +48,6 @@
     "src/**/*.tsx",
     "tests/**/*.ts",
     "tests/**/*.tsx",
-    "example-usage.ts",
-    "TEST_SUITE_v0.3.0.test.ts",
     "utils/**/*.ts",
     "utils/**/*.tsx"
   ],

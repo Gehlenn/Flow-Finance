@@ -24,8 +24,6 @@
     "dist/**",
     "node_modules/**",
     ".github/**",
-    "tests/**",
-    "TEST_SUITE_v0.3.0.test.ts",
-    "example-usage.ts"
+    "tests/**"
   ]
 }
