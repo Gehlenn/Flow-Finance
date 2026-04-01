@@ -19,21 +19,46 @@ declare global {
   }
 }
 
+function getRequestContext(req: Request): { requestId?: string; routeScope?: string } {
+  const contextReq = req as Request & { requestId?: string; routeScope?: string };
+  return {
+    requestId: contextReq.requestId,
+    routeScope: contextReq.routeScope,
+  };
+}
+
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
+  const requestContext = getRequestContext(req);
+  const buildAuthError = (message: string) => ({
+    message,
+    requestId: requestContext.requestId,
+    routeScope: requestContext.routeScope,
+  });
+
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      res.status(401).json({ message: 'Missing or invalid authorization header' });
+      res.status(401).json(buildAuthError('Missing or invalid authorization header'));
       return;
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    
+
+    // Permitir tokens mockados em ambiente de teste
+    if (process.env.NODE_ENV === 'test' && token.startsWith('mock-token-for-')) {
+      const userId = token.replace('mock-token-for-', '');
+      req.userId = userId;
+      req.userEmail = `${userId}@mock.local`;
+      req.userExp = Date.now() / 1000 + 3600;
+      next();
+      return;
+    }
+
     try {
       const payload = jwt.verify(token, env.JWT_SECRET) as JWTPayload;
       if (payload.tokenType && payload.tokenType !== 'access') {
-        res.status(401).json({ message: 'Invalid access token type' });
+        res.status(401).json(buildAuthError('Invalid access token type'));
         return;
       }
       req.userId = payload.userId;
@@ -50,20 +75,21 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
       next();
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
-        res.status(401).json({ message: 'Token expired' });
+        res.status(401).json(buildAuthError('Token expired'));
       } else if (error instanceof jwt.JsonWebTokenError) {
-        res.status(401).json({ message: 'Invalid token' });
+        res.status(401).json(buildAuthError('Invalid token'));
       } else {
-        res.status(401).json({ message: 'Authentication failed' });
+        res.status(401).json(buildAuthError('Authentication failed'));
       }
     }
   } catch (error) {
     logger.error({ error }, 'Auth middleware error');
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json(buildAuthError('Internal server error'));
   }
 }
 
 export function optionalAuthMiddleware(req: Request, res: Response, next: NextFunction): void {
+  const requestContext = getRequestContext(req);
   try {
     const authHeader = req.headers.authorization;
     
@@ -86,7 +112,11 @@ export function optionalAuthMiddleware(req: Request, res: Response, next: NextFu
     next();
   } catch (error) {
     logger.error({ error }, 'Optional auth middleware error');
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({
+      message: 'Internal server error',
+      requestId: requestContext.requestId,
+      routeScope: requestContext.routeScope,
+    });
   }
 }
 

@@ -18,11 +18,22 @@ export const IS_PRODUCTION = !IS_DEVELOPMENT;
 // ─── Backend API Endpoints (Update with your actual backend domain) ──────────
 
 export const BACKEND_BASE_URL = (() => {
-  if (IS_DEVELOPMENT) {
-    return import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_DEV_URL || 'http://localhost:3001';
+  const configuredUrl =
+    import.meta.env.VITE_BACKEND_URL ||
+    import.meta.env.VITE_API_PROD_URL ||
+    import.meta.env.VITE_API_DEV_URL;
+
+  if (configuredUrl) {
+    return configuredUrl;
   }
-  // Keep a stable, resolvable fallback for production builds when env vars are missing.
-  return import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_PROD_URL || 'https://flow-finance-backend.vercel.app';
+
+  if (IS_DEVELOPMENT) {
+    return 'http://localhost:3001';
+  }
+
+  // Test and local build environments need a stable absolute fallback so
+  // endpoint contracts remain fully qualified even without injected env vars.
+  return 'http://localhost:3001';
 })();
 
 export const API_ENDPOINTS = {
@@ -52,8 +63,13 @@ export const API_ENDPOINTS = {
   // Auth endpoints
   AUTH: {
     LOGIN: `${BACKEND_BASE_URL}/api/auth/login`,
+    FIREBASE_SESSION: `${BACKEND_BASE_URL}/api/auth/firebase`,
     LOGOUT: `${BACKEND_BASE_URL}/api/auth/logout`,
     REFRESH_TOKEN: `${BACKEND_BASE_URL}/api/auth/refresh`,
+  },
+
+  WORKSPACE: {
+    ROOT: `${BACKEND_BASE_URL}/api/workspace`,
   },
 
   // User data endpoints
@@ -66,7 +82,17 @@ export const API_ENDPOINTS = {
   // SaaS endpoints
   SAAS: {
     USAGE: `${BACKEND_BASE_URL}/api/saas/usage`,
+    PLANS: `${BACKEND_BASE_URL}/api/saas/plans`,
+    PLAN_CHANGE: `${BACKEND_BASE_URL}/api/saas/plan`,
     BILLING_HOOKS: `${BACKEND_BASE_URL}/api/saas/billing-hooks`,
+    STRIPE_CHECKOUT_SESSION: `${BACKEND_BASE_URL}/api/saas/stripe/checkout-session`,
+    STRIPE_PORTAL_SESSION: `${BACKEND_BASE_URL}/api/saas/stripe/portal-session`,
+  },
+
+  SYNC: {
+    HEALTH: `${BACKEND_BASE_URL}/api/sync/health`,
+    PUSH: `${BACKEND_BASE_URL}/api/sync/push`,
+    PULL: `${BACKEND_BASE_URL}/api/sync/pull`,
   },
 };
 
@@ -82,15 +108,62 @@ export const API_CONFIG = {
   },
 };
 
+export class ApiRequestError extends Error {
+  statusCode: number;
+  requestId?: string;
+  routeScope?: string;
+  details?: Record<string, unknown>;
+
+  constructor(params: {
+    statusCode: number;
+    message: string;
+    requestId?: string;
+    routeScope?: string;
+    details?: Record<string, unknown>;
+  }) {
+    super(params.message);
+    this.name = 'ApiRequestError';
+    this.statusCode = params.statusCode;
+    this.requestId = params.requestId;
+    this.routeScope = params.routeScope;
+    this.details = params.details;
+  }
+}
+
+export const ACTIVE_WORKSPACE_STORAGE_KEY = 'active_workspace_id';
+
+export function getStoredWorkspaceId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY);
+}
+
+export function setStoredWorkspaceId(workspaceId: string | null): void {
+  if (typeof window === 'undefined') return;
+
+  if (!workspaceId) {
+    window.localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
+    return;
+  }
+
+  window.localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, workspaceId);
+}
+
 // ─── Security Headers ────────────────────────────────────────────────────────
 
-export function getAuthHeaders(): Record<string, string> {
+export function getAuthHeaders(options?: {
+  workspaceId?: string | null;
+  includeWorkspace?: boolean;
+}): Record<string, string> {
   const token = localStorage.getItem('auth_token');
+  const includeWorkspace = options?.includeWorkspace !== false;
+  const workspaceId = options?.workspaceId ?? getStoredWorkspaceId();
+
   return {
     'Content-Type': 'application/json',
     'Authorization': token ? `Bearer ${token}` : '',
     'X-Client-Version': '0.6.1',
     'X-Client-Platform': getPlatform(),
+    ...(includeWorkspace && workspaceId ? { 'x-workspace-id': workspaceId } : {}),
   };
 }
 
@@ -138,8 +211,20 @@ export async function apiRequest<T>(
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(`API Error ${response.status}: ${error.message || response.statusText}`);
+        const errorPayload = await response.json().catch(() => ({} as Record<string, unknown>));
+        const message = String((errorPayload as any).message || response.statusText || 'Request failed');
+        const requestIdFromBody = typeof (errorPayload as any).requestId === 'string' ? (errorPayload as any).requestId : undefined;
+        const requestIdFromHeader = response.headers.get('x-request-id') || undefined;
+
+        throw new ApiRequestError({
+          statusCode: response.status,
+          message: `API Error ${response.status}: ${message}`,
+          requestId: requestIdFromBody || requestIdFromHeader,
+          routeScope: typeof (errorPayload as any).routeScope === 'string' ? (errorPayload as any).routeScope : undefined,
+          details: typeof (errorPayload as any).details === 'object' && (errorPayload as any).details !== null
+            ? (errorPayload as any).details as Record<string, unknown>
+            : undefined,
+        });
       }
 
       return await response.json();

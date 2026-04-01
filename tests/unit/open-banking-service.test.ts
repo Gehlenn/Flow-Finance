@@ -47,6 +47,7 @@ import {
   formatLastSync,
   getBankingHealth,
   listPluggyConnectors,
+  mapPluggyConnectErrorMessage
 } from '../../services/integrations/openBankingService';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -248,4 +249,10 @@ describe('openBankingService (local mock mode)', () => {
     const label = formatLastSync(ts);
     expect(label).toMatch(/\d{2}\/\d{2}\/\d{4}/); // pt-BR date format
   });
+
+    // ─────────────────────── mapPluggyConnectErrorMessage ─────────────────────
+    it('mapPluggyConnectErrorMessage retorna mensagem padrão para erro genérico', () => {
+      const msg = mapPluggyConnectErrorMessage({ message: 'erro desconhecido' });
+      expect(msg).toMatch(/Conexao Pluggy cancelada ou invalida/);
+    });
 });

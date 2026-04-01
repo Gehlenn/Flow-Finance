@@ -10,6 +10,7 @@
     "lint": "tsc --noEmit",
     "type-check": "tsc --noEmit",
     "preflight:cutover": "tsx scripts/postgres-cutover-preflight.ts",
+    "backfill:normalized-state": "tsx scripts/backfill-normalized-state.ts",
     "prebuild": "npm run lint"
   },
   "dependencies": {
@@ -40,6 +41,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "supertest": "^6.3.3",
     "@types/bcrypt": "^5.0.2",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",

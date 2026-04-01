@@ -1,0 +1,7 @@
+function calculateTotalIncome(transactions) {
+  return transactions.filter(t => t.type === TransactionType.RECEITA).reduce((acc, t) => acc + t.amount, 0);
+}
+
+function calculateTotalExpenses(transactions) {
+  return transactions.filter(t => t.type === TransactionType.DESPESA).reduce((acc, t) => acc - t.amount, 0);
+}

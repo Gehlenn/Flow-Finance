@@ -18,9 +18,11 @@ export function filterTransactionsByTimeframe(
     if (timeframe === '30d') return (now.getTime() - d.getTime()) / 86400000 <= 30;
     if (timeframe === '12m') return d.getFullYear() === now.getFullYear();
     if (timeframe === 'custom') {
-      const start = dateStart ? new Date(`${dateStart}T00:00:00`) : new Date(0);
-      const end = dateEnd ? new Date(`${dateEnd}T23:59:59`) : new Date();
-      return d >= start && d <= end;
+      // Comparar apenas a data (YYYY-MM-DD)
+      const dStr = d.toISOString().slice(0, 10);
+      const startStr = dateStart || '0000-01-01';
+      const endStr = dateEnd || now.toISOString().slice(0, 10);
+      return dStr >= startStr && dStr <= endStr;
     }
     return true;
   });

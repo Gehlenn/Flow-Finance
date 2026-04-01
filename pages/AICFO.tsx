@@ -14,6 +14,7 @@ import {
   User, Bot, Trash2, ChevronRight, ShieldCheck,
   TrendingUp, Wallet, AlertTriangle, PiggyBank, HelpCircle
 } from 'lucide-react';
+import { buildProductFinancialIntelligence } from '../src/app/productFinancialIntelligence';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -168,9 +169,20 @@ const AICFO: React.FC<AICFOProps> = ({ transactions, accounts, userId = 'local',
 
   // Pipeline de análise financeira (contexto para o CFO)
   const pipeline = useMemo(() => runAIPipelineSync(transactions, userId), [transactions, userId]);
+  const intelligence = useMemo(
+    () => buildProductFinancialIntelligence({ userId, accounts, transactions }),
+    [accounts, transactions, userId]
+  );
   const financialContext = useMemo(
-    () => buildFinancialContext(accounts, transactions, pipeline.financial_state.cashflow_prediction, pipeline.insights),
-    [accounts, transactions, pipeline]
+    () => buildFinancialContext(
+      accounts,
+      transactions,
+      pipeline.financial_state.cashflow_prediction,
+      pipeline.insights,
+      userId,
+      intelligence,
+    ),
+    [accounts, transactions, pipeline, userId, intelligence]
   );
 
   // Auto-scroll
@@ -261,9 +273,9 @@ const AICFO: React.FC<AICFOProps> = ({ transactions, accounts, userId = 'local',
       {/* Snapshot financeiro rápido */}
       <div className="grid grid-cols-3 gap-2 mb-4 shrink-0">
         {[
-          { label: 'Saldo', value: pipeline.financial_state.cashflow_prediction.current_balance },
-          { label: '7 dias', value: pipeline.financial_state.cashflow_prediction.balance_7_days },
-          { label: '30 dias', value: pipeline.financial_state.cashflow_prediction.balance_30_days },
+          { label: 'Saldo', value: intelligence.context.cashflowForecast.currentBalance },
+          { label: '7 dias', value: intelligence.context.cashflowForecast.in7Days },
+          { label: '30 dias', value: intelligence.context.cashflowForecast.in30Days },
         ].map(({ label, value }) => (
           <div key={label} className="bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 text-center">
             <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
@@ -272,6 +284,20 @@ const AICFO: React.FC<AICFOProps> = ({ transactions, accounts, userId = 'local',
             </p>
           </div>
         ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-4 shrink-0">
+        <span className="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-[8px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">
+          Confiança {Math.round(intelligence.context.confidence.overall * 100)}%
+        </span>
+        <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
+          Recorrências {intelligence.recurringCount}
+        </span>
+        {intelligence.dominantCategoryLabel && (
+          <span className="px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 text-[8px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-300">
+            {intelligence.dominantCategoryLabel}
+          </span>
+        )}
       </div>
 
       {/* Messages area */}

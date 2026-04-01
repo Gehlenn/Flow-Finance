@@ -4,6 +4,7 @@
  */
 
 import { AITask, AITaskStatus, AITaskPriority } from './taskTypes';
+import { getActiveWorkspaceScopedStorageKey } from '../../utils/workspaceStorage';
 
 const STORAGE_KEY = 'flow_ai_task_queue';
 const MAX_STORED_TASKS = 100;
@@ -12,18 +13,33 @@ const TASK_TTL = 24 * 60 * 60 * 1000; // 24 hours
 class TaskStore {
   private tasks: Map<string, AITask> = new Map();
   private initialized = false;
+  private activeStorageKey = '';
 
   constructor() {
     this.loadFromStorage();
   }
 
+  private getStorageKey(): string {
+    return getActiveWorkspaceScopedStorageKey(STORAGE_KEY);
+  }
+
+  private ensureWorkspaceScope(): void {
+    const nextStorageKey = this.getStorageKey();
+    if (!this.initialized || this.activeStorageKey !== nextStorageKey) {
+      this.loadFromStorage();
+    }
+  }
+
   private loadFromStorage(): void {
+    this.activeStorageKey = this.getStorageKey();
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(this.activeStorageKey);
       if (stored) {
         const parsed = JSON.parse(stored);
         this.tasks = new Map(Object.entries(parsed));
         this.cleanExpiredTasks();
+      } else {
+        this.tasks = new Map();
       }
       this.initialized = true;
     } catch (error) {
@@ -34,9 +50,10 @@ class TaskStore {
   }
 
   private saveToStorage(): void {
+    this.ensureWorkspaceScope();
     try {
       const obj = Object.fromEntries(this.tasks);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+      localStorage.setItem(this.activeStorageKey, JSON.stringify(obj));
     } catch (error) {
       console.error('[TaskStore] Failed to save to storage:', error);
     }
@@ -64,6 +81,7 @@ class TaskStore {
   }
 
   addTask(task: AITask): void {
+    this.ensureWorkspaceScope();
     this.tasks.set(task.id, task);
     
     // Enforce max tasks limit (keep most recent)
@@ -77,10 +95,12 @@ class TaskStore {
   }
 
   getTask(id: string): AITask | undefined {
+    this.ensureWorkspaceScope();
     return this.tasks.get(id);
   }
 
   updateTask(id: string, updates: Partial<AITask>): void {
+    this.ensureWorkspaceScope();
     const task = this.tasks.get(id);
     if (task) {
       Object.assign(task, updates);
@@ -90,6 +110,7 @@ class TaskStore {
   }
 
   updateTaskStatus(id: string, status: AITaskStatus, error?: string): void {
+    this.ensureWorkspaceScope();
     const task = this.tasks.get(id);
     if (task) {
       task.status = status;
@@ -113,6 +134,7 @@ class TaskStore {
   }
 
   getNextTask(userId?: string): AITask | null {
+    this.ensureWorkspaceScope();
     // Get pending tasks sorted by priority (high to low) then creation time (old to new)
     const pendingTasks = Array.from(this.tasks.values())
       .filter((task) => task.status === AITaskStatus.PENDING)
@@ -135,6 +157,7 @@ class TaskStore {
     completed: AITask[];
     failed: AITask[];
   } {
+    this.ensureWorkspaceScope();
     const userTasks = this.getTasksByUser(userId);
     return {
       pending: userTasks.filter((t) => t.status === AITaskStatus.PENDING),
@@ -145,26 +168,31 @@ class TaskStore {
   }
 
   getTasksByStatus(status: AITaskStatus): AITask[] {
+    this.ensureWorkspaceScope();
     return Array.from(this.tasks.values())
       .filter((task) => task.status === status)
       .sort((a, b) => b.createdAt - a.createdAt);
   }
 
   getTasksByUser(userId: string): AITask[] {
+    this.ensureWorkspaceScope();
     return Array.from(this.tasks.values())
       .filter((task) => task.userId === userId)
       .sort((a, b) => b.createdAt - a.createdAt);
   }
 
   getPendingCount(): number {
+    this.ensureWorkspaceScope();
     return Array.from(this.tasks.values()).filter((t) => t.status === AITaskStatus.PENDING).length;
   }
 
   getProcessingCount(): number {
+    this.ensureWorkspaceScope();
     return Array.from(this.tasks.values()).filter((t) => t.status === AITaskStatus.PROCESSING).length;
   }
 
   clearCompletedTasks(userId?: string): void {
+    this.ensureWorkspaceScope();
     for (const [id, task] of this.tasks) {
       if (task.status === AITaskStatus.COMPLETED || task.status === AITaskStatus.FAILED) {
         if (!userId || task.userId === userId) {
@@ -176,10 +204,12 @@ class TaskStore {
   }
 
   getAllTasks(): AITask[] {
+    this.ensureWorkspaceScope();
     return Array.from(this.tasks.values()).sort((a, b) => b.createdAt - a.createdAt);
   }
 
   clear(): void {
+    this.ensureWorkspaceScope();
     this.tasks.clear();
     this.saveToStorage();
   }

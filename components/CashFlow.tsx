@@ -3,6 +3,7 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Transaction, TransactionType, Category } from '../types';
 import { formatCurrency } from '../utils/helpers';
 import { GeminiService } from '../services/geminiService';
+import { getWorkspaceScopedStorageKey } from '../src/utils/workspaceStorage';
 import {
   buildCashflowTimeline,
   buildExpenseCategoryData,
@@ -19,6 +20,8 @@ import {
 } from 'lucide-react';
 
 interface CashFlowProps {
+  activeWorkspaceId?: string | null;
+  activeWorkspaceName?: string | null;
   transactions: Transaction[];
   hideValues: boolean;
   theme: 'light' | 'dark';
@@ -57,7 +60,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, h
   return null;
 };
 
-const CashFlow: React.FC<CashFlowProps> = ({ transactions, hideValues, theme }) => {
+const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceName, transactions, hideValues, theme }) => {
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '12m' | 'custom'>('30d');
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
@@ -70,15 +73,19 @@ const CashFlow: React.FC<CashFlowProps> = ({ transactions, hideValues, theme }) 
   const gemini = useRef(new GeminiService());
   const isDark = theme === 'dark';
   const gridColor = isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(148, 163, 184, 0.1)";
+  const reportStorageKey = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return getWorkspaceScopedStorageKey(`flow_report_${today}`, activeWorkspaceId);
+  }, [activeWorkspaceId]);
 
   // Carregar relatório persistente do dia, se existir
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const savedReport = localStorage.getItem(`flow_report_${today}`);
+    setReport(null);
+    const savedReport = localStorage.getItem(reportStorageKey);
     if (savedReport) {
       setReport(JSON.parse(savedReport));
     }
-  }, []);
+  }, [reportStorageKey]);
 
   useEffect(() => {
     if (showCopyToast) {
@@ -113,8 +120,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ transactions, hideValues, theme }) 
     try {
       const strategicReport = await gemini.current.generateStrategicReport(filtered);
       setReport(strategicReport);
-      const today = new Date().toISOString().split('T')[0];
-      localStorage.setItem(`flow_report_${today}`, JSON.stringify(strategicReport));
+      localStorage.setItem(reportStorageKey, JSON.stringify(strategicReport));
     } catch (e) {
       console.error(e);
     } finally {
@@ -152,6 +158,9 @@ const CashFlow: React.FC<CashFlowProps> = ({ transactions, hideValues, theme }) 
       <div className="bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] p-6 rounded-[2rem] flex justify-between items-center shadow-lg shadow-indigo-500/20 shrink-0">
         <div>
           <h2 className="text-2xl font-black text-white tracking-tight leading-none">Fluxo</h2>
+          <p className="text-[8px] font-black text-white/80 uppercase tracking-widest mt-2">
+            Workspace: {activeWorkspaceName || 'Carregando workspace'}
+          </p>
           <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mt-1.5">Análise de Performance</p>
         </div>
         <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center text-white">

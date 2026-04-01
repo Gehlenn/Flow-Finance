@@ -11,6 +11,9 @@ export type FinanceCategory =
   | 'educacao'
   | 'lazer'
   | 'salario'
+  | 'compras'
+  | 'servicos'
+  | 'banco'
   | 'outros';
 
 function normalize(input: string): string {

@@ -142,11 +142,71 @@ Promotion checklist:
 2. `POST /api/banking/webhooks/pluggy` returns `401/401/202` for no secret / invalid secret / valid secret.
 3. A connected bank remains listed after backend restart.
 
+### Cloud Sync persistence
+
+Cloud Sync can use the same Firebase Admin credentials already configured for Open Finance.
+
+Set in `backend/.env`:
+
+```env
+CLOUD_SYNC_STORE_DRIVER=firebase
+
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk@your-project.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+FIREBASE_DATABASE_URL=
+```
+
+Health check:
+
+`GET /api/sync/health`
+
+Expected in persisted mode:
+- `driver=firebase`
+- `ready=true`
+
+### Stripe sandbox checkout and webhook
+
+Status atual:
+- Stripe nao e prioridade operacional nesta fase.
+- Open Finance e billing externo estao em espera por viabilidade economica.
+- Manter `ALLOW_MOCK_BILLING_UPDATES=true` em ambientes locais quando a intencao for apenas validar UX/plano.
+
+Use Stripe test credentials only.
+
+Set in `backend/.env`:
+
+```env
+STRIPE_SECRET_KEY=sk_test_xxx
+STRIPE_PRICE_PRO_MONTHLY=price_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+ALLOW_MOCK_BILLING_UPDATES=false
+```
+
+Local webhook forwarding with Stripe CLI:
+
+```bash
+stripe login
+stripe listen --forward-to http://localhost:3001/api/saas/stripe/webhook
+```
+
+Manual validation flow:
+1. Start backend and frontend locally.
+2. Open Settings.
+3. Trigger `Fazer Upgrade`.
+4. Complete Stripe checkout in test mode.
+5. Confirm webhook reached `/api/saas/stripe/webhook`.
+6. Confirm plan update in `/api/saas/plans` and UI refresh.
+
 #### Persistence proof after restart
 
 The Firebase store was validated locally after restart. For fully real-bank validation, a manual run is still required because bank credentials and MFA/consent cannot be automated safely from this workspace.
 
 #### Manual real-bank validation
+
+Observacao de produto:
+- Open Finance foi colocado em standby estrategico por custo operacional do Pluggy.
+- Antes de executar esta trilha, confirme que `DISABLE_OPEN_FINANCE=false` e que o custo ja foi aprovado para a fase do produto.
 
 Use this sequence in staging or production-like environment:
 

@@ -75,4 +75,20 @@ export const query = async (text: string, params?: any[]) => {
   }
 };
 
+/**
+ * Check database health status
+ * Returns true if database is reachable and responding
+ */
+export async function checkDatabaseHealth(): Promise<boolean> {
+  try {
+    const client = await pool.connect();
+    const result = await client.query('SELECT 1 as health');
+    client.release();
+    return result.rows.length > 0;
+  } catch (error) {
+    logger.warn({ error }, 'Database health check failed');
+    return false;
+  }
+}
+
 export default pool;

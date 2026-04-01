@@ -9,6 +9,7 @@ import { TrendingUp, TrendingDown, Minus, FileText } from 'lucide-react';
 import { buildMonthlyForecast } from '../src/engines/finance/forecastEngine';
 
 interface AdvancedAnalyticsProps {
+  activeWorkspaceName?: string | null;
   transactions: Transaction[];
   hideValues: boolean;
 }
@@ -29,7 +30,7 @@ const COLORS = {
   ]
 };
 
-const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ transactions, hideValues }) => {
+const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceName, transactions, hideValues }) => {
 
   // 1. Balance Trend Over Time (Line Chart)
   const balanceTrendData = useMemo(() => {
@@ -132,6 +133,21 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ transactions, hid
 
   return (
     <div className="space-y-6">
+      <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Analytics</p>
+            <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Relatorios Avancados</h2>
+          </div>
+          <div className="rounded-2xl bg-slate-100 px-4 py-2 text-right dark:bg-slate-700">
+            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Workspace ativo</p>
+            <p className="text-sm font-black text-slate-700 dark:text-slate-100">
+              {activeWorkspaceName || 'Carregando workspace'}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Balance Trend Chart */}
       <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
         <div className="flex items-center gap-3 mb-4">

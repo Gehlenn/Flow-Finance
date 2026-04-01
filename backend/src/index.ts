@@ -7,17 +7,28 @@ import logger from './config/logger';
 import { initGemini } from './config/gemini';
 import { initOpenAI } from './config/openai';
 import { initSentry, sentryRequestHandler, sentryErrorHandler, addBreadcrumb } from './config/sentry';
-import { errorHandlerMiddleware } from './middleware/errorHandler';
+import { errorHandler } from './middleware/errorHandler';
 import { validateJsonMiddleware } from './middleware/jsonValidation';
 import { apiLimiter } from './middleware/rateLimit';
+import { requestContextMiddleware } from './middleware/requestContext';
+import { initRedis, checkRedisHealth } from './config/redis';
+import { checkDatabaseHealth } from './config/database';
 
 // Routes
-import authRoutes from './routes/auth';
+import authRoutes from './routes/authRoutes';
 import aiRoutes from './routes/ai';
 import saasRoutes from './routes/saas';
 import bankingRoutes from './routes/banking';
 import financeRoutes from './routes/finance';
-import adminRoutes from './routes/admin';
+import adminRoutes from './routes/adminRoutes';
+import tenantRoutes from './routes/tenantRoutes';
+import billingRoutes from './routes/billingRoutes';
+import syncRoutes from './routes/sync';
+import { featureGateOpenFinance } from './middleware/featureGate';
+import workspaceRoutes from './routes/workspace';
+import { initializeWorkspaceStorePersistence } from './services/admin/workspaceStore';
+import { initializeAuditLogPersistence } from './services/admin/auditLog';
+import { initializeSaasStorePersistence } from './utils/saasStore';
 
 // ─── INITIALIZATION ──────────────────────────────────────────────────────────
 
@@ -27,19 +38,35 @@ addBreadcrumb('Backend server initialization', 'server', 'info');
 
 const app: Application = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
+const shouldStartHttpServer =
+  process.env.VERCEL !== '1' &&
+  process.env.NODE_ENV !== 'test' &&
+  process.env.VITEST !== 'true';
+
+function getRequestContext(req: Request): { requestId?: string; routeScope?: string } {
+  const contextReq = req as Request & { requestId?: string; routeScope?: string };
+  return {
+    requestId: contextReq.requestId,
+    routeScope: contextReq.routeScope,
+  };
+}
 
 // Trust proxy for Vercel/serverless environments
 app.set('trust proxy', 1);
 
 // Initialize AI providers
+const aiHealthStatus: Record<string, 'healthy' | 'unhealthy'> = {};
+
 const aiProviders: string[] = [];
 
 if (process.env.OPENAI_API_KEY) {
   try {
     initOpenAI();
     aiProviders.push('OpenAI');
+    aiHealthStatus['OpenAI'] = 'healthy';
   } catch (error) {
     logger.warn({ error }, 'Failed to initialize OpenAI');
+    aiHealthStatus['OpenAI'] = 'unhealthy';
   }
 }
 
@@ -47,8 +74,10 @@ if (process.env.GEMINI_API_KEY) {
   try {
     initGemini();
     aiProviders.push('Gemini');
+    aiHealthStatus['Gemini'] = 'healthy';
   } catch (error) {
     logger.warn({ error }, 'Failed to initialize Gemini');
+    aiHealthStatus['Gemini'] = 'unhealthy';
   }
 }
 
@@ -113,10 +142,16 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+// Request context middleware
+app.use(requestContextMiddleware);
+
 // Logging middleware
 app.use((_req: Request, _res: Response, next: NextFunction) => {
+  const requestContext = getRequestContext(_req);
   logger.info(
     {
+      requestId: requestContext.requestId,
+      routeScope: requestContext.routeScope,
       method: _req.method,
       path: _req.path,
       query: _req.query,
@@ -128,7 +163,12 @@ app.use((_req: Request, _res: Response, next: NextFunction) => {
 });
 
 // Body parser
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+  limit: '10mb',
+  verify: (req: Request, _res: Response, buf: Buffer) => {
+    req.rawBody = buf.toString('utf8');
+  },
+}));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // JSON validation middleware (catches malformed JSON)
@@ -137,15 +177,47 @@ app.use(validateJsonMiddleware);
 // General rate limiter
 app.use(apiLimiter);
 
+void initRedis();
+
 // ─── ROUTES ──────────────────────────────────────────────────────────────────
 
-// Health check
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({
-    status: 'ok',
+// Health check with dependency verification
+app.get('/health', async (_req: Request, res: Response) => {
+  const checks: Record<string, { status: 'healthy' | 'unhealthy'; latency?: number }> = {
+    server: { status: 'healthy' },
+  };
+
+  // Check database
+  const dbStart = Date.now();
+  try {
+    const dbHealthy = await checkDatabaseHealth();
+    checks.database = { status: dbHealthy ? 'healthy' : 'unhealthy', latency: Date.now() - dbStart };
+  } catch (error) {
+    checks.database = { status: 'unhealthy', latency: Date.now() - dbStart };
+  }
+
+  // Check Redis (if configured)
+  if (process.env.REDIS_URL) {
+    const redisStart = Date.now();
+    try {
+      const redisHealthy = await checkRedisHealth();
+      checks.redis = { status: redisHealthy ? 'healthy' : 'unhealthy', latency: Date.now() - redisStart };
+    } catch (error) {
+      checks.redis = { status: 'unhealthy', latency: Date.now() - redisStart };
+    }
+  }
+
+  // AI providers status (from initialization)
+  checks.aiProviders = { status: Object.values(aiHealthStatus).some(s => s === 'healthy') ? 'healthy' : 'unhealthy' };
+
+  const isHealthy = Object.values(checks).every(c => c.status === 'healthy');
+
+  res.status(isHealthy ? 200 : 503).json({
+    status: isHealthy ? 'ok' : 'degraded',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    version: process.env.APP_VERSION || '0.6.3'
+    version: process.env.APP_VERSION || '0.6.3',
+    checks,
   });
 });
 
@@ -169,6 +241,12 @@ app.get('/api/health', (_req: Request, res: Response) => {
 // Auth routes
 app.use('/api/auth', authRoutes);
 
+// Tenant routes
+app.use('/api/tenant', tenantRoutes);
+
+// Billing routes
+app.use('/api/billing', billingRoutes);
+
 // AI routes (Gemini proxy)
 app.use('/api/ai', aiRoutes);
 
@@ -176,20 +254,38 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/saas', saasRoutes);
 
 // Banking routes (Open Finance integration)
-app.use('/api/banking', bankingRoutes);
+app.use('/api/banking', featureGateOpenFinance, bankingRoutes);
 
 // Finance metrics routes (D3/D4 computations)
 app.use('/api/finance', financeRoutes);
+
+// Cloud sync routes (accounts/transactions/goals/subscriptions)
+app.use('/api/sync', syncRoutes);
+
+
+// Workspace multi-tenant routes
+app.use('/api/workspace', workspaceRoutes);
 
 // Admin routes (audit log, etc.)
 app.use('/api/admin', adminRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
-  logger.warn({ method: req.method, path: req.path }, 'Route not found');
+  const requestContext = getRequestContext(req);
+  logger.warn(
+    {
+      requestId: requestContext.requestId,
+      routeScope: requestContext.routeScope,
+      method: req.method,
+      path: req.path,
+    },
+    'Route not found'
+  );
   res.status(404).json({
     error: 'Not Found',
     message: `Route ${req.method} ${req.path} does not exist`,
+    requestId: requestContext.requestId,
+    routeScope: requestContext.routeScope,
     timestamp: new Date().toISOString()
   });
 });
@@ -198,58 +294,68 @@ app.use((req: Request, res: Response) => {
 app.use(sentryErrorHandler);
 
 // Global error handler (must be last)
-app.use(errorHandlerMiddleware);
+app.use(errorHandler);
 
 // ─── SERVER START ────────────────────────────────────────────────────────────
 
-// Only start server in non-serverless environments (local dev)
-// Vercel will handle the request routing via api/index.ts
-if (process.env.VERCEL !== '1') {
-  const server = app.listen(PORT);
+// Only start the HTTP listener in local runtime contexts.
+// Test suites import the Express app directly through Supertest.
+if (shouldStartHttpServer) {
+  void (async () => {
+    await Promise.all([
+      initializeWorkspaceStorePersistence(),
+      initializeAuditLogPersistence(),
+      initializeSaasStorePersistence(),
+    ]);
 
-  server.on('listening', () => {
-    logger.info(
-      {
-        port: PORT,
-        environment: process.env.NODE_ENV || 'development',
-        allowedOrigins,
-      },
-      'Backend API server running'
-    );
-    logger.info(
-      { version: process.env.APP_VERSION || '0.6.3', build: 'event-listeners+cache+observability' },
-      '[Bootstrap] Flow Finance backend v0.6.3 iniciado'
-    );
-  });
+    const server = app.listen(PORT);
 
-  server.on('error', (error: NodeJS.ErrnoException) => {
-    if (error.code === 'EADDRINUSE') {
-      logger.warn(
-        { port: PORT },
-        'Port already in use. Another backend process is already running, exiting this instance.'
+    server.on('listening', () => {
+      logger.info(
+        {
+          port: PORT,
+          environment: process.env.NODE_ENV || 'development',
+          allowedOrigins,
+        },
+        'Backend API server running'
       );
-      process.exit(0);
-    }
+      logger.info(
+        { version: process.env.APP_VERSION || '0.6.3', build: 'event-listeners+cache+observability' },
+        '[Bootstrap] Flow Finance backend v0.6.3 iniciado'
+      );
+    });
 
-    logger.error({ error, port: PORT }, 'Failed to start backend server');
+    server.on('error', (error: NodeJS.ErrnoException) => {
+      if (error.code === 'EADDRINUSE') {
+        logger.warn(
+          { port: PORT },
+          'Port already in use. Another backend process is already running, exiting this instance.'
+        );
+        process.exit(0);
+      }
+
+      logger.error({ error, port: PORT }, 'Failed to start backend server');
+      process.exit(1);
+    });
+
+    process.on('SIGTERM', () => {
+      logger.info('SIGTERM received, shutting down gracefully...');
+      server.close(() => {
+        logger.info('Server closed');
+        process.exit(0);
+      });
+    });
+
+    process.on('SIGINT', () => {
+      logger.info('SIGINT received, shutting down gracefully...');
+      server.close(() => {
+        logger.info('Server closed');
+        process.exit(0);
+      });
+    });
+  })().catch((error) => {
+    logger.error({ error }, 'Failed to initialize persisted state stores');
     process.exit(1);
-  });
-
-  // Graceful shutdown
-  process.on('SIGTERM', () => {
-    logger.info('SIGTERM received, shutting down gracefully...');
-    server.close(() => {
-      logger.info('Server closed');
-      process.exit(0);
-    });
-  });
-
-  process.on('SIGINT', () => {
-    logger.info('SIGINT received, shutting down gracefully...');
-    server.close(() => {
-      logger.info('Server closed');
-      process.exit(0);
-    });
   });
 }
 

@@ -1,92 +1,40 @@
-import { Request, Response, NextFunction } from 'express';
-import logger from '../config/logger';
-import { ErrorResponse } from '../types';
+import { NextFunction, Request, Response } from 'express';
+import { AppError } from '../shared/AppError';
 
-const REDACTED_VALUE = '[REDACTED]';
-const SENSITIVE_KEY_PATTERN = /(password|token|authorization|secret|api[-_]?key|access[-_]?key)/i;
+export { AppError } from '../shared/AppError';
 
-function sanitizeDetails(details?: Record<string, any>): Record<string, any> | undefined {
-  if (!details) {
-    return undefined;
-  }
-
-  const sanitizeValue = (value: unknown): unknown => {
-    if (Array.isArray(value)) {
-      return value.map((item) => sanitizeValue(item));
-    }
-
-    if (value && typeof value === 'object') {
-      const obj = value as Record<string, unknown>;
-      const sanitized: Record<string, unknown> = {};
-      for (const [key, innerValue] of Object.entries(obj)) {
-        if (SENSITIVE_KEY_PATTERN.test(key)) {
-          sanitized[key] = REDACTED_VALUE;
-        } else {
-          sanitized[key] = sanitizeValue(innerValue);
-        }
-      }
-      return sanitized;
-    }
-
-    return value;
-  };
-
-  return sanitizeValue(details) as Record<string, any>;
-}
-
-export class AppError extends Error {
-  constructor(
-    public statusCode: number,
-    message: string,
-    public details?: Record<string, any>
-  ) {
-    super(message);
-    this.name = 'AppError';
-  }
-}
-
-export function errorHandler(
-  error: Error | AppError,
-  req: Request,
-  res: Response,
-  _next: NextFunction
-): void {
-  const statusCode = error instanceof AppError ? error.statusCode : 500;
-  const message = error.message || 'Internal server error';
-  const sanitizedDetails = error instanceof AppError ? sanitizeDetails(error.details) : undefined;
-
-  logger.error(
-    {
-      error: {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-        ...(sanitizedDetails && { details: sanitizedDetails }),
-      },
-      url: req.url,
-      method: req.method,
-      statusCode,
-    },
-    'Request error'
-  );
-
-  const response: ErrorResponse = {
-    error: error.name || 'Error',
-    statusCode,
-    message,
-    timestamp: new Date().toISOString(),
-    path: req.path,
-    ...(statusCode < 500 && sanitizedDetails && { details: sanitizedDetails }),
-  };
-
-  res.status(statusCode).json(response);
-}
-
-// Backward-compatible alias used by existing imports.
-export const errorHandlerMiddleware = errorHandler;
-
-export function asyncHandler(fn: Function) {
+export function asyncHandler(
+  fn: (req: Request, res: Response, next: NextFunction) => Promise<void>
+): (req: Request, res: Response, next: NextFunction) => void {
   return (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 }
+
+export function errorHandler(
+  err: any,
+  req: Request,
+  res: Response,
+  _next: NextFunction
+): void {
+  if (err instanceof AppError) {
+    const contextReq = req as Request & { requestId?: string; routeScope?: string };
+    res.status(err.statusCode).json({
+      message: err.message,
+      details: err.statusCode >= 500 ? undefined : err.getSafeDetails(),
+      requestId: contextReq.requestId,
+      routeScope: contextReq.routeScope,
+    });
+    return;
+  }
+
+  console.error('Unhandled error:', err);
+  const contextReq = req as Request & { requestId?: string; routeScope?: string };
+  res.status(500).json({
+    message: 'Internal Server Error',
+    requestId: contextReq.requestId,
+    routeScope: contextReq.routeScope,
+  });
+}
+
+export const errorHandlerMiddleware = errorHandler;

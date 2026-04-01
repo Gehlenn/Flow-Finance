@@ -1,0 +1,26 @@
+{
+  "usageByWorkspace": {
+    "72e9387a-9d65-4d7b-a5f4-131c3c539ca8": {
+      "2026-04": {
+        "transactions": 0,
+        "aiQueries": 0,
+        "bankConnections": 1
+      }
+    }
+  },
+  "usageByUser": {},
+  "billingHooksByWorkspace": {},
+  "billingHooksByUser": {},
+  "usageEventsByWorkspace": {
+    "72e9387a-9d65-4d7b-a5f4-131c3c539ca8": [
+      {
+        "id": "usage_1775019002069_i3ef40n4",
+        "workspaceId": "72e9387a-9d65-4d7b-a5f4-131c3c539ca8",
+        "resource": "bankConnections",
+        "amount": 1,
+        "at": "2026-04-01T04:50:02.069Z"
+      }
+    ]
+  },
+  "userPlans": {}
+}

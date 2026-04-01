@@ -248,6 +248,7 @@ describe('all AuditAction variants can be recorded', () => {
     'banking.connect',
     'banking.disconnect',
     'banking.sync',
+    'billing.plan_changed',
     'quota.exceeded',
     'security.forbidden',
     'security.unauthorized',

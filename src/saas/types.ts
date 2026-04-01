@@ -24,6 +24,7 @@ export interface PlanLimits {
 
 export interface BillingHookPayload {
   userId: string;
+  workspaceId?: string;
   plan: PlanName;
   event: 'usage_recorded' | 'limit_reached' | 'upgrade_required';
   resource: ResourceKind;

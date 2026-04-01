@@ -1,5 +1,17 @@
 # Postgres Cutover
 
+## Goal
+
+Move workspace and SaaS state away from legacy JSON/blob storage and run with normalized Postgres tables as the primary persisted store.
+
+## Preconditions
+
+- `POSTGRES_STATE_STORE_ENABLED=true`
+- Postgres reachable with the configured backend credentials
+- Normalized migrations applied:
+  - `001_state_store.sql`
+  - `002_workspace_saas_tables.sql`
+
 ## Preflight
 
 Run the readiness check before any backfill:
@@ -30,19 +42,37 @@ Expected normalized tables:
 
 ## Backfill
 
-After the preflight is green enough for execution:
+Run:
 
 ```bash
 POSTGRES_STATE_STORE_ENABLED=true npm run backfill:normalized-state
 ```
 
+The script:
+
+- initializes the Postgres state store
+- hydrates workspace state into normalized tables
+- hydrates workspace SaaS usage and billing hooks into normalized tables
+- reports the current counts so the operator can validate the cutover
+
+Important:
+
+- run the backfill with `DISABLE_LEGACY_STATE_BLOBS` unset or `false`
+- validate the normalized tables before changing runtime behavior
+
 ## Cutover
 
-After validating the normalized row counts and application smoke tests:
+After validating the normalized row counts and application smoke tests, enable:
 
 ```bash
 DISABLE_LEGACY_STATE_BLOBS=true
 ```
+
+Effect:
+
+- backend stops reading legacy JSON/blob state
+- backend stops writing legacy JSON/blob state
+- normalized Postgres tables remain active
 
 ## Recommended sequence
 
@@ -52,3 +82,4 @@ DISABLE_LEGACY_STATE_BLOBS=true
 4. Re-run `npm run preflight:cutover`
 5. Enable `DISABLE_LEGACY_STATE_BLOBS=true`
 6. Run `npm run lint` and `npm test`
+7. Smoke test workspace listing, tenant selection, billing updates, audit logs, and usage metering

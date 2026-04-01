@@ -1,4 +1,5 @@
 import { API_ENDPOINTS, BACKEND_BASE_URL, getAuthHeaders } from '../config/api.config';
+import { ensureActiveWorkspace } from '../services/workspaceSession';
 import { BillingHookTransport } from './billingHooks';
 import { BillingHookPayload } from './types';
 import { UsageSnapshot, UsageStoreAdapter } from './usageTracker';
@@ -20,9 +21,10 @@ export function createHttpUsageStoreAdapter(baseUrl?: string): UsageStoreAdapter
 
   return {
     async read(): Promise<Record<string, UsageSnapshot>> {
+      const workspace = await ensureActiveWorkspace();
       const response = await fetch(usageUrl, {
         method: 'GET',
-        headers: getAuthHeaders(),
+        headers: getAuthHeaders({ workspaceId: workspace.workspaceId }),
       });
 
       if (!response.ok) {
@@ -34,10 +36,11 @@ export function createHttpUsageStoreAdapter(baseUrl?: string): UsageStoreAdapter
     },
 
     async write(data: Record<string, UsageSnapshot>): Promise<void> {
+      const workspace = await ensureActiveWorkspace();
       await fetch(usageUrl, {
         method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ usage: data }),
+        headers: getAuthHeaders({ workspaceId: workspace.workspaceId }),
+        body: JSON.stringify({ workspaceId: workspace.workspaceId, usage: data }),
       });
     },
   };
@@ -47,10 +50,14 @@ export function createHttpBillingTransport(targetUrl?: string): BillingHookTrans
   const endpoint = targetUrl ? buildEndpoint(targetUrl) : API_ENDPOINTS.SAAS.BILLING_HOOKS;
 
   return async (payload: BillingHookPayload): Promise<void> => {
+    const workspace = await ensureActiveWorkspace();
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(payload),
+      headers: getAuthHeaders({ workspaceId: workspace.workspaceId }),
+      body: JSON.stringify({
+        ...payload,
+        workspaceId: payload.workspaceId || workspace.workspaceId,
+      }),
     });
 
     if (!response.ok) {

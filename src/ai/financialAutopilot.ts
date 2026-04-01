@@ -95,6 +95,79 @@ export function runFinancialAutopilot(
   const currentExpenses = totalExpenses(currentMonthTxs);
   const lastExpenses    = totalExpenses(lastMonthTxs);
 
+  // ── NOVO: Overspending em tempo real por categoria ───────────────────────
+  // Para cada categoria, compara gasto do mês com orçamento (se existir) ou média histórica
+  // Gera alerta imediato se ultrapassar
+  // TODO: Integrar com fonte real de orçamentos do usuário
+  const categoryBudgets: Record<string, number> = {};
+  // Exemplo: categoryBudgets['Alimentação'] = 800;
+  // (No futuro, buscar do perfil do usuário)
+
+  // Calcula média histórica de cada categoria (últimos 3 meses)
+  const monthsToCheck = 3;
+  const catHistory: Record<string, number[]> = {};
+  for (let m = 1; m <= monthsToCheck; m++) {
+    const txs = getMonthTxs(base, m);
+    for (const t of txs.filter(t => t.type === TransactionType.DESPESA)) {
+      if (!catHistory[t.category]) catHistory[t.category] = [];
+      catHistory[t.category][m - 1] = (catHistory[t.category][m - 1] || 0) + t.amount;
+    }
+  }
+  // Gasto atual por categoria
+  const catCurrent: Record<string, number> = {};
+  for (const t of currentMonthTxs.filter(t => t.type === TransactionType.DESPESA)) {
+    catCurrent[t.category] = (catCurrent[t.category] || 0) + t.amount;
+  }
+  // Para cada categoria, verifica overspending
+  for (const [cat, spent] of Object.entries(catCurrent)) {
+    const budget = categoryBudgets[cat];
+    const history = catHistory[cat] || [];
+    const avg = history.length > 0 ? history.reduce((a, b) => a + b, 0) / history.length : undefined;
+    let limit = budget || avg;
+    if (limit && spent > limit * 1.05) {
+      actions.push({
+        id: makeId(),
+        type: 'warning',
+        severity: 'high',
+        title: `Gasto excessivo em ${cat}`,
+        description: `Você já gastou ${formatCurrency(spent)} em "${cat}" este mês, acima do limite (${limit ? formatCurrency(limit) : 'N/A'}). Considere revisar seus gastos nesta categoria.`,
+        value: spent - limit,
+        category: cat,
+        action_label: 'Ver Detalhes',
+        created_at: now(),
+      });
+
+      // Sugestão de corte automático: suficiente para voltar ao limite
+      const suggestedCut = spent - limit;
+      if (suggestedCut > 0) {
+        actions.push({
+          id: makeId(),
+          type: 'optimization',
+          severity: 'medium',
+          title: `Sugestão de corte em ${cat}`,
+          description: `Reduza ao menos ${formatCurrency(suggestedCut)} em "${cat}" para equilibrar seu orçamento e evitar extrapolar o limite histórico/média da categoria.`,
+          value: suggestedCut,
+          category: cat,
+          action_label: 'Criar Meta de Corte',
+          created_at: now(),
+        });
+
+         // Meta automática: criar meta de corte para a categoria
+         actions.push({
+           id: makeId(),
+           type: 'suggestion',
+           severity: 'medium',
+           title: `Meta automática: economizar em ${cat}`,
+           description: `Sugerimos criar uma meta de economizar pelo menos ${formatCurrency(suggestedCut)} em "${cat}" até o final do mês para equilibrar seu orçamento.`,
+           value: suggestedCut,
+           category: cat,
+           action_label: 'Criar Meta Automática',
+           created_at: now(),
+         });
+      }
+    }
+  }
+
   // ── PART 4: Saldo negativo projetado ───────────────────────────────────────
   if (prediction.balance_30_days < 0) {
     actions.push({
@@ -196,10 +269,22 @@ export function runFinancialAutopilot(
         id: makeId(), type: 'optimization', severity: 'medium',
         title: 'Potencial de economia identificado',
         description: `"${topCat}" representa ${pct}% dos seus gastos totais (${formatCurrency(topAmt)}). Reduzir 10% nessa categoria pouparia ${formatCurrency(potential)}.`,
-
         value: potential,
         category: topCat,
         action_label: 'Criar Meta',
+        created_at: now(),
+      });
+
+      // Meta automática: sugerir meta de economia para categoria dominante
+      actions.push({
+        id: makeId(),
+        type: 'suggestion',
+        severity: 'medium',
+        title: `Meta automática: economizar em ${topCat}`,
+        description: `Sugerimos criar uma meta de economizar pelo menos ${formatCurrency(potential)} em "${topCat}" até o final do mês para potencializar sua saúde financeira.`,
+        value: potential,
+        category: topCat,
+        action_label: 'Criar Meta Automática',
         created_at: now(),
       });
     }
@@ -216,9 +301,21 @@ export function runFinancialAutopilot(
       id: makeId(), type: 'suggestion', severity: 'low',
       title: 'Reserva de emergência abaixo do ideal',
       description: `O recomendado é ter ${formatCurrency(emergencyTarget)} de reserva (3 meses de despesas). Seu saldo atual é ${formatCurrency(prediction.current_balance)}.`,
-
       value: emergencyTarget - prediction.current_balance,
       action_label: 'Criar Meta',
+      created_at: now(),
+    });
+
+    // Meta automática: sugerir meta de reserva de emergência
+    actions.push({
+      id: makeId(),
+      type: 'suggestion',
+      severity: 'medium',
+      title: 'Meta automática: criar reserva de emergência',
+      description: `Sugerimos criar uma meta de reservar ${formatCurrency(emergencyTarget - prediction.current_balance)} para atingir o ideal de 3 meses de despesas.`,
+      value: emergencyTarget - prediction.current_balance,
+      category: 'Reserva de Emergência',
+      action_label: 'Criar Meta Automática',
       created_at: now(),
     });
   }

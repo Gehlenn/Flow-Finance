@@ -75,6 +75,7 @@ import {
   formatLastSync,
   mapPluggyConnectErrorMessage,
 } from '../../services/integrations/openBankingService';
+import { ApiRequestError } from '../../src/config/api.config';
 
 import { getProvider } from '../../services/integrations/mockBankProvider';
 
@@ -358,6 +359,7 @@ describe('openBankingService - Extended Coverage', () => {
 
   it('connectBank faz fallback local quando backend falha', async () => {
     vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+    vi.stubEnv('VITE_ENABLE_LOCAL_BANKING_FALLBACK', 'true');
     apiRequestMock.mockRejectedValueOnce(new Error('backend unavailable'));
 
     const conn = await connectBank('nubank', 'u-fallback');
@@ -599,6 +601,7 @@ describe('openBankingService - Extended Coverage', () => {
 
   it('syncTransactions faz fallback local quando sync do backend falha', async () => {
     vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+    vi.stubEnv('VITE_ENABLE_LOCAL_BANKING_FALLBACK', 'true');
 
     apiRequestMock.mockResolvedValueOnce({
       id: 'conn_backend_to_local',
@@ -799,6 +802,27 @@ describe('openBankingService - Extended Coverage', () => {
     expect(message).toMatch(/cancelada|invalida/i);
   });
 
+  it('mapPluggyConnectErrorMessage anexa requestId quando erro vem de ApiRequestError', () => {
+    const error = new ApiRequestError({
+      statusCode: 502,
+      message: 'API Error 502: Pluggy connect failed',
+      requestId: 'req-open-banking-1',
+      routeScope: 'banking',
+    });
+
+    const message = mapPluggyConnectErrorMessage(error);
+    expect(message).toMatch(/requestId: req-open-banking-1/i);
+  });
+
+  it('mapPluggyConnectErrorMessage anexa requestId quando presente em objeto simples', () => {
+    const message = mapPluggyConnectErrorMessage({
+      foo: 'bar',
+      requestId: 'req-open-banking-2',
+    });
+
+    expect(message).toMatch(/requestId: req-open-banking-2/i);
+  });
+
   it('reloadConnections reconcilia cache local com lista do backend', async () => {
     vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
 
@@ -907,6 +931,7 @@ describe('openBankingService - Extended Coverage', () => {
 
   it('syncTransactions continua em fallback local mesmo com erro backend sem message', async () => {
     vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+    vi.stubEnv('VITE_ENABLE_LOCAL_BANKING_FALLBACK', 'true');
 
     apiRequestMock.mockResolvedValueOnce({
       id: 'conn_no_message_backend',

@@ -32,7 +32,6 @@ export class CFOAdvisor {
   private readonly cfoAgent = new AICFOAgent();
   private readonly planner = new CFOPlanner();
   private readonly autopilot = new FinancialAutopilot();
-
   constructor(private readonly transactionReader?: TransactionReader) {}
 
   private normalizeDomainTransactions(transactions: DomainTransaction[]): Transaction[] {

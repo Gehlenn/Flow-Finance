@@ -27,7 +27,7 @@ describe('IO Health Check - API contracts', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await apiRequest<{ ok: boolean }>('http://localhost:3999/health', {
+    const result = await apiRequest<{ ok: boolean }>('https://mocked-endpoint/health', {
       retries: 2,
       timeout: 100,
     });
@@ -169,4 +169,3 @@ describe('IO Health Check - Banking provider + orchestrator', () => {
     expect(afterDisconnect.some((c) => c.id === connection.id)).toBe(false);
   });
 });
-

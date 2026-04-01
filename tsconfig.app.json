@@ -1,0 +1,31 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "App.tsx",
+    "index.tsx",
+    "types.ts",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "pages/**/*.ts",
+    "pages/**/*.tsx",
+    "hooks/**/*.ts",
+    "hooks/**/*.tsx",
+    "models/**/*.ts",
+    "models/**/*.tsx",
+    "services/**/*.ts",
+    "services/**/*.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "utils/**/*.ts",
+    "utils/**/*.tsx"
+  ],
+  "exclude": [
+    "backend/**",
+    "dist/**",
+    "node_modules/**",
+    ".github/**",
+    "tests/**",
+    "TEST_SUITE_v0.3.0.test.ts",
+    "example-usage.ts"
+  ]
+}

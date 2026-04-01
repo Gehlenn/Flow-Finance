@@ -1,8 +1,15 @@
+## Monitoramento de Integrações Externas
+O sistema recomenda configurar alertas/logs para Pluggy, Stripe e Firebase. Após cada deploy, monitore falhas, lentidão e quedas de serviço. Exemplos de boas práticas:
+- Ativar logs detalhados de erro e sucesso
+- Configurar alertas automáticos (ex: via Sentry, Firebase Crashlytics)
+- Validar respostas e tempos de integração periodicamente
+
+
 # Flow Finance - Controle de Fluxo de Caixa Inteligente
 
-**Versão:** 0.6.5  
-**Última Atualização:** 16 de Março de 2026  
-**Status:** Sprint 2 concluída — Financial Intelligence UI + Backend Metrics ✅
+**Versão:** 0.8.0  
+**Última Atualização:** 25 de Março de 2026  
+**Status:** Auditoria técnica completa, cobertura crítica >98%, ver AUDIT_REPORT_v0.8.0.md
 
 Bem-vindo ao **Flow Finance**, uma aplicação moderna para gestão financeira pessoal e profissional, equipada com um assistente de IA (GPT-4) para facilitar o lançamento de despesas e receitas.
 
@@ -10,13 +17,19 @@ Bem-vindo ao **Flow Finance**, uma aplicação moderna para gestão financeira p
 
 O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvolvida com **React + Vite**, **Firebase** (auth/data) e **OpenAI GPT-4** (via backend proxy seguro). O projeto segue arquitetura **Clean Architecture** com separação clara de responsabilidades.
 
-### Principais Funcionalidades
+
+### Principais Funcionalidades (v0.8.x)
 
 -   **Dashboard Interativo:** Visão geral de receitas, despesas e saldo com gráficos animados.
 -   **Assistente de IA (CFO Virtual):** Consultas financeiras em linguagem natural via GPT-4.
--   **Análise Financeira Automatizada:** Pipeline de IA para insights, detecção de riscos, perfil financeiro, money map e previsão de cashflow.
--   **Gestão de Transações:** Adicione, edite, categorize e importe transações (CSV/OFX).
--   **Metas e Alertas:** Defina objetivos financeiros e receba alertas inteligentes de gastos.
+-   **Análise Financeira Automatizada:** Pipeline de IA para insights, detecção de riscos, perfil financeiro, money map, previsão de cashflow e recomendações ativas do Autopilot.
+-   **Gestão de Transações:**
+   - Adicione, edite, categorize e importe transações (CSV/OFX).
+   - **Edição de categoria com sugestão automática de IA**: ao editar, o sistema sugere a categoria mais provável com base no merchant.
+   - **Botão "Desfazer"**: permite restaurar a categoria anterior instantaneamente, com feedback visual.
+   - **Acessibilidade e feedback visual aprimorados**: modal com foco automático, atalhos e feedback de sucesso.
+   - **Cobertura de testes**: fluxo validado por testes unitários e E2E.
+-   **Metas e Alertas Inteligentes:** Defina objetivos financeiros, receba alertas de overspending em tempo real por categoria, sugestões de corte automáticas (com valor sugerido) e metas automáticas de corte, economia e reserva de emergência geradas por IA.
 -   **Open Banking (Pluggy + Mock):** Fluxo real via backend protegido com fallback local para desenvolvimento.
 -   **Scanner de Recibos:** OCR para extrair dados de comprovantes (Gemini Vision).
 -   **Central de Apoio:** Acesso rápido a suporte via IA, contato e documentos legais.
@@ -25,7 +38,7 @@ O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvol
 
 ---
 
-## 📦 Stack Tecnológica (v0.5.2v)
+## 📦 Stack Tecnológica (v0.7.x)
 
 ### Frontend
 - **React 19** + **TypeScript 5.8**
@@ -53,7 +66,7 @@ O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvol
 
 ---
 
-## � Docker Setup & Deployment
+## Docker Setup & Deployment
 
 ### Pré-requisitos
 
@@ -136,7 +149,7 @@ cd backend && npm start  # Backend
 
 ---
 
-## �🛠️ Arquitetura SaaS - Clean Architecture
+## 🛠️ Arquitetura SaaS - Clean Architecture
 
 O Flow Finance foi completamente refatorado para uma arquitetura SaaS escalável seguindo os princípios de **Clean Architecture**, **DDD (Domain Driven Design)**, **SOLID** e **event-driven architecture**.
 
@@ -185,77 +198,6 @@ src/
 Para detalhes profundos sobre o fluxo de dados e diagramas, consulte o arquivo [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ---
-
-## � Deployment
-
-### Plataformas Suportadas
-
-O Flow Finance está pronto para deploy nas seguintes plataformas:
-
-#### Railway
-```bash
-# Instale Railway CLI
-npm install -g @railway/cli
-
-# Login e deploy
-railway login
-railway deploy
-```
-
-#### Render
-- Conecte o repositório GitHub
-- Configure os serviços (Web Service + PostgreSQL + Redis)
-- Defina as variáveis de ambiente
-
-#### AWS
-```bash
-# ECS + Fargate
-aws ecs create-cluster --cluster-name flow-finance
-aws ecs create-service --cluster flow-finance --service-name flow-finance-service --task-definition flow-finance-task
-```
-
-#### DigitalOcean App Platform
-- Conecte o repositório
-- Configure os componentes (Frontend + API + Database)
-- Defina variáveis de ambiente
-
-### 📋 Checklist de Produção
-
-- [ ] Variáveis de ambiente configuradas
-- [ ] Regras Firestore aplicadas (`firestore.rules`) no projeto `komodo-flow`
-- [ ] Banco PostgreSQL provisionado
-- [ ] Redis provisionado
-- [ ] Chaves API configuradas (Gemini, Sentry)
-- [ ] Domínio configurado
-- [ ] SSL/TLS habilitado
-- [ ] Backups configurados
-- [ ] Monitoring ativo
-
-### 🔧 Configuração de Produção
-
-#### PostgreSQL
-```sql
--- Conectar ao banco
-psql postgresql://user:password@host:5432/database
-
--- Executar migrations
-\i docker/postgres/init.sql
-```
-
-#### Redis
-```bash
-# Verificar conexão
-redis-cli -h your-redis-host ping
-```
-
-#### Cloud Storage
-Configure AWS S3 ou Cloudflare R2 no `.env`:
-```env
-CLOUD_STORAGE_PROVIDER=aws-s3
-AWS_ACCESS_KEY_ID=your-key
-AWS_SECRET_ACCESS_KEY=your-secret
-AWS_S3_BUCKET=your-bucket
-```
 
 ## 📊 Monitoramento
 
@@ -314,52 +256,6 @@ npm run test:e2e
 - [Arquitetura SaaS](./SAAS_ARCHITECTURE.md)
 - [Guia de Desenvolvimento](./CONTRIBUTING.md)
 - [API Documentation](./backend/README.md)
-
----
-
-## �📦 Como Rodar o Projeto
-
-Siga os passos abaixo para executar o aplicativo em seu ambiente local:
-
-### Pré-requisitos
-
--   Node.js (versão 18 ou superior recomendada)
--   NPM ou Yarn
-
-### Instalação e Execução
-
-1.  **Instale as dependências:**
-    ```bash
-    npm install
-    ```
-
-2.  **Inicie o servidor de desenvolvimento:**
-    ```bash
-    npm run dev
-    ```
-
-3.  **Acesse o aplicativo:**
-    O terminal mostrará o endereço local, geralmente `http://localhost:3000`.
-
----
-
-## 🧪 Como Testar
-
-O aplicativo possui um sistema de autenticação simulado para facilitar os testes:
-
-1.  **Acesso Rápido (Modo Demo):**
-    -   Na tela de login, clique no botão **"Acesso Rápido (Teste)"** ou **"Iniciar Modo Demo"**.
-    -   Isso fará login automaticamente com um usuário de teste e dados de exemplo.
-
-2.  **Criar Nova Conta:**
-    -   Clique em "Novo por aqui? Cadastre-se".
-    -   Preencha qualquer nome, e-mail e senha (mínimo 6 caracteres).
-    -   O sistema criará um usuário local e persistirá a sessão.
-
-3.  **Testar Persistência:**
-    -   Adicione uma transação ou altere o tema.
-    -   Recarregue a página (F5).
-    -   Seus dados permanecerão salvos (até que você limpe o cache do navegador).
 
 ---
 
@@ -532,3 +428,25 @@ unsubscribe();
 - npm test: 377/377
 - npm run test:coverage:critical: 99.76% stmts / 98.3% branches
 - npm run test:e2e: 30 passed / 35 skipped
+
+---
+
+## 🔒 Automação de Qualidade e Dependências
+
+### Pre-commit hooks obrigatórios
+
+O projeto utiliza **Husky** para garantir que todo commit só seja aceito se passar pelo lint (`npm run lint`) e pelo type-check (`npm run type-check`).
+
+- Para instalar os hooks após o clone:
+  ```bash
+  npx husky install
+  ```
+- Os hooks estão em `.husky/pre-commit`.
+- Se algum erro for detectado, o commit será bloqueado.
+
+### Atualização automática de dependências
+
+O repositório utiliza **Dependabot** para monitorar e atualizar dependências do frontend (`/`) e backend (`/backend`).
+Pull requests automáticas são abertas semanalmente para manter o projeto seguro e atualizado.
+
+Configuração: `.github/dependabot.yml`

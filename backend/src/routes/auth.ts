@@ -3,13 +3,14 @@ import { optionalAuthMiddleware } from '../middleware/auth';
 import { authLimiter } from '../middleware/rateLimit';
 import {
   loginController,
+  firebaseSessionController,
   refreshController,
   validateController,
   logoutController
 } from '../controllers/authController';
 import { googleOAuthCallbackController, startGoogleOAuthController } from '../controllers/oauthController';
 import { validate } from '../middleware/validate';
-import { LoginSchema } from '../validation/user.schema';
+import { FirebaseSessionSchema, LoginSchema } from '../validation/user.schema';
 
 const router = Router();
 
@@ -21,6 +22,7 @@ const router = Router();
  * Returns: { token: string, expiresIn: number, user: { userId: string, email: string } }
  */
 router.post('/login', authLimiter, validate(LoginSchema), loginController);
+router.post('/firebase', authLimiter, validate(FirebaseSessionSchema), firebaseSessionController);
 
 /**
  * GET /api/auth/oauth/google/start

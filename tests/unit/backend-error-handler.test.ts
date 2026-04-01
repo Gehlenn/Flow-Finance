@@ -18,6 +18,8 @@ describe('backend errorHandler sanitization', () => {
       url: '/api/auth/login',
       method: 'POST',
       path: '/api/auth/login',
+      requestId: 'req-auth-1',
+      routeScope: 'auth',
     } as any;
 
     const res = {
@@ -38,7 +40,13 @@ describe('backend errorHandler sanitization', () => {
     errorHandler(error, req, res, vi.fn());
 
     expect(res.status).toHaveBeenCalledWith(400);
-    const response = res.json.mock.calls[0][0] as { details: Record<string, unknown> };
+    const response = res.json.mock.calls[0][0] as {
+      details: Record<string, unknown>;
+      requestId?: string;
+      routeScope?: string;
+    };
+    expect(response.requestId).toBe('req-auth-1');
+    expect(response.routeScope).toBe('auth');
     expect(response.details.password).toBe('[REDACTED]');
     expect(response.details.token).toBe('[REDACTED]');
     expect((response.details.nested as Record<string, unknown>).apiKey).toBe('[REDACTED]');
@@ -50,6 +58,8 @@ describe('backend errorHandler sanitization', () => {
       url: '/api/auth/login',
       method: 'POST',
       path: '/api/auth/login',
+      requestId: 'req-auth-2',
+      routeScope: 'auth',
     } as any;
 
     const res = {
@@ -65,7 +75,13 @@ describe('backend errorHandler sanitization', () => {
     errorHandler(error, req, res, vi.fn());
 
     expect(res.status).toHaveBeenCalledWith(500);
-    const response = res.json.mock.calls[0][0] as { details?: Record<string, unknown> };
+    const response = res.json.mock.calls[0][0] as {
+      details?: Record<string, unknown>;
+      requestId?: string;
+      routeScope?: string;
+    };
     expect(response.details).toBeUndefined();
+    expect(response.requestId).toBe('req-auth-2');
+    expect(response.routeScope).toBe('auth');
   });
 });

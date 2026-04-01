@@ -1,5 +1,16 @@
 # Open Finance Go Live Plan
 
+## Status Atual
+- Standby estrategico desde 16 de Marco de 2026.
+- Motivo: custo Pluggy acima de R$ 1.000/mes, inviavel para a fase atual do produto.
+- Estado operacional: endpoints protegidos por feature gate com `DISABLE_OPEN_FINANCE=true`.
+- Infraestrutura, codigo e testes foram preservados para reativacao futura.
+
+## Como interpretar este documento agora
+- Este plano nao e mais um checklist de execucao imediata.
+- Ele passa a ser um guia de reativacao quando o produto tiver receita para sustentar Open Finance.
+- Enquanto a flag `DISABLE_OPEN_FINANCE=true` estiver ativa, qualquer trilha de go-live deve ser considerada pausada.
+
 ## Objetivo
 Levar o fluxo Open Finance (Pluggy) para operacao estavel e validada ponta a ponta, com seguranca, persistencia e observabilidade.
 
@@ -358,6 +369,91 @@ Conclusao objetiva:
 - Assim que as variaveis obrigatorias forem aplicadas no ambiente alvo, repetir os testes das secoes B, C, D e E do checklist para liberar o Go/No-Go.
 
 ## Validacao final Firebase-first (2026-03-13)
+
+## Bloco 2 - Planejamento tecnico de continuidade (2026-03-16)
+
+Objetivo desta etapa:
+- Fechar estabilidade operacional de Open Banking Pluggy para go-live sem pendencias de E2E, observabilidade e rollback.
+
+### Trilha A - Hardening E2E oficial (sem skip)
+
+Escopo:
+- Consolidar execucao do `tests/e2e/open-banking-pluggy.spec.ts` em ambiente oficial sem skips condicionais.
+- Garantir que estado de splash/auth nao gere falso negativo na jornada Open Banking.
+
+Acoes:
+1. Rodar suite dedicada em Chromium no ambiente alvo com backend 3001 ativo.
+2. Executar 5 corridas consecutivas para confirmar estabilidade.
+3. Registrar taxa de sucesso e tempos medios por etapa (login, open bank, connect-token).
+
+Comando base:
+
+```bash
+npx playwright test tests/e2e/open-banking-pluggy.spec.ts --project=chromium --workers=1
+```
+
+Criterio de aceite:
+- 5/5 corridas verdes no ambiente oficial.
+- Zero skip no cenario principal de conectividade Pluggy.
+
+### Trilha B - Readiness operacional de ambiente
+
+Escopo:
+- Fechar configuracao definitiva de runtime para operacao real em staging/producao.
+
+Acoes:
+1. Confirmar variaveis Open Finance e webhook no runtime de deploy.
+2. Confirmar `providerMode=pluggy`, `pluggyConfigured=true` e `webhookSecretConfigured=true`.
+3. Confirmar persistencia `firebase` pronta com restart sem perda.
+
+Checklist minimo:
+- OPEN_FINANCE_PROVIDER=pluggy
+- OPEN_FINANCE_STORE_DRIVER=firebase
+- PLUGGY_CLIENT_ID definido
+- PLUGGY_CLIENT_SECRET definido
+- PLUGGY_WEBHOOK_SECRET definido
+- FIREBASE_PROJECT_ID definido
+- FIREBASE_CLIENT_EMAIL definido
+- FIREBASE_PRIVATE_KEY definido
+
+Criterio de aceite:
+- `/api/banking/health` refletindo runtime final (pluggy + firebase + webhook secret).
+- Reboot do backend sem perder conexoes bancarias.
+
+### Trilha C - Observabilidade e incident response
+
+Escopo:
+- Tornar diagnostico de falhas Pluggy reproduzivel em minutos.
+
+Acoes:
+1. Padronizar log de `connect`, `sync` e `webhook` com `userId`, `connectionId`, `itemId` quando disponivel.
+2. Manter payload minimizado (sem segredo) e incluir status final da operacao.
+3. Definir rotina de incidente com coleta minima obrigatoria.
+
+Pacote minimo de evidencias por incidente:
+- timestamp
+- endpoint
+- status HTTP
+- userId (quando houver)
+- itemId/connectionId (quando houver)
+- trecho de log correlacionado
+
+Criterio de aceite:
+- Qualquer falha de sync/webhook consegue ser rastreada ponta a ponta sem reproduzir localmente.
+
+### Sequencia recomendada de execucao
+
+1. Trilha B (readiness de ambiente)
+2. Trilha A (hardening E2E sem skip)
+3. Trilha C (observabilidade e resposta)
+
+### Gate final para liberar Go/No-Go
+
+Somente liberar Go/No-Go quando os tres gates abaixo estiverem aprovados simultaneamente:
+
+1. Runtime health com Pluggy + Firebase + webhook secret valido.
+2. E2E Open Banking com 5/5 verde e sem skip no cenario principal.
+3. Evidencias de rastreabilidade operacional completas para connect/sync/webhook.
 
 Resultado apos configuracao correta do Firebase Admin SDK e ajuste no adapter Firestore:
 

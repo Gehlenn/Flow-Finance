@@ -106,4 +106,108 @@ describe('buildAdvancedAIContext', () => {
     expect(context.recentTransactions[0].id).toBe('newer');
     expect(context.recentTransactions[1].id).toBe('older');
   });
+
+  it('aplica confianca minima de previsao quando ha poucas transacoes', () => {
+    const transactions: Transaction[] = [
+      tx({
+        id: 'single',
+        amount: 140,
+        type: TransactionType.DESPESA,
+        category: Category.PESSOAL,
+        description: 'Taxi',
+        date: '2026-03-10T10:00:00.000Z',
+      }),
+    ];
+
+    const context = buildAdvancedAIContext(
+      {
+        userId: 'u_ctx_small_sample',
+        accounts: ['acc_1'],
+        timezone: 'UTC',
+        currency: 'BRL',
+      },
+      transactions
+    );
+
+    expect(context.confidence.forecast).toBe(0.25);
+    expect(context.dataQuality.transactionCount).toBe(1);
+    expect(context.dataQuality.merchantCoverage).toBe(0);
+  });
+
+  it('reforca cenario de dominancia por categoria e queda progressiva da previsao', () => {
+    const transactions: Transaction[] = [
+      tx({
+        id: 'income_1',
+        amount: 5000,
+        type: TransactionType.RECEITA,
+        category: Category.CONSULTORIO,
+        description: 'Receita',
+        date: '2026-01-05T10:00:00.000Z',
+      }),
+      tx({
+        id: 'income_2',
+        amount: 5100,
+        type: TransactionType.RECEITA,
+        category: Category.CONSULTORIO,
+        description: 'Receita',
+        date: '2026-02-05T10:00:00.000Z',
+      }),
+      tx({
+        id: 'income_3',
+        amount: 5050,
+        type: TransactionType.RECEITA,
+        category: Category.CONSULTORIO,
+        description: 'Receita',
+        date: '2026-03-05T10:00:00.000Z',
+      }),
+      tx({
+        id: 'personal_1',
+        amount: 1200,
+        type: TransactionType.DESPESA,
+        category: Category.PESSOAL,
+        description: 'Mercado grande',
+        date: '2026-01-10T10:00:00.000Z',
+      }),
+      tx({
+        id: 'personal_2',
+        amount: 1300,
+        type: TransactionType.DESPESA,
+        category: Category.PESSOAL,
+        description: 'Mercado grande',
+        date: '2026-02-10T10:00:00.000Z',
+      }),
+      tx({
+        id: 'personal_3',
+        amount: 1250,
+        type: TransactionType.DESPESA,
+        category: Category.PESSOAL,
+        description: 'Mercado grande',
+        date: '2026-03-10T10:00:00.000Z',
+      }),
+      tx({
+        id: 'transport_1',
+        amount: 180,
+        type: TransactionType.DESPESA,
+        category: Category.NEGOCIO,
+        description: 'Combustivel',
+        date: '2026-03-12T10:00:00.000Z',
+      }),
+    ];
+
+    const context = buildAdvancedAIContext(
+      {
+        userId: 'u_ctx_dominance',
+        accounts: ['acc_1'],
+        timezone: 'UTC',
+        currency: 'BRL',
+      },
+      transactions
+    );
+
+    expect(context.dominantCategory?.category).toBe(Category.PESSOAL);
+    expect((context.dominantCategory?.percentage || 0)).toBeGreaterThan(80);
+
+    expect(context.cashflowForecast.in30Days).toBeLessThanOrEqual(context.cashflowForecast.in7Days);
+    expect(context.cashflowForecast.in90Days).toBeLessThanOrEqual(context.cashflowForecast.in30Days);
+  });
 });

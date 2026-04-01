@@ -3,25 +3,21 @@ import { asyncHandler } from './errorHandler';
 import logger from '../config/logger';
 import {
   PLAN_LIMITS,
-  getUserPlan,
   getMonthlyCount,
+  getUserPlan,
+  getWorkspaceLimits,
+  getWorkspaceMonthlyCount,
+  getWorkspacePlan,
   incrementMonthlyUsage,
+  incrementWorkspaceMonthlyUsage,
   isWithinLimit,
+  isWorkspaceWithinLimit,
 } from '../utils/saasStore';
 import { recordAuditEvent } from '../services/admin/auditLog';
+import { getWorkspaceAsync, isUserInWorkspaceAsync } from '../services/admin/workspaceStore';
 
 type ResourceKind = 'transactions' | 'aiQueries' | 'bankConnections';
 
-/**
- * quotaMiddleware — enforce per-plan monthly limits before a route handler runs.
- *
- * Usage:
- *   router.post('/interpret', quotaMiddleware('aiQueries'), interpretController);
- *   router.post('/connect',   quotaMiddleware('bankConnections'), connectBankController);
- *
- * On success it also increments the counter so usage is tracked automatically.
- * Pass `trackOnly: true` to increment without blocking (useful for transactions).
- */
 export function quotaMiddleware(
   resource: ResourceKind,
   amount = 1,
@@ -29,36 +25,51 @@ export function quotaMiddleware(
 ) {
   return asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.userId;
+    const workspaceId = await resolveAuthorizedWorkspaceId(req);
 
-    if (!userId) {
-      // Auth middleware should have blocked unauthenticated requests before this.
-      // If we get here without a userId, let the auth layer handle it.
+    if (!userId && !workspaceId) {
       return next();
     }
 
-    const plan = getUserPlan(userId);
-    const limit = PLAN_LIMITS[plan][resource];
-    const current = getMonthlyCount(userId, resource);
+    const scope = workspaceId ? 'workspace' : 'user';
+    const scopeId = workspaceId || userId!;
+    const plan = workspaceId ? getWorkspacePlan(workspaceId) : getUserPlan(userId!);
+    const limit = workspaceId ? getWorkspaceLimits(workspaceId)[resource] : PLAN_LIMITS[plan][resource];
+    const current = workspaceId
+      ? getWorkspaceMonthlyCount(workspaceId, resource)
+      : getMonthlyCount(userId!, resource);
     const remaining = Math.max(0, limit - current);
 
-    // Set informational headers regardless of outcome
     res.setHeader('X-RateLimit-Plan', plan);
+    res.setHeader('X-RateLimit-Scope', scope);
     res.setHeader('X-RateLimit-Resource', resource);
     res.setHeader('X-RateLimit-Limit', String(limit));
     res.setHeader('X-RateLimit-Remaining', String(Math.max(0, remaining - amount)));
     res.setHeader('X-RateLimit-Reset', getMonthResetEpoch());
 
-    if (!options.trackOnly && !isWithinLimit(userId, resource, amount)) {
+    const isAllowed = workspaceId
+      ? isWorkspaceWithinLimit(workspaceId, resource, amount)
+      : isWithinLimit(userId!, resource, amount);
+
+    if (!options.trackOnly && !isAllowed) {
       logger.warn(
-        { userId, plan, resource, current, limit },
-        'Quota exceeded — request blocked',
+        { userId, workspaceId, plan, resource, current, limit, scope },
+        'Quota exceeded - request blocked',
       );
-      recordAuditEvent({ userId, action: 'quota.exceeded', status: 'blocked', resource, metadata: { plan, current, limit } });
+      recordAuditEvent({
+        userId,
+        action: 'quota.exceeded',
+        status: 'blocked',
+        resource: scopeId,
+        metadata: { plan, current, limit, quotaResource: resource, scope },
+      });
 
       res.status(429).json({
-        message: `Monthly ${resource} limit reached for your plan (${plan}). Upgrade to pro for higher limits.`,
+        message: `Monthly ${resource} limit reached for this ${scope} plan (${plan}). Upgrade to pro for higher limits.`,
         resource,
         plan,
+        scope,
+        scopeId,
         limit,
         current,
         upgradeUrl: '/api/saas/plans',
@@ -66,11 +77,38 @@ export function quotaMiddleware(
       return;
     }
 
-    incrementMonthlyUsage(userId, resource, amount);
-    logger.debug({ userId, plan, resource, newTotal: current + amount, limit }, 'Quota incremented');
+    if (workspaceId) {
+      incrementWorkspaceMonthlyUsage(workspaceId, resource, amount);
+    } else {
+      incrementMonthlyUsage(userId!, resource, amount);
+    }
+
+    logger.debug({ userId, workspaceId, plan, resource, newTotal: current + amount, limit, scope }, 'Quota incremented');
 
     next();
   });
+}
+
+async function resolveAuthorizedWorkspaceId(req: Request): Promise<string | undefined> {
+  const headerWorkspaceId = typeof req.header === 'function'
+    ? req.header('x-workspace-id')
+    : undefined;
+  const candidate =
+    (req as Request & { workspaceId?: string }).workspaceId ||
+    headerWorkspaceId ||
+    req.params.workspaceId ||
+    req.query.workspaceId ||
+    req.body?.workspaceId;
+
+  if (!candidate || typeof candidate !== 'string' || !req.userId) {
+    return undefined;
+  }
+
+  if (!await getWorkspaceAsync(candidate) || !await isUserInWorkspaceAsync(req.userId, candidate)) {
+    return undefined;
+  }
+
+  return candidate;
 }
 
 function getMonthResetEpoch(): string {

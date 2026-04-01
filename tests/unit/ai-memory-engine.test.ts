@@ -9,6 +9,7 @@ import {
   getUserBehaviors,
   getFinancialProfile,
   getMemoryStats,
+  recordMemoryFeedback,
 } from '../../src/ai/memory/AIMemoryEngine';
 import { aiMemoryStore } from '../../src/ai/memory/AIMemoryStore';
 import { AIMemoryType } from '../../src/ai/memory/memoryTypes';
@@ -166,6 +167,74 @@ describe('AIMemoryEngine', () => {
     aiMemoryEngine.clearUserMemories('u1');
     expect(getAIMemories('u1')).toHaveLength(0);
   });
+
+  it('stores confidence + expiration signals for category distribution patterns', () => {
+    aiMemoryEngine.updateMemory(
+      {
+        recurring: [],
+        weeklySpikes: [],
+        categoryDominance: ['Pessoal', 1200],
+        recurringInsights: [],
+        weeklySpikeInsights: [],
+        dominantCategoryShare: 0.68,
+        confidence: {
+          recurring: 0,
+          weeklySpikes: 0,
+          categoryDominance: 0.82,
+          overall: 0.27,
+        },
+      },
+      'u1',
+    );
+
+    const memories = getAIMemories('u1', AIMemoryType.SPENDING_PATTERN);
+    const categoryMemory = memories.find((m) => m.key === 'category_dominance');
+
+    expect(categoryMemory).toBeDefined();
+    expect(categoryMemory?.metadata?.signalType).toBe('category_distribution');
+    expect(categoryMemory?.metadata?.confidenceBand).toBe('high');
+    expect(categoryMemory?.metadata?.contextDecayMultiplier).toBe(1.3);
+    expect(typeof categoryMemory?.metadata?.expiresAt).toBe('number');
+    expect(categoryMemory!.metadata!.expiresAt).toBeGreaterThan(Date.now());
+  });
+
+  it('recordMemoryFeedback strengthens confidence when feedback is positive', () => {
+    aiMemoryEngine.updateMemory(
+      {
+        recurring: [],
+        weeklySpikes: [],
+        categoryDominance: ['Pessoal', 900],
+        recurringInsights: [],
+        weeklySpikeInsights: [],
+        dominantCategoryShare: 0.62,
+        confidence: {
+          recurring: 0,
+          weeklySpikes: 0,
+          categoryDominance: 0.65,
+          overall: 0.4,
+        },
+      },
+      'u1',
+    );
+
+    const before = getAIMemories('u1', AIMemoryType.SPENDING_PATTERN).find((m) => m.key === 'category_dominance');
+    expect(before).toBeDefined();
+    const beforeConfidence = before!.confidence;
+
+    const applied = recordMemoryFeedback('u1', AIMemoryType.SPENDING_PATTERN, 'category_dominance', 'positive', 'dashboard_signal');
+    expect(applied).toBe(true);
+
+    const after = getAIMemories('u1', AIMemoryType.SPENDING_PATTERN).find((m) => m.key === 'category_dominance');
+    expect(after).toBeDefined();
+    expect(after!.confidence).toBeGreaterThan(beforeConfidence);
+    expect(after!.metadata?.lastFeedback).toBe('positive');
+    expect(after!.metadata?.lastFeedbackContext).toBe('dashboard_signal');
+  });
+
+  it('recordMemoryFeedback returns false when target memory does not exist', () => {
+    const applied = recordMemoryFeedback('u1', AIMemoryType.SPENDING_PATTERN, 'missing_key', 'negative', 'manual');
+    expect(applied).toBe(false);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -242,5 +311,68 @@ describe('AIMemoryStore', () => {
     expect(stats.avgConfidence).toBeCloseTo(0.7);
     expect(stats.byType[AIMemoryType.SPENDING_PATTERN]).toBe(1);
     expect(stats.byType[AIMemoryType.MERCHANT_CATEGORY]).toBe(1);
+  });
+
+  it('queryMemories ignores entries with expired metadata.expiresAt', () => {
+    aiMemoryStore.saveMemory({
+      id: 'exp1',
+      userId: 'u1',
+      type: AIMemoryType.SPENDING_PATTERN,
+      key: 'category_dominance',
+      value: { category: 'Pessoal', amount: 900 },
+      confidence: 0.9,
+      strength: 50,
+      occurrences: 2,
+      createdAt: Date.now() - 1000,
+      updatedAt: Date.now() - 1000,
+      lastObservedAt: Date.now() - 1000,
+      metadata: { expiresAt: Date.now() - 1 },
+    });
+
+    const results = aiMemoryStore.queryMemories({ userId: 'u1' });
+    expect(results.find((m) => m.id === 'exp1')).toBeUndefined();
+  });
+
+  it('applyDecay uses metadata.contextDecayMultiplier when configured', () => {
+    const now = Date.now();
+    aiMemoryStore.saveMemory({
+      id: 'decay-multiplier',
+      userId: 'u1',
+      type: AIMemoryType.SPENDING_PATTERN,
+      key: 'category_dominance',
+      value: { category: 'Pessoal', amount: 900 },
+      confidence: 0.95,
+      strength: 95,
+      occurrences: 3,
+      createdAt: now - 10 * 86400000,
+      updatedAt: now - 10 * 86400000,
+      lastObservedAt: now - 10 * 86400000,
+      metadata: { contextDecayMultiplier: 2 },
+    });
+
+    aiMemoryStore.saveMemory({
+      id: 'decay-baseline',
+      userId: 'u1',
+      type: AIMemoryType.SPENDING_PATTERN,
+      key: 'weekly_spikes',
+      value: [{ week: 1 }],
+      confidence: 0.95,
+      strength: 95,
+      occurrences: 3,
+      createdAt: now - 10 * 86400000,
+      updatedAt: now - 10 * 86400000,
+      lastObservedAt: now - 10 * 86400000,
+      metadata: { contextDecayMultiplier: 1 },
+    });
+
+    aiMemoryStore.setDecayConfig({ enabled: true, timeWindow: 1, decayRate: 0.01, minConfidence: 0 });
+
+    aiMemoryStore.runDecayCycle();
+
+    const multiplierMemory = aiMemoryStore.getMemory('decay-multiplier');
+    const baselineMemory = aiMemoryStore.getMemory('decay-baseline');
+    expect(multiplierMemory).toBeDefined();
+    expect(baselineMemory).toBeDefined();
+    expect(multiplierMemory!.confidence).toBeLessThan(baselineMemory!.confidence);
   });
 });

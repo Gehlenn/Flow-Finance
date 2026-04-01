@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    pool: 'threads',
     include: [
       'tests/unit/helpers.test.ts',
       'tests/unit/user-context.test.ts',

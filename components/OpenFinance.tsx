@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Landmark, ShieldCheck, Plus, RefreshCw, X, Loader2, Search, Trash2, ExternalLink, ChevronRight } from 'lucide-react';
+import { getWorkspaceScopedStorageKey } from '../src/utils/workspaceStorage';
 
 interface BankAccount {
   id: string;
@@ -60,9 +61,14 @@ const AnimatedNumber: React.FC<{ value: number; hideValues?: boolean; className?
   );
 };
 
-const OpenFinance: React.FC<{ hideValues?: boolean }> = ({ hideValues = false }) => {
+const OpenFinance: React.FC<{
+  hideValues?: boolean;
+  activeWorkspaceId?: string | null;
+  activeWorkspaceName?: string | null;
+}> = ({ hideValues = false, activeWorkspaceId, activeWorkspaceName }) => {
+  const storageKey = getWorkspaceScopedStorageKey('flow_bank_accounts', activeWorkspaceId);
   const [banks, setBanks] = useState<BankAccount[]>(() => {
-    const saved = localStorage.getItem('flow_bank_accounts');
+    const saved = localStorage.getItem(storageKey);
     return saved ? JSON.parse(saved) : [
       { id: '1', name: 'Nubank', balance: 12450.50, status: 'Conectado', color: 'bg-purple-600', type: 'bank', lastSynced: new Date().toISOString() },
       { id: '2', name: 'XP Investimentos', balance: 89300.20, status: 'Conectado', color: 'bg-black', type: 'broker', lastSynced: new Date().toISOString() }
@@ -70,8 +76,13 @@ const OpenFinance: React.FC<{ hideValues?: boolean }> = ({ hideValues = false })
   });
 
   useEffect(() => {
-    localStorage.setItem('flow_bank_accounts', JSON.stringify(banks));
-  }, [banks]);
+    const saved = localStorage.getItem(storageKey);
+    setBanks(saved ? JSON.parse(saved) : []);
+  }, [storageKey]);
+
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(banks));
+  }, [banks, storageKey]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -127,6 +138,9 @@ const OpenFinance: React.FC<{ hideValues?: boolean }> = ({ hideValues = false })
         <div className="relative z-10">
           <h2 className="text-2xl font-black text-white tracking-tight leading-none">Contas</h2>
           <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mt-1.5">Ecossistema Open Finance</p>
+          <p className="text-[8px] font-black text-white/80 uppercase tracking-widest mt-2">
+            Workspace: {activeWorkspaceName || 'Carregando workspace'}
+          </p>
         </div>
         <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center text-white relative z-10">
           <Landmark size={22} />

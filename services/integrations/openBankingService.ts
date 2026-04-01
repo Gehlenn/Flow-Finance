@@ -23,19 +23,20 @@ import { FinancialEventEmitter } from '../../src/events/eventEngine';
 import { classifyImportedTransactions } from '../../src/finance/importService';
 import { learnMemory } from '../../src/ai/aiMemory';
 import { makeId } from '../../utils/helpers';
-import { API_ENDPOINTS, apiRequest } from '../../src/config/api.config';
+import { API_ENDPOINTS, apiRequest, ApiRequestError } from '../../src/config/api.config';
+import { getActiveWorkspaceScopedStorageKey } from '../../src/utils/workspaceStorage';
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 
 const CONNECTIONS_KEY = 'flow_bank_connections';
 
 function readConnections(): BankConnection[] {
-  try { return JSON.parse(localStorage.getItem(CONNECTIONS_KEY) || '[]'); }
+  try { return JSON.parse(localStorage.getItem(getActiveWorkspaceScopedStorageKey(CONNECTIONS_KEY)) || '[]'); }
   catch { return []; }
 }
 
 function writeConnections(conns: BankConnection[]): void {
-  localStorage.setItem(CONNECTIONS_KEY, JSON.stringify(conns));
+  localStorage.setItem(getActiveWorkspaceScopedStorageKey(CONNECTIONS_KEY), JSON.stringify(conns));
 }
 
 function hasBackendBanking(): boolean {
@@ -46,14 +47,35 @@ function hasBackendBanking(): boolean {
   return Boolean(API_ENDPOINTS.BANKING.CONNECT);
 }
 
+function isLocalBankingFallbackEnabled(): boolean {
+  if (import.meta.env.MODE === 'test') {
+    return true;
+  }
+
+  return String(import.meta.env.VITE_ENABLE_LOCAL_BANKING_FALLBACK || '').toLowerCase() === 'true';
+}
+
 function isProductionRuntime(): boolean {
   return import.meta.env.MODE === 'production';
 }
 
 function getApiErrorStatus(error: unknown): number | null {
+  if (error instanceof ApiRequestError) {
+    return error.statusCode;
+  }
+
   const message = String((error as any)?.message ?? '');
   const match = message.match(/API Error\s+(\d{3})/);
   return match ? Number(match[1]) : null;
+}
+
+function extractRequestId(error: unknown): string | null {
+  if (error instanceof ApiRequestError && error.requestId) {
+    return error.requestId;
+  }
+
+  const fromObject = (error as any)?.requestId;
+  return typeof fromObject === 'string' && fromObject.trim() ? fromObject.trim() : null;
 }
 
 function collectErrorTokens(error: unknown, seen = new Set<unknown>()): string[] {
@@ -84,19 +106,25 @@ function collectErrorTokens(error: unknown, seen = new Set<unknown>()): string[]
 
 export function mapPluggyConnectErrorMessage(error: unknown): string {
   const merged = collectErrorTokens(error).join(' ').toUpperCase();
+  const requestId = extractRequestId(error);
+  const suffix = requestId ? ` (requestId: ${requestId})` : '';
 
   if (merged.includes('TRIAL_CLIENT_ITEM_CREATE_NOT_ALLOWED')) {
-    return 'Sua credencial Pluggy esta em modo de teste. Use um conector sandbox ou solicite habilitacao de contas reais no painel da Pluggy.';
+    return `Sua credencial Pluggy esta em modo de teste. Use um conector sandbox ou solicite habilitacao de contas reais no painel da Pluggy.${suffix}`;
   }
 
   if (merged.includes('INVALID_CONNECT_TOKEN') || merged.includes('CONNECT_TOKEN')) {
-    return 'Token de conexao da Pluggy expirou ou e invalido. Atualize a tela e tente novamente.';
+    return `Token de conexao da Pluggy expirou ou e invalido. Atualize a tela e tente novamente.${suffix}`;
   }
 
-  return 'Conexao Pluggy cancelada ou invalida. Tente novamente.';
+  return `Conexao Pluggy cancelada ou invalida. Tente novamente.${suffix}`;
 }
 
 function shouldUseLocalMockFallback(error: unknown): boolean {
+  if (!isLocalBankingFallbackEnabled()) {
+    return false;
+  }
+
   const status = getApiErrorStatus(error);
 
   // In production, do not mask backend failures with mock data.
@@ -190,7 +218,9 @@ export async function reloadConnections(userId: string): Promise<BankConnection[
     }
   }
 
-  if (!hasBackendBanking()) return local;
+  if (!hasBackendBanking()) {
+    return isLocalBankingFallbackEnabled() ? local : [];
+  }
 
   try {
     const remote = await apiRequest<BankConnection[]>(
@@ -229,6 +259,10 @@ export async function connectBank(
   bankId: string,
   userId: string
 ): Promise<BankConnection> {
+  if (!hasBackendBanking() && !isLocalBankingFallbackEnabled()) {
+    throw new Error('Open Banking backend indisponivel. Habilite o backend antes de conectar um banco.');
+  }
+
   if (hasBackendBanking()) {
     try {
       const conn = await apiRequest<BankConnection>(API_ENDPOINTS.BANKING.CONNECT, {

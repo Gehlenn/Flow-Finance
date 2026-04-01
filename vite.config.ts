@@ -56,6 +56,7 @@ export default defineConfig(({ mode }) => {
       test: {
         globals: true,
         environment: 'jsdom',
+        pool: 'threads',
         exclude: [
           '**/node_modules/**',
           '**/dist/**',
