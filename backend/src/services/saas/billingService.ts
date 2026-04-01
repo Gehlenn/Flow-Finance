@@ -1,8 +1,12 @@
 import { AppError } from '../../middleware/errorHandler';
 import { recordAuditEvent } from '../admin/auditLog';
+import { getWorkspaceAsync, updateWorkspaceBilling } from '../admin/workspaceStore';
 import {
   appendBillingHook,
+  appendWorkspaceBillingHook,
   getUserPlan,
+  getWorkspaceLimits,
+  getWorkspacePlan,
   PLAN_LIMITS,
   setUserPlan,
   type BillingHookEvent,
@@ -42,15 +46,27 @@ export function getPlanCatalog(userId: string): {
   mockBillingEnabled: boolean;
   plans: PlanCatalogEntry[];
 } {
-  const currentPlan = getUserPlan(userId);
+  return {
+    currentPlan: getUserPlan(userId),
+    mockBillingEnabled: isMockBillingEnabled(),
+    plans: buildPlanCatalogEntries(),
+  };
+}
+
+export async function getWorkspacePlanCatalog(workspaceId: string): Promise<{
+  currentPlan: PlanId;
+  mockBillingEnabled: boolean;
+  plans: PlanCatalogEntry[];
+}> {
+  const workspace = await getWorkspaceAsync(workspaceId);
+  if (!workspace) {
+    throw new AppError(404, 'Workspace not found');
+  }
 
   return {
-    currentPlan,
+    currentPlan: workspace.plan,
     mockBillingEnabled: isMockBillingEnabled(),
-    plans: (Object.keys(PLAN_LIMITS) as PlanId[]).map((planId) => ({
-      ...getPlanDefinition(planId),
-      limits: PLAN_LIMITS[planId],
-    })),
+    plans: buildPlanCatalogEntries(workspaceId),
   };
 }
 
@@ -72,6 +88,96 @@ export function changeUserPlan(input: ChangeUserPlanInput): {
     userAgent: input.userAgent,
     source: input.source || 'mock_api',
   });
+}
+
+export async function changeWorkspacePlan(input: {
+  workspaceId: string;
+  actorUserId: string;
+  targetPlan: PlanId;
+  ip?: string;
+  userAgent?: string;
+  source?: 'mock_api' | 'billing_hook';
+  skipBillingHookAppend?: boolean;
+}): Promise<{
+  workspaceId: string;
+  previousPlan: PlanId;
+  currentPlan: PlanId;
+  changed: boolean;
+  source: 'mock_api' | 'billing_hook';
+}> {
+  if (!isMockBillingEnabled()) {
+    throw new AppError(403, 'Mock billing updates are disabled in this environment');
+  }
+
+  const workspace = await getWorkspaceAsync(input.workspaceId);
+  if (!workspace) {
+    throw new AppError(404, 'Workspace not found');
+  }
+
+  const previousPlan = workspace.plan;
+  const source = input.source || 'mock_api';
+
+  if (previousPlan === input.targetPlan) {
+    return {
+      workspaceId: input.workspaceId,
+      previousPlan,
+      currentPlan: input.targetPlan,
+      changed: false,
+      source,
+    };
+  }
+
+  updateWorkspaceBilling(input.workspaceId, {
+    plan: input.targetPlan,
+    billingEmail: workspace.billingEmail,
+    billingCustomerId: workspace.billingCustomerId || `cust_${workspace.workspaceId}`,
+    subscription: {
+      subscriptionId: workspace.subscription?.subscriptionId || `sub_${workspace.workspaceId}`,
+      provider: 'internal',
+      status: input.targetPlan === 'pro' ? 'active' : 'canceled',
+      plan: input.targetPlan,
+      startedAt: workspace.subscription?.startedAt || new Date().toISOString(),
+      renewsAt: input.targetPlan === 'pro' ? workspace.subscription?.renewsAt : undefined,
+      canceledAt: input.targetPlan === 'free' ? new Date().toISOString() : undefined,
+    },
+  });
+
+  if (!input.skipBillingHookAppend) {
+    appendWorkspaceBillingHook(input.workspaceId, {
+      workspaceId: input.workspaceId,
+      userId: input.actorUserId,
+      plan: input.targetPlan,
+      event: 'plan_changed',
+      amount: 0,
+      at: new Date().toISOString(),
+      metadata: {
+        previousPlan,
+        source,
+      },
+    });
+  }
+
+  recordAuditEvent({
+    userId: input.actorUserId,
+    action: 'billing.plan_changed',
+    status: 'success',
+    resource: input.workspaceId,
+    ip: input.ip,
+    userAgent: input.userAgent,
+    metadata: {
+      previousPlan,
+      currentPlan: input.targetPlan,
+      source,
+    },
+  });
+
+  return {
+    workspaceId: input.workspaceId,
+    previousPlan,
+    currentPlan: input.targetPlan,
+    changed: true,
+    source,
+  };
 }
 
 export function applyBillingHook(input: BillingHookInput): {
@@ -102,6 +208,51 @@ export function applyBillingHook(input: BillingHookInput): {
 
   const result = applyPlanChange({
     userId: input.userId,
+    targetPlan: input.plan,
+    ip: input.ip,
+    userAgent: input.userAgent,
+    source: 'billing_hook',
+    skipBillingHookAppend: true,
+  });
+
+  return {
+    previousPlan: result.previousPlan,
+    currentPlan: result.currentPlan,
+    changed: result.changed,
+    event: input.event,
+  };
+}
+
+export async function applyWorkspaceBillingHook(input: BillingHookInput & { workspaceId: string }): Promise<{
+  previousPlan: PlanId;
+  currentPlan: PlanId;
+  changed: boolean;
+  event: BillingHookEvent;
+}> {
+  appendWorkspaceBillingHook(input.workspaceId, {
+    workspaceId: input.workspaceId,
+    userId: input.userId,
+    plan: input.plan,
+    event: input.event,
+    resource: input.resource,
+    amount: input.amount,
+    at: input.at,
+    metadata: input.metadata,
+  });
+
+  if (input.event !== 'plan_changed') {
+    const currentPlan = getWorkspacePlan(input.workspaceId);
+    return {
+      previousPlan: currentPlan,
+      currentPlan,
+      changed: false,
+      event: input.event,
+    };
+  }
+
+  const result = await changeWorkspacePlan({
+    workspaceId: input.workspaceId,
+    actorUserId: input.userId,
     targetPlan: input.plan,
     ip: input.ip,
     userAgent: input.userAgent,
@@ -187,6 +338,13 @@ function getProMonthlyPriceCents(): number {
   return Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : 2990;
 }
 
+function buildPlanCatalogEntries(workspaceId?: string): PlanCatalogEntry[] {
+  return (Object.keys(PLAN_LIMITS) as PlanId[]).map((planId) => ({
+    ...getPlanDefinition(planId),
+    limits: workspaceId && planId === getWorkspacePlan(workspaceId) ? getWorkspaceLimits(workspaceId) : PLAN_LIMITS[planId],
+  }));
+}
+
 function getPlanDefinition(planId: PlanId): Omit<PlanCatalogEntry, 'limits'> {
   if (planId === 'pro') {
     return {
@@ -195,9 +353,9 @@ function getPlanDefinition(planId: PlanId): Omit<PlanCatalogEntry, 'limits'> {
       priceMonthlyCents: getProMonthlyPriceCents(),
       currency: 'BRL',
       features: [
-        '20 conexões bancárias',
-        '5.000 consultas de IA por mês',
-        '10.000 transações mensais monitoradas',
+        '20 conexoes bancarias',
+        '5.000 consultas de IA por mes',
+        '10.000 transacoes mensais monitoradas',
       ],
     };
   }
@@ -208,9 +366,9 @@ function getPlanDefinition(planId: PlanId): Omit<PlanCatalogEntry, 'limits'> {
     priceMonthlyCents: 0,
     currency: 'BRL',
     features: [
-      '1 conexão bancária',
-      '100 consultas de IA por mês',
-      '500 transações mensais monitoradas',
+      '1 conexao bancaria',
+      '100 consultas de IA por mes',
+      '500 transacoes mensais monitoradas',
     ],
   };
 }

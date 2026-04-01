@@ -39,14 +39,14 @@ export type CloudSyncStoreStatus = {
 
 export interface FirebaseCloudSyncStoreAdapter {
   getStatus(): Promise<FirebaseAdapterStatus>;
-  getUserState(userId: string): Promise<Partial<SyncEntityPayload>>;
-  setUserState(userId: string, entities: Partial<SyncEntityPayload>): Promise<void>;
+  getScopeState(scopeId: string): Promise<Partial<SyncEntityPayload>>;
+  setScopeState(scopeId: string, entities: Partial<SyncEntityPayload>): Promise<void>;
 }
 
 interface CloudSyncStore {
   getStatus(): Promise<CloudSyncStoreStatus>;
-  pushItems(userId: string, entity: SyncEntity, items: SyncItem[]): Promise<PushResult>;
-  pullItems(userId: string, since?: string): Promise<PullResult>;
+  pushItems(scopeId: string, entity: SyncEntity, items: SyncItem[]): Promise<PushResult>;
+  pullItems(scopeId: string, since?: string): Promise<PullResult>;
 }
 
 export interface CloudSyncStoreFactoryOptions {
@@ -193,13 +193,13 @@ class FirebaseAdminCloudSyncStoreAdapter implements FirebaseCloudSyncStoreAdapte
     return this.status;
   }
 
-  async getUserState(userId: string): Promise<Partial<SyncEntityPayload>> {
+  async getScopeState(scopeId: string): Promise<Partial<SyncEntityPayload>> {
     const firestore = await this.ensureFirestore();
     if (!firestore) {
       return {};
     }
 
-    const snapshot = await firestore.collection(this.collectionName).doc(userId).get();
+    const snapshot = await firestore.collection(this.collectionName).doc(scopeId).get();
     if (!snapshot.exists) {
       return {};
     }
@@ -208,14 +208,14 @@ class FirebaseAdminCloudSyncStoreAdapter implements FirebaseCloudSyncStoreAdapte
     return normalizeEntities(data?.entities as Partial<SyncEntityPayload> | undefined);
   }
 
-  async setUserState(userId: string, entities: Partial<SyncEntityPayload>): Promise<void> {
+  async setScopeState(scopeId: string, entities: Partial<SyncEntityPayload>): Promise<void> {
     const firestore = await this.ensureFirestore();
     if (!firestore) {
       throw new Error('Firebase Cloud Sync store is not ready');
     }
 
-    await firestore.collection(this.collectionName).doc(userId).set({
-      userId,
+    await firestore.collection(this.collectionName).doc(scopeId).set({
+      scopeId,
       entities,
       updatedAt: new Date().toISOString(),
     }, { merge: true });
@@ -223,12 +223,12 @@ class FirebaseAdminCloudSyncStoreAdapter implements FirebaseCloudSyncStoreAdapte
 }
 
 class InMemoryCloudSyncStore implements CloudSyncStore {
-  private readonly userSyncStore = new Map<string, Map<SyncEntity, Map<string, StoredSyncItem>>>();
+  private readonly scopeSyncStore = new Map<string, Map<SyncEntity, Map<string, StoredSyncItem>>>();
 
-  private ensureUserEntityMap(userId: string, entity: SyncEntity): Map<string, StoredSyncItem> {
-    const byEntity = this.userSyncStore.get(userId) || new Map<SyncEntity, Map<string, StoredSyncItem>>();
-    if (!this.userSyncStore.has(userId)) {
-      this.userSyncStore.set(userId, byEntity);
+  private ensureScopeEntityMap(scopeId: string, entity: SyncEntity): Map<string, StoredSyncItem> {
+    const byEntity = this.scopeSyncStore.get(scopeId) || new Map<SyncEntity, Map<string, StoredSyncItem>>();
+    if (!this.scopeSyncStore.has(scopeId)) {
+      this.scopeSyncStore.set(scopeId, byEntity);
     }
 
     const existing = byEntity.get(entity);
@@ -250,8 +250,8 @@ class InMemoryCloudSyncStore implements CloudSyncStore {
     };
   }
 
-  async pushItems(userId: string, entity: SyncEntity, items: SyncItem[]): Promise<PushResult> {
-    const entityMap = this.ensureUserEntityMap(userId, entity);
+  async pushItems(scopeId: string, entity: SyncEntity, items: SyncItem[]): Promise<PushResult> {
+    const entityMap = this.ensureScopeEntityMap(scopeId, entity);
     const now = new Date().toISOString();
     let upserted = 0;
     let deleted = 0;
@@ -272,8 +272,8 @@ class InMemoryCloudSyncStore implements CloudSyncStore {
     return { upserted, deleted, latestServerUpdatedAt: now };
   }
 
-  async pullItems(userId: string, since?: string): Promise<PullResult> {
-    const byEntity = this.userSyncStore.get(userId) || new Map<SyncEntity, Map<string, StoredSyncItem>>();
+  async pullItems(scopeId: string, since?: string): Promise<PullResult> {
+    const byEntity = this.scopeSyncStore.get(scopeId) || new Map<SyncEntity, Map<string, StoredSyncItem>>();
     const entities = ENTITIES.reduce<SyncEntityPayload>((acc, entity) => {
       const entityMap = byEntity.get(entity);
       acc[entity] = entityMap ? Array.from(entityMap.values()) : [];
@@ -297,12 +297,12 @@ class FirebaseCloudSyncStore implements CloudSyncStore {
     };
   }
 
-  async pushItems(userId: string, entity: SyncEntity, items: SyncItem[]): Promise<PushResult> {
-    const current = normalizeEntities(await this.adapter.getUserState(userId));
+  async pushItems(scopeId: string, entity: SyncEntity, items: SyncItem[]): Promise<PushResult> {
+    const current = normalizeEntities(await this.adapter.getScopeState(scopeId));
     const now = new Date().toISOString();
     const merged = mergeEntityItems(current[entity], items, now);
 
-    await this.adapter.setUserState(userId, {
+    await this.adapter.setScopeState(scopeId, {
       [entity]: merged.merged,
     });
 
@@ -313,8 +313,8 @@ class FirebaseCloudSyncStore implements CloudSyncStore {
     };
   }
 
-  async pullItems(userId: string, since?: string): Promise<PullResult> {
-    const state = normalizeEntities(await this.adapter.getUserState(userId));
+  async pullItems(scopeId: string, since?: string): Promise<PullResult> {
+    const state = normalizeEntities(await this.adapter.getScopeState(scopeId));
     return filterEntitiesBySince(state, since);
   }
 }
@@ -354,12 +354,12 @@ export function createCloudSyncStore(options: CloudSyncStoreFactoryOptions = {})
 
 let cloudSyncStore: CloudSyncStore = createCloudSyncStore();
 
-export async function pushSyncItems(userId: string, entity: SyncEntity, items: SyncItem[]): Promise<PushResult> {
-  return cloudSyncStore.pushItems(userId, entity, items);
+export async function pushSyncItems(scopeId: string, entity: SyncEntity, items: SyncItem[]): Promise<PushResult> {
+  return cloudSyncStore.pushItems(scopeId, entity, items);
 }
 
-export async function pullSyncItems(userId: string, since?: string): Promise<PullResult> {
-  return cloudSyncStore.pullItems(userId, since);
+export async function pullSyncItems(scopeId: string, since?: string): Promise<PullResult> {
+  return cloudSyncStore.pullItems(scopeId, since);
 }
 
 export async function getCloudSyncStoreStatus(): Promise<CloudSyncStoreStatus> {

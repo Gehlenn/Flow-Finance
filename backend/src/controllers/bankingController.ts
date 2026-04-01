@@ -131,6 +131,35 @@ function resolveAuthenticatedUserId(req: Request, res: Response, candidateUserId
   return authenticatedUserId;
 }
 
+function getWorkspaceIdFromRequest(req: Request): string | null {
+  const workspaceId = (req as Request & { workspaceId?: string }).workspaceId;
+  return typeof workspaceId === 'string' && workspaceId.length > 0 ? workspaceId : null;
+}
+
+function buildWorkspaceScopedStorageKey(userId: string, workspaceId: string): string {
+  return `${workspaceId}::${userId}`;
+}
+
+function parseWorkspaceScopedStorageKey(scopeKey: string): { workspaceId?: string; userId: string } {
+  const separatorIndex = scopeKey.indexOf('::');
+  if (separatorIndex === -1) {
+    return { userId: scopeKey };
+  }
+
+  return {
+    workspaceId: scopeKey.slice(0, separatorIndex),
+    userId: scopeKey.slice(separatorIndex + 2),
+  };
+}
+
+function toExternalConnection(connection: BankConnection): BankConnection {
+  const parsed = parseWorkspaceScopedStorageKey(connection.user_id);
+  return {
+    ...connection,
+    user_id: parsed.userId,
+  };
+}
+
 /**
  * Asserts that a connection's stored user_id matches the authenticated user.
  * Returns false and sends 403 if ownership is violated — defense-in-depth
@@ -298,7 +327,11 @@ async function setConnectionsForUser(userId: string, connections: BankConnection
 }
 
 async function findConnectionsByExternalItemId(itemId: string): Promise<Array<{ userId: string; connection: BankConnection }>> {
-  return bankingConnectionStore.findConnectionsByExternalItemId(itemId);
+  const matches = await bankingConnectionStore.findConnectionsByExternalItemId(itemId);
+  return matches.map((match) => ({
+    userId: parseWorkspaceScopedStorageKey(match.userId).userId,
+    connection: toExternalConnection(match.connection),
+  }));
 }
 
 async function countUsersWithConnections(): Promise<number> {
@@ -312,11 +345,16 @@ export const listBanksController = asyncHandler(async (_req: Request, res: Respo
 export const listConnectionsController = asyncHandler(async (req: Request, res: Response) => {
   const requestedUserId = typeof req.query.userId === 'string' ? req.query.userId : undefined;
   const userId = resolveAuthenticatedUserId(req, res, requestedUserId);
+  const workspaceId = getWorkspaceIdFromRequest(req);
   if (!userId) {
     return;
   }
+  if (!workspaceId) {
+    res.status(400).json({ message: 'Workspace context is required' });
+    return;
+  }
 
-  res.json(await getConnectionsForUserAsync(userId));
+  res.json((await getConnectionsForUserAsync(buildWorkspaceScopedStorageKey(userId, workspaceId))).map(toExternalConnection));
 });
 
 export const connectBankController = asyncHandler(async (req: Request, res: Response) => {
@@ -328,9 +366,15 @@ export const connectBankController = asyncHandler(async (req: Request, res: Resp
     credentials?: Record<string, unknown>;
   };
   const resolvedUserId = resolveAuthenticatedUserId(req, res, userId);
+  const workspaceId = getWorkspaceIdFromRequest(req);
   if (!resolvedUserId) {
     return;
   }
+  if (!workspaceId) {
+    res.status(400).json({ message: 'Workspace context is required' });
+    return;
+  }
+  const storageScopeId = buildWorkspaceScopedStorageKey(resolvedUserId, workspaceId);
   const bank = BRAZILIAN_BANKS.find((item) => item.id === bankId);
 
   if (!isPluggyEnabled() && !bank) {
@@ -338,7 +382,7 @@ export const connectBankController = asyncHandler(async (req: Request, res: Resp
     return;
   }
 
-  const existing = await getConnectionsForUserAsync(resolvedUserId);
+  const existing = await getConnectionsForUserAsync(storageScopeId);
   const alreadyConnected = bank ? existing.find((conn) => conn.bank_name === bank.name) : undefined;
   if (alreadyConnected) {
     res.json(alreadyConnected);
@@ -390,7 +434,7 @@ export const connectBankController = asyncHandler(async (req: Request, res: Resp
 
       const connection: BankConnection = {
         id: crypto.randomUUID(),
-        user_id: resolvedUserId,
+        user_id: storageScopeId,
         bank_name: item.connector?.name || bank?.name || 'Banco conectado',
         bank_logo: item.connector?.imageUrl || bank?.logo,
         bank_color: item.connector?.primaryColor || bank?.color,
@@ -402,9 +446,9 @@ export const connectBankController = asyncHandler(async (req: Request, res: Resp
         created_at: item.createdAt || new Date().toISOString(),
       };
 
-      await setConnectionsForUser(resolvedUserId, [...existing, connection]);
+      await setConnectionsForUser(storageScopeId, [...existing, connection]);
       logger.info({ userId: resolvedUserId, bankId, itemId: item.id, connectorId: item.connector?.id, connectionId: connection.id }, 'Pluggy bank connected');
-      res.status(201).json(connection);
+      res.status(201).json(toExternalConnection(connection));
       return;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown Pluggy error';
@@ -416,7 +460,7 @@ export const connectBankController = asyncHandler(async (req: Request, res: Resp
 
   const connection: BankConnection = {
     id: crypto.randomUUID(),
-    user_id: resolvedUserId,
+    user_id: storageScopeId,
     bank_name: bank!.name,
     bank_logo: bank!.logo,
     bank_color: bank!.color,
@@ -427,21 +471,27 @@ export const connectBankController = asyncHandler(async (req: Request, res: Resp
     created_at: new Date().toISOString(),
   };
 
-  await setConnectionsForUser(resolvedUserId, [...existing, connection]);
+  await setConnectionsForUser(storageScopeId, [...existing, connection]);
   logger.info({ userId: resolvedUserId, bankId, connectionId: connection.id }, 'Bank connected');
   recordAuditEvent({ userId: resolvedUserId, action: 'banking.connect', status: 'success', resource: bankId, metadata: { connectionId: connection.id, provider: connection.provider } });
 
-  res.status(201).json(connection);
+  res.status(201).json(toExternalConnection(connection));
 });
 
 export const disconnectBankController = asyncHandler(async (req: Request, res: Response) => {
   const { connectionId, userId } = req.body as { connectionId: string; userId?: string };
   const resolvedUserId = resolveAuthenticatedUserId(req, res, userId);
+  const workspaceId = getWorkspaceIdFromRequest(req);
   if (!resolvedUserId) {
     return;
   }
+  if (!workspaceId) {
+    res.status(400).json({ message: 'Workspace context is required' });
+    return;
+  }
+  const storageScopeId = buildWorkspaceScopedStorageKey(resolvedUserId, workspaceId);
 
-  const current = await getConnectionsForUserAsync(resolvedUserId);
+  const current = await getConnectionsForUserAsync(storageScopeId);
   const connection = current.find((conn) => conn.id === connectionId);
 
   if (!connection) {
@@ -463,7 +513,7 @@ export const disconnectBankController = asyncHandler(async (req: Request, res: R
   }
 
   const next = current.filter((conn) => conn.id !== connectionId);
-  await setConnectionsForUser(resolvedUserId, next);
+  await setConnectionsForUser(storageScopeId, next);
 
   logger.info({ userId: resolvedUserId, connectionId }, 'Bank disconnected');
   recordAuditEvent({ userId: resolvedUserId, action: 'banking.disconnect', status: 'success', resource: connectionId });
@@ -477,11 +527,17 @@ export const syncBankController = asyncHandler(async (req: Request, res: Respons
     days?: number;
   };
   const resolvedUserId = resolveAuthenticatedUserId(req, res, userId);
+  const workspaceId = getWorkspaceIdFromRequest(req);
   if (!resolvedUserId) {
     return;
   }
+  if (!workspaceId) {
+    res.status(400).json({ message: 'Workspace context is required' });
+    return;
+  }
+  const storageScopeId = buildWorkspaceScopedStorageKey(resolvedUserId, workspaceId);
 
-  const current = await getConnectionsForUserAsync(resolvedUserId);
+  const current = await getConnectionsForUserAsync(storageScopeId);
   const idx = current.findIndex((conn) => conn.id === connectionId);
 
   if (idx < 0) {
@@ -528,7 +584,7 @@ export const syncBankController = asyncHandler(async (req: Request, res: Respons
         balance: primaryAccount?.balance,
         last_sync: new Date().toISOString(),
       };
-      await setConnectionsForUser(resolvedUserId, updated);
+      await setConnectionsForUser(storageScopeId, updated);
 
       const result: SyncResult = {
         connection_id: connectionId,
@@ -561,7 +617,7 @@ export const syncBankController = asyncHandler(async (req: Request, res: Respons
     balance: newBalance,
     last_sync: new Date().toISOString(),
   };
-  await setConnectionsForUser(resolvedUserId, updated);
+  await setConnectionsForUser(storageScopeId, updated);
 
   const result: SyncResult = {
     connection_id: connectionId,
@@ -578,10 +634,15 @@ export const syncBankController = asyncHandler(async (req: Request, res: Respons
 
 export const createConnectTokenController = asyncHandler(async (req: Request, res: Response) => {
   const authenticatedUserId = req.userId;
+  const workspaceId = getWorkspaceIdFromRequest(req);
   const { clientUserId } = req.body as { clientUserId?: string };
 
   if (!authenticatedUserId) {
     res.status(401).json({ message: 'Authenticated user is required' });
+    return;
+  }
+  if (!workspaceId) {
+    res.status(400).json({ message: 'Workspace context is required' });
     return;
   }
 
@@ -600,7 +661,7 @@ export const createConnectTokenController = asyncHandler(async (req: Request, re
     return;
   }
 
-  const token = await pluggyClient.createConnectToken(clientUserId || authenticatedUserId);
+  const token = await pluggyClient.createConnectToken(`${workspaceId}::${clientUserId || authenticatedUserId}`);
   res.json({ accessToken: token.accessToken });
 });
 
@@ -668,9 +729,15 @@ export const listConnectorsController = asyncHandler(async (_req: Request, res: 
 export const migrateCurrentUserConnectionsToFirebaseController = asyncHandler(async (req: Request, res: Response) => {
   const requestedUserId = typeof req.body?.userId === 'string' ? req.body.userId : undefined;
   const userId = resolveAuthenticatedUserId(req, res, requestedUserId);
+  const workspaceId = getWorkspaceIdFromRequest(req);
   if (!userId) {
     return;
   }
+  if (!workspaceId) {
+    res.status(400).json({ message: 'Workspace context is required' });
+    return;
+  }
+  const storageScopeId = buildWorkspaceScopedStorageKey(userId, workspaceId);
 
   const sourceStatus = await bankingConnectionStore.getStatus();
   const targetStore = createBankingConnectionStore({ driver: 'firebase' });
@@ -687,8 +754,8 @@ export const migrateCurrentUserConnectionsToFirebaseController = asyncHandler(as
     return;
   }
 
-  const result = await migrateConnectionsBetweenStores(bankingConnectionStore, targetStore, [userId]);
-  const totalAfterMigration = (await targetStore.getConnectionsForUser(userId)).length;
+  const result = await migrateConnectionsBetweenStores(bankingConnectionStore, targetStore, [storageScopeId]);
+  const totalAfterMigration = (await targetStore.getConnectionsForUser(storageScopeId)).length;
 
   logger.info({ userId, sourceDriver: sourceStatus.driver, migratedConnections: result.migratedConnections }, 'Migrated Open Finance connections to Firebase');
 

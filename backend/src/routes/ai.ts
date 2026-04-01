@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth';
+import { authz, requireFeature } from '../middleware/authz';
 import { aiLimiter } from '../middleware/rateLimit';
 import { quotaMiddleware } from '../middleware/quota';
+import { workspaceContextMiddleware } from '../middleware/workspaceContext';
 import {
   interpretController,
   scanReceiptController,
@@ -28,6 +30,8 @@ router.post('/cfo', aiLimiter, validate(CFOSchema), cfoController);
 // All other AI routes require authentication and are rate-limited
 router.use(authMiddleware);
 router.use(aiLimiter);
+router.use(workspaceContextMiddleware);
+router.use(authz('ai:use'));
 
 /**
  * POST /api/ai/interpret
@@ -63,7 +67,7 @@ router.post('/classify-transactions', quotaMiddleware('aiQueries'), validate(Cla
  * Body: { transactions: TransactionData[], type: 'daily'|'strategic' }
  * Returns: GenerateInsightsResponse
  */
-router.post('/insights', quotaMiddleware('aiQueries'), validate(GenerateInsightsSchema), generateInsightsController);
+router.post('/insights', requireFeature('advancedInsights'), quotaMiddleware('aiQueries'), validate(GenerateInsightsSchema), generateInsightsController);
 
 /**
  * POST /api/ai/token-count

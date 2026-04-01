@@ -1,3 +1,5 @@
+import { getActiveWorkspaceScopedStorageKey } from '../utils/workspaceStorage';
+
 const STORAGE_KEY = 'flow_ai_memory';
 
 // ─── Model ────────────────────────────────────────────────────────────────────
@@ -15,14 +17,14 @@ export interface AIMemory {
 
 function readAll(): AIMemory[] {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    return JSON.parse(localStorage.getItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY)) || '[]');
   } catch {
     return [];
   }
 }
 
 function writeAll(entries: AIMemory[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  localStorage.setItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY), JSON.stringify(entries));
 }
 
 // ─── CRUD ─────────────────────────────────────────────────────────────────────

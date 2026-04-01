@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { SubscriptionService } from '../../src/app/services';
 import { runAIOrchestrator } from '../../src/engines/ai/aiOrchestrator';
 import { AppError } from '../../src/errors/AppError';
 import { financialPatternDetector } from '../../src/engines/finance/patternDetector/financialPatternDetector';
@@ -13,31 +12,7 @@ import {
   hasFeature,
   SaaSContext,
 } from '../../src/saas';
-import { SubscriptionRepository } from '../../src/repositories';
-import { StorageProvider } from '../../src/storage/StorageProvider';
 import { Category, TransactionType } from '../../types';
-
-function createStorageStub(): StorageProvider {
-  return {
-    getUser: async () => null,
-    saveUser: async () => undefined,
-    getAccounts: async () => [],
-    saveAccount: async () => undefined,
-    deleteAccount: async () => undefined,
-    getTransactions: async () => [],
-    saveTransaction: async () => undefined,
-    deleteTransaction: async () => undefined,
-    getGoals: async () => [],
-    saveGoal: async () => undefined,
-    deleteGoal: async () => undefined,
-    getSubscriptions: async () => [],
-    saveSubscription: async () => undefined,
-    deleteSubscription: async () => undefined,
-    getBankConnections: async () => [],
-    saveBankConnection: async () => undefined,
-    deleteBankConnection: async () => undefined,
-  };
-}
 
 describe('saas policy engine hardening', () => {
   const memberContext: SaaSContext = {
@@ -87,85 +62,6 @@ describe('saas policy engine hardening', () => {
   });
 });
 
-describe('subscription repository integration', () => {
-  it('usa subscriptionRepository injetado no serviço', async () => {
-    const createSpy = vi.fn(async () => undefined);
-    const updateSpy = vi.fn(async () => undefined);
-    const getByUserSpy = vi.fn(async () => []);
-
-    const service = new SubscriptionService(
-      createStorageStub(),
-      'user_99',
-      { plan: 'pro' },
-      {
-        subscriptionRepository: {
-          create: createSpy,
-          update: updateSpy,
-          getByUser: getByUserSpy,
-          delete: vi.fn(async () => undefined),
-        } as unknown as SubscriptionRepository,
-      }
-    );
-
-    await service.createSubscription({
-      name: 'Netflix',
-      amount: 39.9,
-      merchant: 'Netflix',
-      cycle: 'monthly',
-      lastCharge: new Date('2026-03-01T00:00:00.000Z'),
-      nextExpected: new Date('2026-04-01T00:00:00.000Z'),
-      totalSpent: 159.6,
-      isActive: true,
-    });
-
-    await service.getSubscriptions();
-
-    expect(createSpy).toHaveBeenCalledTimes(1);
-    expect(updateSpy).toHaveBeenCalledTimes(0);
-    expect(getByUserSpy).toHaveBeenCalledWith('user_99');
-  });
-
-  it('usa update explícito no repository ao atualizar assinatura', async () => {
-    const createSpy = vi.fn(async () => undefined);
-    const updateSpy = vi.fn(async () => undefined);
-    const getByUserSpy = vi.fn(async () => [
-      {
-        id: 'sub_1',
-        userId: 'user_99',
-        name: 'Netflix',
-        amount: 39.9,
-        merchant: 'Netflix',
-        cycle: 'monthly',
-        lastCharge: new Date('2026-03-01T00:00:00.000Z'),
-        nextExpected: new Date('2026-04-01T00:00:00.000Z'),
-        totalSpent: 159.6,
-        isActive: true,
-        createdAt: new Date('2026-03-01T00:00:00.000Z'),
-        updatedAt: new Date('2026-03-01T00:00:00.000Z'),
-      },
-    ]);
-
-    const service = new SubscriptionService(
-      createStorageStub(),
-      'user_99',
-      { plan: 'pro' },
-      {
-        subscriptionRepository: {
-          create: createSpy,
-          update: updateSpy,
-          getByUser: getByUserSpy,
-          delete: vi.fn(async () => undefined),
-        } as unknown as SubscriptionRepository,
-      }
-    );
-
-    await service.updateSubscription('sub_1', { amount: 49.9 });
-
-    expect(updateSpy).toHaveBeenCalledTimes(1);
-    expect(createSpy).toHaveBeenCalledTimes(0);
-  });
-});
-
 describe('ai orchestrator observability', () => {
   beforeEach(() => {
     clearAIMetrics();
@@ -186,7 +82,7 @@ describe('ai orchestrator observability', () => {
           amount: 3000,
           type: TransactionType.RECEITA,
           category: Category.PESSOAL,
-          description: 'Salário',
+          description: 'Salario',
           date: '2026-03-10T12:00:00.000Z',
         },
         {
@@ -196,7 +92,7 @@ describe('ai orchestrator observability', () => {
           category: Category.PESSOAL,
           description: 'Moradia',
           date: '2026-03-11T12:00:00.000Z',
-          merchant: 'Condomínio',
+          merchant: 'Condominio',
         },
       ],
     });

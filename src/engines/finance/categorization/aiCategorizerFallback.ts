@@ -11,6 +11,9 @@ const ALLOWED_CATEGORIES: FinanceCategory[] = [
   'educacao',
   'lazer',
   'salario',
+  'compras',
+  'servicos',
+  'banco',
   'outros',
 ];
 

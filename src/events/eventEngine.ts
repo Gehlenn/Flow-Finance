@@ -21,6 +21,7 @@ import { Account } from '../../models/Account';
 import { buildFinancialGraph, invalidateGraphCache } from '../ai/financialGraph';
 import { detectFinancialLeaks } from '../ai/leakDetector';
 import { generateMonthlyReport } from '../finance/reportEngine';
+import { getActiveWorkspaceScopedStorageKey } from '../utils/workspaceStorage';
 
 
 // ─── PART 5 — Storage ─────────────────────────────────────────────────────────
@@ -30,7 +31,7 @@ const MAX_EVENTS  = 200;
 
 function readEvents(): FinancialEvent[] {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    return JSON.parse(localStorage.getItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY)) || '[]');
   } catch {
     return [];
   }
@@ -39,7 +40,7 @@ function readEvents(): FinancialEvent[] {
 function persistEvent(event: FinancialEvent): void {
   const events = readEvents();
   const trimmed = [event, ...events].slice(0, MAX_EVENTS);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
+  localStorage.setItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY), JSON.stringify(trimmed));
 }
 
 // ─── PART 2 — In-memory subscriber registry ───────────────────────────────────
@@ -96,7 +97,7 @@ export function getEventsByType(type: FinancialEventType): FinancialEvent[] {
 
 /** Limpa todos os eventos armazenados. */
 export function clearFinancialEvents(): void {
-  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY));
 }
 
 // ─── PART 3 — Typed event helpers ────────────────────────────────────────────

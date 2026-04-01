@@ -57,3 +57,4 @@ android-sdk-tools.zip
 *.bak
 .vercel
 .env*.local
+.aider*

@@ -1,12 +1,15 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import crypto from 'crypto';
 import { AppError } from '../../backend/src/middleware/errorHandler';
 import {
+  findWorkspaceForStripeCustomer,
   getPlanFromStripeEvent,
   parseStripeWebhookEvent,
+  rememberStripeCustomerForWorkspace,
   resetStripeServiceForTests,
   verifyStripeWebhookSignature,
 } from '../../backend/src/services/saas/stripeService';
+import { createWorkspace, resetWorkspaceStoreForTests } from '../../backend/src/services/admin/workspaceStore';
 
 function signPayload(payload: string, secret: string, timestamp: string): string {
   const digest = crypto.createHmac('sha256', secret).update(`${timestamp}.${payload}`).digest('hex');
@@ -19,11 +22,12 @@ describe('stripeService helpers', () => {
 
   beforeEach(() => {
     resetStripeServiceForTests();
+    resetWorkspaceStoreForTests();
     process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_secret';
     process.env.STRIPE_PRICE_PRO_MONTHLY = 'price_pro_123';
   });
 
-  it('valida assinatura Stripe v1', () => {
+  it('validates Stripe v1 signature', () => {
     const payload = JSON.stringify({ id: 'evt_1', type: 'checkout.session.completed', data: { object: {} } });
     const signature = signPayload(payload, process.env.STRIPE_WEBHOOK_SECRET as string, '1700000000');
 
@@ -31,11 +35,19 @@ describe('stripeService helpers', () => {
     expect(verifyStripeWebhookSignature(payload, 't=1700000000,v1=invalid')).toBe(false);
   });
 
-  it('parseStripeWebhookEvent lança AppError para JSON inválido', () => {
+  it('parseStripeWebhookEvent throws AppError for invalid JSON', () => {
     expect(() => parseStripeWebhookEvent('{invalid')).toThrow(AppError);
   });
 
-  it('getPlanFromStripeEvent retorna pro quando price id combina', () => {
+  it('persists Stripe customer lookup through workspace billing state', () => {
+    const workspace = createWorkspace('Workspace Stripe', 'owner-1');
+
+    rememberStripeCustomerForWorkspace(workspace.workspaceId, 'cus_stripe_123');
+
+    expect(findWorkspaceForStripeCustomer('cus_stripe_123')?.workspaceId).toBe(workspace.workspaceId);
+  });
+
+  it('getPlanFromStripeEvent returns pro when price id matches', () => {
     const event = {
       id: 'evt_2',
       type: 'customer.subscription.updated',
@@ -51,7 +63,7 @@ describe('stripeService helpers', () => {
     expect(getPlanFromStripeEvent(event)).toBe('pro');
   });
 
-  it('getPlanFromStripeEvent retorna free para subscription deleted', () => {
+  it('getPlanFromStripeEvent returns free for subscription deleted', () => {
     const event = {
       id: 'evt_3',
       type: 'customer.subscription.deleted',
@@ -61,7 +73,7 @@ describe('stripeService helpers', () => {
     expect(getPlanFromStripeEvent(event)).toBe('free');
   });
 
-  it('getPlanFromStripeEvent retorna null quando não reconhece price', () => {
+  it('getPlanFromStripeEvent returns null when price is not recognized', () => {
     const event = {
       id: 'evt_4',
       type: 'customer.subscription.updated',

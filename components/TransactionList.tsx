@@ -1,9 +1,12 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { detectMerchantCategory } from '../src/ai/categoryLearning';
+import { saveMerchantCategoryLearning } from '../src/engines/finance/categorization/aiCategorizerFallback';
 import { Transaction, TransactionType, Category } from '../types';
-import { formatCurrency, getFromStorage } from '../utils/helpers';
+import { formatCurrency } from '../utils/helpers';
 import { expandTransactionsWithRecurring } from '../src/finance/recurringService';
 import { calculateSignedBalance } from '../src/engines/finance/analyticsEngine';
+import { getWorkspaceScopedStorageKey } from '../src/utils/workspaceStorage';
 import { 
   Trash2, Search, Share2, Edit2, Filter, RotateCcw, History, X, 
   ShoppingBag, GraduationCap, Briefcase, TrendingUp, Download, 
@@ -12,6 +15,8 @@ import {
 } from 'lucide-react';
 
 interface TransactionListProps {
+  activeWorkspaceId?: string | null;
+  activeWorkspaceName?: string | null;
   transactions: Transaction[];
   hideValues: boolean;
   onDelete: (id: string) => void;
@@ -47,27 +52,69 @@ const listCache = {
   data: [] as Transaction[]
 };
 
-const TransactionList: React.FC<TransactionListProps> = ({ transactions, hideValues, onDelete, onDeleteMultiple, onUpdate }) => {
-  // Inicializa estado com valores do localStorage se existirem
+const readStoredString = (key: string, defaultValue = ''): string => {
+  const raw = localStorage.getItem(key);
+  if (raw === null) {
+    return defaultValue;
+  }
 
-  const [searchQuery, setSearchQuery] = useState(() => getFromStorage('flow_searchQuery', ''));
-  const [showFilters, setShowFilters] = useState(() => getFromStorage('flow_showFilters', false));
-  const [categoryFilter, setCategoryFilter] = useState<Category | 'Todas'>(() => getFromStorage('flow_categoryFilter', 'Todas') as Category | 'Todas');
-  const [dateStart, setDateStart] = useState(() => getFromStorage('flow_dateStart', ''));
-  const [dateEnd, setDateEnd] = useState(() => getFromStorage('flow_dateEnd', ''));
-  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection }>(() => {
-    const saved = localStorage.getItem('flow_sortConfig');
-    return saved ? JSON.parse(saved) : { key: 'date', direction: 'desc' };
-  });
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed === 'string' ? parsed : defaultValue;
+  } catch {
+    return raw;
+  }
+};
+
+const readStoredBoolean = (key: string, defaultValue = false): boolean => {
+  const raw = localStorage.getItem(key);
+  if (raw === null) {
+    return defaultValue;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed === 'boolean' ? parsed : defaultValue;
+  } catch {
+    return raw === 'true';
+  }
+};
+
+const readStoredSortConfig = (key: string): { key: SortKey; direction: SortDirection } => {
+  const raw = localStorage.getItem(key);
+  if (!raw) {
+    return { key: 'date', direction: 'desc' };
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as { key?: SortKey; direction?: SortDirection };
+    if (parsed.key && parsed.direction) {
+      return { key: parsed.key, direction: parsed.direction };
+    }
+  } catch {
+    // Ignore malformed persisted values and fall back to defaults.
+  }
+
+  return { key: 'date', direction: 'desc' };
+};
+
+const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, activeWorkspaceName, transactions, hideValues, onDelete, onDeleteMultiple, onUpdate }) => {
+  const storageKeys = useMemo(() => ({
+    searchQuery: getWorkspaceScopedStorageKey('flow_searchQuery', activeWorkspaceId),
+    showFilters: getWorkspaceScopedStorageKey('flow_showFilters', activeWorkspaceId),
+    categoryFilter: getWorkspaceScopedStorageKey('flow_categoryFilter', activeWorkspaceId),
+    dateStart: getWorkspaceScopedStorageKey('flow_dateStart', activeWorkspaceId),
+    dateEnd: getWorkspaceScopedStorageKey('flow_dateEnd', activeWorkspaceId),
+    sortConfig: getWorkspaceScopedStorageKey('flow_sortConfig', activeWorkspaceId),
+  }), [activeWorkspaceId]);
+
+  const [searchQuery, setSearchQuery] = useState(() => readStoredString(storageKeys.searchQuery, ''));
+  const [showFilters, setShowFilters] = useState(() => readStoredBoolean(storageKeys.showFilters, false));
+  const [categoryFilter, setCategoryFilter] = useState<Category | 'Todas'>(() => readStoredString(storageKeys.categoryFilter, 'Todas') as Category | 'Todas');
+  const [dateStart, setDateStart] = useState(() => readStoredString(storageKeys.dateStart, ''));
+  const [dateEnd, setDateEnd] = useState(() => readStoredString(storageKeys.dateEnd, ''));
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection }>(() => readStoredSortConfig(storageKeys.sortConfig));
   
-  // Persiste filtros no localStorage
-  useEffect(() => { localStorage.setItem('flow_searchQuery', searchQuery); }, [searchQuery]);
-  useEffect(() => { localStorage.setItem('flow_showFilters', String(showFilters)); }, [showFilters]);
-  useEffect(() => { localStorage.setItem('flow_categoryFilter', categoryFilter); }, [categoryFilter]);
-  useEffect(() => { localStorage.setItem('flow_dateStart', dateStart); }, [dateStart]);
-  useEffect(() => { localStorage.setItem('flow_dateEnd', dateEnd); }, [dateEnd]);
-  useEffect(() => { localStorage.setItem('flow_sortConfig', JSON.stringify(sortConfig)); }, [sortConfig]);
-
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [viewingTransaction, setViewingTransaction] = useState<Transaction | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
@@ -78,6 +125,83 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, hideVal
   const [shareCategories, setShareCategories] = useState<Set<string>>(new Set(['tudo']));
   const [showDestinations, setShowDestinations] = useState(false);
   const [showCopyToast, setShowCopyToast] = useState(false);
+  const [showCategorySaved, setShowCategorySaved] = useState(false);
+  const [savingCategory, setSavingCategory] = useState(false);
+  const closeToastRef = useRef<HTMLButtonElement>(null);
+  // Feedback visual ao salvar categoria
+  useEffect(() => {
+    setSearchQuery(readStoredString(storageKeys.searchQuery, ''));
+    setShowFilters(readStoredBoolean(storageKeys.showFilters, false));
+    setCategoryFilter(readStoredString(storageKeys.categoryFilter, 'Todas') as Category | 'Todas');
+    setDateStart(readStoredString(storageKeys.dateStart, ''));
+    setDateEnd(readStoredString(storageKeys.dateEnd, ''));
+    setSortConfig(readStoredSortConfig(storageKeys.sortConfig));
+    setSelectedIds(new Set());
+    listCache.paramsKey = '';
+    listCache.transactionsRef = null;
+    listCache.data = [];
+  }, [storageKeys]);
+
+  // Persiste filtros no localStorage por workspace
+  useEffect(() => { localStorage.setItem(storageKeys.searchQuery, JSON.stringify(searchQuery)); }, [searchQuery, storageKeys]);
+  useEffect(() => { localStorage.setItem(storageKeys.showFilters, JSON.stringify(showFilters)); }, [showFilters, storageKeys]);
+  useEffect(() => { localStorage.setItem(storageKeys.categoryFilter, JSON.stringify(categoryFilter)); }, [categoryFilter, storageKeys]);
+  useEffect(() => { localStorage.setItem(storageKeys.dateStart, JSON.stringify(dateStart)); }, [dateStart, storageKeys]);
+  useEffect(() => { localStorage.setItem(storageKeys.dateEnd, JSON.stringify(dateEnd)); }, [dateEnd, storageKeys]);
+  useEffect(() => { localStorage.setItem(storageKeys.sortConfig, JSON.stringify(sortConfig)); }, [sortConfig, storageKeys]);
+
+  useEffect(() => {
+    if (showCategorySaved) {
+      const timer = setTimeout(() => setShowCategorySaved(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [showCategorySaved]);
+  // Modal de edição de categoria
+  const [editCategoryValue, setEditCategoryValue] = useState<Category | null>(null);
+  const [previousCategory, setPreviousCategory] = useState<Category | null>(null);
+  // Foco automático no primeiro botão de categoria ao abrir modal
+  const firstCatBtnRef = useRef<HTMLButtonElement>(null);
+  const [suggestedCategory, setSuggestedCategory] = useState<Category | null>(null);
+  useEffect(() => {
+    let active = true;
+    async function fetchSuggestion() {
+      if (editingTransaction) {
+        setEditCategoryValue(editingTransaction.category);
+        setPreviousCategory(editingTransaction.category);
+        setSuggestedCategory(null);
+        setTimeout(() => {
+          firstCatBtnRef.current?.focus();
+        }, 100);
+        if (editingTransaction.merchant) {
+          const userId = localStorage.getItem('flow_userId') || 'local';
+          const cat = await detectMerchantCategory(userId, editingTransaction.merchant);
+          if (cat && active) setSuggestedCategory(cat as Category);
+        }
+      }
+    }
+    fetchSuggestion();
+    return () => { active = false; };
+  }, [editingTransaction]);
+
+  const handleSaveCategory = async () => {
+    if (!editingTransaction || !editCategoryValue) return;
+    setSavingCategory(true);
+    try {
+      // Atualiza transação local
+      const updated = { ...editingTransaction, category: editCategoryValue };
+      onUpdate(updated);
+      // IA: aprende merchant x categoria se merchant existir
+      if (updated.merchant) {
+        // userId: tentar pegar do localStorage ou usar 'local' (ajustar conforme arquitetura)
+        const userId = localStorage.getItem('flow_userId') || 'local';
+        await saveMerchantCategoryLearning(userId, updated.merchant, editCategoryValue);
+      }
+      setShowCategorySaved(true);
+      setEditingTransaction(null);
+    } finally {
+      setSavingCategory(false);
+    }
+  };
 
   useEffect(() => {
     if (showCopyToast) {
@@ -89,6 +213,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, hideVal
   const filteredAndSorted = useMemo(() => {
     // Gera uma chave única baseada nos parâmetros de filtro e ordenação
     const paramsKey = JSON.stringify({
+      workspaceId: activeWorkspaceId || 'global',
       q: searchQuery,
       c: categoryFilter,
       ds: dateStart,
@@ -131,7 +256,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, hideVal
     listCache.data = result;
 
     return result;
-  }, [transactions, searchQuery, categoryFilter, dateStart, dateEnd, sortConfig]);
+  }, [transactions, activeWorkspaceId, searchQuery, categoryFilter, dateStart, dateEnd, sortConfig]);
 
   const handleSort = (key: SortKey) => {
     setSortConfig(current => ({
@@ -261,6 +386,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, hideVal
       <div className="bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] p-6 rounded-[2rem] flex justify-between items-center shadow-lg shadow-indigo-500/20 shrink-0 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
         <div className="relative z-10">
+          <p className="text-[8px] font-black text-white/80 uppercase tracking-widest mb-2">Workspace: {activeWorkspaceName || 'Carregando workspace'}</p>
           <h2 className="text-2xl font-black text-white tracking-tight leading-none">Histórico</h2>
           <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mt-1.5">Rastreio de Movimentações</p>
         </div>
@@ -500,7 +626,80 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, hideVal
         </div>
       )}
 
-      {viewingTransaction && !isShareModalOpen && !transactionToDelete && (
+      {editingTransaction && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[300] flex items-center justify-center p-4 animate-in fade-in duration-300" role="dialog" aria-modal="true" aria-label="Editar Categoria">
+          <div className="bg-white dark:bg-slate-800 w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl space-y-6 animate-in zoom-in-95">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight" id="modal-title">Editar Categoria</h3>
+              <button onClick={() => setEditingTransaction(null)} className="p-1 text-slate-400" aria-label="Fechar modal de edição de categoria"><X size={20} /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Categoria</p>
+                {suggestedCategory && (
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="text-[8px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 rounded-full px-2 py-0.5">Sugestão IA: {suggestedCategory}</span>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.values(Category).map((cat, idx) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      ref={idx === 0 ? firstCatBtnRef : undefined}
+                      onClick={() => setEditCategoryValue(cat)}
+                      className={`p-3 rounded-2xl border flex items-center gap-2 transition-all ${editCategoryValue === cat ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg' : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-400'}`}
+                      aria-label={`Selecionar categoria ${cat}`}
+                    >
+                      <span className="text-[8px] font-black uppercase tracking-tight truncate">{cat}</span>
+                      {suggestedCategory === cat && (
+                        <span className="ml-1 text-[7px] font-bold text-indigo-400">(IA)</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={handleSaveCategory}
+                className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all disabled:opacity-60"
+                disabled={savingCategory || !editCategoryValue || editCategoryValue === editingTransaction.category}
+                aria-label="Salvar categoria"
+              >
+                {savingCategory ? 'Salvando...' : 'Salvar'}
+              </button>
+              <button onClick={() => setEditingTransaction(null)} className="flex-1 py-4 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all" aria-label="Cancelar edição">Cancelar</button>
+              {previousCategory && editCategoryValue !== previousCategory && (
+                <button
+                  onClick={() => {
+                    setEditCategoryValue(previousCategory);
+                    setTimeout(() => {
+                      // Foca no botão salvar para garantir acessibilidade e evitar sumiço do botão por race condition
+                      const btn = document.querySelector('[aria-label="Salvar categoria"]') as HTMLButtonElement;
+                      btn?.focus();
+                    }, 50);
+                  }}
+                  className="flex-1 py-4 bg-yellow-100 dark:bg-yellow-700 text-yellow-700 dark:text-yellow-100 rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all border border-yellow-300 dark:border-yellow-600"
+                  aria-label="Desfazer alteração de categoria"
+                >
+                  Desfazer
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast de categoria salva com botão de fechar manual */}
+      <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[350] transition-all duration-300 transform ${showCategorySaved ? 'translate-y-0 opacity-100' : '-translate-y-12 opacity-0 pointer-events-none'}`} role="status" aria-live="polite">
+        <div className="bg-indigo-600 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 font-black text-[10px] uppercase tracking-widest border border-white/20">
+          <Check size={16} strokeWidth={3} /> Categoria atualizada e IA treinada!
+          <button ref={closeToastRef} onClick={() => setShowCategorySaved(false)} className="ml-2 p-1 rounded-full bg-white/20 hover:bg-white/40 transition-colors" aria-label="Fechar aviso de categoria salva"><X size={14} /></button>
+        </div>
+      </div>
+
+      {viewingTransaction && !isShareModalOpen && !transactionToDelete && !editingTransaction && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-800 w-full max-sm:rounded-[2.5rem] p-8 shadow-2xl space-y-6 animate-in zoom-in-95">
             <div className="flex justify-between items-center">

@@ -138,4 +138,30 @@ export const session = {
   },
 };
 
+/**
+ * Check Redis health status
+ * Returns true if Redis is reachable and responding
+ */
+export async function checkRedisHealth(): Promise<boolean> {
+  try {
+    // Test ping - will throw if not connected
+    await redisClient.ping();
+    return true;
+  } catch (error) {
+    logger.warn({ error }, 'Redis health check failed');
+    return false;
+  }
+}
+
+// Initialize Redis connection if not lazy
+export const initRedis = async (): Promise<void> => {
+  if (process.env.REDIS_URL) {
+    try {
+      await connectRedis();
+    } catch (error) {
+      logger.warn({ error }, 'Redis initialization failed - will retry on demand');
+    }
+  }
+};
+
 export default redisClient;

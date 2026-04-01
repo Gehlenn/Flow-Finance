@@ -83,9 +83,56 @@ describe('Estratégia sem Open Finance pago', () => {
     expect(categorizationRules.netflix).toBe('assinaturas');
   });
 
-  it('categorizeTransaction aplica regras simples', () => {
+
+  it('categorizeTransaction cobre merchants populares e variações', () => {
+    // Transporte
     expect(categorizeTransaction('Uber viagem centro')).toBe('transporte');
+    expect(categorizeTransaction('UBER DO BRASIL')).toBe('transporte');
+    expect(categorizeTransaction('UBER BV')).toBe('transporte');
+    expect(categorizeTransaction('99 viagem')).toBe('transporte');
+    expect(categorizeTransaction('99 TECNOLOGIA')).toBe('transporte');
+    expect(categorizeTransaction('99app corrida')).toBe('transporte');
+
+    // Alimentação
+    expect(categorizeTransaction('Pedido iFood')).toBe('alimentacao');
+    expect(categorizeTransaction('IFOOD*PEDIDO123')).toBe('alimentacao');
+    expect(categorizeTransaction('Rappi BR')).toBe('alimentacao');
+    expect(categorizeTransaction('RAPPI*PEDIDO')).toBe('alimentacao');
+    expect(categorizeTransaction('McDonalds Big Mac')).toBe('alimentacao');
+    expect(categorizeTransaction('Burger King Whopper')).toBe('alimentacao');
+
+    // Assinaturas
     expect(categorizeTransaction('Netflix mensalidade')).toBe('assinaturas');
+    expect(categorizeTransaction('NETFLIX.COM')).toBe('assinaturas');
+    expect(categorizeTransaction('NETFLIX BR')).toBe('assinaturas');
+    expect(categorizeTransaction('Netflix Servicos')).toBe('assinaturas');
+    expect(categorizeTransaction('Spotify AB')).toBe('assinaturas');
+    expect(categorizeTransaction('Deezer S.A.')).toBe('assinaturas');
+    expect(categorizeTransaction('Prime Video')).toBe('assinaturas');
+    expect(categorizeTransaction('Amazon Prime')).toBe('assinaturas');
+    expect(categorizeTransaction('AMZN MKTPLC')).toBe('assinaturas');
+    expect(categorizeTransaction('APPLE.COM/BILL')).toBe('assinaturas');
+    expect(categorizeTransaction('Google Play')).toBe('assinaturas');
+    expect(categorizeTransaction('YouTube Premium')).toBe('assinaturas');
+
+    // Compras/Serviços/Banco
+    expect(categorizeTransaction('Mercado Livre compra')).toBe('compras');
+    expect(categorizeTransaction('MercadoLivre')).toBe('compras');
+    expect(categorizeTransaction('Magalu')).toBe('compras');
+    expect(categorizeTransaction('Americanas')).toBe('compras');
+    expect(categorizeTransaction('Google Cloud')).toBe('servicos');
+    expect(categorizeTransaction('Apple Store')).toBe('servicos');
+    expect(categorizeTransaction('Nubank pagamento')).toBe('banco');
+
+    // Casos de caixa/acentuação/abreviação
+    expect(categorizeTransaction('netflix')).toBe('assinaturas');
+    expect(categorizeTransaction('NetFlix')).toBe('assinaturas');
+    expect(categorizeTransaction('IFOOD')).toBe('alimentacao');
+    expect(categorizeTransaction('iFood')).toBe('alimentacao');
+    expect(categorizeTransaction('uber')).toBe('transporte');
+    expect(categorizeTransaction('Uber')).toBe('transporte');
+    expect(categorizeTransaction('AMAZN')).toBe('assinaturas');
+    expect(categorizeTransaction('SPOTFY')).toBe('assinaturas');
     expect(categorizeTransaction('texto desconhecido')).toBe('outros');
   });
 

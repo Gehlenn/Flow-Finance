@@ -7,6 +7,7 @@
  * O buffer mantém no máximo `MAX_EVENTS` entradas. Quando cheio, os eventos
  * mais antigos são descartados (FIFO).
  */
+import { insertAuditEvent, loadRecentAuditEvents } from '../persistence/postgresStateStore';
 
 export type AuditAction =
   | 'auth.login'
@@ -23,7 +24,8 @@ export type AuditAction =
   | 'billing.plan_changed'
   | 'quota.exceeded'
   | 'security.forbidden'
-  | 'security.unauthorized';
+  | 'security.unauthorized'
+  | 'workspace.addUser';
 
 export type AuditStatus = 'success' | 'failure' | 'blocked';
 
@@ -68,6 +70,11 @@ export function recordAuditEvent(
     eventBuffer.shift();
   }
 
+  void insertAuditEvent(full).catch((error) => {
+    // Keep runtime resilient; buffer remains the immediate source of truth.
+    void error;
+  });
+
   return full;
 }
 
@@ -78,8 +85,10 @@ export function getAuditEvents(filters: {
   userId?: string;
   action?: AuditAction;
   status?: AuditStatus;
+  resource?: string;
   limit?: number;
   since?: string; // ISO 8601
+  until?: string; // ISO 8601
 } = {}): AuditEvent[] {
   let result = eventBuffer;
 
@@ -95,9 +104,18 @@ export function getAuditEvents(filters: {
     result = result.filter((e) => e.status === filters.status);
   }
 
+  if (filters.resource) {
+    result = result.filter((e) => e.resource === filters.resource);
+  }
+
   if (filters.since) {
     const sinceMs = new Date(filters.since).getTime();
     result = result.filter((e) => new Date(e.at).getTime() >= sinceMs);
+  }
+
+  if (filters.until) {
+    const untilMs = new Date(filters.until).getTime();
+    result = result.filter((e) => new Date(e.at).getTime() <= untilMs);
   }
 
   // Return newest first
@@ -113,4 +131,24 @@ export function getAuditEventCount(): number {
 export function resetAuditLogForTests(): void {
   eventBuffer = [];
   eventCounter = 0;
+}
+
+export async function initializeAuditLogPersistence(): Promise<void> {
+  const rows = await loadRecentAuditEvents(MAX_EVENTS);
+  if (!rows.length) {
+    return;
+  }
+
+  eventBuffer = [...rows].reverse().map((row) => ({
+    id: row.id,
+    at: row.at,
+    userId: row.userId,
+    email: row.email,
+    action: row.action as AuditAction,
+    status: row.status as AuditStatus,
+    ip: row.ip,
+    userAgent: row.userAgent,
+    resource: row.resource,
+    metadata: row.metadata,
+  }));
 }

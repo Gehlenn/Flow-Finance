@@ -5,3 +5,7 @@ export const LoginSchema = z.object({
   password: z.string().min(1, 'password is required'),
   userId: z.string().min(1, 'userId must not be empty').optional(),
 });
+
+export const FirebaseSessionSchema = z.object({
+  idToken: z.string().min(1, 'idToken is required'),
+});

@@ -8,7 +8,10 @@ import { Category, Transaction, TransactionType } from '../../../types';
 import { Transaction as DomainTransaction } from '../../domain/entities';
 import { AICFOAgent } from './AICFOAgent';
 import { CFOPlanner } from './CFOPlanner';
-import { TransactionRepository } from '../../repositories';
+
+type TransactionReader = {
+  getByUser(userId: string): Promise<DomainTransaction[]>;
+};
 
 export interface CFOAdvisorInput {
   userId: string;
@@ -30,7 +33,7 @@ export class CFOAdvisor {
   private readonly planner = new CFOPlanner();
   private readonly autopilot = new FinancialAutopilot();
 
-  constructor(private readonly transactionRepository?: TransactionRepository) {}
+  constructor(private readonly transactionReader?: TransactionReader) {}
 
   private normalizeDomainTransactions(transactions: DomainTransaction[]): Transaction[] {
     return transactions.map((tx) => ({
@@ -49,8 +52,8 @@ export class CFOAdvisor {
 
   async advise(input: CFOAdvisorInput): Promise<CFOAdvisorResult> {
     const transactions = input.transactions ||
-      (this.transactionRepository
-        ? this.normalizeDomainTransactions(await this.transactionRepository.getByUser(input.userId))
+      (this.transactionReader
+        ? this.normalizeDomainTransactions(await this.transactionReader.getByUser(input.userId))
         : []);
 
     const userContext = createUserContext({ userId: input.userId });

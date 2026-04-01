@@ -2,7 +2,7 @@
  * STORAGE LAYER - Flow Finance
  *
  * Storage abstraction following Repository pattern.
- * Supports multiple storage providers (localStorage, API, etc.)
+ * Current runtime is backend-first through HTTP-backed providers.
  */
 
 import { User, Account, Transaction, FinancialGoal, Subscription, BankConnection } from '../domain/entities';
@@ -15,180 +15,27 @@ export interface StorageProvider {
   // Account operations
   getAccounts(userId: string): Promise<Account[]>;
   saveAccount(account: Account): Promise<void>;
-  deleteAccount(accountId: string): Promise<void>;
+  deleteAccount(accountId: string, userId?: string): Promise<void>;
 
   // Transaction operations
   getTransactions(userId: string): Promise<Transaction[]>;
   saveTransaction(transaction: Transaction): Promise<void>;
-  deleteTransaction(transactionId: string): Promise<void>;
+  deleteTransaction(transactionId: string, userId?: string): Promise<void>;
 
   // Goal operations
   getGoals(userId: string): Promise<FinancialGoal[]>;
   saveGoal(goal: FinancialGoal): Promise<void>;
-  deleteGoal(goalId: string): Promise<void>;
+  deleteGoal(goalId: string, userId?: string): Promise<void>;
 
   // Subscription operations
   getSubscriptions(userId: string): Promise<Subscription[]>;
   saveSubscription(subscription: Subscription): Promise<void>;
-  deleteSubscription(subscriptionId: string): Promise<void>;
+  deleteSubscription(subscriptionId: string, userId?: string): Promise<void>;
 
   // Bank connection operations
   getBankConnections(userId: string): Promise<BankConnection[]>;
   saveBankConnection(connection: BankConnection): Promise<void>;
-  deleteBankConnection(connectionId: string): Promise<void>;
-}
-
-/**
- * Local Storage Provider - For client-side storage
- */
-export class LocalStorageProvider implements StorageProvider {
-  private getKey(type: string, userId: string): string {
-    return `flow_${type}_${userId}`;
-  }
-
-  async getUser(userId: string): Promise<User | null> {
-    try {
-      const data = localStorage.getItem(this.getKey('user', userId));
-      return data ? JSON.parse(data) : null;
-    } catch {
-      return null;
-    }
-  }
-
-  async saveUser(user: User): Promise<void> {
-    localStorage.setItem(this.getKey('user', user.id), JSON.stringify(user));
-  }
-
-  async getAccounts(userId: string): Promise<Account[]> {
-    try {
-      const data = localStorage.getItem(this.getKey('accounts', userId));
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  async saveAccount(account: Account): Promise<void> {
-    const accounts = await this.getAccounts(account.userId);
-    const existingIndex = accounts.findIndex(acc => acc.id === account.id);
-
-    if (existingIndex >= 0) {
-      accounts[existingIndex] = account;
-    } else {
-      accounts.push(account);
-    }
-
-    localStorage.setItem(this.getKey('accounts', account.userId), JSON.stringify(accounts));
-  }
-
-  async deleteAccount(accountId: string): Promise<void> {
-    // Note: This would need the userId, simplified for demo
-    console.warn('deleteAccount not fully implemented for LocalStorageProvider');
-  }
-
-  async getTransactions(userId: string): Promise<Transaction[]> {
-    try {
-      const data = localStorage.getItem(this.getKey('transactions', userId));
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  async saveTransaction(transaction: Transaction): Promise<void> {
-    const transactions = await this.getTransactions(transaction.userId);
-    const existingIndex = transactions.findIndex(tx => tx.id === transaction.id);
-
-    if (existingIndex >= 0) {
-      transactions[existingIndex] = transaction;
-    } else {
-      transactions.push(transaction);
-    }
-
-    localStorage.setItem(this.getKey('transactions', transaction.userId), JSON.stringify(transactions));
-  }
-
-  async deleteTransaction(transactionId: string): Promise<void> {
-    console.warn('deleteTransaction not fully implemented for LocalStorageProvider');
-  }
-
-  async getGoals(userId: string): Promise<FinancialGoal[]> {
-    try {
-      const data = localStorage.getItem(this.getKey('goals', userId));
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  async saveGoal(goal: FinancialGoal): Promise<void> {
-    const goals = await this.getGoals(goal.userId);
-    const existingIndex = goals.findIndex(g => g.id === goal.id);
-
-    if (existingIndex >= 0) {
-      goals[existingIndex] = goal;
-    } else {
-      goals.push(goal);
-    }
-
-    localStorage.setItem(this.getKey('goals', goal.userId), JSON.stringify(goals));
-  }
-
-  async deleteGoal(goalId: string): Promise<void> {
-    console.warn('deleteGoal not fully implemented for LocalStorageProvider');
-  }
-
-  async getSubscriptions(userId: string): Promise<Subscription[]> {
-    try {
-      const data = localStorage.getItem(this.getKey('subscriptions', userId));
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  async saveSubscription(subscription: Subscription): Promise<void> {
-    const subscriptions = await this.getSubscriptions(subscription.userId);
-    const existingIndex = subscriptions.findIndex(sub => sub.id === subscription.id);
-
-    if (existingIndex >= 0) {
-      subscriptions[existingIndex] = subscription;
-    } else {
-      subscriptions.push(subscription);
-    }
-
-    localStorage.setItem(this.getKey('subscriptions', subscription.userId), JSON.stringify(subscriptions));
-  }
-
-  async deleteSubscription(subscriptionId: string): Promise<void> {
-    console.warn('deleteSubscription not fully implemented for LocalStorageProvider');
-  }
-
-  async getBankConnections(userId: string): Promise<BankConnection[]> {
-    try {
-      const data = localStorage.getItem(this.getKey('bank_connections', userId));
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  async saveBankConnection(connection: BankConnection): Promise<void> {
-    const connections = await this.getBankConnections(connection.userId);
-    const existingIndex = connections.findIndex(conn => conn.id === connection.id);
-
-    if (existingIndex >= 0) {
-      connections[existingIndex] = connection;
-    } else {
-      connections.push(connection);
-    }
-
-    localStorage.setItem(this.getKey('bank_connections', connection.userId), JSON.stringify(connections));
-  }
-
-  async deleteBankConnection(connectionId: string): Promise<void> {
-    console.warn('deleteBankConnection not fully implemented for LocalStorageProvider');
-  }
+  deleteBankConnection(connectionId: string, userId?: string): Promise<void>;
 }
 
 /**
@@ -245,7 +92,7 @@ export class ApiStorageProvider implements StorageProvider {
     });
   }
 
-  async deleteAccount(accountId: string): Promise<void> {
+  async deleteAccount(accountId: string, _userId?: string): Promise<void> {
     // This would need userId context
     throw new Error('deleteAccount requires userId context');
   }
@@ -261,7 +108,7 @@ export class ApiStorageProvider implements StorageProvider {
     });
   }
 
-  async deleteTransaction(transactionId: string): Promise<void> {
+  async deleteTransaction(transactionId: string, _userId?: string): Promise<void> {
     throw new Error('deleteTransaction requires userId context');
   }
 
@@ -276,7 +123,7 @@ export class ApiStorageProvider implements StorageProvider {
     });
   }
 
-  async deleteGoal(goalId: string): Promise<void> {
+  async deleteGoal(goalId: string, _userId?: string): Promise<void> {
     throw new Error('deleteGoal requires userId context');
   }
 
@@ -291,7 +138,7 @@ export class ApiStorageProvider implements StorageProvider {
     });
   }
 
-  async deleteSubscription(subscriptionId: string): Promise<void> {
+  async deleteSubscription(subscriptionId: string, _userId?: string): Promise<void> {
     throw new Error('deleteSubscription requires userId context');
   }
 
@@ -306,7 +153,7 @@ export class ApiStorageProvider implements StorageProvider {
     });
   }
 
-  async deleteBankConnection(connectionId: string): Promise<void> {
+  async deleteBankConnection(connectionId: string, _userId?: string): Promise<void> {
     throw new Error('deleteBankConnection requires userId context');
   }
 }

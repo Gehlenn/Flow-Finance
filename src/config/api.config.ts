@@ -18,11 +18,22 @@ export const IS_PRODUCTION = !IS_DEVELOPMENT;
 // ─── Backend API Endpoints (Update with your actual backend domain) ──────────
 
 export const BACKEND_BASE_URL = (() => {
-  if (IS_DEVELOPMENT) {
-    return import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_DEV_URL || 'http://localhost:3001';
+  const configuredUrl =
+    import.meta.env.VITE_BACKEND_URL ||
+    import.meta.env.VITE_API_PROD_URL ||
+    import.meta.env.VITE_API_DEV_URL;
+
+  if (configuredUrl) {
+    return configuredUrl;
   }
-  // Keep a stable, resolvable fallback for production builds when env vars are missing.
-  return import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_PROD_URL || 'https://flow-finance-backend.vercel.app';
+
+  if (IS_DEVELOPMENT) {
+    return 'http://localhost:3001';
+  }
+
+  // Test and local build environments need a stable absolute fallback so
+  // endpoint contracts remain fully qualified even without injected env vars.
+  return 'http://localhost:3001';
 })();
 
 export const API_ENDPOINTS = {
@@ -52,8 +63,13 @@ export const API_ENDPOINTS = {
   // Auth endpoints
   AUTH: {
     LOGIN: `${BACKEND_BASE_URL}/api/auth/login`,
+    FIREBASE_SESSION: `${BACKEND_BASE_URL}/api/auth/firebase`,
     LOGOUT: `${BACKEND_BASE_URL}/api/auth/logout`,
     REFRESH_TOKEN: `${BACKEND_BASE_URL}/api/auth/refresh`,
+  },
+
+  WORKSPACE: {
+    ROOT: `${BACKEND_BASE_URL}/api/workspace`,
   },
 
   // User data endpoints
@@ -114,15 +130,40 @@ export class ApiRequestError extends Error {
   }
 }
 
+export const ACTIVE_WORKSPACE_STORAGE_KEY = 'active_workspace_id';
+
+export function getStoredWorkspaceId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY);
+}
+
+export function setStoredWorkspaceId(workspaceId: string | null): void {
+  if (typeof window === 'undefined') return;
+
+  if (!workspaceId) {
+    window.localStorage.removeItem(ACTIVE_WORKSPACE_STORAGE_KEY);
+    return;
+  }
+
+  window.localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, workspaceId);
+}
+
 // ─── Security Headers ────────────────────────────────────────────────────────
 
-export function getAuthHeaders(): Record<string, string> {
+export function getAuthHeaders(options?: {
+  workspaceId?: string | null;
+  includeWorkspace?: boolean;
+}): Record<string, string> {
   const token = localStorage.getItem('auth_token');
+  const includeWorkspace = options?.includeWorkspace !== false;
+  const workspaceId = options?.workspaceId ?? getStoredWorkspaceId();
+
   return {
     'Content-Type': 'application/json',
     'Authorization': token ? `Bearer ${token}` : '',
     'X-Client-Version': '0.6.1',
     'X-Client-Platform': getPlatform(),
+    ...(includeWorkspace && workspaceId ? { 'x-workspace-id': workspaceId } : {}),
   };
 }
 

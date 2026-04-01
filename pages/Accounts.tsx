@@ -1,7 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Account, AccountType, ACCOUNT_TYPE_LABELS, DEFAULT_ACCOUNT } from '../models/Account';
-import { getAccounts, createAccount, deleteAccount } from '../services/firebaseOptimized';
-import { isSyncPermissionError } from '../src/utils/syncError';
+import React, { useState } from 'react';
+import { Account, AccountType, ACCOUNT_TYPE_LABELS } from '../models/Account';
 import {
   Landmark, Wallet, CreditCard, TrendingUp,
   Plus, Trash2, X, Check, Loader2,
@@ -11,6 +9,10 @@ import {
 interface AccountsProps {
   userId: string;
   hideValues: boolean;
+  activeWorkspaceName?: string | null;
+  accounts: Account[];
+  onCreateAccount: (account: { name: string; type: AccountType; balance: number }) => Promise<void>;
+  onDeleteAccount: (accountId: string) => void;
 }
 
 const ACCOUNT_ICONS: Record<AccountType, React.ReactNode> = {
@@ -27,9 +29,7 @@ const ACCOUNT_COLORS: Record<AccountType, string> = {
   investment: 'from-amber-500 to-amber-600',
 };
 
-const Accounts: React.FC<AccountsProps> = ({ userId, hideValues }) => {
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, accounts, onCreateAccount, onDeleteAccount }) => {
   const [showForm, setShowForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -42,110 +42,49 @@ const Accounts: React.FC<AccountsProps> = ({ userId, hideValues }) => {
   const formatVal = (amt: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amt);
 
-  const loadAccounts = async () => {
-    setIsLoading(true);
-    try {
-      const data = await getAccounts(userId);
-
-      // STEP 6: se não houver contas, cria a Carteira padrão
-      if (data.length === 0) {
-        const defaultAcc: Account = {
-          ...DEFAULT_ACCOUNT,
-          id: Math.random().toString(36).substr(2, 9),
-          user_id: userId,
-          created_at: new Date().toISOString(),
-        };
-        await createAccount(defaultAcc);
-        setAccounts([defaultAcc]);
-      } else {
-        setAccounts(data);
-      }
-    } catch (error) {
-      if (isSyncPermissionError(error)) {
-        console.warn('Contas bloqueadas por permissão/autenticação no Firestore:', error);
-        setAccounts([]);
-      } else {
-        console.error('Falha ao carregar contas:', error);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadAccounts();
-  }, [userId]);
-
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return;
     setIsSaving(true);
 
-    const newAccount: Account = {
-      id: Math.random().toString(36).substr(2, 9),
-      user_id: userId,
-      name: form.name.trim(),
-      type: form.type,
-      balance: parseFloat(form.balance) || 0,
-      currency: 'BRL',
-      created_at: new Date().toISOString(),
-    };
-
     try {
-      await createAccount(newAccount);
-      setAccounts(prev => [...prev, newAccount]);
+      await onCreateAccount({
+        name: form.name.trim(),
+        type: form.type,
+        balance: parseFloat(form.balance) || 0,
+      });
       setForm({ name: '', type: 'cash', balance: '' });
       setShowForm(false);
     } catch (error) {
-      if (isSyncPermissionError(error)) {
-        console.warn('Criação de conta bloqueada por permissão/autenticação:', error);
-      } else {
-        console.error('Falha ao criar conta:', error);
-      }
+      console.error('Falha ao criar conta:', error);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (accounts.length <= 1) return; // Sempre manter ao menos 1
-    try {
-      await deleteAccount(id, userId);
-      setAccounts(prev => prev.filter(a => a.id !== id));
-    } catch (error) {
-      if (isSyncPermissionError(error)) {
-        console.warn('Remoção de conta bloqueada por permissão/autenticação:', error);
-      } else {
-        console.error('Falha ao remover conta:', error);
-      }
-    }
+  const handleDelete = (id: string) => {
+    if (accounts.length <= 1) return;
+    onDeleteAccount(id);
   };
 
-  const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="animate-spin text-indigo-500" size={32} />
-      </div>
-    );
-  }
+  const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
 
   return (
     <div className="flex flex-col gap-4 animate-in fade-in duration-700 pb-24">
-      {/* Header */}
       <div className="bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] p-6 rounded-[2rem] flex justify-between items-center shadow-lg shadow-indigo-500/20 shrink-0 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 blur-3xl -mr-16 -mt-16 pointer-events-none" />
         <div className="relative z-10">
           <h2 className="text-2xl font-black text-white tracking-tight leading-none">Contas</h2>
           <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mt-1.5">Suas Carteiras & Bancos</p>
+          <p className="text-[8px] font-black text-white/80 uppercase tracking-widest mt-2">
+            Workspace: {activeWorkspaceName || 'Carregando workspace'}
+          </p>
         </div>
         <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center text-white relative z-10">
           <Landmark size={22} />
         </div>
       </div>
 
-      {/* Card Saldo Total */}
       <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Saldo Total</p>
         <p className={`text-3xl font-black tracking-tight ${totalBalance >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>
@@ -154,7 +93,6 @@ const Accounts: React.FC<AccountsProps> = ({ userId, hideValues }) => {
         <p className="text-[9px] text-slate-400 mt-1">{accounts.length} conta{accounts.length !== 1 ? 's' : ''} ativa{accounts.length !== 1 ? 's' : ''}</p>
       </div>
 
-      {/* Lista de Contas */}
       <div className="flex flex-col gap-3">
         {accounts.map(account => (
           <div key={account.id} className="bg-white dark:bg-slate-800 rounded-[1.8rem] overflow-hidden border border-slate-100 dark:border-slate-700 shadow-sm flex items-stretch">
@@ -184,7 +122,6 @@ const Accounts: React.FC<AccountsProps> = ({ userId, hideValues }) => {
         ))}
       </div>
 
-      {/* Botão Adicionar */}
       {!showForm ? (
         <button
           onClick={() => setShowForm(true)}
@@ -232,7 +169,8 @@ const Accounts: React.FC<AccountsProps> = ({ userId, hideValues }) => {
           <div className="space-y-1">
             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Saldo Inicial (R$)</label>
             <input
-              type="number" step="0.01"
+              type="number"
+              step="0.01"
               value={form.balance}
               onChange={e => setForm({ ...form, balance: e.target.value })}
               placeholder="0,00"
@@ -250,8 +188,7 @@ const Accounts: React.FC<AccountsProps> = ({ userId, hideValues }) => {
         </form>
       )}
 
-      {/* Empty state extra */}
-      {accounts.length === 0 && !isLoading && (
+      {accounts.length === 0 && (
         <div className="flex flex-col items-center py-12 gap-3 text-slate-300">
           <PiggyBank size={40} />
           <p className="text-[10px] font-black uppercase tracking-widest">Nenhuma conta ainda</p>

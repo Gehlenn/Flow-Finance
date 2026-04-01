@@ -24,18 +24,19 @@ import { classifyImportedTransactions } from '../../src/finance/importService';
 import { learnMemory } from '../../src/ai/aiMemory';
 import { makeId } from '../../utils/helpers';
 import { API_ENDPOINTS, apiRequest, ApiRequestError } from '../../src/config/api.config';
+import { getActiveWorkspaceScopedStorageKey } from '../../src/utils/workspaceStorage';
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 
 const CONNECTIONS_KEY = 'flow_bank_connections';
 
 function readConnections(): BankConnection[] {
-  try { return JSON.parse(localStorage.getItem(CONNECTIONS_KEY) || '[]'); }
+  try { return JSON.parse(localStorage.getItem(getActiveWorkspaceScopedStorageKey(CONNECTIONS_KEY)) || '[]'); }
   catch { return []; }
 }
 
 function writeConnections(conns: BankConnection[]): void {
-  localStorage.setItem(CONNECTIONS_KEY, JSON.stringify(conns));
+  localStorage.setItem(getActiveWorkspaceScopedStorageKey(CONNECTIONS_KEY), JSON.stringify(conns));
 }
 
 function hasBackendBanking(): boolean {
@@ -44,6 +45,14 @@ function hasBackendBanking(): boolean {
   }
 
   return Boolean(API_ENDPOINTS.BANKING.CONNECT);
+}
+
+function isLocalBankingFallbackEnabled(): boolean {
+  if (import.meta.env.MODE === 'test') {
+    return true;
+  }
+
+  return String(import.meta.env.VITE_ENABLE_LOCAL_BANKING_FALLBACK || '').toLowerCase() === 'true';
 }
 
 function isProductionRuntime(): boolean {
@@ -112,6 +121,10 @@ export function mapPluggyConnectErrorMessage(error: unknown): string {
 }
 
 function shouldUseLocalMockFallback(error: unknown): boolean {
+  if (!isLocalBankingFallbackEnabled()) {
+    return false;
+  }
+
   const status = getApiErrorStatus(error);
 
   // In production, do not mask backend failures with mock data.
@@ -205,7 +218,9 @@ export async function reloadConnections(userId: string): Promise<BankConnection[
     }
   }
 
-  if (!hasBackendBanking()) return local;
+  if (!hasBackendBanking()) {
+    return isLocalBankingFallbackEnabled() ? local : [];
+  }
 
   try {
     const remote = await apiRequest<BankConnection[]>(
@@ -244,6 +259,10 @@ export async function connectBank(
   bankId: string,
   userId: string
 ): Promise<BankConnection> {
+  if (!hasBackendBanking() && !isLocalBankingFallbackEnabled()) {
+    throw new Error('Open Banking backend indisponivel. Habilite o backend antes de conectar um banco.');
+  }
+
   if (hasBackendBanking()) {
     try {
       const conn = await apiRequest<BankConnection>(API_ENDPOINTS.BANKING.CONNECT, {

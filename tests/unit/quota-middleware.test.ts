@@ -14,10 +14,13 @@ import { quotaMiddleware } from '../../backend/src/middleware/quota';
 import {
   PLAN_LIMITS,
   getMonthlyCount,
+  getWorkspaceMonthlyCount,
   incrementMonthlyUsage,
+  incrementWorkspaceMonthlyUsage,
   resetSaasStoreForTests,
   setUserPlan,
 } from '../../backend/src/utils/saasStore';
+import { createWorkspace, updateWorkspaceBilling, resetWorkspaceStoreForTests } from '../../backend/src/services/admin/workspaceStore';
 
 vi.mock('../../backend/src/config/logger', () => ({
   default: { debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn() },
@@ -25,8 +28,15 @@ vi.mock('../../backend/src/config/logger', () => ({
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function makeReq(userId = 'user-test') {
-  return { userId } as any;
+function makeReq(userId = 'user-test', workspaceId?: string) {
+  return {
+    userId,
+    workspaceId,
+    header: vi.fn().mockImplementation((name: string) => (name === 'x-workspace-id' ? workspaceId : undefined)),
+    params: {},
+    query: {},
+    body: {},
+  } as any;
 }
 
 function makeRes() {
@@ -46,12 +56,14 @@ async function runMiddleware(
   resource: 'aiQueries' | 'bankConnections' | 'transactions',
   userId: string,
   options?: { trackOnly?: boolean },
+  workspaceId?: string,
 ) {
-  const req = makeReq(userId);
+  const req = makeReq(userId, workspaceId);
   const res = makeRes();
   const next = vi.fn();
   const mw = quotaMiddleware(resource, 1, options);
-  await mw(req as any, res as any, next);
+  mw(req as any, res as any, next);
+  await new Promise((resolve) => setTimeout(resolve, 0));
   return { req, res, next };
 }
 
@@ -60,6 +72,7 @@ async function runMiddleware(
 describe('quotaMiddleware — plano free', () => {
   beforeEach(() => {
     resetSaasStoreForTests();
+    resetWorkspaceStoreForTests();
   });
 
   it('permite request quando uso está abaixo do limite', async () => {
@@ -138,6 +151,7 @@ describe('quotaMiddleware — plano free', () => {
 describe('quotaMiddleware — plano pro', () => {
   beforeEach(() => {
     resetSaasStoreForTests();
+    resetWorkspaceStoreForTests();
   });
 
   it('usuário pro tem limite maior de aiQueries que free', () => {
@@ -172,6 +186,7 @@ describe('quotaMiddleware — plano pro', () => {
 describe('quotaMiddleware — trackOnly', () => {
   beforeEach(() => {
     resetSaasStoreForTests();
+    resetWorkspaceStoreForTests();
   });
 
   it('trackOnly passa mesmo com limite excedido', async () => {
@@ -192,6 +207,7 @@ describe('quotaMiddleware — trackOnly', () => {
 describe('quotaMiddleware — sem userId', () => {
   beforeEach(() => {
     resetSaasStoreForTests();
+    resetWorkspaceStoreForTests();
   });
 
   it('chama next() sem bloquear quando userId está ausente (auth deve bloquear antes)', async () => {
@@ -200,7 +216,8 @@ describe('quotaMiddleware — sem userId', () => {
     const next = vi.fn();
 
     const mw = quotaMiddleware('aiQueries');
-    await mw(req, res as any, next);
+    mw(req, res as any, next);
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(next).toHaveBeenCalled();
     expect(res.status).not.toHaveBeenCalled();
@@ -210,6 +227,7 @@ describe('quotaMiddleware — sem userId', () => {
 describe('saasStore — funções auxiliares', () => {
   beforeEach(() => {
     resetSaasStoreForTests();
+    resetWorkspaceStoreForTests();
   });
 
   it('getMonthlyCount retorna 0 inicial', () => {
@@ -233,5 +251,59 @@ describe('saasStore — funções auxiliares', () => {
     setUserPlan('r-user', 'pro');
     resetSaasStoreForTests();
     expect(getMonthlyCount('r-user', 'aiQueries')).toBe(0);
+  });
+});
+
+describe('quotaMiddleware - workspace scope', () => {
+  beforeEach(() => {
+    resetSaasStoreForTests();
+    resetWorkspaceStoreForTests();
+  });
+
+  it('aplica limites e contador no escopo do workspace quando o contexto existe', async () => {
+    const workspace = createWorkspace('Quota Workspace', 'owner-workspace');
+
+    await runMiddleware('aiQueries', 'owner-workspace', undefined, workspace.workspaceId);
+
+    expect(getWorkspaceMonthlyCount(workspace.workspaceId, 'aiQueries')).toBe(1);
+    expect(getMonthlyCount('owner-workspace', 'aiQueries')).toBe(0);
+  });
+
+  it('usa limites do plano do workspace em vez do plano legado do usuario', async () => {
+    const workspace = createWorkspace('Pro Workspace', 'owner-pro');
+    updateWorkspaceBilling(workspace.workspaceId, {
+      plan: 'pro',
+      subscription: {
+        subscriptionId: 'sub_quota_pro',
+        provider: 'internal',
+        status: 'active',
+        plan: 'pro',
+        startedAt: new Date('2026-03-01T00:00:00.000Z').toISOString(),
+      },
+    });
+
+    setUserPlan('owner-pro', 'free');
+    incrementWorkspaceMonthlyUsage(workspace.workspaceId, 'aiQueries', PLAN_LIMITS.free.aiQueries + 5);
+
+    const { next, res } = await runMiddleware('aiQueries', 'owner-pro', undefined, workspace.workspaceId);
+
+    expect(next).toHaveBeenCalled();
+    expect(res.setHeader).toHaveBeenCalledWith('X-RateLimit-Plan', 'pro');
+    expect(res.setHeader).toHaveBeenCalledWith('X-RateLimit-Scope', 'workspace');
+  });
+
+  it('bloqueia quando o limite do workspace e excedido', async () => {
+    const workspace = createWorkspace('Free Workspace', 'owner-free');
+    incrementWorkspaceMonthlyUsage(workspace.workspaceId, 'bankConnections', PLAN_LIMITS.free.bankConnections);
+
+    const { next, res } = await runMiddleware('bankConnections', 'owner-free', undefined, workspace.workspaceId);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(429);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      scope: 'workspace',
+      scopeId: workspace.workspaceId,
+      plan: 'free',
+    }));
   });
 });

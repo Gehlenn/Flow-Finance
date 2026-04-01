@@ -1,3 +1,63 @@
+// ─── MULTI-TENANT ──────────────────────────────────────────────────────────
+
+export type Role = 'owner' | 'admin' | 'user';
+export type WorkspacePlan = 'free' | 'pro';
+export type WorkspaceFeature =
+  | 'advancedInsights'
+  | 'multiBankSync'
+  | 'adminConsole'
+  | 'prioritySupport'
+  | 'billingManagement';
+
+export interface WorkspaceEntitlements {
+  features: WorkspaceFeature[];
+  limits: {
+    transactionsPerMonth: number;
+    aiQueriesPerMonth: number;
+    bankConnections: number;
+  };
+}
+
+export interface WorkspaceSubscription {
+  subscriptionId: string;
+  provider: 'internal' | 'stripe';
+  status: 'trialing' | 'active' | 'past_due' | 'canceled';
+  plan: WorkspacePlan;
+  startedAt: string;
+  renewsAt?: string;
+  canceledAt?: string;
+  providerCustomerId?: string;
+  providerSubscriptionId?: string;
+  providerPriceId?: string;
+  updatedAt?: string;
+}
+
+export interface Workspace {
+  workspaceId: string;
+  name: string;
+  createdAt: string;
+  plan: WorkspacePlan;
+  status?: 'active' | 'suspended';
+  billingEmail?: string;
+  billingCustomerId?: string;
+  subscription?: WorkspaceSubscription;
+  entitlements?: WorkspaceEntitlements;
+}
+
+export interface WorkspaceUser {
+  userId: string;
+  workspaceId: string;
+  role: Role;
+  joinedAt: string;
+  invitedBy?: string;
+  status?: 'active' | 'invited' | 'removed';
+}
+
+export interface WorkspaceUserPreference {
+  userId: string;
+  lastSelectedWorkspaceId?: string;
+  updatedAt: string;
+}
 // ─── JWT ──────────────────────────────────────────────────────────────────────
 
 export interface JWTPayload {
@@ -176,6 +236,10 @@ export interface User {
   password?: string; // Not stored in production (use bcrypt or auth service)
   createdAt: string;
   lastLogin?: string;
+  workspaces?: Array<{
+    workspaceId: string;
+    role: Role;
+  }>;
 }
 
 export interface UserSession {

@@ -1,15 +1,25 @@
 import crypto from 'crypto';
 import { AppError } from '../../middleware/errorHandler';
+import {
+  findWorkspaceByBillingCustomerIdAsync,
+  getLastWorkspaceForUserAsync,
+  getWorkspaceAsync,
+  listWorkspacesForUserAsync,
+  updateWorkspaceBilling,
+} from '../admin/workspaceStore';
+import { Workspace } from '../../types';
 
 type StripeCheckoutInput = {
   userId: string;
   email?: string;
   returnUrl: string;
+  workspaceId?: string;
 };
 
 type StripePortalInput = {
   userId: string;
   returnUrl: string;
+  workspaceId?: string;
 };
 
 type StripeWebhookEvent = {
@@ -32,14 +42,37 @@ type StripeWebhookEvent = {
   };
 };
 
-const stripeCustomerByUserId = new Map<string, string>();
-
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
     throw new AppError(503, `${name} is not configured`);
   }
   return value;
+}
+
+async function resolveWorkspaceForUser(userId: string, workspaceId?: string): Promise<Workspace> {
+  if (workspaceId) {
+    const workspace = await getWorkspaceAsync(workspaceId);
+    if (workspace) {
+      return workspace;
+    }
+  }
+
+  const lastWorkspace = await getLastWorkspaceForUserAsync(userId);
+  if (lastWorkspace) {
+    return lastWorkspace;
+  }
+
+  const userWorkspaces = await listWorkspacesForUserAsync(userId);
+  if (userWorkspaces.length === 1) {
+    return userWorkspaces[0];
+  }
+
+  if (userWorkspaces.length > 1) {
+    throw new AppError(409, 'Multiple workspaces found for user; explicit workspaceId is required');
+  }
+
+  throw new AppError(404, 'Workspace not found for Stripe billing context');
 }
 
 function encodeBody(payload: Record<string, string | undefined>): string {
@@ -75,7 +108,8 @@ export async function createStripeCheckoutSession(input: StripeCheckoutInput): P
   const priceId = getRequiredEnv('STRIPE_PRICE_PRO_MONTHLY');
   const successUrl = `${input.returnUrl}${input.returnUrl.includes('?') ? '&' : '?'}billing=success`;
   const cancelUrl = `${input.returnUrl}${input.returnUrl.includes('?') ? '&' : '?'}billing=cancel`;
-  const knownCustomer = stripeCustomerByUserId.get(input.userId);
+  const workspace = await resolveWorkspaceForUser(input.userId, input.workspaceId);
+  const knownCustomer = workspace.billingCustomerId;
 
   const session = await stripePost<{ id: string; url: string | null; customer?: string }>('checkout/sessions', {
     mode: 'subscription',
@@ -86,19 +120,23 @@ export async function createStripeCheckoutSession(input: StripeCheckoutInput): P
     customer: knownCustomer,
     customer_email: knownCustomer ? undefined : input.email,
     'metadata[userId]': input.userId,
+    'metadata[workspaceId]': workspace.workspaceId,
   });
 
   if (session.customer) {
-    stripeCustomerByUserId.set(input.userId, session.customer);
+    updateWorkspaceBilling(workspace.workspaceId, {
+      billingCustomerId: session.customer,
+    });
   }
 
   return { id: session.id, url: session.url || null };
 }
 
 export async function createStripePortalSession(input: StripePortalInput): Promise<{ url: string }> {
-  const customerId = stripeCustomerByUserId.get(input.userId);
+  const workspace = await resolveWorkspaceForUser(input.userId, input.workspaceId);
+  const customerId = workspace.billingCustomerId;
   if (!customerId) {
-    throw new AppError(404, 'Stripe customer not found for user');
+    throw new AppError(404, 'Stripe customer not found for workspace');
   }
 
   const session = await stripePost<{ url: string }>('billing_portal/sessions', {
@@ -141,10 +179,27 @@ export function parseStripeWebhookEvent(rawBody: string): StripeWebhookEvent {
   }
 }
 
-export function rememberStripeCustomer(userId: string, customerId: string): void {
-  if (userId && customerId) {
-    stripeCustomerByUserId.set(userId, customerId);
+export async function rememberStripeCustomer(userId: string, customerId: string): Promise<void> {
+  const workspace = await resolveWorkspaceForUser(userId);
+  if (workspace.workspaceId && customerId) {
+    updateWorkspaceBilling(workspace.workspaceId, {
+      billingCustomerId: customerId,
+    });
   }
+}
+
+export function rememberStripeCustomerForWorkspace(workspaceId: string, customerId: string): void {
+  if (!workspaceId || !customerId) {
+    return;
+  }
+
+  updateWorkspaceBilling(workspaceId, {
+    billingCustomerId: customerId,
+  });
+}
+
+export async function findWorkspaceForStripeCustomer(customerId: string): Promise<Workspace | undefined> {
+  return await findWorkspaceByBillingCustomerIdAsync(customerId);
 }
 
 export function getPlanFromStripeEvent(event: StripeWebhookEvent): 'free' | 'pro' | null {
@@ -167,5 +222,5 @@ export function getPlanFromStripeEvent(event: StripeWebhookEvent): 'free' | 'pro
 }
 
 export function resetStripeServiceForTests(): void {
-  stripeCustomerByUserId.clear();
+  // No-op: state is persisted in the workspace store.
 }

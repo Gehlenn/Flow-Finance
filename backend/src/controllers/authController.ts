@@ -10,6 +10,10 @@ import {
   revokeUserRefreshTokens,
 } from '../services/auth/refreshTokenStore';
 import { recordAuditEvent } from '../services/admin/auditLog';
+import {
+  isFirebaseIdentityVerificationConfigured,
+  verifyFirebaseIdToken,
+} from '../services/auth/firebaseIdentityService';
 
 // Extend Express Request interface
 declare global {
@@ -78,6 +82,56 @@ export const loginController = asyncHandler(async (req: Request, res: Response) 
     logger.error({ error, email }, 'Login error');
     recordAuditEvent({ email, action: 'auth.login_failed', status: 'failure', ip: req.ip });
     throw new AppError(500, 'Failed to generate authentication token');
+  }
+});
+
+export const firebaseSessionController = asyncHandler(async (req: Request, res: Response) => {
+  const { idToken } = req.body as { idToken?: string };
+
+  if (!idToken || typeof idToken !== 'string') {
+    throw new AppError(400, 'Firebase idToken is required');
+  }
+
+  if (!isFirebaseIdentityVerificationConfigured()) {
+    throw new AppError(503, 'Firebase identity verification is not configured on the backend');
+  }
+
+  try {
+    const identity = await verifyFirebaseIdToken(idToken);
+    const accessToken = generateAccessToken(identity.userId, identity.email);
+    const decodedToken = decodeToken(accessToken) as JWTPayload;
+    const refresh = issueRefreshToken(identity.userId, identity.email);
+
+    recordAuditEvent({
+      userId: identity.userId,
+      email: identity.email,
+      action: 'auth.login',
+      status: 'success',
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+      metadata: {
+        provider: 'firebase',
+        emailVerified: identity.emailVerified,
+      },
+    });
+
+    res.json({
+      token: accessToken,
+      accessToken,
+      refreshToken: refresh.refreshToken,
+      expiresIn: decodedToken.exp - Math.floor(Date.now() / 1000),
+      refreshExpiresIn: refresh.expiresIn,
+      user: {
+        userId: identity.userId,
+        email: identity.email,
+        name: identity.name,
+        picture: identity.picture,
+        emailVerified: identity.emailVerified,
+      }
+    });
+  } catch (error) {
+    logger.error({ error }, 'Firebase session exchange error');
+    throw new AppError(401, 'Invalid Firebase identity token');
   }
 });
 

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 
 interface InsightsProps {
+  activeWorkspaceName?: string | null;
   transactions: Transaction[];
   userId?: string;
   hideValues: boolean;
@@ -87,7 +88,7 @@ const HEALTH_STYLES: Record<string, { bg: string; text: string; bar: string }> =
   excelente: { bg: 'bg-emerald-500', text: 'text-emerald-500', bar: 'bg-emerald-500' },
 };
 
-const Insights: React.FC<InsightsProps> = ({ transactions, userId = 'local', hideValues }) => {
+const Insights: React.FC<InsightsProps> = ({ activeWorkspaceName, transactions, userId = 'local', hideValues }) => {
   // Pipeline completo via orchestrator (síncrono)
   const pipeline = useMemo(
     () => runAIPipelineSync(transactions, userId),
@@ -115,6 +116,9 @@ const Insights: React.FC<InsightsProps> = ({ transactions, userId = 'local', hid
         <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 blur-3xl -mr-16 -mt-16 pointer-events-none" />
         <div className="relative z-10">
           <h2 className="text-2xl font-black text-white tracking-tight leading-none">Insights</h2>
+          <p className="text-[8px] font-black text-white/80 uppercase tracking-widest mt-2">
+            Workspace: {activeWorkspaceName || 'Carregando workspace'}
+          </p>
           <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mt-1.5">Análise Financeira com IA</p>
         </div>
         <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center text-white relative z-10">

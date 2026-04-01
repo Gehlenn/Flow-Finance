@@ -1,4 +1,5 @@
 import { Transaction } from '../../types';
+import { getActiveWorkspaceScopedStorageKey } from '../utils/workspaceStorage';
 
 const STORAGE_KEY = 'flow_ai_debug';
 const MAX_LOGS = 100; // Limite para não encher o localStorage
@@ -23,7 +24,7 @@ export interface AIDebugEntry {
 
 function readLogs(): AIDebugEntry[] {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    return JSON.parse(localStorage.getItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY)) || '[]');
   } catch {
     return [];
   }
@@ -41,7 +42,7 @@ export function logAIDebug(entry: Omit<AIDebugEntry, 'id' | 'timestamp'>): void 
 
   // Insere no início e mantém limite
   const trimmed = [newEntry, ...logs].slice(0, MAX_LOGS);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
+  localStorage.setItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY), JSON.stringify(trimmed));
 }
 
 export function getAIDebugLogs(): AIDebugEntry[] {
@@ -49,5 +50,5 @@ export function getAIDebugLogs(): AIDebugEntry[] {
 }
 
 export function clearAIDebugLogs(): void {
-  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY));
 }

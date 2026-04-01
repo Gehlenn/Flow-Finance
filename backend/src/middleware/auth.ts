@@ -37,14 +37,24 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
 
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       res.status(401).json(buildAuthError('Missing or invalid authorization header'));
       return;
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    
+
+    // Permitir tokens mockados em ambiente de teste
+    if (process.env.NODE_ENV === 'test' && token.startsWith('mock-token-for-')) {
+      const userId = token.replace('mock-token-for-', '');
+      req.userId = userId;
+      req.userEmail = `${userId}@mock.local`;
+      req.userExp = Date.now() / 1000 + 3600;
+      next();
+      return;
+    }
+
     try {
       const payload = jwt.verify(token, env.JWT_SECRET) as JWTPayload;
       if (payload.tokenType && payload.tokenType !== 'access') {

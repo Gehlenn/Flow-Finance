@@ -10,6 +10,12 @@ import { GoogleGenAI } from "@google/genai";
 import { auth, googleProvider, appleProvider, linkWithPopup } from '../services/firebase';
 import { AuthProvider } from 'firebase/auth';
 import { API_ENDPOINTS, getAuthHeaders } from '../src/config/api.config';
+import {
+  ensureActiveWorkspace,
+  listUserWorkspaces,
+  setActiveWorkspaceId,
+  WorkspaceSummary,
+} from '../src/services/workspaceSession';
 
 interface SettingsProps {
   userName: string | null;
@@ -41,6 +47,9 @@ const Settings: React.FC<SettingsProps> = ({
   const [billingError, setBillingError] = useState<string | null>(null);
   const [currentPlan, setCurrentPlan] = useState<'free' | 'pro'>('free');
   const [planName, setPlanName] = useState('Free');
+  const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceSummary | null>(null);
+  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
+  const [workspaceSwitching, setWorkspaceSwitching] = useState(false);
   const [monthlyUsageSummary, setMonthlyUsageSummary] = useState<string>('0 transações • 0 IA • 0 conexões');
 
   useEffect(() => {
@@ -57,14 +66,23 @@ const Settings: React.FC<SettingsProps> = ({
     setBillingLoading(true);
     setBillingError(null);
     try {
+      let availableWorkspaces = await listUserWorkspaces();
+      const workspace = await ensureActiveWorkspace();
+      if (availableWorkspaces.length === 0) {
+        availableWorkspaces = [workspace];
+      }
+
+      setActiveWorkspace(workspace);
+      setWorkspaces(availableWorkspaces);
+
       const [plansResponse, usageResponse] = await Promise.all([
         fetch(API_ENDPOINTS.SAAS.PLANS, {
           method: 'GET',
-          headers: getAuthHeaders(),
+          headers: getAuthHeaders({ workspaceId: workspace.workspaceId }),
         }),
         fetch(API_ENDPOINTS.SAAS.USAGE, {
           method: 'GET',
-          headers: getAuthHeaders(),
+          headers: getAuthHeaders({ workspaceId: workspace.workspaceId }),
         }),
       ]);
 
@@ -99,14 +117,31 @@ const Settings: React.FC<SettingsProps> = ({
     }
   };
 
+  const handleWorkspaceChange = async (workspaceId: string) => {
+    const nextWorkspace = workspaces.find((workspace) => workspace.workspaceId === workspaceId);
+    if (!nextWorkspace || nextWorkspace.workspaceId === activeWorkspace?.workspaceId) {
+      return;
+    }
+
+    setWorkspaceSwitching(true);
+    setActiveWorkspaceId(nextWorkspace.workspaceId);
+    setActiveWorkspace(nextWorkspace);
+
+    try {
+      await loadBillingOverview();
+    } finally {
+      setWorkspaceSwitching(false);
+    }
+  };
+
   const handleUpgrade = async () => {
     setBillingBusy(true);
     setBillingError(null);
     try {
       const response = await fetch(API_ENDPOINTS.SAAS.STRIPE_CHECKOUT_SESSION, {
         method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ returnUrl: window.location.href }),
+        headers: getAuthHeaders({ workspaceId: activeWorkspace?.workspaceId }),
+        body: JSON.stringify({ returnUrl: window.location.href, workspaceId: activeWorkspace?.workspaceId }),
       });
 
       if (response.ok) {
@@ -119,8 +154,8 @@ const Settings: React.FC<SettingsProps> = ({
 
       const fallback = await fetch(API_ENDPOINTS.SAAS.PLAN_CHANGE, {
         method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ plan: 'pro' }),
+        headers: getAuthHeaders({ workspaceId: activeWorkspace?.workspaceId }),
+        body: JSON.stringify({ plan: 'pro', workspaceId: activeWorkspace?.workspaceId }),
       });
 
       if (!fallback.ok) {
@@ -142,8 +177,8 @@ const Settings: React.FC<SettingsProps> = ({
     try {
       const response = await fetch(API_ENDPOINTS.SAAS.STRIPE_PORTAL_SESSION, {
         method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ returnUrl: window.location.href }),
+        headers: getAuthHeaders({ workspaceId: activeWorkspace?.workspaceId }),
+        body: JSON.stringify({ returnUrl: window.location.href, workspaceId: activeWorkspace?.workspaceId }),
       });
 
       if (!response.ok) {
@@ -239,12 +274,29 @@ const Settings: React.FC<SettingsProps> = ({
             </span>
           </div>
 
+          <div className="space-y-2">
+            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Workspace ativo</label>
+            <select
+              value={activeWorkspace?.workspaceId || ''}
+              onChange={(event) => void handleWorkspaceChange(event.target.value)}
+              disabled={billingLoading || workspaceSwitching || workspaces.length <= 1}
+              className="w-full p-4 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-700 dark:text-slate-100 outline-none disabled:opacity-60"
+            >
+              {workspaces.map((workspace) => (
+                <option key={workspace.workspaceId} value={workspace.workspaceId}>
+                  {workspace.name} · {workspace.plan.toUpperCase()}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 space-y-2">
             {billingLoading ? (
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Carregando plano...</p>
             ) : (
               <>
                 <p className="text-sm font-black text-slate-800 dark:text-white">Plano atual: {planName}</p>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-widest">Workspace: {activeWorkspace?.name || 'Workspace ativo'}</p>
                 <p className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-widest">Uso no mês: {monthlyUsageSummary}</p>
               </>
             )}
