@@ -67,7 +67,7 @@ export async function checkAPIHealth(): Promise<GuardResult> {
     }
   } catch (error) {
     apiOfflineMode = true;
-    console.warn('[API Guard] Backend health check failed, running degraded mode:', error);
+    console.warn('[API Guard] Backend health check failed:', error);
     return {
       guard: 'api',
       status: 'warning',
@@ -76,14 +76,4 @@ export async function checkAPIHealth(): Promise<GuardResult> {
       timestamp: now,
     };
   }
-}
-
-export function activateFallbackMode(): void {
-  apiOfflineMode = true;
-  console.warn('[API Guard] Fallback mode activated - API calls will be limited');
-  
-  // Dispatch custom event for components to react
-  window.dispatchEvent(new CustomEvent('api-offline', { 
-    detail: { timestamp: Date.now() } 
-  }));
 }

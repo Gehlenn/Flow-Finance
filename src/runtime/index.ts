@@ -4,7 +4,7 @@
  */
 
 export { initializeRuntimeGuard, getGuardStatus } from './runtimeGuard';
-export { checkAPIHealth, isAPIOffline, activateFallbackMode } from './apiGuard';
+export { checkAPIHealth, isAPIOffline } from './apiGuard';
 export { protectChunkLoading, initChunkGuard, resetChunkErrorCount } from './chunkGuard';
 export { validateServiceWorker, clearAllCaches } from './serviceWorkerGuard';
 export { checkAppVersion, getLocalVersion } from './versionGuard';

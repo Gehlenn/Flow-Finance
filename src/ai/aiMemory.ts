@@ -25,10 +25,14 @@ function writeAll(entries: AIMemory[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
 }
 
+export function getAIMemorySnapshot(userId: string): AIMemory[] {
+  return readAll().filter((memory) => memory.user_id === userId);
+}
+
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
 
 export async function getAIMemory(userId: string): Promise<AIMemory[]> {
-  return readAll().filter(m => m.user_id === userId);
+  return getAIMemorySnapshot(userId);
 }
 
 export async function storeMemory(memory: AIMemory): Promise<void> {

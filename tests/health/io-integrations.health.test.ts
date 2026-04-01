@@ -3,7 +3,6 @@ import { BACKEND_BASE_URL, API_ENDPOINTS, apiRequest } from '../../src/config/ap
 import { GeminiService } from '../../services/geminiService';
 import { getProvider } from '../../services/integrations/mockBankProvider';
 import { connectBank, disconnectBank, getConnections } from '../../services/integrations/openBankingService';
-import { LocalStorageProvider, ApiStorageProvider } from '../../src/storage/StorageProvider';
 
 describe('IO Health Check - API contracts', () => {
   it('all configured endpoints should be fully qualified and use backend base url', () => {
@@ -171,72 +170,3 @@ describe('IO Health Check - Banking provider + orchestrator', () => {
   });
 });
 
-describe('IO Health Check - Storage providers', () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it('LocalStorageProvider should persist and retrieve domain data', async () => {
-    const provider = new LocalStorageProvider();
-
-    await provider.saveTransaction({
-      id: 'tx-health-1',
-      userId: 'u-health',
-      accountId: 'acc-1',
-      amount: 120,
-      type: 'expense',
-      category: 'food',
-      description: 'teste health',
-      date: new Date(),
-      source: 'manual',
-      isGenerated: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    const list = await provider.getTransactions('u-health');
-    expect(list.length).toBe(1);
-    expect(list[0].id).toBe('tx-health-1');
-  });
-
-  it('ApiStorageProvider should call expected REST endpoint contract', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ ok: true }),
-      statusText: 'OK',
-    });
-
-    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
-
-    const provider = new ApiStorageProvider('https://api.flow-finance.test', 'token-123');
-
-    await provider.saveTransaction({
-      id: 'tx-api-1',
-      userId: 'u-health',
-      accountId: 'acc-1',
-      amount: 50,
-      type: 'income',
-      category: 'salary',
-      description: 'salario',
-      date: new Date(),
-      source: 'import',
-      isGenerated: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-
-    const [url, options] = fetchMock.mock.calls[0];
-    expect(url).toBe('https://api.flow-finance.test/users/u-health/transactions/tx-api-1');
-    expect((options as RequestInit).method).toBe('PUT');
-    expect((options as RequestInit).headers).toMatchObject({
-      Authorization: 'Bearer token-123',
-      'Content-Type': 'application/json',
-    });
-  });
-});

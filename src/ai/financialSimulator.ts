@@ -59,7 +59,7 @@ export function simulateFinancialScenario(
       // Projeção por meses usando cashflow predictor
       const mappedAccounts = accounts.map(acc => ({
         id: acc.id,
-        user_id: 'legacy',
+        user_id: 'simulation',
         name: 'Conta',
         type: 'cash' as const,
         balance: acc.balance,

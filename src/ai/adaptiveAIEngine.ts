@@ -20,7 +20,7 @@
  */
 
 import { Transaction, TransactionType } from '../../types';
-import { learnMemory, getAIMemory, AIMemory } from './aiMemory';
+import { learnMemory, getAIMemory, getAIMemorySnapshot, AIMemory } from './aiMemory';
 import { CashflowPrediction } from './riskAnalyzer';
 import { AIInsight } from './insightGenerator';
 import { makeId, formatCurrency } from '../../utils/helpers';
@@ -436,8 +436,7 @@ export function getAdaptiveLearningStats(userId: string): {
   last_run: string | null;
 } {
   try {
-    const all: AIMemory[] = JSON.parse(localStorage.getItem('flow_ai_memory') || '[]');
-    const userMem = all.filter(m => m.user_id === userId);
+    const userMem = getAIMemorySnapshot(userId);
     const last_run = userMem.find(m => m.key === 'last_learning_run')?.value ?? null;
     const pattern_count = parseInt(userMem.find(m => m.key === 'patterns_detected_count')?.value ?? '0');
     return {

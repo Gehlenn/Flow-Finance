@@ -23,7 +23,7 @@
 import { Transaction } from '../../types';
 import { Account } from '../../models/Account';
 
-import { getAIMemory, learnMemory, detectAndLearnPatterns, AIMemory } from './aiMemory';
+import { getAIMemory, getAIMemorySnapshot, learnMemory, detectAndLearnPatterns } from './aiMemory';
 import { runFinancialEngine, FinancialState } from './financialEngine';
 import { detectFinancialProfile, FinancialProfileResult } from './behaviorAnalyzer';
 import { detectFinancialRisks, FinancialRiskAlert } from './riskAnalyzer';
@@ -171,7 +171,7 @@ export async function runAIPipeline(
   // mas com um .catch individual para que uma falha não pare as outras.
   try {
     const learningPromises = [
-      // Legacy memory system (v1)
+      // Keep the lightweight memory snapshot fed while the structured memory engine learns in parallel.
       detectAndLearnPatterns(userId, transactions).catch(e => console.error('Erro em detectAndLearnPatterns:', e)),
       learnMemory(userId, 'financial_profile', profile.profile, 0.8).catch(e => console.error('Erro ao salvar profile memory:', e)),
       learnMemory(userId, 'balance_trend', financial_state.summary_current_month.balance >= 0 ? 'positivo' : 'negativo', 0.7).catch(e => console.error('Erro ao salvar balance trend memory:', e)),
@@ -210,11 +210,7 @@ export function runAIPipelineSync(
   const start = Date.now();
 
   // Ler memória de forma síncrona
-  let memories: AIMemory[] = [];
-  try {
-    const all = JSON.parse(localStorage.getItem('flow_ai_memory') || '[]') as AIMemory[];
-    memories = all.filter((m: AIMemory) => m.user_id === userId);
-  } catch { /* silencioso */ }
+  const memories = getAIMemorySnapshot(userId);
 
   const financial_state = runFinancialEngine(transactions);
 

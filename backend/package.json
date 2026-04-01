@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "lint": "tsc --noEmit",
     "type-check": "tsc --noEmit",
+    "preflight:cutover": "tsx scripts/postgres-cutover-preflight.ts",
     "prebuild": "npm run lint"
   },
   "dependencies": {

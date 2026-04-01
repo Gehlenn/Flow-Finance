@@ -5,7 +5,7 @@
  */
 
 import { GuardResult, RuntimeConfig } from './types';
-import { checkAPIHealth, activateFallbackMode } from './apiGuard';
+import { checkAPIHealth } from './apiGuard';
 import { protectChunkLoading } from './chunkGuard';
 import { validateServiceWorker } from './serviceWorkerGuard';
 import { checkAppVersion } from './versionGuard';
@@ -50,10 +50,6 @@ export async function initializeRuntimeGuard(userConfig?: Partial<RuntimeConfig>
   try {
     const apiResult = await checkAPIHealth();
     results.push(apiResult);
-    
-    if (apiResult.status === 'warning' || apiResult.status === 'error') {
-      activateFallbackMode();
-    }
   } catch (error) {
     console.error('[Runtime Guard] API health check failed:', error);
   }
