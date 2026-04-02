@@ -149,6 +149,11 @@ describe('firestoreWorkspaceStore', () => {
       { merge: true },
     );
 
+    firestoreWorkspaceStoreMocks.getDocsMock.mockResolvedValueOnce({
+      empty: true,
+      docs: [],
+    });
+
     await removeWorkspaceMember({
       tenantId: 'tenant-1',
       workspaceId: 'ws-1',
