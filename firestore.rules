@@ -10,6 +10,20 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function tenantMemberDocId(tenantId) {
+      return tenantId + '_' + request.auth.uid;
+    }
+
+    function tenantMemberDoc(tenantId) {
+      return get(/databases/$(database)/documents/tenant_members/$(tenantMemberDocId(tenantId)));
+    }
+
+    function isTenantMember(tenantId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/tenant_members/$(tenantMemberDocId(tenantId)))
+        && tenantMemberDoc(tenantId).data.status == 'active';
+    }
+
     function workspaceMemberDocId(workspaceId) {
       return workspaceId + '_' + request.auth.uid;
     }
@@ -73,8 +87,24 @@ service cloud.firestore {
 
     match /tenants/{tenantId} {
       allow create: if isSignedIn() && request.resource.data.ownerUserId == request.auth.uid;
-      allow read: if isSignedIn();
+      allow read: if isTenantMember(tenantId) || (isSignedIn() && resource.data.ownerUserId == request.auth.uid);
       allow update, delete: if isSignedIn() && resource.data.ownerUserId == request.auth.uid;
+    }
+
+    match /tenant_members/{memberId} {
+      allow read: if isSignedIn()
+        && (resource.data.userId == request.auth.uid || isTenantMember(resource.data.tenantId));
+      allow create: if isSignedIn()
+        && request.resource.data.tenantId is string
+        && request.resource.data.workspaceId is string
+        && request.resource.data.userId is string
+        && workspaceBelongsToTenant(request.resource.data.workspaceId, request.resource.data.tenantId)
+        && canManageWorkspace(request.resource.data.workspaceId);
+      allow update: if isSignedIn()
+        && resource.data.workspaceId is string
+        && workspaceBelongsToTenant(resource.data.workspaceId, resource.data.tenantId)
+        && canManageWorkspace(resource.data.workspaceId);
+      allow delete: if false;
     }
 
     match /workspaces/{workspaceId} {

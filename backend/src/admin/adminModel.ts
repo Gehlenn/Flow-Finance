@@ -2,7 +2,7 @@
 export interface AdminUser {
   id: string;
   email: string;
-  role: 'admin' | 'owner' | 'user';
+  role: 'admin' | 'owner' | 'member' | 'viewer';
 }
 
 // Modelo de log de auditoria

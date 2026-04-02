@@ -5,6 +5,7 @@ import {
   createPersonalWorkspace as createPersonalWorkspaceInFirestore,
   ensureActiveWorkspaceForUser,
   listWorkspaceAuditEvents,
+  listWorkspaceAuditEventsPage,
   listWorkspaceMembers,
   listUserWorkspaceSummaries,
   removeWorkspaceMember,
@@ -17,6 +18,7 @@ import {
 export {
   addWorkspaceMember,
   listWorkspaceAuditEvents,
+  listWorkspaceAuditEventsPage,
   listWorkspaceMembers,
   removeWorkspaceMember,
 };

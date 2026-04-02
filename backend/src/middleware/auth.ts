@@ -15,6 +15,21 @@ declare global {
       userId?: string;
       userEmail?: string;
       userExp?: number;
+      tenantId?: string;
+      tenantContext?: {
+        tenantId: string;
+        plan: 'free' | 'pro';
+        features: string[];
+        limits: Record<string, number>;
+      };
+      workspaceId?: string;
+      workspace?: {
+        workspaceId: string;
+        tenantId: string;
+        name: string;
+        isDefault: boolean;
+        plan?: 'free' | 'pro';
+      };
     }
   }
 }

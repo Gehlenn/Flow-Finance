@@ -11,6 +11,19 @@ export const UsageUpsertSchema = z.object({
   usage: z.record(UsageSnapshotSchema),
 });
 
+export const UsageIncrementSchema = z.object({
+  workspaceId: z.string().min(1).optional(),
+  resource: z.enum(['transactions', 'aiQueries', 'bankConnections']),
+  amount: z.number().int().min(1).default(1),
+  at: z.string().min(1).optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+export const UsageResetSchema = z.object({
+  workspaceId: z.string().min(1).optional(),
+  monthKey: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+});
+
 export const BillingHookSchema = z.object({
   workspaceId: z.string().min(1).optional(),
   plan: z.enum(['free', 'pro']),

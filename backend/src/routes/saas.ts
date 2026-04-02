@@ -3,6 +3,8 @@ import { authMiddleware } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import {
   BillingHookSchema,
+  UsageIncrementSchema,
+  UsageResetSchema,
   PlanChangeSchema,
   StripeCheckoutSchema,
   StripePortalSchema,
@@ -16,6 +18,8 @@ import {
   getWorkspaceMeteringSummary,
   getWorkspaceUsage,
   getWorkspaceUsageEvents,
+  recordWorkspaceUsage,
+  resetWorkspaceUsage,
   setWorkspaceUsage,
 } from '../utils/saasStore';
 import {
@@ -122,6 +126,38 @@ router.put('/usage', validate(UsageUpsertSchema), asyncHandler(async (req: Reque
 
   setWorkspaceUsage(workspaceId, payload.usage);
   res.json({ success: true, scope: 'workspace', workspaceId });
+}));
+
+router.post('/usage/increment', validate(UsageIncrementSchema), asyncHandler(async (req: Request, res: Response) => {
+  const payload = req.body as {
+    resource: 'transactions' | 'aiQueries' | 'bankConnections';
+    amount?: number;
+    at?: string;
+    metadata?: Record<string, unknown>;
+  };
+  const workspaceId = await requireAuthorizedWorkspace(req);
+  const total = recordWorkspaceUsage(workspaceId, {
+    resource: payload.resource,
+    amount: payload.amount ?? 1,
+    at: payload.at,
+    metadata: payload.metadata,
+    userId: req.userId,
+  });
+
+  res.json({
+    success: true,
+    scope: 'workspace',
+    workspaceId,
+    resource: payload.resource,
+    total,
+  });
+}));
+
+router.post('/usage/reset', validate(UsageResetSchema), asyncHandler(async (req: Request, res: Response) => {
+  const payload = req.body as { monthKey?: string };
+  const workspaceId = await requireAuthorizedWorkspace(req);
+  resetWorkspaceUsage(workspaceId, payload.monthKey);
+  res.json({ success: true, scope: 'workspace', workspaceId, monthKey: payload.monthKey || null });
 }));
 
 router.get('/plans', asyncHandler(async (req: Request, res: Response) => {

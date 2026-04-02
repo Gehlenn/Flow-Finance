@@ -20,7 +20,7 @@
     "teste": "npm test",
     "test": "node scripts/run-vitest-stable.mjs",
     "test:unit": "node scripts/run-vitest-stable.mjs",
-    "test:firestore:rules": "firebase emulators:exec --only firestore --project demo-flow-finance \"vitest run tests/firestore/firestore.rules.emulator.test.ts --maxWorkers=1 --pool=forks\"",
+    "test:firestore:rules": "node scripts/run-firestore-rules.mjs",
     "test:watch": "vitest --exclude tests/e2e/**",
     "test:coverage": "vitest run --coverage --exclude tests/e2e/**",
     "test:coverage:critical": "vitest run --config vitest.critical.config.ts",

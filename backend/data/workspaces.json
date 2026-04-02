@@ -1,37 +1,6 @@
 {
-  "workspaces": [
-    {
-      "workspaceId": "6bf59f6b-53f6-4341-b499-dfbcb5822116",
-      "name": "Workspace Export",
-      "createdAt": "2026-04-01T04:50:04.556Z",
-      "plan": "free",
-      "status": "active",
-      "entitlements": {
-        "features": [
-          "advancedInsights"
-        ],
-        "limits": {
-          "transactionsPerMonth": 500,
-          "aiQueriesPerMonth": 100,
-          "bankConnections": 1
-        }
-      }
-    }
-  ],
-  "workspaceUsers": [
-    {
-      "userId": "owner-export",
-      "workspaceId": "6bf59f6b-53f6-4341-b499-dfbcb5822116",
-      "role": "owner",
-      "joinedAt": "2026-04-01T04:50:04.556Z",
-      "status": "active"
-    }
-  ],
-  "userPreferences": [
-    {
-      "userId": "owner-export",
-      "lastSelectedWorkspaceId": "6bf59f6b-53f6-4341-b499-dfbcb5822116",
-      "updatedAt": "2026-04-01T04:50:04.556Z"
-    }
-  ]
+  "tenants": [],
+  "workspaces": [],
+  "workspaceUsers": [],
+  "userPreferences": []
 }

@@ -25,16 +25,29 @@ export type AuditAction =
   | 'quota.exceeded'
   | 'security.forbidden'
   | 'security.unauthorized'
-  | 'workspace.addUser';
+  | 'workspace.addUser'
+  | 'workspace.removeUser'
+  | 'account.created'
+  | 'account.updated'
+  | 'account.deleted'
+  | 'transaction.created'
+  | 'transaction.deleted'
+  | 'goal.created'
+  | 'goal.updated'
+  | 'goal.deleted';
 
 export type AuditStatus = 'success' | 'failure' | 'blocked';
 
 export interface AuditEvent {
   id: string;
+  tenantId?: string;
+  workspaceId?: string;
   userId?: string;
   email?: string;
   action: AuditAction;
   status: AuditStatus;
+  resourceType?: string;
+  resourceId?: string;
   ip?: string;
   userAgent?: string;
   resource?: string;
@@ -82,15 +95,27 @@ export function recordAuditEvent(
  * Query recent audit events with optional filters.
  */
 export function getAuditEvents(filters: {
+  tenantId?: string;
+  workspaceId?: string;
   userId?: string;
   action?: AuditAction;
   status?: AuditStatus;
+  resourceType?: string;
+  resourceId?: string;
   resource?: string;
   limit?: number;
   since?: string; // ISO 8601
   until?: string; // ISO 8601
 } = {}): AuditEvent[] {
   let result = eventBuffer;
+
+  if (filters.tenantId) {
+    result = result.filter((e) => e.tenantId === filters.tenantId);
+  }
+
+  if (filters.workspaceId) {
+    result = result.filter((e) => e.workspaceId === filters.workspaceId);
+  }
 
   if (filters.userId) {
     result = result.filter((e) => e.userId === filters.userId);
@@ -102,6 +127,14 @@ export function getAuditEvents(filters: {
 
   if (filters.status) {
     result = result.filter((e) => e.status === filters.status);
+  }
+
+  if (filters.resourceType) {
+    result = result.filter((e) => e.resourceType === filters.resourceType);
+  }
+
+  if (filters.resourceId) {
+    result = result.filter((e) => e.resourceId === filters.resourceId);
   }
 
   if (filters.resource) {
@@ -142,10 +175,14 @@ export async function initializeAuditLogPersistence(): Promise<void> {
   eventBuffer = [...rows].reverse().map((row) => ({
     id: row.id,
     at: row.at,
+    tenantId: row.tenantId,
+    workspaceId: row.workspaceId,
     userId: row.userId,
     email: row.email,
     action: row.action as AuditAction,
     status: row.status as AuditStatus,
+    resourceType: row.resourceType,
+    resourceId: row.resourceId,
     ip: row.ip,
     userAgent: row.userAgent,
     resource: row.resource,

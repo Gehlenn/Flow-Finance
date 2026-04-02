@@ -49,6 +49,8 @@ describe('Admin API', () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.items)).toBe(true);
     expect(res.body.items.some((entry: { resource?: string }) => entry.resource === workspaceId)).toBe(true);
+    const auditEntry = res.body.items.find((entry: { workspaceId?: string; tenantId?: string }) => entry.workspaceId === workspaceId);
+    expect(auditEntry?.tenantId).toBeTruthy();
   });
 
   it('GET /api/admin/usage-metering deve retornar sumario e eventos filtraveis por periodo', async () => {
@@ -103,7 +105,7 @@ describe('Admin API', () => {
 
     expect(auditExport.status).toBe(200);
     expect(auditExport.headers['content-type']).toContain('text/csv');
-    expect(auditExport.text).toContain('id,at,userId,action,status,resource,metadata');
+    expect(auditExport.text).toContain('id,at,tenantId,workspaceId,userId,action,status,resourceType,resourceId,resource,metadata');
 
     expect(usageExport.status).toBe(200);
     expect(usageExport.headers['content-type']).toContain('text/csv');
@@ -131,5 +133,25 @@ describe('Admin API', () => {
 
     expect(secondPage.status).toBe(200);
     expect(Array.isArray(secondPage.body.items)).toBe(true);
+  });
+
+  it('viewer nao pode gerenciar membros do workspace', async () => {
+    const ownerUserId = 'owner-admin-viewer';
+    const viewerUserId = 'viewer-admin-viewer';
+    const workspaceId = await createProWorkspace(ownerUserId);
+
+    await request(app)
+      .post(`/api/workspace/${workspaceId}/users`)
+      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('x-workspace-id', workspaceId)
+      .send({ userId: viewerUserId, role: 'viewer' });
+
+    const res = await request(app)
+      .post(`/api/workspace/${workspaceId}/users`)
+      .set('Authorization', `Bearer mock-token-for-${viewerUserId}`)
+      .set('x-workspace-id', workspaceId)
+      .send({ userId: 'another-user', role: 'member' });
+
+    expect(res.status).toBe(403);
   });
 });

@@ -7,6 +7,7 @@ import {
   onSnapshot,
   orderBy,
   QueryConstraint,
+  startAfter,
   query,
   setDoc,
   Unsubscribe,
@@ -56,6 +57,16 @@ export type WorkspaceMemberDocument = {
   userId: string;
   role: WorkspaceRole;
   status: 'active' | 'invited' | 'disabled';
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TenantMemberDocument = {
+  id: string;
+  tenantId: string;
+  workspaceId: string;
+  userId: string;
+  status: 'active' | 'disabled';
   createdAt: string;
   updatedAt: string;
 };
@@ -133,6 +144,10 @@ function tenantCollection() {
   return collection(db, 'tenants');
 }
 
+function tenantMemberCollection() {
+  return collection(db, 'tenant_members');
+}
+
 function workspaceEntityCollection(workspaceId: string, entity: SyncEntity) {
   return collection(db, 'workspaces', workspaceId, entity);
 }
@@ -143,6 +158,10 @@ function auditEventCollection(tenantId: string) {
 
 function workspaceMemberDocId(workspaceId: string, userId: string): string {
   return `${workspaceId}_${userId}`;
+}
+
+function tenantMemberDocId(tenantId: string, userId: string): string {
+  return `${tenantId}_${userId}`;
 }
 
 export async function writeAuditLogEvent(event: Omit<AuditLogDocument, 'id' | 'createdAt'>): Promise<void> {
@@ -278,6 +297,15 @@ export async function createPersonalWorkspace(identity: UserIdentity, explicitNa
     createdAt: now,
   } satisfies AuditLogDocument);
   await batch.commit();
+  await setDoc(doc(tenantMemberCollection(), tenantMemberDocId(tenant.id, identity.userId)), {
+    id: tenantMemberDocId(tenant.id, identity.userId),
+    tenantId: tenant.id,
+    workspaceId: workspace.id,
+    userId: identity.userId,
+    status: 'active',
+    createdAt: now,
+    updatedAt: now,
+  } satisfies TenantMemberDocument, { merge: true });
 
   return {
     workspaceId: workspace.id,
@@ -321,6 +349,7 @@ export async function addWorkspaceMember(input: {
   const now = nowIso();
   const memberId = workspaceMemberDocId(input.workspaceId, input.userId);
   const memberRef = doc(membershipCollection(), memberId);
+  const tenantMemberRef = doc(tenantMemberCollection(), tenantMemberDocId(input.tenantId, input.userId));
   const member: WorkspaceMemberDocument = {
     id: memberId,
     tenantId: input.tenantId,
@@ -332,7 +361,18 @@ export async function addWorkspaceMember(input: {
     updatedAt: now,
   };
 
-  await setDoc(memberRef, member, { merge: true });
+  await Promise.all([
+    setDoc(memberRef, member, { merge: true }),
+    setDoc(tenantMemberRef, {
+      id: tenantMemberRef.id,
+      tenantId: input.tenantId,
+      workspaceId: input.workspaceId,
+      userId: input.userId,
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+    } satisfies TenantMemberDocument, { merge: true }),
+  ]);
   await writeAuditLogEvent({
     tenantId: input.tenantId,
     workspaceId: input.workspaceId,
@@ -356,11 +396,26 @@ export async function removeWorkspaceMember(input: {
   removedByUserId: string;
 }): Promise<void> {
   const memberRef = doc(membershipCollection(), workspaceMemberDocId(input.workspaceId, input.userId));
+  const tenantMemberRef = doc(tenantMemberCollection(), tenantMemberDocId(input.tenantId, input.userId));
 
   await setDoc(memberRef, {
     status: 'disabled',
     updatedAt: nowIso(),
   }, { merge: true });
+
+  const remainingMemberships = await getDocs(query(
+    membershipCollection(),
+    where('tenantId', '==', input.tenantId),
+    where('userId', '==', input.userId),
+    where('status', '==', 'active'),
+  ));
+
+  if (remainingMemberships.empty) {
+    await setDoc(tenantMemberRef, {
+      status: 'disabled',
+      updatedAt: nowIso(),
+    }, { merge: true });
+  }
 
   await writeAuditLogEvent({
     tenantId: input.tenantId,
@@ -383,6 +438,19 @@ export async function listWorkspaceAuditEvents(input: {
   toDate?: string;
   resourceType?: string;
 }): Promise<AuditLogDocument[]> {
+  const page = await listWorkspaceAuditEventsPage(input);
+  return page.events;
+}
+
+export async function listWorkspaceAuditEventsPage(input: {
+  tenantId: string;
+  workspaceId: string;
+  maxItems?: number;
+  fromDate?: string;
+  toDate?: string;
+  resourceType?: string;
+  afterCreatedAt?: string;
+}): Promise<{ events: AuditLogDocument[]; nextCursor: string | null }> {
   const constraints: QueryConstraint[] = [
     where('workspaceId', '==', input.workspaceId),
   ];
@@ -400,6 +468,9 @@ export async function listWorkspaceAuditEvents(input: {
   }
 
   constraints.push(orderBy('createdAt', 'desc'));
+  if (input.afterCreatedAt) {
+    constraints.push(startAfter(input.afterCreatedAt));
+  }
   constraints.push(limit(input.maxItems || 25));
 
   const snapshot = await getDocs(query(
@@ -407,7 +478,15 @@ export async function listWorkspaceAuditEvents(input: {
     ...constraints,
   ));
 
-  return snapshot.docs.map((auditSnapshot) => auditSnapshot.data() as AuditLogDocument);
+  const events = snapshot.docs.map((auditSnapshot) => auditSnapshot.data() as AuditLogDocument);
+  const nextCursor = events.length === (input.maxItems || 25)
+    ? events[events.length - 1]?.createdAt || null
+    : null;
+
+  return {
+    events,
+    nextCursor,
+  };
 }
 
 export function subscribeToUserProfile(

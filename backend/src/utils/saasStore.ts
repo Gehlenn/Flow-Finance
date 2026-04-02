@@ -402,6 +402,63 @@ export function incrementWorkspaceMonthlyUsage(workspaceId: string, resource: Re
   return total;
 }
 
+export function recordWorkspaceUsage(
+  workspaceId: string,
+  params: {
+    resource: ResourceKind;
+    amount?: number;
+    userId?: string;
+    at?: string;
+    metadata?: Record<string, unknown>;
+  },
+): number {
+  const amount = params.amount ?? 1;
+  const state = loadState();
+  const { nextUsageByScope, total } = incrementScopedUsage(state.usageByWorkspace, workspaceId, params.resource, amount);
+  const event: WorkspaceUsageEvent = {
+    id: `usage_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+    workspaceId,
+    userId: params.userId,
+    resource: params.resource,
+    amount,
+    at: params.at || new Date().toISOString(),
+    metadata: params.metadata,
+  };
+
+  persistState({
+    ...state,
+    usageByWorkspace: nextUsageByScope,
+    usageEventsByWorkspace: {
+      ...state.usageEventsByWorkspace,
+      [workspaceId]: [...(state.usageEventsByWorkspace[workspaceId] ?? []), event].slice(-5000),
+    },
+  });
+
+  return total;
+}
+
+export function resetWorkspaceUsage(workspaceId: string, monthKey?: string): void {
+  const state = loadState();
+  const nextUsageByWorkspace = { ...state.usageByWorkspace };
+
+  if (!nextUsageByWorkspace[workspaceId]) {
+    return;
+  }
+
+  if (monthKey) {
+    const nextMonthUsage = { ...(nextUsageByWorkspace[workspaceId] || {}) };
+    delete nextMonthUsage[monthKey];
+    nextUsageByWorkspace[workspaceId] = nextMonthUsage;
+  } else {
+    delete nextUsageByWorkspace[workspaceId];
+  }
+
+  persistState({
+    ...state,
+    usageByWorkspace: nextUsageByWorkspace,
+  });
+}
+
 export function isWithinLimit(userId: string, resource: ResourceKind, amount = 1): boolean {
   const plan = getUserPlan(userId);
   const limit = PLAN_LIMITS[plan][resource];

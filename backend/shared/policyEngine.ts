@@ -1,7 +1,7 @@
 import { AppError } from './AppError';
 
 export type PlanName = 'free' | 'pro';
-export type UserRole = 'member' | 'admin';
+export type UserRole = 'owner' | 'admin' | 'member' | 'viewer';
 export type ResourceKind = 'transactions' | 'aiQueries' | 'bankConnections';
 export type FeatureKey =
   | 'advancedInsights'
@@ -39,6 +39,17 @@ const PLAN_FEATURES: Record<PlanName, FeatureKey[]> = {
 };
 
 const ROLE_PERMISSIONS: Record<UserRole, Set<string>> = {
+  owner: new Set(['*']),
+  viewer: new Set([
+    'transactions:read',
+    'accounts:read',
+    'goals:read',
+    'subscriptions:read',
+    'bankConnections:read',
+    'finance:read',
+    'sync:read',
+    'workspace:read',
+  ]),
   member: new Set([
     'ai:use',
     'transactions:create',
@@ -65,12 +76,15 @@ const ROLE_PERMISSIONS: Record<UserRole, Set<string>> = {
     'workspace:read',
   ]),
   admin: new Set([
-    '*',
     'workspace:read',
     'workspace:update',
     'workspace:members:read',
     'workspace:members:add',
     'workspace:members:remove',
+    'transactions:delete',
+    'goals:delete',
+    'accounts:delete',
+    'subscriptions:delete',
     'admin:read',
     'billing:read',
     'billing:manage',
@@ -86,7 +100,16 @@ export function canPerform(context: SaaSContext, permission: string): boolean {
   if (!permissions) {
     return false;
   }
-  return permissions.has('*') || permissions.has(permission);
+  if (permissions.has('*') || permissions.has(permission)) {
+    return true;
+  }
+  if (context.role === 'admin') {
+    return ROLE_PERMISSIONS.member.has(permission) || ROLE_PERMISSIONS.viewer.has(permission);
+  }
+  if (context.role === 'member') {
+    return ROLE_PERMISSIONS.viewer.has(permission);
+  }
+  return false;
 }
 
 export function assertCanPerform(context: SaaSContext, permission: string): void {
@@ -104,7 +127,7 @@ export function getPlanFeatures(plan: PlanName): FeatureKey[] {
 }
 
 export function hasFeature(context: SaaSContext, feature: FeatureKey): boolean {
-  if (context.role === 'admin') {
+  if (context.role === 'admin' || context.role === 'owner') {
     return true;
   }
   return getPlanFeatures(context.plan).includes(feature);

@@ -1,3 +1,5 @@
+> Status: adiado. O caminho principal atual do Flow Finance usa Firestore como banco operacional para tenancy, workspaces, membership, audit log e entidades financeiras. Este documento fica apenas como referencia futura de exploracao.
+
 # Postgres Cutover
 
 ## Goal
@@ -11,6 +13,7 @@ Move workspace and SaaS state away from legacy JSON/blob storage and run with no
 - Normalized migrations applied:
   - `001_state_store.sql`
   - `002_workspace_saas_tables.sql`
+  - `003_multi_tenant_audit.sql`
 
 ## Preflight
 
@@ -33,6 +36,7 @@ Expected normalized tables:
 
 - `app_state_store`
 - `audit_events`
+- `tenants`
 - `workspaces`
 - `workspace_users`
 - `workspace_user_preferences`

@@ -1,14 +1,18 @@
 import { query, testConnection } from '../../config/database';
 import logger from '../../config/logger';
-import { Workspace, WorkspaceUser, WorkspaceUserPreference } from '../../types';
+import { Tenant, Workspace, WorkspaceUser, WorkspaceUserPreference } from '../../types';
 
 export type PersistedAuditEventRow = {
   id: string;
   at: string;
+  tenantId?: string;
+  workspaceId?: string;
   userId?: string;
   email?: string;
   action: string;
   status: string;
+  resourceType?: string;
+  resourceId?: string;
   ip?: string;
   userAgent?: string;
   resource?: string;
@@ -16,6 +20,7 @@ export type PersistedAuditEventRow = {
 };
 
 export type PersistedWorkspaceStoreState = {
+  tenants: Tenant[];
   workspaces: Workspace[];
   workspaceUsers: WorkspaceUser[];
   userPreferences: WorkspaceUserPreference[];
@@ -55,6 +60,19 @@ export type PersistedWorkspaceSaasState = {
   usageEventsByWorkspace: Record<string, PersistedWorkspaceUsageEventRow[]>;
 };
 
+export type PersistedDomainEventRow = {
+  id: string;
+  workspaceId: string;
+  tenantId?: string;
+  userId?: string;
+  aggregateId?: string;
+  aggregateType?: string;
+  type: string;
+  payload?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  occurredAt: string;
+};
+
 let initialized = false;
 
 export function isPostgresStateStoreEnabled(): boolean {
@@ -88,10 +106,14 @@ export async function initializePostgresStateStore(): Promise<boolean> {
     CREATE TABLE IF NOT EXISTS audit_events (
       id TEXT PRIMARY KEY,
       at TIMESTAMPTZ NOT NULL,
+      tenant_id TEXT,
+      workspace_id TEXT,
       user_id TEXT,
       email TEXT,
       action TEXT NOT NULL,
       status TEXT NOT NULL,
+      resource_type TEXT,
+      resource_id TEXT,
       ip TEXT,
       user_agent TEXT,
       resource TEXT,
@@ -99,14 +121,33 @@ export async function initializePostgresStateStore(): Promise<boolean> {
     );
   `);
 
+  await query('ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS tenant_id TEXT;');
+  await query('ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS workspace_id TEXT;');
+  await query('ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS resource_type TEXT;');
+  await query('ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS resource_id TEXT;');
+
   await query('CREATE INDEX IF NOT EXISTS idx_audit_events_at ON audit_events(at DESC);');
+  await query('CREATE INDEX IF NOT EXISTS idx_audit_events_tenant_id ON audit_events(tenant_id);');
+  await query('CREATE INDEX IF NOT EXISTS idx_audit_events_workspace_id ON audit_events(workspace_id);');
   await query('CREATE INDEX IF NOT EXISTS idx_audit_events_resource ON audit_events(resource);');
   await query('CREATE INDEX IF NOT EXISTS idx_audit_events_action ON audit_events(action);');
 
   await query(`
+    CREATE TABLE IF NOT EXISTS tenants (
+      tenant_id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      plan TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await query(`
     CREATE TABLE IF NOT EXISTS workspaces (
       workspace_id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL,
       name TEXT NOT NULL,
+      is_default BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ NOT NULL,
       plan TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'active',
@@ -117,10 +158,13 @@ export async function initializePostgresStateStore(): Promise<boolean> {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+  await query('ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS tenant_id TEXT;');
+  await query('ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS is_default BOOLEAN NOT NULL DEFAULT FALSE;');
 
   await query(`
     CREATE TABLE IF NOT EXISTS workspace_users (
       workspace_id TEXT NOT NULL,
+      tenant_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
       role TEXT NOT NULL,
       joined_at TIMESTAMPTZ NOT NULL,
@@ -129,6 +173,7 @@ export async function initializePostgresStateStore(): Promise<boolean> {
       PRIMARY KEY (workspace_id, user_id)
     );
   `);
+  await query('ALTER TABLE workspace_users ADD COLUMN IF NOT EXISTS tenant_id TEXT;');
 
   await query(`
     CREATE TABLE IF NOT EXISTS workspace_user_preferences (
@@ -176,12 +221,32 @@ export async function initializePostgresStateStore(): Promise<boolean> {
     );
   `);
 
+  await query(`
+    CREATE TABLE IF NOT EXISTS domain_events (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      tenant_id TEXT,
+      user_id TEXT,
+      aggregate_id TEXT,
+      aggregate_type TEXT,
+      type TEXT NOT NULL,
+      payload JSONB,
+      metadata JSONB,
+      occurred_at TIMESTAMPTZ NOT NULL
+    );
+  `);
+
   await query('CREATE INDEX IF NOT EXISTS idx_workspace_users_user_id ON workspace_users(user_id);');
+  await query('CREATE INDEX IF NOT EXISTS idx_workspace_users_tenant_id ON workspace_users(tenant_id);');
+  await query('CREATE INDEX IF NOT EXISTS idx_workspaces_tenant_id ON workspaces(tenant_id);');
   await query('CREATE INDEX IF NOT EXISTS idx_workspace_monthly_usage_workspace_id ON workspace_monthly_usage(workspace_id);');
   await query('CREATE INDEX IF NOT EXISTS idx_workspace_usage_events_workspace_id ON workspace_usage_events(workspace_id);');
   await query('CREATE INDEX IF NOT EXISTS idx_workspace_usage_events_at ON workspace_usage_events(at DESC);');
   await query('CREATE INDEX IF NOT EXISTS idx_workspace_billing_hooks_workspace_id ON workspace_billing_hooks(workspace_id);');
   await query('CREATE INDEX IF NOT EXISTS idx_workspace_billing_hooks_at ON workspace_billing_hooks(at DESC);');
+  await query('CREATE INDEX IF NOT EXISTS idx_domain_events_workspace_id ON domain_events(workspace_id);');
+  await query('CREATE INDEX IF NOT EXISTS idx_domain_events_aggregate_id ON domain_events(aggregate_id);');
+  await query('CREATE INDEX IF NOT EXISTS idx_domain_events_occurred_at ON domain_events(occurred_at DESC);');
 
   initialized = true;
   logger.info('Postgres state store initialized');
@@ -221,18 +286,22 @@ export async function insertAuditEvent(row: PersistedAuditEventRow): Promise<voi
 
   await query(`
     INSERT INTO audit_events (
-      id, at, user_id, email, action, status, ip, user_agent, resource, metadata
+      id, at, tenant_id, workspace_id, user_id, email, action, status, resource_type, resource_id, ip, user_agent, resource, metadata
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb
     )
     ON CONFLICT (id) DO NOTHING
   `, [
     row.id,
     row.at,
+    row.tenantId || null,
+    row.workspaceId || null,
     row.userId || null,
     row.email || null,
     row.action,
     row.status,
+    row.resourceType || null,
+    row.resourceId || null,
     row.ip || null,
     row.userAgent || null,
     row.resource || null,
@@ -246,7 +315,7 @@ export async function loadRecentAuditEvents(limit = 10000): Promise<PersistedAud
   }
 
   const result = await query(`
-    SELECT id, at, user_id, email, action, status, ip, user_agent, resource, metadata
+    SELECT id, at, tenant_id, workspace_id, user_id, email, action, status, resource_type, resource_id, ip, user_agent, resource, metadata
     FROM audit_events
     ORDER BY at DESC
     LIMIT $1
@@ -255,10 +324,14 @@ export async function loadRecentAuditEvents(limit = 10000): Promise<PersistedAud
   return result.rows.map((row: Record<string, unknown>) => ({
     id: String(row.id),
     at: new Date(String(row.at)).toISOString(),
+    tenantId: typeof row.tenant_id === 'string' ? row.tenant_id : undefined,
+    workspaceId: typeof row.workspace_id === 'string' ? row.workspace_id : undefined,
     userId: typeof row.user_id === 'string' ? row.user_id : undefined,
     email: typeof row.email === 'string' ? row.email : undefined,
     action: String(row.action),
     status: String(row.status),
+    resourceType: typeof row.resource_type === 'string' ? row.resource_type : undefined,
+    resourceId: typeof row.resource_id === 'string' ? row.resource_id : undefined,
     ip: typeof row.ip === 'string' ? row.ip : undefined,
     userAgent: typeof row.user_agent === 'string' ? row.user_agent : undefined,
     resource: typeof row.resource === 'string' ? row.resource : undefined,
@@ -266,11 +339,25 @@ export async function loadRecentAuditEvents(limit = 10000): Promise<PersistedAud
   }));
 }
 
-function mapWorkspaceRow(row: Record<string, unknown>): Workspace {
+function mapTenantRow(row: Record<string, unknown>): Tenant {
   return {
-    workspaceId: String(row.workspace_id),
+    tenantId: String(row.tenant_id),
     name: String(row.name),
+    plan: String(row.plan) as Tenant['plan'],
     createdAt: new Date(String(row.created_at)).toISOString(),
+    updatedAt: new Date(String(row.updated_at || row.created_at)).toISOString(),
+  };
+}
+
+function mapWorkspaceRow(row: Record<string, unknown>): Workspace {
+  const workspaceId = String(row.workspace_id);
+  return {
+    workspaceId,
+    tenantId: typeof row.tenant_id === 'string' && row.tenant_id.length > 0 ? row.tenant_id : workspaceId,
+    name: String(row.name),
+    isDefault: typeof row.is_default === 'boolean' ? row.is_default : true,
+    createdAt: new Date(String(row.created_at)).toISOString(),
+    updatedAt: new Date(String(row.updated_at || row.created_at)).toISOString(),
     plan: String(row.plan) as Workspace['plan'],
     status: String(row.status || 'active') as Workspace['status'],
     billingEmail: typeof row.billing_email === 'string' ? row.billing_email : undefined,
@@ -289,14 +376,19 @@ export async function loadWorkspaceStoreState(): Promise<PersistedWorkspaceStore
     return null;
   }
 
-  const [workspaceResult, workspaceUserResult, preferenceResult] = await Promise.all([
+  const [tenantResult, workspaceResult, workspaceUserResult, preferenceResult] = await Promise.all([
     query(`
-      SELECT workspace_id, name, created_at, plan, status, billing_email, billing_customer_id, subscription, entitlements
+      SELECT tenant_id, name, plan, created_at, updated_at
+      FROM tenants
+      ORDER BY created_at ASC
+    `),
+    query(`
+      SELECT workspace_id, tenant_id, name, is_default, created_at, updated_at, plan, status, billing_email, billing_customer_id, subscription, entitlements
       FROM workspaces
       ORDER BY created_at ASC
     `),
     query(`
-      SELECT workspace_id, user_id, role, joined_at, invited_by, status
+      SELECT workspace_id, tenant_id, user_id, role, joined_at, invited_by, status
       FROM workspace_users
       ORDER BY joined_at ASC
     `),
@@ -308,6 +400,7 @@ export async function loadWorkspaceStoreState(): Promise<PersistedWorkspaceStore
   ]);
 
   if (
+    tenantResult.rows.length === 0 &&
     workspaceResult.rows.length === 0 &&
     workspaceUserResult.rows.length === 0 &&
     preferenceResult.rows.length === 0
@@ -316,9 +409,11 @@ export async function loadWorkspaceStoreState(): Promise<PersistedWorkspaceStore
   }
 
   return {
+    tenants: tenantResult.rows.map((row: Record<string, unknown>) => mapTenantRow(row)),
     workspaces: workspaceResult.rows.map((row: Record<string, unknown>) => mapWorkspaceRow(row)),
     workspaceUsers: workspaceUserResult.rows.map((row: Record<string, unknown>) => ({
       workspaceId: String(row.workspace_id),
+      tenantId: typeof row.tenant_id === 'string' && row.tenant_id.length > 0 ? row.tenant_id : String(row.workspace_id),
       userId: String(row.user_id),
       role: String(row.role) as WorkspaceUser['role'],
       joinedAt: new Date(String(row.joined_at)).toISOString(),
@@ -345,15 +440,32 @@ export async function saveWorkspaceStoreState(state: PersistedWorkspaceStoreStat
     await query('DELETE FROM workspace_user_preferences');
     await query('DELETE FROM workspace_users');
     await query('DELETE FROM workspaces');
+    await query('DELETE FROM tenants');
+
+    for (const tenant of state.tenants) {
+      await query(`
+        INSERT INTO tenants (
+          tenant_id, name, plan, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5)
+      `, [
+        tenant.tenantId,
+        tenant.name,
+        tenant.plan,
+        tenant.createdAt,
+        tenant.updatedAt,
+      ]);
+    }
 
     for (const workspace of state.workspaces) {
       await query(`
         INSERT INTO workspaces (
-          workspace_id, name, created_at, plan, status, billing_email, billing_customer_id, subscription, entitlements, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, NOW())
+          workspace_id, tenant_id, name, is_default, created_at, plan, status, billing_email, billing_customer_id, subscription, entitlements, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12)
       `, [
         workspace.workspaceId,
+        workspace.tenantId,
         workspace.name,
+        workspace.isDefault,
         workspace.createdAt,
         workspace.plan,
         workspace.status || 'active',
@@ -361,16 +473,18 @@ export async function saveWorkspaceStoreState(state: PersistedWorkspaceStoreStat
         workspace.billingCustomerId || null,
         JSON.stringify(workspace.subscription || null),
         JSON.stringify(workspace.entitlements || null),
+        workspace.updatedAt || workspace.createdAt,
       ]);
     }
 
     for (const workspaceUser of state.workspaceUsers) {
       await query(`
         INSERT INTO workspace_users (
-          workspace_id, user_id, role, joined_at, invited_by, status
-        ) VALUES ($1, $2, $3, $4, $5, $6)
+          workspace_id, tenant_id, user_id, role, joined_at, invited_by, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
       `, [
         workspaceUser.workspaceId,
+        workspaceUser.tenantId,
         workspaceUser.userId,
         workspaceUser.role,
         workspaceUser.joinedAt,
@@ -550,9 +664,13 @@ export async function saveWorkspaceSaasState(state: PersistedWorkspaceSaasState)
 }
 
 export async function queryAuditEvents(filters: {
+  tenantId?: string;
+  workspaceId?: string;
   userId?: string;
   action?: string;
   status?: string;
+  resourceType?: string;
+  resourceId?: string;
   resource?: string;
   limit?: number;
   since?: string;
@@ -565,6 +683,14 @@ export async function queryAuditEvents(filters: {
   const clauses: string[] = [];
   const params: unknown[] = [];
 
+  if (filters.tenantId) {
+    params.push(filters.tenantId);
+    clauses.push(`tenant_id = $${params.length}`);
+  }
+  if (filters.workspaceId) {
+    params.push(filters.workspaceId);
+    clauses.push(`workspace_id = $${params.length}`);
+  }
   if (filters.userId) {
     params.push(filters.userId);
     clauses.push(`user_id = $${params.length}`);
@@ -576,6 +702,14 @@ export async function queryAuditEvents(filters: {
   if (filters.status) {
     params.push(filters.status);
     clauses.push(`status = $${params.length}`);
+  }
+  if (filters.resourceType) {
+    params.push(filters.resourceType);
+    clauses.push(`resource_type = $${params.length}`);
+  }
+  if (filters.resourceId) {
+    params.push(filters.resourceId);
+    clauses.push(`resource_id = $${params.length}`);
   }
   if (filters.resource) {
     params.push(filters.resource);
@@ -598,7 +732,7 @@ export async function queryAuditEvents(filters: {
   const limitClause = limit ? `LIMIT ${limit}` : '';
 
   const result = await query(`
-    SELECT id, at, user_id, email, action, status, ip, user_agent, resource, metadata
+    SELECT id, at, tenant_id, workspace_id, user_id, email, action, status, resource_type, resource_id, ip, user_agent, resource, metadata
     FROM audit_events
     ${whereClause}
     ORDER BY at DESC, id DESC
@@ -608,10 +742,14 @@ export async function queryAuditEvents(filters: {
   return result.rows.map((row: Record<string, unknown>) => ({
     id: String(row.id),
     at: new Date(String(row.at)).toISOString(),
+    tenantId: typeof row.tenant_id === 'string' ? row.tenant_id : undefined,
+    workspaceId: typeof row.workspace_id === 'string' ? row.workspace_id : undefined,
     userId: typeof row.user_id === 'string' ? row.user_id : undefined,
     email: typeof row.email === 'string' ? row.email : undefined,
     action: String(row.action),
     status: String(row.status),
+    resourceType: typeof row.resource_type === 'string' ? row.resource_type : undefined,
+    resourceId: typeof row.resource_id === 'string' ? row.resource_id : undefined,
     ip: typeof row.ip === 'string' ? row.ip : undefined,
     userAgent: typeof row.user_agent === 'string' ? row.user_agent : undefined,
     resource: typeof row.resource === 'string' ? row.resource : undefined,
@@ -736,7 +874,7 @@ export async function queryWorkspaceById(workspaceId: string): Promise<Workspace
   }
 
   const result = await query(`
-    SELECT workspace_id, name, created_at, plan, status, billing_email, billing_customer_id, subscription, entitlements
+    SELECT workspace_id, tenant_id, name, is_default, created_at, updated_at, plan, status, billing_email, billing_customer_id, subscription, entitlements
     FROM workspaces
     WHERE workspace_id = $1
     LIMIT 1
@@ -755,7 +893,7 @@ export async function queryWorkspacesForUser(userId: string): Promise<Workspace[
   }
 
   const result = await query(`
-    SELECT w.workspace_id, w.name, w.created_at, w.plan, w.status, w.billing_email, w.billing_customer_id, w.subscription, w.entitlements
+    SELECT w.workspace_id, w.tenant_id, w.name, w.is_default, w.created_at, w.updated_at, w.plan, w.status, w.billing_email, w.billing_customer_id, w.subscription, w.entitlements
     FROM workspaces w
     INNER JOIN workspace_users wu ON wu.workspace_id = w.workspace_id
     WHERE wu.user_id = $1 AND wu.status = 'active'
@@ -771,7 +909,7 @@ export async function queryWorkspaceUsers(workspaceId: string): Promise<Workspac
   }
 
   const result = await query(`
-    SELECT workspace_id, user_id, role, joined_at, invited_by, status
+    SELECT workspace_id, tenant_id, user_id, role, joined_at, invited_by, status
     FROM workspace_users
     WHERE workspace_id = $1
     ORDER BY joined_at ASC
@@ -779,6 +917,7 @@ export async function queryWorkspaceUsers(workspaceId: string): Promise<Workspac
 
   return result.rows.map((row: Record<string, unknown>) => ({
     workspaceId: String(row.workspace_id),
+    tenantId: typeof row.tenant_id === 'string' && row.tenant_id.length > 0 ? row.tenant_id : String(row.workspace_id),
     userId: String(row.user_id),
     role: String(row.role) as WorkspaceUser['role'],
     joinedAt: new Date(String(row.joined_at)).toISOString(),
@@ -793,7 +932,7 @@ export async function queryLastWorkspaceForUser(userId: string): Promise<Workspa
   }
 
   const result = await query(`
-    SELECT w.workspace_id, w.name, w.created_at, w.plan, w.status, w.billing_email, w.billing_customer_id, w.subscription, w.entitlements
+    SELECT w.workspace_id, w.tenant_id, w.name, w.is_default, w.created_at, w.updated_at, w.plan, w.status, w.billing_email, w.billing_customer_id, w.subscription, w.entitlements
     FROM workspace_user_preferences p
     INNER JOIN workspaces w ON w.workspace_id = p.last_selected_workspace_id
     WHERE p.user_id = $1
@@ -813,7 +952,7 @@ export async function queryWorkspaceByBillingCustomerId(billingCustomerId: strin
   }
 
   const result = await query(`
-    SELECT workspace_id, name, created_at, plan, status, billing_email, billing_customer_id, subscription, entitlements
+    SELECT workspace_id, tenant_id, name, is_default, created_at, updated_at, plan, status, billing_email, billing_customer_id, subscription, entitlements
     FROM workspaces
     WHERE billing_customer_id = $1
     LIMIT 1
@@ -824,4 +963,134 @@ export async function queryWorkspaceByBillingCustomerId(billingCustomerId: strin
   }
 
   return mapWorkspaceRow(result.rows[0] as Record<string, unknown>);
+}
+
+export async function queryTenantById(tenantId: string): Promise<Tenant | null> {
+  if (!await initializePostgresStateStore()) {
+    return null;
+  }
+
+  const result = await query(`
+    SELECT tenant_id, name, plan, created_at, updated_at
+    FROM tenants
+    WHERE tenant_id = $1
+    LIMIT 1
+  `, [tenantId]);
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return mapTenantRow(result.rows[0] as Record<string, unknown>);
+}
+
+export async function queryTenantsForUser(userId: string): Promise<Tenant[]> {
+  if (!await initializePostgresStateStore()) {
+    return [];
+  }
+
+  const result = await query(`
+    SELECT DISTINCT t.tenant_id, t.name, t.plan, t.created_at, t.updated_at
+    FROM tenants t
+    INNER JOIN workspace_users wu ON wu.tenant_id = t.tenant_id
+    WHERE wu.user_id = $1 AND wu.status = 'active'
+    ORDER BY t.created_at ASC
+  `, [userId]);
+
+  return result.rows.map((row: Record<string, unknown>) => mapTenantRow(row));
+}
+
+export async function insertDomainEvent(row: PersistedDomainEventRow): Promise<void> {
+  if (!await initializePostgresStateStore()) {
+    return;
+  }
+
+  await query(`
+    INSERT INTO domain_events (
+      id, workspace_id, tenant_id, user_id, aggregate_id, aggregate_type, type, payload, metadata, occurred_at
+    ) VALUES (
+      $1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10
+    )
+    ON CONFLICT (id) DO NOTHING
+  `, [
+    row.id,
+    row.workspaceId,
+    row.tenantId || null,
+    row.userId || null,
+    row.aggregateId || null,
+    row.aggregateType || null,
+    row.type,
+    JSON.stringify(row.payload || {}),
+    JSON.stringify(row.metadata || {}),
+    row.occurredAt,
+  ]);
+}
+
+export async function queryDomainEvents(filters: {
+  workspaceId: string;
+  aggregateId?: string;
+  aggregateType?: string;
+  type?: string;
+  userId?: string;
+  since?: string;
+  until?: string;
+  limit?: number;
+}): Promise<PersistedDomainEventRow[]> {
+  if (!await initializePostgresStateStore()) {
+    return [];
+  }
+
+  const params: unknown[] = [filters.workspaceId];
+  const clauses = ['workspace_id = $1'];
+
+  if (filters.aggregateId) {
+    params.push(filters.aggregateId);
+    clauses.push(`aggregate_id = $${params.length}`);
+  }
+  if (filters.aggregateType) {
+    params.push(filters.aggregateType);
+    clauses.push(`aggregate_type = $${params.length}`);
+  }
+  if (filters.type) {
+    params.push(filters.type);
+    clauses.push(`type = $${params.length}`);
+  }
+  if (filters.userId) {
+    params.push(filters.userId);
+    clauses.push(`user_id = $${params.length}`);
+  }
+  if (filters.since) {
+    params.push(filters.since);
+    clauses.push(`occurred_at >= $${params.length}`);
+  }
+  if (filters.until) {
+    params.push(filters.until);
+    clauses.push(`occurred_at <= $${params.length}`);
+  }
+
+  const limit = Number.isFinite(filters.limit) && (filters.limit as number) > 0
+    ? Math.min(Number(filters.limit), 1000)
+    : 100;
+
+  params.push(limit);
+  const result = await query(`
+    SELECT id, workspace_id, tenant_id, user_id, aggregate_id, aggregate_type, type, payload, metadata, occurred_at
+    FROM domain_events
+    WHERE ${clauses.join(' AND ')}
+    ORDER BY occurred_at DESC, id DESC
+    LIMIT $${params.length}
+  `, params);
+
+  return result.rows.map((row: Record<string, unknown>) => ({
+    id: String(row.id),
+    workspaceId: String(row.workspace_id),
+    tenantId: typeof row.tenant_id === 'string' ? row.tenant_id : undefined,
+    userId: typeof row.user_id === 'string' ? row.user_id : undefined,
+    aggregateId: typeof row.aggregate_id === 'string' ? row.aggregate_id : undefined,
+    aggregateType: typeof row.aggregate_type === 'string' ? row.aggregate_type : undefined,
+    type: String(row.type),
+    payload: typeof row.payload === 'object' && row.payload !== null ? row.payload as Record<string, unknown> : undefined,
+    metadata: typeof row.metadata === 'object' && row.metadata !== null ? row.metadata as Record<string, unknown> : undefined,
+    occurredAt: new Date(String(row.occurred_at)).toISOString(),
+  }));
 }

@@ -1,5 +1,6 @@
 import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app';
 import { Firestore, getFirestore } from 'firebase-admin/firestore';
+import { randomUUID } from 'crypto';
 import logger from '../../config/logger';
 import { applyFirestoreSettingsOnce } from '../openFinance/bankingConnectionStore';
 import type { SyncEntity, SyncItem } from '../../validation/sync.schema';
@@ -16,6 +17,12 @@ type PushResult = {
   upserted: number;
   deleted: number;
   latestServerUpdatedAt: string;
+  reconciledIds: Array<{ clientId: string; serverId: string }>;
+};
+
+type SyncOwnershipContext = {
+  userId: string;
+  workspaceId: string;
 };
 
 type PullResult = {
@@ -45,7 +52,7 @@ export interface FirebaseCloudSyncStoreAdapter {
 
 interface CloudSyncStore {
   getStatus(): Promise<CloudSyncStoreStatus>;
-  pushItems(scopeId: string, entity: SyncEntity, items: SyncItem[]): Promise<PushResult>;
+  pushItems(scopeId: string, entity: SyncEntity, items: SyncItem[], ownership?: SyncOwnershipContext): Promise<PushResult>;
   pullItems(scopeId: string, since?: string): Promise<PullResult>;
 }
 
@@ -222,6 +229,69 @@ class FirebaseAdminCloudSyncStoreAdapter implements FirebaseCloudSyncStoreAdapte
   }
 }
 
+function isTemporaryEntityId(id: string): boolean {
+  return id.startsWith('tmp_') || id.startsWith('flow_');
+}
+
+function reconcileIncomingItems(
+  existing: StoredSyncItem[],
+  items: SyncItem[],
+): { normalizedItems: SyncItem[]; reconciledIds: Array<{ clientId: string; serverId: string }> } {
+  const existingByClientId = new Map<string, string>();
+
+  for (const item of existing) {
+    if (item.clientId) {
+      existingByClientId.set(item.clientId, item.id);
+    }
+  }
+
+  const reconciledIds: Array<{ clientId: string; serverId: string }> = [];
+  const normalizedItems = items.map((item) => {
+    if (item.deleted) {
+      return item;
+    }
+
+    const clientId = item.clientId || (isTemporaryEntityId(item.id) ? item.id : undefined);
+    if (!clientId) {
+      return item;
+    }
+
+    const serverId = existingByClientId.get(clientId) || randomUUID();
+    existingByClientId.set(clientId, serverId);
+    reconciledIds.push({ clientId, serverId });
+
+    return {
+      ...item,
+      id: serverId,
+      clientId,
+      payload: item.payload
+        ? {
+            ...item.payload,
+            id: serverId,
+          }
+        : item.payload,
+    };
+  });
+
+  return { normalizedItems, reconciledIds };
+}
+
+function assertDeleteOwnership(
+  existing: StoredSyncItem | undefined,
+  ownership: SyncOwnershipContext | undefined,
+): void {
+  if (!existing || !ownership) {
+    return;
+  }
+
+  const payloadUserId = typeof existing.payload?.user_id === 'string' ? existing.payload.user_id : undefined;
+  const payloadWorkspaceId = typeof existing.payload?.workspace_id === 'string' ? existing.payload.workspace_id : undefined;
+
+  if ((payloadUserId && payloadUserId !== ownership.userId) || (payloadWorkspaceId && payloadWorkspaceId !== ownership.workspaceId)) {
+    throw new Error('Cross-user delete blocked by sync ownership validation');
+  }
+}
+
 class InMemoryCloudSyncStore implements CloudSyncStore {
   private readonly scopeSyncStore = new Map<string, Map<SyncEntity, Map<string, StoredSyncItem>>>();
 
@@ -250,13 +320,19 @@ class InMemoryCloudSyncStore implements CloudSyncStore {
     };
   }
 
-  async pushItems(scopeId: string, entity: SyncEntity, items: SyncItem[]): Promise<PushResult> {
+  async pushItems(scopeId: string, entity: SyncEntity, items: SyncItem[], ownership?: SyncOwnershipContext): Promise<PushResult> {
     const entityMap = this.ensureScopeEntityMap(scopeId, entity);
+    const existingItems = Array.from(entityMap.values());
+    const { normalizedItems, reconciledIds } = reconcileIncomingItems(existingItems, items);
     const now = new Date().toISOString();
     let upserted = 0;
     let deleted = 0;
 
-    for (const item of items) {
+    for (const item of normalizedItems) {
+      if (item.deleted) {
+        assertDeleteOwnership(entityMap.get(item.id), ownership);
+      }
+
       entityMap.set(item.id, {
         ...item,
         serverUpdatedAt: now,
@@ -269,7 +345,7 @@ class InMemoryCloudSyncStore implements CloudSyncStore {
       }
     }
 
-    return { upserted, deleted, latestServerUpdatedAt: now };
+    return { upserted, deleted, latestServerUpdatedAt: now, reconciledIds };
   }
 
   async pullItems(scopeId: string, since?: string): Promise<PullResult> {
@@ -297,10 +373,16 @@ class FirebaseCloudSyncStore implements CloudSyncStore {
     };
   }
 
-  async pushItems(scopeId: string, entity: SyncEntity, items: SyncItem[]): Promise<PushResult> {
+  async pushItems(scopeId: string, entity: SyncEntity, items: SyncItem[], ownership?: SyncOwnershipContext): Promise<PushResult> {
     const current = normalizeEntities(await this.adapter.getScopeState(scopeId));
     const now = new Date().toISOString();
-    const merged = mergeEntityItems(current[entity], items, now);
+    const { normalizedItems, reconciledIds } = reconcileIncomingItems(current[entity], items);
+    for (const item of normalizedItems) {
+      if (item.deleted) {
+        assertDeleteOwnership(current[entity].find((entry) => entry.id === item.id), ownership);
+      }
+    }
+    const merged = mergeEntityItems(current[entity], normalizedItems, now);
 
     await this.adapter.setScopeState(scopeId, {
       [entity]: merged.merged,
@@ -310,6 +392,7 @@ class FirebaseCloudSyncStore implements CloudSyncStore {
       upserted: merged.upserted,
       deleted: merged.deleted,
       latestServerUpdatedAt: now,
+      reconciledIds,
     };
   }
 
@@ -354,8 +437,13 @@ export function createCloudSyncStore(options: CloudSyncStoreFactoryOptions = {})
 
 let cloudSyncStore: CloudSyncStore = createCloudSyncStore();
 
-export async function pushSyncItems(scopeId: string, entity: SyncEntity, items: SyncItem[]): Promise<PushResult> {
-  return cloudSyncStore.pushItems(scopeId, entity, items);
+export async function pushSyncItems(
+  scopeId: string,
+  entity: SyncEntity,
+  items: SyncItem[],
+  ownership?: SyncOwnershipContext,
+): Promise<PushResult> {
+  return cloudSyncStore.pushItems(scopeId, entity, items, ownership);
 }
 
 export async function pullSyncItems(scopeId: string, since?: string): Promise<PullResult> {

@@ -8,6 +8,7 @@ const firestoreWorkspaceStoreMocks = vi.hoisted(() => ({
   batchDeleteMock: vi.fn(),
   batchCommitMock: vi.fn().mockResolvedValue(undefined),
   generatedId: { value: 0 },
+  startAfterMock: vi.fn(),
 }));
 
 vi.mock('../../services/firebase', () => ({
@@ -39,6 +40,7 @@ vi.mock('firebase/firestore', () => ({
   where: (...args: unknown[]) => ({ type: 'where', args }),
   orderBy: (...args: unknown[]) => ({ type: 'orderBy', args }),
   limit: (...args: unknown[]) => ({ type: 'limit', args }),
+  startAfter: (...args: unknown[]) => ({ type: 'startAfter', args }),
   writeBatch: () => ({
     set: firestoreWorkspaceStoreMocks.batchSetMock,
     delete: firestoreWorkspaceStoreMocks.batchDeleteMock,
@@ -171,6 +173,20 @@ describe('firestoreWorkspaceStore', () => {
     const audit = await listWorkspaceAuditEvents({ tenantId: 'tenant-1', workspaceId: 'ws-1', maxItems: 5 });
     expect(audit).toHaveLength(1);
     expect(audit[0].action).toBe('workspace.member_added');
+  });
+
+  it('returns audit pagination metadata for a workspace', async () => {
+    firestoreWorkspaceStoreMocks.getDocsMock.mockResolvedValueOnce({
+      docs: [
+        { data: () => ({ id: 'evt-1', tenantId: 'tenant-1', workspaceId: 'ws-1', userId: 'user-1', action: 'workspace.member_added', resourceType: 'workspace_member', resourceId: 'ws-1_user-2', createdAt: '2026-04-03T00:00:00.000Z' }) },
+      ],
+    });
+
+    const { listWorkspaceAuditEventsPage } = await import('../../src/services/firestoreWorkspaceStore');
+    const result = await listWorkspaceAuditEventsPage({ tenantId: 'tenant-1', workspaceId: 'ws-1', maxItems: 1 });
+
+    expect(result.events).toHaveLength(1);
+    expect(result.nextCursor).toBe('2026-04-03T00:00:00.000Z');
   });
 
   it('reconciles temporary ids and writes audit entries when replacing a workspace collection', async () => {

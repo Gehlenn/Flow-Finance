@@ -5,13 +5,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const auditMocks = vi.hoisted(() => ({
   ensureActiveWorkspace: vi.fn(),
   getCurrentWorkspaceIdentity: vi.fn(),
-  listWorkspaceAuditEvents: vi.fn(),
+  listWorkspaceAuditEventsPage: vi.fn(),
 }));
 
 vi.mock('../../src/services/workspaceSession', () => ({
   ensureActiveWorkspace: auditMocks.ensureActiveWorkspace,
   getCurrentWorkspaceIdentity: auditMocks.getCurrentWorkspaceIdentity,
-  listWorkspaceAuditEvents: auditMocks.listWorkspaceAuditEvents,
+  listWorkspaceAuditEventsPage: auditMocks.listWorkspaceAuditEventsPage,
 }));
 
 import WorkspaceAuditPage from '../../pages/WorkspaceAudit';
@@ -27,19 +27,22 @@ function setup(role: 'owner' | 'viewer') {
     role,
     isDefault: true,
   });
-  auditMocks.listWorkspaceAuditEvents.mockResolvedValue([
-    {
-      id: 'evt-1',
-      tenantId: 'tenant-1',
-      workspaceId: 'ws-1',
-      userId: 'owner-1',
-      action: 'workspace.plan_changed',
-      resourceType: 'workspace',
-      resourceId: 'ws-1',
-      metadata: { plan: 'pro' },
-      createdAt: '2026-04-02T00:00:00.000Z',
-    },
-  ]);
+  auditMocks.listWorkspaceAuditEventsPage.mockResolvedValue({
+    events: [
+      {
+        id: 'evt-1',
+        tenantId: 'tenant-1',
+        workspaceId: 'ws-1',
+        userId: 'owner-1',
+        action: 'workspace.plan_changed',
+        resourceType: 'workspace',
+        resourceId: 'ws-1',
+        metadata: { plan: 'pro' },
+        createdAt: '2026-04-02T00:00:00.000Z',
+      },
+    ],
+    nextCursor: null,
+  });
 
   return render(
     <WorkspaceAuditPage

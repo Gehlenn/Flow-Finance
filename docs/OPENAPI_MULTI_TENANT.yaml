@@ -1,0 +1,183 @@
+openapi: 3.1.0
+info:
+  title: Flow Finance Multi-Tenant API
+  version: 0.10.0
+  description: |
+    Contrato de APIs auxiliares do backend. O source of truth atual de tenancy, membership,
+    entidades financeiras, billing state, usage, billing hooks e audit log fica em Firestore.
+servers:
+  - url: http://localhost:3001
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    WorkspaceHeader:
+      name: X-Workspace-Id
+      in: header
+      required: false
+      schema:
+        type: string
+      description: |
+        Workspace ativo da sessao. No fluxo atual, o frontend resolve e persiste esse contexto a partir do Firestore.
+  schemas:
+    WorkspaceSummary:
+      type: object
+      required: [workspaceId, tenantId, name, plan, role, isDefault]
+      properties:
+        workspaceId:
+          type: string
+        tenantId:
+          type: string
+        tenantName:
+          type: string
+        name:
+          type: string
+        plan:
+          type: string
+          enum: [free, pro]
+        role:
+          type: string
+          enum: [owner, admin, member, viewer]
+        isDefault:
+          type: boolean
+    AuditLogEntry:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        workspaceId: { type: string }
+        userId: { type: string }
+        action: { type: string }
+        resourceType: { type: string }
+        resourceId: { type: string }
+        metadata:
+          type: object
+          additionalProperties: true
+        at:
+          type: string
+          format: date-time
+paths:
+  /api/workspace:
+    get:
+      security:
+        - bearerAuth: []
+      summary: Lista workspaces disponiveis para o usuario autenticado.
+      responses:
+        '200':
+          description: Workspace list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workspaces:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkspaceSummary'
+    post:
+      security:
+        - bearerAuth: []
+      summary: Cria um novo workspace. Sem `tenantId`, cria um novo tenant com workspace padrao.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                tenantId:
+                  type: string
+      responses:
+        '201':
+          description: Workspace criado.
+  /api/workspace/{workspaceId}/users:
+    get:
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceHeader'
+      summary: Lista membros do workspace.
+      responses:
+        '200':
+          description: Lista de membros.
+    post:
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceHeader'
+      summary: Adiciona membro ao workspace. Requer `owner` ou `admin`.
+      responses:
+        '201':
+          description: Membro adicionado.
+  /api/workspace/{workspaceId}/users/{userId}:
+    delete:
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceHeader'
+      summary: Remove membro do workspace. Requer `owner` ou `admin`.
+      responses:
+        '204':
+          description: Membro removido.
+  /api/tenant:
+    post:
+      summary: Cria um tenant com seu workspace padrao.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, ownerUserId]
+              properties:
+                name:
+                  type: string
+                ownerUserId:
+                  type: string
+      responses:
+        '201':
+          description: Tenant criado.
+  /api/tenant/select:
+    post:
+      summary: Seleciona o tenant ativo da sessao e persiste o workspace padrao.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenantId]
+              properties:
+                tenantId:
+                  type: string
+      responses:
+        '200':
+          description: Tenant selecionado.
+  /api/admin/audit-logs:
+    get:
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceHeader'
+      summary: Consulta audit logs do workspace ativo.
+      responses:
+        '200':
+          description: Audit log page.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLogEntry'
+                  nextCursor:
+                    type: string
+                    nullable: true

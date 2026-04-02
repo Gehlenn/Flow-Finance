@@ -3,7 +3,7 @@ import { CalendarRange, ChevronLeft, Filter, Loader2, Search, ShieldCheck } from
 import {
   ensureActiveWorkspace,
   getCurrentWorkspaceIdentity,
-  listWorkspaceAuditEvents,
+  listWorkspaceAuditEventsPage,
   type AuditLogDocument,
   type WorkspaceRole,
   type WorkspaceSummary,
@@ -67,11 +67,12 @@ const WorkspaceAuditPage: React.FC<WorkspaceAuditPageProps> = ({
   const [workspace, setWorkspace] = useState<WorkspaceSummary | null>(null);
   const [events, setEvents] = useState<AuditLogDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [range, setRange] = useState<RangeValue>('30d');
   const [resourceType, setResourceType] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
 
   const canAccessAudit = canViewWorkspaceAudit(activeWorkspaceRole || workspace?.role);
 
@@ -90,15 +91,15 @@ const WorkspaceAuditPage: React.FC<WorkspaceAuditPageProps> = ({
         setWorkspace(resolvedWorkspace);
 
         const dateRange = resolveDateRange(range);
-        const auditEvents = await listWorkspaceAuditEvents({
+        const page = await listWorkspaceAuditEventsPage({
           tenantId: resolvedWorkspace.tenantId,
           workspaceId: resolvedWorkspace.workspaceId,
-          maxItems: 100,
+          maxItems: PAGE_SIZE,
           resourceType: resourceType === 'all' ? undefined : resourceType,
           ...dateRange,
         });
-        setEvents(auditEvents);
-        setVisibleCount(PAGE_SIZE);
+        setEvents(page.events);
+        setNextCursor(page.nextCursor);
       } catch (loadError) {
         console.error(loadError);
         setError('Could not load audit events for this workspace.');
@@ -124,12 +125,34 @@ const WorkspaceAuditPage: React.FC<WorkspaceAuditPageProps> = ({
     });
   }, [events, searchTerm]);
 
-  const visibleEvents = useMemo(
-    () => filteredEvents.slice(0, visibleCount),
-    [filteredEvents, visibleCount],
-  );
+  const canLoadMore = Boolean(nextCursor) && searchTerm.trim().length === 0;
 
-  const canLoadMore = visibleCount < filteredEvents.length;
+  const handleLoadMore = async () => {
+    if (!workspace || !nextCursor || loadingMore) {
+      return;
+    }
+
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const page = await listWorkspaceAuditEventsPage({
+        tenantId: workspace.tenantId,
+        workspaceId: workspace.workspaceId,
+        maxItems: PAGE_SIZE,
+        resourceType: resourceType === 'all' ? undefined : resourceType,
+        afterCreatedAt: nextCursor,
+        ...resolveDateRange(range),
+      });
+
+      setEvents((current) => [...current, ...page.events]);
+      setNextCursor(page.nextCursor);
+    } catch (loadError) {
+      console.error(loadError);
+      setError('Could not load more audit events.');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   if (!canAccessAudit && !loading) {
     return (
@@ -218,18 +241,18 @@ const WorkspaceAuditPage: React.FC<WorkspaceAuditPageProps> = ({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                Showing {visibleEvents.length} of {filteredEvents.length} event(s)
+                Showing {filteredEvents.length} loaded event(s)
               </p>
               {canLoadMore && (
                 <button
-                  onClick={() => setVisibleCount((current) => current + PAGE_SIZE)}
+                  onClick={() => void handleLoadMore()}
                   className="px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 text-[10px] font-black uppercase tracking-widest"
                 >
-                  Load more
+                  {loadingMore ? 'Loading...' : 'Load more'}
                 </button>
               )}
             </div>
-            {visibleEvents.map((event) => (
+            {filteredEvents.map((event) => (
               <div key={event.id} className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 space-y-2">
                 <div className="flex items-start justify-between gap-3">
                   <div>

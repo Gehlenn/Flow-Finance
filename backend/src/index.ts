@@ -13,6 +13,8 @@ import { apiLimiter } from './middleware/rateLimit';
 import { requestContextMiddleware } from './middleware/requestContext';
 import { initRedis, checkRedisHealth } from './config/redis';
 import { checkDatabaseHealth } from './config/database';
+import { createCorsOptions, resolveAllowedOrigins } from './config/cors';
+import { buildOpenApiSpec, isApiDocsEnabled, renderSwaggerHtml } from './docs/openapi';
 
 // Routes
 import authRoutes from './routes/authRoutes';
@@ -95,51 +97,16 @@ app.use(sentryRequestHandler);
 // Security headers
 app.use(helmet());
 
-// CORS
-// Build list of allowed origins (dev + production)
-const defaultOrigins = [
-  'http://localhost:3078',
-  'http://127.0.0.1:3078',
-  'http://localhost:4173',
-  'http://127.0.0.1:4173',
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'https://flow-finance-frontend-nine.vercel.app', // Production frontend
-];
-
-const configuredOrigins = (process.env.FRONTEND_URL || '')
-  .split(',')
-  .map((o) => o.trim())
-  .filter(Boolean);
-
-const allowedOrigins = Array.from(new Set([
-  ...defaultOrigins,
-  ...configuredOrigins,
-]));
-
-logger.info({ allowedOrigins, environment: process.env.NODE_ENV }, 'CORS allowed origins configured');
-
-const corsOptions = {
-  origin(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-    // Allow same-origin/server-to-server tools without Origin header.
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-      return;
-    }
-
-    // Log rejected origin for debugging but don't throw - just reject silently
-    logger.warn({ origin }, 'CORS request rejected');
-    callback(null, false);
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Client-Version', 'X-Client-Platform']
-};
+const allowedOrigins = resolveAllowedOrigins({
+  nodeEnv: process.env.NODE_ENV,
+  allowedOrigins: process.env.ALLOWED_ORIGINS,
+  frontendUrl: process.env.FRONTEND_URL,
+});
+const corsOptions = createCorsOptions({
+  nodeEnv: process.env.NODE_ENV,
+  allowedOrigins: process.env.ALLOWED_ORIGINS,
+  frontendUrl: process.env.FRONTEND_URL,
+});
 app.use(cors(corsOptions));
 
 // Request context middleware
@@ -237,6 +204,16 @@ app.get('/api/health', (_req: Request, res: Response) => {
     version: process.env.APP_VERSION || '0.6.3',
   });
 });
+
+if (isApiDocsEnabled(process.env.NODE_ENV)) {
+  app.get('/api/openapi.json', (_req: Request, res: Response) => {
+    res.json(buildOpenApiSpec());
+  });
+
+  app.get('/api/docs', (_req: Request, res: Response) => {
+    res.type('html').send(renderSwaggerHtml('/api/openapi.json'));
+  });
+}
 
 // Auth routes
 app.use('/api/auth', authRoutes);

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { getWorkspaceUsers } from '../services/admin/workspaceStore';
+import { getWorkspaceUsersAsync } from '../services/admin/workspaceStore';
 import { getAuditEvents } from '../services/admin/auditLog';
 import { getWorkspaceMeteringSummary, getWorkspaceUsageEvents, ResourceKind } from '../utils/saasStore';
 import { AppError, asyncHandler } from '../middleware/errorHandler';
@@ -16,7 +16,7 @@ export const listUsers = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError(400, 'Workspace context is required');
   }
 
-  const users = getWorkspaceUsers(workspaceId);
+  const users = await getWorkspaceUsersAsync(workspaceId);
   res.json(users);
 });
 
@@ -27,7 +27,11 @@ export const listAuditLogs = asyncHandler(async (req: Request, res: Response) =>
   }
 
   const filters = {
+    tenantId: (req as Request & { tenantId?: string }).tenantId,
+    workspaceId,
     resource: workspaceId,
+    resourceType: typeof req.query.resourceType === 'string' ? req.query.resourceType : undefined,
+    resourceId: typeof req.query.resourceId === 'string' ? req.query.resourceId : undefined,
     limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined,
     since: typeof req.query.since === 'string' ? req.query.since : undefined,
     until: typeof req.query.until === 'string' ? req.query.until : undefined,
@@ -93,7 +97,11 @@ export const exportAuditLogs = asyncHandler(async (req: Request, res: Response) 
   }
 
   const filters = {
+    tenantId: (req as Request & { tenantId?: string }).tenantId,
+    workspaceId,
     resource: workspaceId,
+    resourceType: typeof req.query.resourceType === 'string' ? req.query.resourceType : undefined,
+    resourceId: typeof req.query.resourceId === 'string' ? req.query.resourceId : undefined,
     since: typeof req.query.since === 'string' ? req.query.since : undefined,
     until: typeof req.query.until === 'string' ? req.query.until : undefined,
     limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined,
@@ -112,9 +120,13 @@ export const exportAuditLogs = asyncHandler(async (req: Request, res: Response) 
     res.send(toCsv(logs.map((log) => ({
       id: log.id,
       at: log.at,
+      tenantId: log.tenantId || '',
+      workspaceId: log.workspaceId || '',
       userId: log.userId || '',
       action: log.action,
       status: log.status,
+      resourceType: log.resourceType || '',
+      resourceId: log.resourceId || '',
       resource: log.resource || '',
       metadata: JSON.stringify(log.metadata || {}),
     }))));

@@ -62,7 +62,7 @@ export const env = {
   FIREBASE_DATABASE_URL: readEnv('FIREBASE_DATABASE_URL'),
   
   // CORS
-  CORS_ORIGIN: readEnv('CORS_ORIGIN', 'http://localhost:3000'),
+  ALLOWED_ORIGINS: readEnv('ALLOWED_ORIGINS', readEnv('FRONTEND_URL')),
   
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: parseNumber('RATE_LIMIT_WINDOW_MS', 900000), // 15 min

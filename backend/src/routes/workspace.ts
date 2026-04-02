@@ -3,9 +3,10 @@ import { authMiddleware } from '../middleware/auth';
 import { workspaceContextMiddleware } from '../middleware/workspaceContext';
 import {
   createWorkspace,
-  listWorkspacesForUserAsync,
+  listWorkspaceSummariesForUserAsync,
   addUserToWorkspace,
   getWorkspaceUsersAsync,
+  removeUserFromWorkspace,
 } from '../services/admin/workspaceStore';
 import { authz } from '../middleware/authz';
 import { asyncHandler } from '../middleware/errorHandler';
@@ -14,24 +15,34 @@ const router = Router();
 
 router.use(authMiddleware);
 
-// Criar novo workspace (owner = usuário autenticado)
-router.post('/', (req: Request, res: Response) => {
-  const { name } = req.body;
+router.post('/', asyncHandler(async (req: Request, res: Response) => {
+  const { name, tenantId } = req.body;
   if (!name || typeof name !== 'string') {
-    return res.status(400).json({ error: 'Nome do workspace obrigatório' });
+    res.status(400).json({ error: 'Nome do workspace obrigatorio' });
+    return;
   }
-  const ws = createWorkspace(name, req.userId!);
-  return res.status(201).json(ws);
-});
 
-// Listar workspaces do usuário autenticado
+  if (typeof tenantId === 'string' && tenantId.length > 0) {
+    const workspaces = await listWorkspaceSummariesForUserAsync(req.userId!);
+    const canManageTenant = workspaces.some((workspace) => (
+      workspace.tenantId === tenantId && (workspace.role === 'owner' || workspace.role === 'admin')
+    ));
+
+    if (!canManageTenant) {
+      res.status(403).json({ error: 'Acesso negado para criar workspace neste tenant' });
+      return;
+    }
+  }
+
+  const workspace = createWorkspace(name, req.userId!, typeof tenantId === 'string' ? tenantId : undefined);
+  res.status(201).json(workspace);
+}));
+
 router.get('/', asyncHandler(async (req: Request, res: Response) => {
-  const workspaces = await listWorkspacesForUserAsync(req.userId!);
+  const workspaces = await listWorkspaceSummariesForUserAsync(req.userId!);
   res.json({ workspaces });
 }));
 
-// Adicionar usuário ao workspace (apenas owner/admin)
-// Apenas owner/admin pode adicionar usuários
 router.post(
   '/:workspaceId/users',
   workspaceContextMiddleware,
@@ -39,18 +50,30 @@ router.post(
   (req: Request, res: Response) => {
     const { userId, role } = req.body;
     if (!userId || typeof userId !== 'string') {
-      return res.status(400).json({ error: 'userId obrigatório' });
+      return res.status(400).json({ error: 'userId obrigatorio' });
     }
-    const wu = addUserToWorkspace(req.params.workspaceId, userId, role || 'user', req.userId!);
-    if (!wu) return res.status(404).json({ error: 'Workspace não encontrado' });
-    return res.status(201).json(wu);
-  }
+
+    const membership = addUserToWorkspace(req.params.workspaceId, userId, role || 'member', req.userId!);
+    if (!membership) {
+      return res.status(404).json({ error: 'Workspace nao encontrado' });
+    }
+
+    return res.status(201).json(membership);
+  },
 );
 
-// Listar usuários do workspace
 router.get('/:workspaceId/users', workspaceContextMiddleware, authz('workspace:members:read'), asyncHandler(async (req: Request, res: Response) => {
   const users = await getWorkspaceUsersAsync(req.params.workspaceId);
   res.json({ users });
 }));
+
+router.delete('/:workspaceId/users/:userId', workspaceContextMiddleware, authz('workspace:members:remove'), (req: Request, res: Response) => {
+  const removed = removeUserFromWorkspace(req.params.userId, req.params.workspaceId);
+  if (!removed) {
+    return res.status(404).json({ error: 'Membro nao encontrado' });
+  }
+
+  return res.status(204).send();
+});
 
 export default router;

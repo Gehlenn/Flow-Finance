@@ -2,11 +2,13 @@ import request from 'supertest';
 import app from '../../src/index';
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
 import { resetCloudSyncStoreForTests } from '../../src/services/sync/cloudSyncStore';
+import { getAuditEvents, resetAuditLogForTests } from '../../src/services/admin/auditLog';
 
 describe('Workspace storage isolation', () => {
   beforeEach(() => {
     resetWorkspaceStoreForTests();
     resetCloudSyncStoreForTests();
+    resetAuditLogForTests();
   });
 
   it('isolates sync state by workspace for the same user', async () => {
@@ -54,6 +56,16 @@ describe('Workspace storage isolation', () => {
     expect(secondPull.body.entities.goals).toHaveLength(1);
     expect(firstPull.body.entities.goals[0].id).toBe('goal_ws1');
     expect(secondPull.body.entities.goals[0].id).toBe('goal_ws2');
+    expect(firstPull.body.entities.goals[0].payload.workspace_id).toBe(firstWorkspace.body.workspaceId);
+    expect(firstPull.body.entities.goals[0].payload.tenant_id).toBe(firstWorkspace.body.tenantId);
+    expect(firstPull.body.entities.goals[0].payload.user_id).toBe(ownerUserId);
+    expect(secondPull.body.entities.goals[0].payload.workspace_id).toBe(secondWorkspace.body.workspaceId);
+    expect(secondPull.body.entities.goals[0].payload.tenant_id).toBe(secondWorkspace.body.tenantId);
+    expect(secondPull.body.entities.goals[0].payload.user_id).toBe(ownerUserId);
+
+    const logs = getAuditEvents({ action: 'goal.created', userId: ownerUserId });
+    expect(logs.some((entry) => entry.workspaceId === firstWorkspace.body.workspaceId && entry.resourceId === 'goal_ws1')).toBe(true);
+    expect(logs.some((entry) => entry.workspaceId === secondWorkspace.body.workspaceId && entry.resourceId === 'goal_ws2')).toBe(true);
   });
 
   it('isolates banking connections by workspace for the same user', async () => {

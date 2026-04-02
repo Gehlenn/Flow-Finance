@@ -14,7 +14,7 @@ type RequestWithWorkspace = Request & {
 async function resolveAuthorizationContext(req: RequestWithWorkspace): Promise<{
   userId: string;
   workspaceId: string;
-  role: 'admin' | 'member';
+  role: 'owner' | 'admin' | 'member' | 'viewer';
   plan: 'free' | 'pro';
 }> {
   const userId = req.userId;
@@ -32,7 +32,7 @@ async function resolveAuthorizationContext(req: RequestWithWorkspace): Promise<{
   return {
     userId,
     workspaceId,
-    role: role === 'owner' ? 'admin' : (role as 'admin' | 'member'),
+    role: role as 'owner' | 'admin' | 'member' | 'viewer',
     plan: (req.workspace?.plan || 'free') as 'free' | 'pro',
   };
 }

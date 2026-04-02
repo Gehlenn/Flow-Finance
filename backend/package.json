@@ -11,7 +11,9 @@
     "type-check": "tsc --noEmit",
     "preflight:cutover": "tsx scripts/postgres-cutover-preflight.ts",
     "backfill:normalized-state": "tsx scripts/backfill-normalized-state.ts",
-    "prebuild": "npm run lint"
+    "prebuild": "npm run lint",
+    "migrate:normalized-state": "tsx scripts/apply-normalized-migrations.ts",
+    "cutover:postgres": "tsx scripts/postgres-cutover-run.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.490.0",

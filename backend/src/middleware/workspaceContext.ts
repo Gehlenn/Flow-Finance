@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { asyncHandler } from './errorHandler';
-import { getWorkspaceAsync, isUserInWorkspaceAsync } from '../services/admin/workspaceStore';
+import { getTenantAsync, getWorkspaceAsync, isUserInWorkspaceAsync } from '../services/admin/workspaceStore';
 
 /**
  * Middleware que injeta o contexto de workspace na request.
@@ -30,7 +30,19 @@ export const workspaceContextMiddleware = asyncHandler(async (req: Request, res:
     return;
   }
 
-  (req as Request & { workspaceId?: string; workspace?: unknown }).workspaceId = workspaceId;
-  (req as Request & { workspaceId?: string; workspace?: unknown }).workspace = workspace;
+  const tenant = await getTenantAsync(workspace.tenantId);
+  req.tenantId = workspace.tenantId;
+  req.workspaceId = workspaceId;
+  req.workspace = workspace;
+  req.tenantContext = {
+    tenantId: workspace.tenantId,
+    plan: tenant?.plan || workspace.plan,
+    features: workspace.entitlements?.features || [],
+    limits: {
+      transactionsPerMonth: workspace.entitlements?.limits.transactionsPerMonth || 0,
+      aiQueriesPerMonth: workspace.entitlements?.limits.aiQueriesPerMonth || 0,
+      bankConnections: workspace.entitlements?.limits.bankConnections || 0,
+    },
+  };
   next();
 });

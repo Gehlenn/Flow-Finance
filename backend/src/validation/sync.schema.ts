@@ -4,6 +4,7 @@ const SyncEntitySchema = z.enum(['accounts', 'transactions', 'goals', 'subscript
 
 const SyncItemSchema = z.object({
   id: z.string().min(1),
+  clientId: z.string().min(1).optional(),
   updatedAt: z.string().min(1),
   deleted: z.boolean().optional(),
   payload: z.record(z.unknown()).optional(),

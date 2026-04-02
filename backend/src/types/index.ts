@@ -1,6 +1,6 @@
 // ─── MULTI-TENANT ──────────────────────────────────────────────────────────
 
-export type Role = 'owner' | 'admin' | 'user';
+export type Role = 'owner' | 'admin' | 'member' | 'viewer';
 export type WorkspacePlan = 'free' | 'pro';
 export type WorkspaceFeature =
   | 'advancedInsights'
@@ -8,6 +8,21 @@ export type WorkspaceFeature =
   | 'adminConsole'
   | 'prioritySupport'
   | 'billingManagement';
+
+export interface Tenant {
+  tenantId: string;
+  name: string;
+  plan: WorkspacePlan;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TenantContext {
+  tenantId: string;
+  plan: WorkspacePlan;
+  features: WorkspaceFeature[];
+  limits: Record<string, number>;
+}
 
 export interface WorkspaceEntitlements {
   features: WorkspaceFeature[];
@@ -34,8 +49,11 @@ export interface WorkspaceSubscription {
 
 export interface Workspace {
   workspaceId: string;
+  tenantId: string;
   name: string;
+  isDefault: boolean;
   createdAt: string;
+  updatedAt?: string;
   plan: WorkspacePlan;
   status?: 'active' | 'suspended';
   billingEmail?: string;
@@ -47,10 +65,24 @@ export interface Workspace {
 export interface WorkspaceUser {
   userId: string;
   workspaceId: string;
+  tenantId: string;
   role: Role;
   joinedAt: string;
   invitedBy?: string;
   status?: 'active' | 'invited' | 'removed';
+}
+
+export interface WorkspaceContext {
+  workspaceId: string;
+  tenantId: string;
+  name: string;
+  isDefault: boolean;
+}
+
+export interface WorkspaceSummary extends WorkspaceContext {
+  plan: WorkspacePlan;
+  role: Role;
+  tenantName?: string;
 }
 
 export interface WorkspaceUserPreference {
@@ -238,6 +270,7 @@ export interface User {
   lastLogin?: string;
   workspaces?: Array<{
     workspaceId: string;
+    tenantId: string;
     role: Role;
   }>;
 }
