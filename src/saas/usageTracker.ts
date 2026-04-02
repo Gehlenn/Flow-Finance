@@ -7,36 +7,32 @@ export interface UsageSnapshot {
 }
 
 const usageStore = new Map<string, UsageSnapshot>();
-const STORAGE_KEY = 'flow_saas_usage';
 
 export interface UsageStoreAdapter {
   read(): Promise<Record<string, UsageSnapshot>>;
   write(data: Record<string, UsageSnapshot>): Promise<void>;
+  increment?(params: {
+    resource: ResourceKind;
+    amount: number;
+    at: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<number>;
+  reset?(monthKey?: string): Promise<void>;
 }
 
-class LocalStorageUsageAdapter implements UsageStoreAdapter {
-  async read(): Promise<Record<string, UsageSnapshot>> {
-    if (typeof localStorage === 'undefined') {
-      return {};
-    }
+class MemoryUsageAdapter implements UsageStoreAdapter {
+  private state: Record<string, UsageSnapshot> = {};
 
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') as Record<string, UsageSnapshot>;
-    } catch {
-      return {};
-    }
+  async read(): Promise<Record<string, UsageSnapshot>> {
+    return { ...this.state };
   }
 
   async write(data: Record<string, UsageSnapshot>): Promise<void> {
-    if (typeof localStorage === 'undefined') {
-      return;
-    }
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    this.state = { ...data };
   }
 }
 
-let usageAdapter: UsageStoreAdapter = new LocalStorageUsageAdapter();
+let usageAdapter: UsageStoreAdapter = new MemoryUsageAdapter();
 let usageLoaded = false;
 
 function toRecord(): Record<string, UsageSnapshot> {
@@ -95,22 +91,47 @@ export async function configureUsageStoreAdapter(adapter: UsageStoreAdapter): Pr
   await ensureLoaded();
 }
 
-export function getCurrentUsage(userId: string, resource: ResourceKind, at = new Date()): number {
-  void ensureLoaded();
+export async function getCurrentUsage(userId: string, resource: ResourceKind, at = new Date()): Promise<number> {
+  await ensureLoaded();
   const usage = getOrCreateUsage(userId, getMonthKey(at));
   return usage[resource];
 }
 
-export function trackUsage(userId: string, resource: ResourceKind, amount = 1, at = new Date()): number {
-  void ensureLoaded();
+export async function trackUsage(
+  userId: string,
+  resource: ResourceKind,
+  amount = 1,
+  at = new Date(),
+  metadata?: Record<string, unknown>,
+): Promise<number> {
+  await ensureLoaded();
+
+  if (usageAdapter.increment) {
+    const total = await usageAdapter.increment({
+      resource,
+      amount,
+      at: at.toISOString(),
+      metadata,
+    });
+    const usage = getOrCreateUsage(userId, getMonthKey(at));
+    usage[resource] = total;
+    return total;
+  }
+
   const usage = getOrCreateUsage(userId, getMonthKey(at));
   usage[resource] += amount;
-  void flush();
+  await flush();
   return usage[resource];
 }
 
-export function resetUsageForUser(userId: string, at = new Date()): void {
-  void ensureLoaded();
+export async function resetUsageForUser(userId: string, at = new Date()): Promise<void> {
+  await ensureLoaded();
   usageStore.delete(buildKey(userId, getMonthKey(at)));
-  void flush();
+
+  if (usageAdapter.reset) {
+    await usageAdapter.reset(getMonthKey(at));
+    return;
+  }
+
+  await flush();
 }

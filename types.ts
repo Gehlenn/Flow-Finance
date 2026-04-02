@@ -13,6 +13,9 @@ export enum Category {
 
 export interface Transaction {
   id: string;
+  user_id?: string;
+  tenant_id?: string;
+  workspace_id?: string;
   amount: number;
   type: TransactionType;
   category: Category;
@@ -70,6 +73,9 @@ export interface Alert {
 
 export interface Goal {
   id: string;
+  user_id?: string;
+  tenant_id?: string;
+  workspace_id?: string;
   title: string;
   targetAmount: number;
   currentAmount: number;

@@ -14,21 +14,30 @@ describe('WorkspaceStore - Audit Log', () => {
     resetWorkspaceStoreForTests();
   });
 
-  it('registra evento de auditoria ao adicionar usuário', () => {
+  it('registra evento de auditoria ao adicionar usuario', () => {
     const ws = createWorkspace('Empresa Teste', 'adminTest');
-    addUserToWorkspace(ws.workspaceId, 'userNovo', 'user', 'adminTest');
+    addUserToWorkspace(ws.workspaceId, 'userNovo', 'member', 'adminTest');
     const logs = getAuditEvents({ action: 'workspace.addUser', userId: 'adminTest' });
     expect(logs.length).toBeGreaterThan(0);
-    expect(logs[0].metadata.addedUserId).toBe('userNovo');
+    expect(logs[0].metadata?.addedUserId).toBe('userNovo');
     expect(logs[0].resource).toBe(ws.workspaceId);
+    expect(logs[0].workspaceId).toBe(ws.workspaceId);
+    expect(logs[0].tenantId).toBe(ws.tenantId);
+    expect(logs[0].resourceType).toBe('workspace_member');
+    expect(logs[0].resourceId).toBe('userNovo');
   });
 
-  it('persiste o workspace criado em store duravel', () => {
+  it('persiste tenant, workspace e membership em store duravel', () => {
     const ws = createWorkspace('Empresa Persistida', 'owner-1');
     const snapshot = getWorkspaceStoreSnapshotForTests();
 
+    expect(snapshot.tenants.some((tenant) => tenant.tenantId === ws.tenantId)).toBe(true);
     expect(snapshot.workspaces.some((workspace) => workspace.workspaceId === ws.workspaceId)).toBe(true);
-    expect(snapshot.workspaceUsers.some((membership) => membership.workspaceId === ws.workspaceId && membership.userId === 'owner-1')).toBe(true);
+    expect(snapshot.workspaceUsers.some((membership) => (
+      membership.workspaceId === ws.workspaceId
+      && membership.tenantId === ws.tenantId
+      && membership.userId === 'owner-1'
+    ))).toBe(true);
   });
 
   it('persiste plano, subscription e entitlements do workspace', () => {

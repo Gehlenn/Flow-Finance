@@ -10,36 +10,211 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function ownerFieldMatchesAuth() {
-      return isSignedIn()
-        && request.resource.data.user_id is string
-        && request.resource.data.user_id == request.auth.uid;
+    function workspaceMemberDocId(workspaceId) {
+      return workspaceId + '_' + request.auth.uid;
     }
 
-    // Main user profile document synced by App.tsx
+    function workspaceMemberDoc(workspaceId) {
+      return get(/databases/$(database)/documents/workspace_members/$(workspaceMemberDocId(workspaceId)));
+    }
+
+    function isWorkspaceMember(workspaceId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/workspace_members/$(workspaceMemberDocId(workspaceId)))
+        && workspaceMemberDoc(workspaceId).data.status == 'active';
+    }
+
+    function workspaceRole(workspaceId) {
+      return isWorkspaceMember(workspaceId)
+        ? workspaceMemberDoc(workspaceId).data.role
+        : null;
+    }
+
+    function canManageWorkspace(workspaceId) {
+      return workspaceRole(workspaceId) in ['owner', 'admin'];
+    }
+
+    function canEditWorkspaceData(workspaceId) {
+      return workspaceRole(workspaceId) in ['owner', 'admin', 'member'];
+    }
+
+    function isWorkspaceOwner(workspaceId) {
+      return workspaceRole(workspaceId) == 'owner';
+    }
+
+    function requestMatchesWorkspace(workspaceId) {
+      return request.resource.data.workspace_id == workspaceId;
+    }
+
+    function requestMatchesTenant(tenantId) {
+      return request.resource.data.tenant_id == tenantId;
+    }
+
+    function requestMatchesCurrentUser() {
+      return request.resource.data.user_id == request.auth.uid;
+    }
+
+    function workspaceDoc(workspaceId) {
+      return get(/databases/$(database)/documents/workspaces/$(workspaceId));
+    }
+
+    function workspaceBelongsToTenant(workspaceId, tenantId) {
+      return exists(/databases/$(database)/documents/workspaces/$(workspaceId))
+        && workspaceDoc(workspaceId).data.tenantId == tenantId;
+    }
+
+    function memberMatchesWorkspaceTenant(workspaceId) {
+      return workspaceMemberDoc(workspaceId).data.tenantId == workspaceDoc(workspaceId).data.tenantId;
+    }
+
     match /users/{userId} {
       allow read, write: if isCurrentUser(userId);
     }
 
-    // Per-user accounts collection
+    match /tenants/{tenantId} {
+      allow create: if isSignedIn() && request.resource.data.ownerUserId == request.auth.uid;
+      allow read: if isSignedIn();
+      allow update, delete: if isSignedIn() && resource.data.ownerUserId == request.auth.uid;
+    }
+
+    match /workspaces/{workspaceId} {
+      allow create: if isSignedIn()
+        && request.resource.data.createdAt is string
+        && request.resource.data.tenantId is string;
+      allow read: if isWorkspaceMember(workspaceId);
+      allow update: if canManageWorkspace(workspaceId);
+      allow delete: if isWorkspaceOwner(workspaceId);
+
+      match /accounts/{accountId} {
+        allow read: if isWorkspaceMember(workspaceId);
+        allow create: if canEditWorkspaceData(workspaceId)
+          && requestMatchesWorkspace(workspaceId)
+          && requestMatchesTenant(workspaceDoc(workspaceId).data.tenantId)
+          && memberMatchesWorkspaceTenant(workspaceId)
+          && requestMatchesCurrentUser();
+        allow update: if canEditWorkspaceData(workspaceId)
+          && resource.data.workspace_id == workspaceId
+          && resource.data.tenant_id == workspaceDoc(workspaceId).data.tenantId
+          && requestMatchesWorkspace(workspaceId)
+          && requestMatchesTenant(workspaceDoc(workspaceId).data.tenantId)
+          && memberMatchesWorkspaceTenant(workspaceId)
+          && requestMatchesCurrentUser();
+        allow delete: if canEditWorkspaceData(workspaceId)
+          && resource.data.workspace_id == workspaceId
+          && resource.data.tenant_id == workspaceDoc(workspaceId).data.tenantId
+          && memberMatchesWorkspaceTenant(workspaceId);
+      }
+
+      match /transactions/{transactionId} {
+        allow read: if isWorkspaceMember(workspaceId);
+        allow create: if canEditWorkspaceData(workspaceId)
+          && requestMatchesWorkspace(workspaceId)
+          && requestMatchesTenant(workspaceDoc(workspaceId).data.tenantId)
+          && memberMatchesWorkspaceTenant(workspaceId)
+          && requestMatchesCurrentUser();
+        allow update: if canEditWorkspaceData(workspaceId)
+          && resource.data.workspace_id == workspaceId
+          && resource.data.tenant_id == workspaceDoc(workspaceId).data.tenantId
+          && requestMatchesWorkspace(workspaceId)
+          && requestMatchesTenant(workspaceDoc(workspaceId).data.tenantId)
+          && memberMatchesWorkspaceTenant(workspaceId)
+          && requestMatchesCurrentUser();
+        allow delete: if canEditWorkspaceData(workspaceId)
+          && resource.data.workspace_id == workspaceId
+          && resource.data.tenant_id == workspaceDoc(workspaceId).data.tenantId
+          && memberMatchesWorkspaceTenant(workspaceId);
+      }
+
+      match /goals/{goalId} {
+        allow read: if isWorkspaceMember(workspaceId);
+        allow create: if canEditWorkspaceData(workspaceId)
+          && requestMatchesWorkspace(workspaceId)
+          && requestMatchesTenant(workspaceDoc(workspaceId).data.tenantId)
+          && memberMatchesWorkspaceTenant(workspaceId)
+          && requestMatchesCurrentUser();
+        allow update: if canEditWorkspaceData(workspaceId)
+          && resource.data.workspace_id == workspaceId
+          && resource.data.tenant_id == workspaceDoc(workspaceId).data.tenantId
+          && requestMatchesWorkspace(workspaceId)
+          && requestMatchesTenant(workspaceDoc(workspaceId).data.tenantId)
+          && memberMatchesWorkspaceTenant(workspaceId)
+          && requestMatchesCurrentUser();
+        allow delete: if canEditWorkspaceData(workspaceId)
+          && resource.data.workspace_id == workspaceId
+          && resource.data.tenant_id == workspaceDoc(workspaceId).data.tenantId
+          && memberMatchesWorkspaceTenant(workspaceId);
+      }
+
+      match /saas_usage/{usageId} {
+        allow read: if isWorkspaceMember(workspaceId);
+        allow create, update: if canEditWorkspaceData(workspaceId)
+          && memberMatchesWorkspaceTenant(workspaceId);
+        allow delete: if canManageWorkspace(workspaceId);
+      }
+
+      match /billing_state/{stateId} {
+        allow read: if isWorkspaceMember(workspaceId);
+        allow create, update: if canManageWorkspace(workspaceId)
+          && request.resource.data.workspaceId == workspaceId
+          && request.resource.data.tenantId == workspaceDoc(workspaceId).data.tenantId
+          && memberMatchesWorkspaceTenant(workspaceId);
+        allow delete: if isWorkspaceOwner(workspaceId);
+      }
+
+      match /billing_hooks/{eventId} {
+        allow read: if canManageWorkspace(workspaceId);
+        allow create: if isSignedIn()
+          && canEditWorkspaceData(workspaceId)
+          && request.resource.data.workspaceId == workspaceId
+          && request.resource.data.tenantId == workspaceDoc(workspaceId).data.tenantId
+          && memberMatchesWorkspaceTenant(workspaceId)
+          && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
+    match /workspace_members/{memberId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid
+        || isWorkspaceMember(resource.data.workspaceId)
+      );
+      allow create: if isSignedIn()
+        && canManageWorkspace(request.resource.data.workspaceId)
+        && request.resource.data.workspaceId is string
+        && request.resource.data.userId is string
+        && request.resource.data.tenantId is string
+        && workspaceBelongsToTenant(request.resource.data.workspaceId, request.resource.data.tenantId);
+      allow update: if isSignedIn()
+        && canManageWorkspace(resource.data.workspaceId)
+        && workspaceBelongsToTenant(resource.data.workspaceId, resource.data.tenantId);
+      allow delete: if isSignedIn()
+        && canManageWorkspace(resource.data.workspaceId)
+        && workspaceBelongsToTenant(resource.data.workspaceId, resource.data.tenantId);
+    }
+
+    match /audit_logs/{tenantId}/events/{eventId} {
+      allow read: if isSignedIn()
+        && resource.data.workspaceId is string
+        && resource.data.tenantId == tenantId
+        && workspaceBelongsToTenant(resource.data.workspaceId, tenantId)
+        && canManageWorkspace(resource.data.workspaceId);
+      allow create: if isSignedIn()
+        && request.resource.data.workspaceId is string
+        && request.resource.data.tenantId == tenantId
+        && workspaceBelongsToTenant(request.resource.data.workspaceId, tenantId)
+        && canEditWorkspaceData(request.resource.data.workspaceId)
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     match /accounts/{accountId} {
-      allow create: if ownerFieldMatchesAuth();
-      allow read, delete: if isSignedIn() && resource.data.user_id == request.auth.uid;
-      allow update: if isSignedIn()
-        && resource.data.user_id == request.auth.uid
-        && request.resource.data.user_id == request.auth.uid;
+      allow read, write: if false;
     }
 
-    // Per-user transactions collection
     match /transactions/{transactionId} {
-      allow create: if ownerFieldMatchesAuth();
-      allow read, delete: if isSignedIn() && resource.data.user_id == request.auth.uid;
-      allow update: if isSignedIn()
-        && resource.data.user_id == request.auth.uid
-        && request.resource.data.user_id == request.auth.uid;
+      allow read, write: if false;
     }
 
-    // Deny by default for every other collection
     match /{document=**} {
       allow read, write: if false;
     }

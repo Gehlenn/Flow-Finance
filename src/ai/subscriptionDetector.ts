@@ -11,6 +11,11 @@
 
 import { Transaction, TransactionType } from '../../types';
 import { makeId } from '../../utils/helpers';
+import {
+  inferSubscriptionCycleFromDates,
+  normalizeSubscriptionText,
+  roundSubscriptionAmount,
+} from './subscriptionDetectionCore';
 
 
 // ─── Models ───────────────────────────────────────────────────────────────────
@@ -112,10 +117,6 @@ const KNOWN_SERVICES: KnownService[] = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 
-function normalizeText(s: string): string {
-  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-}
-
 function estimateNextCharge(lastDate: string, cycle: SubscriptionBillingCycle): string | null {
   const d = new Date(lastDate);
   if (isNaN(d.getTime())) return null;
@@ -127,25 +128,27 @@ function estimateNextCharge(lastDate: string, cycle: SubscriptionBillingCycle): 
 }
 
 function detectCycle(transactions: Transaction[]): SubscriptionBillingCycle {
-  if (transactions.length < 2) return 'unknown';
-  const sorted = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
-  const gaps: number[] = [];
-  for (let i = 1; i < sorted.length; i++) {
-    const diffDays = (new Date(sorted[i].date).getTime() - new Date(sorted[i-1].date).getTime()) / 86400000;
-    gaps.push(diffDays);
-  }
-  const avgGap = gaps.reduce((s, g) => s + g, 0) / gaps.length;
-
-  if (avgGap >= 25 && avgGap <= 35) return 'monthly';
-  if (avgGap >= 5  && avgGap <= 10) return 'weekly';
-  if (avgGap >= 350 && avgGap <= 380) return 'annual';
-  return 'unknown';
+  return inferSubscriptionCycleFromDates(
+    transactions.map((transaction) => transaction.date),
+  );
 }
 
 function txMatchesService(tx: Transaction, service: KnownService): boolean {
-  const desc = normalizeText(tx.description ?? '');
-  const merch = normalizeText(tx.merchant ?? '');
+  const desc = normalizeSubscriptionText(tx.description ?? '');
+  const merch = normalizeSubscriptionText(tx.merchant ?? '');
   return service.keywords.some(kw => desc.includes(kw) || merch.includes(kw));
+}
+
+function groupTransactionsByAmount(transactions: Transaction[]): Transaction[][] {
+  const groups: Record<string, Transaction[]> = {};
+
+  for (const transaction of transactions) {
+    const key = roundSubscriptionAmount(transaction.amount).toFixed(2);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(transaction);
+  }
+
+  return Object.values(groups);
 }
 
 // ─── PART 4 — detectSubscriptions ────────────────────────────────────────────
@@ -169,35 +172,36 @@ export function detectSubscriptions(transactions: Transaction[]): SubscriptionSu
     const matching = expenses.filter(tx => txMatchesService(tx, service));
     if (matching.length === 0) continue;
 
-    const sorted = [...matching].sort((a, b) => b.date.localeCompare(a.date));
-    const amounts = matching.map(t => t.amount);
-    const avgAmount = amounts.reduce((s, a) => s + a, 0) / amounts.length;
-    const cycle = detectCycle(matching);
+    for (const amountGroup of groupTransactionsByAmount(matching)) {
+      const sorted = [...amountGroup].sort((a, b) => b.date.localeCompare(a.date));
+      const amounts = amountGroup.map(t => t.amount);
+      const avgAmount = amounts.reduce((s, a) => s + a, 0) / amounts.length;
+      const cycle = detectCycle(amountGroup);
 
-    // Confidence: higher for known services + multiple occurrences
-    let confidence = 0.7;
-    if (matching.length >= 2) confidence += 0.15;
-    if (matching.length >= 3) confidence += 0.10;
-    if (cycle !== 'unknown')  confidence += 0.05;
-    confidence = Math.min(1, confidence);
+      let confidence = 0.7;
+      if (amountGroup.length >= 2) confidence += 0.15;
+      if (amountGroup.length >= 3) confidence += 0.10;
+      if (cycle !== 'unknown') confidence += 0.05;
+      confidence = Math.min(1, confidence);
 
-    matching.forEach(t => matchedTxIds.add(t.id));
+      amountGroup.forEach(t => matchedTxIds.add(t.id));
 
-    results.push({
-      id:            makeId(),
-      name:          service.name,
-      merchant:      sorted[0].merchant ?? sorted[0].description,
-      amount:        Math.round(avgAmount * 100) / 100,
-      cycle,
-      last_charge:   sorted[0].date,
-      next_expected: estimateNextCharge(sorted[0].date, cycle),
-      occurrences:   matching.length,
-      total_spent:   amounts.reduce((s, a) => s + a, 0),
-      category:      service.category,
-      logo:          service.logo,
-      confidence,
-      transactions:  sorted,
-    });
+      results.push({
+        id:            makeId(),
+        name:          service.name,
+        merchant:      sorted[0].merchant ?? sorted[0].description,
+        amount:        roundSubscriptionAmount(avgAmount),
+        cycle,
+        last_charge:   sorted[0].date,
+        next_expected: estimateNextCharge(sorted[0].date, cycle),
+        occurrences:   amountGroup.length,
+        total_spent:   amounts.reduce((s, a) => s + a, 0),
+        category:      service.category,
+        logo:          service.logo,
+        confidence,
+        transactions:  sorted,
+      });
+    }
   }
 
   // ── Strategy 2: Pattern-based detection (unknown recurring payments) ───────
@@ -208,7 +212,7 @@ export function detectSubscriptions(transactions: Transaction[]): SubscriptionSu
   for (const tx of unmatched) {
     // Usar o 'merchant' normalizado como chave principal, que é mais estável.
     // Usar o 'fingerprint' da descrição como fallback.
-    const key = normalizeText(tx.merchant || '') || normalizeText(tx.description ?? '')
+    const key = normalizeSubscriptionText(tx.merchant || '') || normalizeSubscriptionText(tx.description ?? '')
       .replace(/\d+/g, '#')
       .slice(0, 20)
       .trim();
@@ -244,7 +248,7 @@ export function detectSubscriptions(transactions: Transaction[]): SubscriptionSu
       id:            makeId(),
       name,
       merchant:      name,
-      amount:        Math.round(avgAmt * 100) / 100,
+      amount:        roundSubscriptionAmount(avgAmt),
       cycle,
       last_charge:   sorted[0].date,
       next_expected: estimateNextCharge(sorted[0].date, cycle),

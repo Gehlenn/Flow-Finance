@@ -16,6 +16,7 @@ import {
 interface GoalsPageProps {
   hideValues?: boolean;
   goals: Goal[];
+  canEditGoals?: boolean;
   onCreateGoal: (goal: Omit<Goal, 'id'>) => void;
   onDeleteGoal: (goalId: string) => void;
   onContributeGoal: (goalId: string, amount: number) => void;
@@ -179,6 +180,7 @@ const GoalCard: React.FC<{
 const GoalsPage: React.FC<GoalsPageProps> = ({
   hideValues = false,
   goals,
+  canEditGoals = true,
   onCreateGoal,
   onDeleteGoal,
   onContributeGoal,
@@ -242,6 +244,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
         </div>
         <button
           onClick={() => setShowForm(true)}
+          disabled={!canEditGoals}
           className="flex items-center gap-1.5 bg-emerald-500 text-white px-4 py-2.5 rounded-2xl text-[10px] font-black shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 active:scale-95 transition-all"
         >
           <Plus size={14} /> Nova meta
@@ -266,7 +269,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
         </div>
       )}
 
-      {showForm && (
+      {showForm && canEditGoals && (
         <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 overflow-hidden shadow-lg">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
             <p className="font-black text-slate-900 dark:text-white text-sm">Nova Meta</p>
@@ -376,8 +379,8 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
           key={goal.id}
           goal={goal}
           hideValues={hideValues}
-          onDeleteGoal={onDeleteGoal}
-          onOpenContribution={setContributeGoal}
+          onDeleteGoal={canEditGoals ? onDeleteGoal : () => undefined}
+          onOpenContribution={canEditGoals ? setContributeGoal : () => undefined}
         />
       ))}
 
@@ -394,14 +397,14 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
               key={goal.id}
               goal={goal}
               hideValues={hideValues}
-              onDeleteGoal={onDeleteGoal}
-              onOpenContribution={setContributeGoal}
+              onDeleteGoal={canEditGoals ? onDeleteGoal : () => undefined}
+              onOpenContribution={canEditGoals ? setContributeGoal : () => undefined}
             />
           ))}
         </>
       )}
 
-      {contributeGoal && (
+      {contributeGoal && canEditGoals && (
         <div className="fixed inset-0 z-[200] flex items-end justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between">
@@ -450,3 +453,4 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
 };
 
 export default GoalsPage;
+

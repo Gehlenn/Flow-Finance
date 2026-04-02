@@ -21,26 +21,87 @@ import { Account } from '../../models/Account';
 import { buildFinancialGraph, invalidateGraphCache } from '../ai/financialGraph';
 import { detectFinancialLeaks } from '../ai/leakDetector';
 import { generateMonthlyReport } from '../finance/reportEngine';
-import { getActiveWorkspaceScopedStorageKey } from '../utils/workspaceStorage';
+import { API_ENDPOINTS, getAuthHeaders } from '../config/api.config';
 
 
 // ─── PART 5 — Storage ─────────────────────────────────────────────────────────
 
-const STORAGE_KEY = 'flow_financial_events';
 const MAX_EVENTS  = 200;
+let eventCache: FinancialEvent[] = [];
 
-function readEvents(): FinancialEvent[] {
-  try {
-    return JSON.parse(localStorage.getItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY)) || '[]');
-  } catch {
-    return [];
-  }
+function buildEventEndpoint(): string {
+  return API_ENDPOINTS.USER.PROFILE.replace('/user/profile', '/finance/events');
 }
 
-function persistEvent(event: FinancialEvent): void {
-  const events = readEvents();
-  const trimmed = [event, ...events].slice(0, MAX_EVENTS);
-  localStorage.setItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY), JSON.stringify(trimmed));
+async function persistEventRemotely(event: FinancialEvent): Promise<void> {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const headers = getAuthHeaders();
+  if (!headers.Authorization) {
+    return;
+  }
+
+  await fetch(buildEventEndpoint(), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      id: event.id,
+      type: event.type,
+      aggregateId: typeof (event.payload as Record<string, unknown> | undefined)?.id === 'string'
+        ? String((event.payload as Record<string, unknown>).id)
+        : undefined,
+      aggregateType: String(event.type).includes('goal')
+        ? 'goal'
+        : String(event.type).includes('transaction')
+          ? 'transaction'
+          : 'financial_event',
+      payload: typeof event.payload === 'object' && event.payload !== null
+        ? event.payload as Record<string, unknown>
+        : { value: event.payload },
+      occurredAt: event.created_at,
+    }),
+  }).catch((error) => {
+    console.warn('[EventEngine] Failed to persist event remotely:', error);
+  });
+}
+
+export async function refreshFinancialEvents(limit = MAX_EVENTS): Promise<FinancialEvent[]> {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  const headers = getAuthHeaders();
+  if (!headers.Authorization) {
+    return eventCache;
+  }
+
+  try {
+    const response = await fetch(`${buildEventEndpoint()}?limit=${limit}`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      return eventCache;
+    }
+
+    const body = await response.json() as {
+      events?: Array<{ id: string; type: FinancialEventType; payload: unknown; occurredAt: string }>;
+    };
+
+    eventCache = (body.events || []).map((event) => ({
+      id: event.id,
+      type: event.type,
+      payload: event.payload,
+      created_at: event.occurredAt,
+    }));
+    return eventCache;
+  } catch (error) {
+    console.warn('[EventEngine] Failed to fetch remote events:', error);
+    return eventCache;
+  }
 }
 
 // ─── PART 2 — In-memory subscriber registry ───────────────────────────────────
@@ -60,7 +121,8 @@ export function emitFinancialEvent(
     id: makeId(),
     created_at: now(),
   };
-  persistEvent(full);
+  eventCache = [full, ...eventCache].slice(0, MAX_EVENTS);
+  void persistEventRemotely(full);
   subscribers.forEach(cb => {
     try { cb(full); } catch (e) { console.error('[EventEngine] subscriber error', e); }
   });
@@ -87,17 +149,17 @@ export function subscribeToEvent(
 
 /** Retorna todos os eventos armazenados (mais recentes primeiro). */
 export function getFinancialEvents(): FinancialEvent[] {
-  return readEvents();
+  return eventCache;
 }
 
 /** Retorna eventos filtrados por tipo. */
 export function getEventsByType(type: FinancialEventType): FinancialEvent[] {
-  return readEvents().filter(e => e.type === type);
+  return eventCache.filter(e => e.type === type);
 }
 
 /** Limpa todos os eventos armazenados. */
 export function clearFinancialEvents(): void {
-  localStorage.removeItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY));
+  eventCache = [];
 }
 
 // ─── PART 3 — Typed event helpers ────────────────────────────────────────────

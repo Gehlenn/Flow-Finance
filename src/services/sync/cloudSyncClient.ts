@@ -1,14 +1,29 @@
-import { apiRequest, API_ENDPOINTS } from '../../config/api.config';
+import { Account } from '../../../models/Account';
+import { Goal, Transaction } from '../../../types';
+import {
+  loadWorkspaceEntities,
+  replaceWorkspaceEntityCollection,
+  type SyncEntityIdMap,
+} from '../firestoreWorkspaceStore';
 
-export type SyncEntity = 'accounts' | 'transactions' | 'goals' | 'subscriptions';
+export type SyncEntity = 'accounts' | 'transactions' | 'goals';
 
-type SyncPayload = Record<string, unknown>;
+type SyncPayload = object;
 
 type SyncItem<TPayload extends SyncPayload> = {
   id: string;
+  clientId?: string;
   updatedAt: string;
   deleted?: boolean;
   payload?: TPayload;
+};
+
+type PushResponse = {
+  success: boolean;
+  upserted: number;
+  deleted: number;
+  latestServerUpdatedAt: string;
+  reconciledIds: Array<{ clientId: string; serverId: string }>;
 };
 
 type PullResponse<TPayload extends SyncPayload> = {
@@ -17,75 +32,60 @@ type PullResponse<TPayload extends SyncPayload> = {
   entities: Record<SyncEntity, Array<SyncItem<TPayload>>>;
 };
 
-function resolveUpdatedAt(payload: SyncPayload): string {
-  const candidates = [
-    payload.updatedAt,
-    payload.updated_at,
-    payload.createdAt,
-    payload.created_at,
-    payload.date,
-  ];
+export type FirestoreSyncContext = {
+  userId: string;
+  tenantId: string;
+  workspaceId: string;
+};
 
-  const resolved = candidates.find((value) => typeof value === 'string' && value.length > 0);
-  return typeof resolved === 'string' ? resolved : new Date().toISOString();
-}
-
-function buildSyncItems<TPayload extends SyncPayload>(
-  nextItems: TPayload[],
-  previousItems: TPayload[]
-): Array<SyncItem<TPayload>> {
-  const previousById = new Map(previousItems.map((item) => [String(item.id), item]));
-  const nextById = new Map(nextItems.map((item) => [String(item.id), item]));
-
-  const upserts = nextItems.map((item) => ({
-    id: String(item.id),
-    updatedAt: resolveUpdatedAt(item),
-    payload: item,
-  }));
-
-  const deletions = previousItems
-    .filter((item) => !nextById.has(String(item.id)))
-    .map((item) => ({
+function buildPullItems<TPayload extends SyncPayload>(items: Array<TPayload & { id: string }>): Array<SyncItem<TPayload>> {
+  return items.map((item) => {
+    const record = item as { updated_at?: string; created_at?: string; date?: string; id: string };
+    return {
       id: String(item.id),
-      updatedAt: resolveUpdatedAt(previousById.get(String(item.id)) || item),
-      deleted: true,
-    }));
-
-  return [...upserts, ...deletions];
+      updatedAt: String(record.updated_at || record.created_at || record.date || new Date().toISOString()),
+      payload: item,
+    };
+  });
 }
 
 export async function pullSyncEntities<TPayload extends SyncPayload>(
-  since?: string
+  context: Pick<FirestoreSyncContext, 'workspaceId'>,
+  since?: string,
 ): Promise<PullResponse<TPayload>> {
-  const query = since ? `?since=${encodeURIComponent(since)}` : '';
-  return apiRequest<PullResponse<TPayload>>(`${API_ENDPOINTS.SYNC.PULL}${query}`, {
-    method: 'GET',
-  });
+  const entities = await loadWorkspaceEntities(context.workspaceId);
+
+  return {
+    since: since || null,
+    serverTime: new Date().toISOString(),
+    entities: {
+      accounts: buildPullItems(entities.accounts as unknown as Array<TPayload & { id: string }>),
+      transactions: buildPullItems(entities.transactions as unknown as Array<TPayload & { id: string }>),
+      goals: buildPullItems(entities.goals as unknown as Array<TPayload & { id: string }>),
+    },
+  };
 }
 
 export async function replaceSyncEntityCollection<TPayload extends SyncPayload>(
   entity: SyncEntity,
-  nextItems: TPayload[],
-  previousItems: TPayload[]
-): Promise<void> {
-  const items = buildSyncItems(nextItems, previousItems);
-  if (items.length === 0) {
-    return;
-  }
-
-  await apiRequest(API_ENDPOINTS.SYNC.PUSH, {
-    method: 'POST',
-    body: JSON.stringify({
-      entity,
-      items,
-    }),
-  });
+  nextItems: Array<TPayload & { id: string }>,
+  previousItems: Array<TPayload & { id: string }>,
+  context: FirestoreSyncContext,
+): Promise<PushResponse> {
+  return replaceWorkspaceEntityCollection(
+    entity,
+    nextItems,
+    previousItems,
+    context,
+  );
 }
 
 export function extractSyncPayloads<TPayload extends SyncPayload>(
-  items: Array<SyncItem<TPayload>>
+  items: Array<SyncItem<TPayload>>,
 ): TPayload[] {
   return items
     .filter((item) => !item.deleted && item.payload)
     .map((item) => item.payload as TPayload);
 }
+
+export type { PushResponse, PullResponse, SyncItem, SyncEntityIdMap };

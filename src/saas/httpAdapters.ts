@@ -1,5 +1,5 @@
 import { API_ENDPOINTS, BACKEND_BASE_URL, getAuthHeaders } from '../config/api.config';
-import { ensureActiveWorkspace } from '../services/workspaceSession';
+import { ensureActiveWorkspace, getCurrentWorkspaceIdentity } from '../services/workspaceSession';
 import { BillingHookTransport } from './billingHooks';
 import { BillingHookPayload } from './types';
 import { UsageSnapshot, UsageStoreAdapter } from './usageTracker';
@@ -21,7 +21,7 @@ export function createHttpUsageStoreAdapter(baseUrl?: string): UsageStoreAdapter
 
   return {
     async read(): Promise<Record<string, UsageSnapshot>> {
-      const workspace = await ensureActiveWorkspace();
+      const workspace = await ensureActiveWorkspace(getCurrentWorkspaceIdentity());
       const response = await fetch(usageUrl, {
         method: 'GET',
         headers: getAuthHeaders({ workspaceId: workspace.workspaceId }),
@@ -36,7 +36,7 @@ export function createHttpUsageStoreAdapter(baseUrl?: string): UsageStoreAdapter
     },
 
     async write(data: Record<string, UsageSnapshot>): Promise<void> {
-      const workspace = await ensureActiveWorkspace();
+      const workspace = await ensureActiveWorkspace(getCurrentWorkspaceIdentity());
       await fetch(usageUrl, {
         method: 'PUT',
         headers: getAuthHeaders({ workspaceId: workspace.workspaceId }),
@@ -50,7 +50,7 @@ export function createHttpBillingTransport(targetUrl?: string): BillingHookTrans
   const endpoint = targetUrl ? buildEndpoint(targetUrl) : API_ENDPOINTS.SAAS.BILLING_HOOKS;
 
   return async (payload: BillingHookPayload): Promise<void> => {
-    const workspace = await ensureActiveWorkspace();
+    const workspace = await ensureActiveWorkspace(getCurrentWorkspaceIdentity());
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: getAuthHeaders({ workspaceId: workspace.workspaceId }),

@@ -25,15 +25,15 @@ describe('Multi-tenant Workspace Isolation', () => {
 
   it('owner/admin pode adicionar usuario ao seu workspace', () => {
     const ws = createWorkspace('Empresa C', 'adminUser');
-    const membership = addUserToWorkspace(ws.workspaceId, 'userNovo', 'user', 'adminUser');
+    const membership = addUserToWorkspace(ws.workspaceId, 'userNovo', 'member', 'adminUser');
 
     expect(membership?.userId).toBe('userNovo');
-    expect(getUserRoleInWorkspace('userNovo', ws.workspaceId)).toBe('user');
+    expect(getUserRoleInWorkspace('userNovo', ws.workspaceId)).toBe('member');
   });
 
   it('owner pode remover usuario e acesso e bloqueado imediatamente', () => {
     const ws = createWorkspace('Empresa D', 'ownerD');
-    addUserToWorkspace(ws.workspaceId, 'userRemovido', 'user', 'ownerD');
+    addUserToWorkspace(ws.workspaceId, 'userRemovido', 'member', 'ownerD');
 
     expect(isUserInWorkspace('userRemovido', ws.workspaceId)).toBe(true);
     expect(removeUserFromWorkspace('userRemovido', ws.workspaceId)).toBe(true);
@@ -43,7 +43,7 @@ describe('Multi-tenant Workspace Isolation', () => {
   it('usuario em multiplos workspaces so lista os workspaces em que pertence', () => {
     const ws1 = createWorkspace('Empresa E', 'multiUser');
     const ws2 = createWorkspace('Empresa F', 'adminF');
-    addUserToWorkspace(ws2.workspaceId, 'multiUser', 'user', 'adminF');
+    addUserToWorkspace(ws2.workspaceId, 'multiUser', 'member', 'adminF');
 
     const workspaces = listWorkspacesForUser('multiUser');
     expect(workspaces.map((workspace) => workspace.workspaceId).sort()).toEqual(
@@ -53,10 +53,11 @@ describe('Multi-tenant Workspace Isolation', () => {
 
   it('toda acao sensivel gera log de auditoria', () => {
     const ws = createWorkspace('Empresa G', 'ownerG');
-    addUserToWorkspace(ws.workspaceId, 'userAudit', 'user', 'ownerG');
+    addUserToWorkspace(ws.workspaceId, 'userAudit', 'member', 'ownerG');
 
     const logs = getAuditEvents({ action: 'workspace.addUser', userId: 'ownerG' });
     expect(logs.length).toBeGreaterThan(0);
     expect(logs[0].resource).toBe(ws.workspaceId);
   });
 });
+

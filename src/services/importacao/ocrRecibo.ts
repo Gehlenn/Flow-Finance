@@ -1,11 +1,12 @@
 /**
- * Módulo de OCR de recibos (notas fiscais, boletos, recibos)
- * Roadmap: v0.8.x
+ * Legacy compatibility wrapper for receipt OCR.
  *
- * - Usa Tesseract.js ou Gemini Vision
- * - Extrai valor, categoria e data
- * - Integra com o pipeline de transações
+ * Canonical flow:
+ * - `pages/ReceiptScanner.tsx`
+ * - `src/ai/receiptScanner.ts`
  */
+
+import { scanReceipt } from '../../ai/receiptScanner';
 
 export interface OcrResult {
   valor?: number;
@@ -16,9 +17,23 @@ export interface OcrResult {
 }
 
 export async function processarReciboOCR(imagem: File | Blob): Promise<OcrResult> {
-  // TODO: Integrar Tesseract.js ou Gemini Vision
+  const file = imagem instanceof File
+    ? imagem
+    : new File([imagem], 'receipt-upload.png', { type: imagem.type || 'image/png' });
+
+  const result = await scanReceipt(file);
+  if (!result.success || !result.data) {
+    return {
+      textoCompleto: '',
+      erros: [result.error || 'OCR falhou'],
+    };
+  }
+
   return {
-    textoCompleto: '',
-    erros: ['OCR não implementado']
+    valor: result.data.amount ?? undefined,
+    categoria: result.data.category ?? undefined,
+    data: result.data.date ?? undefined,
+    textoCompleto: result.data.raw_text,
+    erros: [],
   };
 }

@@ -76,8 +76,11 @@ import {
   mapPluggyConnectErrorMessage,
 } from '../../services/integrations/openBankingService';
 import { ApiRequestError } from '../../src/config/api.config';
+import { getWorkspaceScopedStorageKey } from '../../src/utils/workspaceStorage';
 
 import { getProvider } from '../../services/integrations/mockBankProvider';
+
+const LEGACY_CONNECTIONS_KEY = getWorkspaceScopedStorageKey('flow_bank_connections');
 
 describe('openBankingService - Extended Coverage', () => {
   beforeEach(() => {
@@ -383,6 +386,20 @@ describe('openBankingService - Extended Coverage', () => {
 
     await expect(connectBank('nubank', 'u-no-fallback-prod-500')).rejects.toThrow(/500/);
     expect(getConnections('u-no-fallback-prod-500')).toHaveLength(0);
+  });
+
+  it('connectBank nao faz fallback local em producao quando recebe ApiRequestError tipado', async () => {
+    vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+    vi.stubEnv('MODE', 'production');
+
+    apiRequestMock.mockRejectedValueOnce(new ApiRequestError({
+      statusCode: 500,
+      message: 'API Error 500: backend down',
+      requestId: 'req-prod-typed',
+    }));
+
+    await expect(connectBank('nubank', 'u-no-fallback-prod-typed')).rejects.toThrow(/500/);
+    expect(getConnections('u-no-fallback-prod-typed')).toHaveLength(0);
   });
 
   it('syncTransactions usa resultado do backend e atualiza status conectado', async () => {
@@ -716,7 +733,7 @@ describe('openBankingService - Extended Coverage', () => {
   it('syncTransactions remove conexao mock em producao e nao importa dados', async () => {
     vi.stubEnv('MODE', 'production');
 
-    localStorage.setItem('flow_bank_connections', JSON.stringify([
+    localStorage.setItem(LEGACY_CONNECTIONS_KEY, JSON.stringify([
       {
         id: 'conn_mock_sync_prod',
         user_id: 'u-prod-mock-sync',
@@ -895,7 +912,7 @@ describe('openBankingService - Extended Coverage', () => {
   it('reloadConnections remove conexoes mock em producao', async () => {
     vi.stubEnv('MODE', 'production');
 
-    localStorage.setItem('flow_bank_connections', JSON.stringify([
+    localStorage.setItem(LEGACY_CONNECTIONS_KEY, JSON.stringify([
       {
         id: 'conn_mock_prod',
         user_id: 'u-prod-clean',
@@ -921,7 +938,7 @@ describe('openBankingService - Extended Coverage', () => {
 
     const result = await syncTransactions(conn.id, [], 'u-status-missing', (txs) => {
       imported.push(...txs);
-      localStorage.setItem('flow_bank_connections', '[]');
+      localStorage.setItem(LEGACY_CONNECTIONS_KEY, '[]');
     });
 
     expect(result.transactions_imported).toBe(2);

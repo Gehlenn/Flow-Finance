@@ -19,9 +19,9 @@ interface AssistantProps {
   onDeleteReminder: (id: string) => void;
   onAddReminder: (reminder: Partial<Reminder>) => void;
   onUpdateReminder: (updated: Reminder) => void;
-  onSaveAlert: (alert: Alert) => void;
+  onSaveAlert: (alert: Omit<Alert, 'id'>) => void;
   onDeleteAlert: (id: string) => void;
-  onSaveGoal: (goal: Goal) => void;
+  onSaveGoal: (goal: Omit<Goal, 'id'>) => void;
   onDeleteGoal: (id: string) => void;
   onUpdateGoal: (updated: Goal) => void;
   hideValues: boolean;
@@ -144,9 +144,8 @@ const Assistant: React.FC<AssistantProps> = ({
     if (!newGoal.title || !newGoal.targetAmount) return;
     onSaveGoal({
       ...newGoal,
-      id: Math.random().toString(36).substr(2, 9),
       currentAmount: newGoal.currentAmount || 0
-    } as Goal);
+    } as Omit<Goal, 'id'>);
     setIsAddingGoal(false);
     setNewGoal({ title: '', targetAmount: 0, currentAmount: 0, category: Category.INVESTIMENTO });
   };
@@ -454,7 +453,6 @@ const Assistant: React.FC<AssistantProps> = ({
                         <button 
                           onClick={() => {
                             onSaveAlert({
-                              id: Math.random().toString(36).substr(2, 9),
                               category: alert.category as any,
                               threshold: alert.threshold,
                               timeframe: 'mensal'
@@ -572,7 +570,7 @@ const Assistant: React.FC<AssistantProps> = ({
                 {Object.values(Category).map(cat => <option key={cat} value={cat}>{cat}</option>)}
               </select>
               <input type="number" value={newAlert.threshold || ''} onChange={e => setNewAlert({...newAlert, threshold: parseFloat(e.target.value)})} placeholder="Valor Máximo (R$)" className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl outline-none font-black text-lg text-slate-800 dark:text-white border-none" />
-              <button onClick={() => { if(newAlert.threshold) onSaveAlert({ ...newAlert, id: Math.random().toString(36).substr(2, 9) } as Alert); setIsAddingAlert(false); }} className="w-full py-5 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all hover:bg-rose-700">Definir Limite</button>
+              <button onClick={() => { if(newAlert.threshold) onSaveAlert(newAlert as Omit<Alert, 'id'>); setIsAddingAlert(false); }} className="w-full py-5 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all hover:bg-rose-700">Definir Limite</button>
             </div>
           </div>
         </div>

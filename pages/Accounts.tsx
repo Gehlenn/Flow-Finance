@@ -10,6 +10,8 @@ interface AccountsProps {
   userId: string;
   hideValues: boolean;
   activeWorkspaceName?: string | null;
+  activeTenantName?: string | null;
+  activeWorkspaceRole?: 'owner' | 'admin' | 'member' | 'viewer' | null;
   accounts: Account[];
   onCreateAccount: (account: { name: string; type: AccountType; balance: number }) => Promise<void>;
   onDeleteAccount: (accountId: string) => void;
@@ -29,9 +31,10 @@ const ACCOUNT_COLORS: Record<AccountType, string> = {
   investment: 'from-amber-500 to-amber-600',
 };
 
-const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, accounts, onCreateAccount, onDeleteAccount }) => {
+const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, activeTenantName, activeWorkspaceRole, accounts, onCreateAccount, onDeleteAccount }) => {
   const [showForm, setShowForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const canEdit = activeWorkspaceRole !== 'viewer';
 
   const [form, setForm] = useState({
     name: '',
@@ -79,6 +82,9 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
           <p className="text-[8px] font-black text-white/80 uppercase tracking-widest mt-2">
             Workspace: {activeWorkspaceName || 'Carregando workspace'}
           </p>
+          <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mt-1">
+            Tenant: {activeTenantName || 'Tenant ativo'} · Role: {activeWorkspaceRole || 'member'}
+          </p>
         </div>
         <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center text-white relative z-10">
           <Landmark size={22} />
@@ -108,7 +114,7 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
                 <p className={`font-black text-base ${account.balance >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>
                   {hideValues ? '••••' : formatVal(account.balance)}
                 </p>
-                {accounts.length > 1 && (
+                {accounts.length > 1 && canEdit && (
                   <button
                     onClick={() => handleDelete(account.id)}
                     className="p-2 text-slate-300 hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"
@@ -122,14 +128,14 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
         ))}
       </div>
 
-      {!showForm ? (
+      {!showForm && canEdit ? (
         <button
           onClick={() => setShowForm(true)}
           className="w-full py-4 rounded-[1.8rem] border-2 border-dashed border-indigo-200 dark:border-indigo-500/30 text-indigo-500 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
         >
           <Plus size={16} /> Nova Conta
         </button>
-      ) : (
+      ) : canEdit ? (
         <form onSubmit={handleCreate} className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col gap-4 animate-in slide-in-from-bottom-4 duration-300">
           <div className="flex items-center justify-between mb-1">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nova Conta</p>
@@ -186,6 +192,10 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
             {isSaving ? <Loader2 size={16} className="animate-spin" /> : <><Check size={16} /> Salvar Conta</>}
           </button>
         </form>
+      ) : (
+        <div className="w-full py-4 rounded-[1.8rem] border border-slate-200 dark:border-slate-700 text-slate-400 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
+          Workspace em modo leitura
+        </div>
       )}
 
       {accounts.length === 0 && (

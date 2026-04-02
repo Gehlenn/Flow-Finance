@@ -1,5 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ACTIVE_WORKSPACE_STORAGE_KEY } from '../../src/config/api.config';
+
+const firestoreWorkspaceMocks = vi.hoisted(() => ({
+  listUserWorkspaceSummariesMock: vi.fn(),
+  createPersonalWorkspaceMock: vi.fn(),
+  ensureActiveWorkspaceForUserMock: vi.fn(),
+}));
+
+vi.mock('../../src/services/firestoreWorkspaceStore', () => ({
+  listUserWorkspaceSummaries: firestoreWorkspaceMocks.listUserWorkspaceSummariesMock,
+  createPersonalWorkspace: firestoreWorkspaceMocks.createPersonalWorkspaceMock,
+  ensureActiveWorkspaceForUser: firestoreWorkspaceMocks.ensureActiveWorkspaceForUserMock,
+}));
+
 import {
   clearActiveWorkspace,
   ensureActiveWorkspace,
@@ -10,7 +23,7 @@ import {
 describe('workspaceSession', () => {
   beforeEach(() => {
     localStorage.clear();
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -19,39 +32,38 @@ describe('workspaceSession', () => {
 
   it('reuses the stored workspace when it is still available', async () => {
     localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, 'ws_2');
+    firestoreWorkspaceMocks.listUserWorkspaceSummariesMock.mockResolvedValue([
+      { workspaceId: 'ws_1', tenantId: 'tenant-1', name: 'Workspace 1', tenantName: 'Tenant 1', plan: 'free', role: 'member', isDefault: false },
+      { workspaceId: 'ws_2', tenantId: 'tenant-1', name: 'Workspace 2', tenantName: 'Tenant 1', plan: 'pro', role: 'owner', isDefault: true },
+    ]);
 
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        workspaces: [
-          { workspaceId: 'ws_1', name: 'Workspace 1', plan: 'free' },
-          { workspaceId: 'ws_2', name: 'Workspace 2', plan: 'pro' },
-        ],
-      }),
-    } as Response);
-
-    const workspace = await ensureActiveWorkspace();
+    const workspace = await ensureActiveWorkspace({ userId: 'user-1', name: 'Flow User', email: 'user@test.dev' });
 
     expect(workspace.workspaceId).toBe('ws_2');
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(firestoreWorkspaceMocks.listUserWorkspaceSummariesMock).toHaveBeenCalledWith('user-1');
   });
 
   it('creates a personal workspace when the user has none', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ workspaces: [] }),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ workspaceId: 'ws_new', name: 'Workspace Pessoal', plan: 'free' }),
-      } as Response);
+    firestoreWorkspaceMocks.listUserWorkspaceSummariesMock.mockResolvedValue([]);
+    firestoreWorkspaceMocks.ensureActiveWorkspaceForUserMock.mockResolvedValue({
+      workspaceId: 'ws_new',
+      tenantId: 'tenant-new',
+      name: 'Workspace Pessoal',
+      tenantName: 'Tenant de Flow User',
+      plan: 'free',
+      role: 'owner',
+      isDefault: true,
+    });
 
-    const workspace = await ensureActiveWorkspace();
+    const workspace = await ensureActiveWorkspace({ userId: 'user-1', name: 'Flow User', email: 'user@test.dev' });
 
     expect(workspace.workspaceId).toBe('ws_new');
     expect(localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY)).toBe('ws_new');
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(firestoreWorkspaceMocks.ensureActiveWorkspaceForUserMock).toHaveBeenCalledWith({
+      userId: 'user-1',
+      name: 'Flow User',
+      email: 'user@test.dev',
+    });
   });
 
   it('persists active workspace changes and emits a browser event', () => {

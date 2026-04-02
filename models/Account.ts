@@ -7,6 +7,8 @@ export type AccountType =
 export interface Account {
   id: string;
   user_id: string;
+  tenant_id?: string;
+  workspace_id?: string;
 
   name: string;
   type: AccountType;

@@ -26,7 +26,7 @@ export interface BillingHookPayload {
   userId: string;
   workspaceId?: string;
   plan: PlanName;
-  event: 'usage_recorded' | 'limit_reached' | 'upgrade_required';
+  event: 'usage_recorded' | 'limit_reached' | 'upgrade_required' | 'plan_changed';
   resource: ResourceKind;
   amount: number;
   at: string;

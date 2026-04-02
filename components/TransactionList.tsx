@@ -19,6 +19,7 @@ interface TransactionListProps {
   activeWorkspaceName?: string | null;
   transactions: Transaction[];
   hideValues: boolean;
+  canEdit?: boolean;
   onDelete: (id: string) => void;
   onDeleteMultiple: (ids: string[]) => void;
   onUpdate: (updated: Transaction) => void;
@@ -98,7 +99,7 @@ const readStoredSortConfig = (key: string): { key: SortKey; direction: SortDirec
   return { key: 'date', direction: 'desc' };
 };
 
-const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, activeWorkspaceName, transactions, hideValues, onDelete, onDeleteMultiple, onUpdate }) => {
+const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, activeWorkspaceName, transactions, hideValues, canEdit = true, onDelete, onDeleteMultiple, onUpdate }) => {
   const storageKeys = useMemo(() => ({
     searchQuery: getWorkspaceScopedStorageKey('flow_searchQuery', activeWorkspaceId),
     showFilters: getWorkspaceScopedStorageKey('flow_showFilters', activeWorkspaceId),
@@ -289,7 +290,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
   };
 
   const bulkDelete = () => {
-    if (selectedIds.size === 0) return;
+    if (!canEdit || selectedIds.size === 0) return;
     if (confirm(`Deseja excluir permanentemente os ${selectedIds.size} itens selecionados?`)) {
       onDeleteMultiple(Array.from(selectedIds));
       setSelectedIds(new Set());
@@ -520,18 +521,18 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
            </div>
            
            <div className="flex items-center gap-3">
-              <button onClick={(e) => { e.stopPropagation(); setIsShareModalOpen(true); }} className="p-2 hover:bg-white/10 rounded-xl transition-colors text-emerald-400 flex flex-col items-center gap-0.5">
+                <button onClick={(e) => { e.stopPropagation(); setIsShareModalOpen(true); }} className="p-2 hover:bg-white/10 rounded-xl transition-colors text-emerald-400 flex flex-col items-center gap-0.5">
                 <Share2 size={18} />
                 <span className="text-[6px] font-black uppercase">Relatório</span>
               </button>
               
-              <button 
+              {canEdit && <button 
                 onClick={(e) => { e.stopPropagation(); bulkDelete(); }} 
                 className="p-2 hover:bg-white/10 rounded-xl transition-colors text-rose-400 flex flex-col items-center gap-0.5"
               >
                 <Trash2 size={18} />
                 <span className="text-[6px] font-black uppercase">Excluir</span>
-              </button>
+              </button>}
 
               <div className="w-px h-8 bg-white/10 mx-1"></div>
 
@@ -717,8 +718,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
                <div className="flex justify-between"><span className="text-[8px] font-black text-slate-400 uppercase">Tipo</span><span className="text-[9px] font-bold dark:text-white">{viewingTransaction.type}</span></div>
             </div>
             <div className="flex gap-2 pt-2">
-               <button onClick={() => { setEditingTransaction(viewingTransaction); setViewingTransaction(null); }} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all">Editar</button>
-               <button onClick={() => setTransactionToDelete(viewingTransaction)} className="flex-1 py-4 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all">Excluir</button>
+               {canEdit && <button onClick={() => { setEditingTransaction(viewingTransaction); setViewingTransaction(null); }} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all">Editar</button>}
+               {canEdit && <button onClick={() => setTransactionToDelete(viewingTransaction)} className="flex-1 py-4 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all">Excluir</button>}
             </div>
           </div>
         </div>

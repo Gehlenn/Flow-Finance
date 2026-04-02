@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const workspaceStoreMocks = vi.hoisted(() => ({
   getWorkspaceAsync: vi.fn(),
+  getTenantAsync: vi.fn(),
   isUserInWorkspaceAsync: vi.fn(),
   getUserRoleInWorkspaceAsync: vi.fn(),
 }));
@@ -30,6 +31,7 @@ function makeResponse() {
 describe('async workspace authorization middlewares', () => {
   beforeEach(() => {
     workspaceStoreMocks.getWorkspaceAsync.mockReset();
+    workspaceStoreMocks.getTenantAsync.mockReset();
     workspaceStoreMocks.isUserInWorkspaceAsync.mockReset();
     workspaceStoreMocks.getUserRoleInWorkspaceAsync.mockReset();
   });
@@ -38,6 +40,21 @@ describe('async workspace authorization middlewares', () => {
     const { workspaceContextMiddleware } = await loadWorkspaceContextModule();
     workspaceStoreMocks.getWorkspaceAsync.mockResolvedValue({
       workspaceId: 'ws-1',
+      tenantId: 'tenant-1',
+      name: 'Workspace 1',
+      isDefault: true,
+      plan: 'pro',
+      entitlements: {
+        features: ['adminConsole'],
+        limits: {
+          transactionsPerMonth: 100,
+          aiQueriesPerMonth: 10,
+          bankConnections: 1,
+        },
+      },
+    });
+    workspaceStoreMocks.getTenantAsync.mockResolvedValue({
+      tenantId: 'tenant-1',
       plan: 'pro',
     });
     workspaceStoreMocks.isUserInWorkspaceAsync.mockResolvedValue(true);
@@ -56,9 +73,11 @@ describe('async workspace authorization middlewares', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(workspaceStoreMocks.getWorkspaceAsync).toHaveBeenCalledWith('ws-1');
+    expect(workspaceStoreMocks.getTenantAsync).toHaveBeenCalledWith('tenant-1');
     expect(workspaceStoreMocks.isUserInWorkspaceAsync).toHaveBeenCalledWith('owner-1', 'ws-1');
     expect(req.workspaceId).toBe('ws-1');
-    expect(req.workspace).toEqual({ workspaceId: 'ws-1', plan: 'pro' });
+    expect(req.tenantId).toBe('tenant-1');
+    expect(req.workspace).toMatchObject({ workspaceId: 'ws-1', tenantId: 'tenant-1', plan: 'pro' });
     expect(next).toHaveBeenCalled();
   });
 
