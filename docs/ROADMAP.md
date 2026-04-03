@@ -1,40 +1,32 @@
-## Planejamento Próxima Sprint
-- Foco em testes E2E robustos para jornadas sensíveis
-- Explorar integração de notificações push
-- Avaliar expansão de relatórios e exportação de dados
-- Refinar onboarding e tutoriais in-app
+﻿# FLOW FINANCE — ROADMAP (v0.9.1)
 
-## Sugestões Técnicas e de UX
-- Melhorar feedback visual em operações críticas
-- Adotar lazy loading em listas grandes
-- Revisar acessibilidade (atalhos, foco, contraste)
-- Automatizar testes E2E no CI
+**Data:** 2026-04-02
+**Status:** Transição v0.9.1 iniciada
+**Objetivo:** prontidão SaaS segura para Web (Vercel) e Mobile (iOS/Android)
 
-# v0.8.0 (mar/2026)
-- Scanner: imagem/PDF ✅
-- Erro Gemini: UX aprimorada ✅
-- Open Banking: removido da UI ✅
-- Monitor de performance: ocultado ✅
-- Dashboard.tsx: refatorado ✅
+## Prioridades 0.9.1 → 0.9.3
 
-## Próximos passos
-- Testes E2E para jornadas críticas
-- Monitoramento pós-deploy de integrações
+1. **Auth & Sessão de Produção**
+   - Migrar mock local para Auth real (Firebase Auth/Clerk/Auth.js)
+   - Refresh token seguro, rotação e revogação
 
-# FLOW FINANCE - ROADMAP OFICIAL
+2. **Multi-tenant e Isolamento de Dados**
+   - Modelo tenant-aware obrigatório em leitura/escrita
+   - Auditoria de autorização por workspace
 
 **Data:** 17 de Março de 2026
-**Status Atual:** v0.7.0 (Sprint 3 em andamento; baseline técnico evoluído)
+**Status Atual:** v0.9.1v (transição auditada com foco em hardening SaaS e QA)
 **Meta Estrategica:** v1.0 publico com AI Financial Assistant completo
 
----
+4. **IA Financeira Confiável**
+   - Mover chamadas de IA para backend/proxy seguro
+   - Classificação com score de confiança + fallback determinístico
 
-## ⚠️ DECISAO ESTRATEGICA: Open Finance (Pluggy) DESATIVADO
+5. **Qualidade e Observabilidade**
+   - Cobertura mínima de 98% em escopo crítico
+   - SLO de erro e latência para fluxos de saldo e sincronização
 
-**Data:** 16 de Marco de 2026  
-**Motivo:** Custo operacional Pluggy >R$ 1.000/mes — inviavel economicamente na fase pré-receita  
-**Status:** Infraestrutura mantida intacta com feature gate simples (`DISABLE_OPEN_FINANCE=true` no backend)  
-**Reativacao:** Quando aplicacao atingir SMU (Single Monthly Unit) receita justificando custo  
+## Marcos
 
 **Mudancas:**
 - Endpoint `/api/banking/*` retorna HTTP 503 Service Unavailable quando `DISABLE_OPEN_FINANCE=true`
@@ -201,6 +193,17 @@ Deteccao de servicos como:
 
 ## v0.9.x - Preparação SaaS
 
+### Checkpoint 0.9.1v (02/04/2026)
+- Auditoria sistêmica concluída com priorização de riscos OWASP e escalabilidade.
+- Cobertura crítica validada com baseline acima da meta protocolar no recorte sensível.
+- Regressao unitaria/integrada aprovada; regressao E2E aprovada apos estabilizacao de runtime/configuracao.
+- Backlog imediato de hardening para release:
+	- sanitização de entrada em campos livres de transação
+	- enforce de `JWT_SECRET` forte em produção
+	- quota obrigatória para endpoints de IA
+	- estratégia formal de resolução de conflitos de sincronização
+	- unificação da lógica de categorização IA em serviço único
+
 ### 1. Autenticação completa
 - JWT
 - refresh tokens
@@ -344,3 +347,4 @@ Database
 - [ ] D5 Integracao de insights D3/D4 na camada de UI (dashboard e assistente)
 - [ ] D6 Exposicao de metricas D3/D4 em endpoint/backend para consumo mobile
 - [ ] D7 Hardening E2E Open Banking com fixture autenticada estavel (reduzir skips)
+

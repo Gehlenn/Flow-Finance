@@ -52,9 +52,11 @@ import {
   addWorkspaceMember,
   listWorkspaceAuditEvents,
   listWorkspaceMembers,
+  listWorkspaceCollectionDocuments,
   listUserWorkspaceSummaries,
   removeWorkspaceMember,
   replaceWorkspaceEntityCollection,
+  upsertWorkspaceCollectionDocument,
 } from '../../src/services/firestoreWorkspaceStore';
 
 describe('firestoreWorkspaceStore', () => {
@@ -191,7 +193,10 @@ describe('firestoreWorkspaceStore', () => {
     const result = await listWorkspaceAuditEventsPage({ tenantId: 'tenant-1', workspaceId: 'ws-1', maxItems: 1 });
 
     expect(result.events).toHaveLength(1);
-    expect(result.nextCursor).toBe('2026-04-03T00:00:00.000Z');
+    expect(result.nextCursor).toEqual({
+      createdAt: '2026-04-03T00:00:00.000Z',
+      id: 'evt-1',
+    });
   });
 
   it('reconciles temporary ids and writes audit entries when replacing a workspace collection', async () => {
@@ -237,5 +242,57 @@ describe('firestoreWorkspaceStore', () => {
       expect.objectContaining({ path: 'workspaces/ws-1/accounts/acc_old' }),
     );
     expect(firestoreWorkspaceStoreMocks.batchCommitMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads and writes future workspace-scoped collections with tenant context', async () => {
+    firestoreWorkspaceStoreMocks.getDocsMock.mockResolvedValueOnce({
+      docs: [
+        {
+          data: () => ({
+            id: 'sub-1',
+            name: 'Netflix',
+            amount: 39.9,
+            cycle: 'monthly',
+            status: 'active',
+            tenant_id: 'tenant-1',
+            workspace_id: 'ws-1',
+            user_id: 'user-1',
+            created_at: '2026-04-02T00:00:00.000Z',
+            updated_at: '2026-04-02T00:00:00.000Z',
+          }),
+        },
+      ],
+    });
+
+    const existing = await listWorkspaceCollectionDocuments('ws-1', 'subscriptions');
+    expect(existing).toHaveLength(1);
+
+    const stored = await upsertWorkspaceCollectionDocument('subscriptions', {
+      id: 'sub-2',
+      name: 'Spotify',
+      amount: 21.9,
+      cycle: 'monthly',
+      status: 'active',
+    }, {
+      userId: 'user-1',
+      tenantId: 'tenant-1',
+      workspaceId: 'ws-1',
+    });
+
+    expect(stored).toEqual(expect.objectContaining({
+      id: 'sub-2',
+      tenant_id: 'tenant-1',
+      workspace_id: 'ws-1',
+      user_id: 'user-1',
+    }));
+    expect(firestoreWorkspaceStoreMocks.setDocMock).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'workspaces/ws-1/subscriptions/sub-2' }),
+      expect.objectContaining({
+        tenant_id: 'tenant-1',
+        workspace_id: 'ws-1',
+        user_id: 'user-1',
+      }),
+      { merge: true },
+    );
   });
 });

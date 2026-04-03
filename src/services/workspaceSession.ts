@@ -6,12 +6,18 @@ import {
   ensureActiveWorkspaceForUser,
   listWorkspaceAuditEvents,
   listWorkspaceAuditEventsPage,
+  listWorkspaceCollectionDocuments,
   listWorkspaceMembers,
   listUserWorkspaceSummaries,
   removeWorkspaceMember,
+  upsertWorkspaceCollectionDocument,
   type AuditLogDocument,
+  type AuditLogCursor,
   type WorkspaceMemberDocument,
   type UserIdentity,
+  type WorkspaceImportDocument,
+  type WorkspaceInsightDocument,
+  type WorkspaceSubscriptionDocument,
   type WorkspaceSummary,
 } from './firestoreWorkspaceStore';
 
@@ -19,10 +25,21 @@ export {
   addWorkspaceMember,
   listWorkspaceAuditEvents,
   listWorkspaceAuditEventsPage,
+  listWorkspaceCollectionDocuments,
   listWorkspaceMembers,
   removeWorkspaceMember,
+  upsertWorkspaceCollectionDocument,
 };
-export type { AuditLogDocument, WorkspaceMemberDocument, WorkspaceRole, WorkspaceSummary } from './firestoreWorkspaceStore';
+export type {
+  AuditLogCursor,
+  AuditLogDocument,
+  WorkspaceImportDocument,
+  WorkspaceInsightDocument,
+  WorkspaceMemberDocument,
+  WorkspaceRole,
+  WorkspaceSubscriptionDocument,
+  WorkspaceSummary,
+} from './firestoreWorkspaceStore';
 
 export const WORKSPACE_CHANGED_EVENT = 'flow:workspace-changed';
 

@@ -60,8 +60,9 @@ function isProductionRuntime(): boolean {
 }
 
 function getApiErrorStatus(error: unknown): number | null {
-  if (error instanceof ApiRequestError) {
-    return error.statusCode;
+  const statusFromObject = (error as { statusCode?: unknown })?.statusCode;
+  if (typeof statusFromObject === 'number') {
+    return statusFromObject;
   }
 
   const message = String((error as any)?.message ?? '');

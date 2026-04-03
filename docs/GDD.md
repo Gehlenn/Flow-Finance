@@ -1,4 +1,4 @@
-# v0.8.0 — Auditoria Técnica
+﻿# v0.8.0 — Auditoria Técnica
 - Todos os fluxos críticos validados
 - Scanner, Dashboard, integrações e UX revisados
 - Auditoria: ver AUDIT_REPORT_v0.8.0.md
@@ -7,14 +7,21 @@
 
 ## Documento de Design e Mecânicas
 
-**Versão**: 0.5.2v  
-**Data**: 14 de Março de 2026  
+**Versão**: 0.9.1v  
+**Data**: 2 de Abril de 2026  
 **Escopo**: Flow Finance - Intelligent Cash Flow Management App (iOS/Android/Web)
 
 ### Status de Transicao 0.5.2v
 - Protocolo iniciado com foco em hardening de dominio e confiabilidade operacional
 - Validacao critica concluida com lint, testes unitarios e cobertura de fluxos sensiveis
 - Fluxo Open Banking E2E ajustado para evitar falso-negativo de infraestrutura local
+
+### Adendo de Transicao 0.9.1v
+- Auditoria técnica reforçada para riscos de XSS, autenticação JWT, quotas de IA e sincronização multi-dispositivo.
+- Fluxos críticos priorizados para validação contínua: câmbio, sincronização de saldo, categorização IA e persistência.
+- Requisito de consistência Web/Mobile reforçado com health check de console e regressões E2E em múltiplos engines.
+- Diretriz de arquitetura para v0.9.x: consolidar lógica duplicada de categorização em serviço único com cache e fallback.
+- Encerramento de transicao: validacao final com lint, cobertura critica >= 98% e E2E verde no recorte da release.
 
 ---
 
@@ -385,3 +392,4 @@ Speech/Image  Extract Data    Persist       Dashboard
 
 **Documento Finalizado**: 8 de Março de 2026  
 **Próxima Revisão**: v0.4.0
+

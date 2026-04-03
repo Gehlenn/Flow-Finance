@@ -4,10 +4,12 @@ async function importService(options?: {
   mode?: 'test' | 'production';
   connectEndpoint?: string;
   apiError?: unknown;
+  enableLocalFallback?: boolean;
 }) {
   vi.resetModules();
   vi.unstubAllEnvs();
   vi.stubEnv('MODE', options?.mode || 'test');
+  vi.stubEnv('VITE_ENABLE_LOCAL_BANKING_FALLBACK', options?.enableLocalFallback ? 'true' : '');
 
   const apiRequestMock = vi.fn();
   if (options?.apiError) {
@@ -62,6 +64,7 @@ async function importService(options?: {
   return {
     service,
     ApiRequestError: apiConfig.ApiRequestError,
+    apiRequestMock,
   };
 }
 
@@ -103,6 +106,29 @@ describe('openBankingService critical branches', () => {
     expect(service.getConnections('user-prod')).toEqual([]);
   });
 
+  it('nao faz fallback quando erro e instancia real de ApiRequestError em producao', async () => {
+    const { service, ApiRequestError, apiRequestMock } = await importService({ mode: 'production' });
+
+    apiRequestMock.mockRejectedValueOnce(new ApiRequestError({
+      statusCode: 503,
+      message: 'API Error 503: unavailable',
+    }));
+
+    await expect(service.connectBank('nubank', 'user-prod-instance')).rejects.toThrow(/503/);
+    expect(service.getConnections('user-prod-instance')).toEqual([]);
+  });
+
+  it('nao mascara erro 5xx em producao mesmo com fallback local habilitado', async () => {
+    const { service } = await importService({
+      mode: 'production',
+      enableLocalFallback: true,
+      apiError: { statusCode: 500, message: 'API Error 500: backend down' },
+    });
+
+    await expect(service.connectBank('nubank', 'user-prod-no-fallback')).rejects.toThrow(/500/);
+    expect(service.getConnections('user-prod-no-fallback')).toEqual([]);
+  });
+
   it('falha explicitamente quando backend e fallback local estao indisponiveis', async () => {
     const { service } = await importService({
       mode: 'production',
@@ -110,5 +136,52 @@ describe('openBankingService critical branches', () => {
     });
 
     await expect(service.connectBank('nubank', 'user-no-backend')).rejects.toThrow(/backend indisponivel/i);
+  });
+
+  it('faz fallback local em desenvolvimento quando backend retorna erro 5xx', async () => {
+    const { service } = await importService({
+      mode: 'development',
+      enableLocalFallback: true,
+      apiError: { statusCode: 503, message: 'API Error 503: unavailable' },
+    });
+
+    const connection = await service.connectBank('nubank', 'user-dev-fallback');
+
+    expect(connection.user_id).toBe('user-dev-fallback');
+    expect(connection.provider).toBe('mock');
+    expect(service.getConnections('user-dev-fallback')).toHaveLength(1);
+  });
+
+  it('nao faz fallback local em desenvolvimento quando backend retorna erro 4xx', async () => {
+    const { service } = await importService({
+      mode: 'development',
+      enableLocalFallback: true,
+      apiError: { message: 'API Error 422: invalid payload' },
+    });
+
+    await expect(service.connectBank('nubank', 'user-dev-client-error')).rejects.toThrow(/422/);
+    expect(service.getConnections('user-dev-client-error')).toEqual([]);
+  });
+
+  it('mapeia erro Pluggy de credencial trial com requestId', async () => {
+    const { service } = await importService();
+
+    const message = service.mapPluggyConnectErrorMessage({
+      code: 'trial_client_item_create_not_allowed',
+      requestId: 'req-123',
+    });
+
+    expect(message).toMatch(/modo de teste/i);
+    expect(message).toMatch(/requestId: req-123/);
+  });
+
+  it('mapeia erro Pluggy de token invalido', async () => {
+    const { service } = await importService();
+
+    const message = service.mapPluggyConnectErrorMessage({
+      message: 'invalid_connect_token',
+    });
+
+    expect(message).toMatch(/token de conexao/i);
   });
 });

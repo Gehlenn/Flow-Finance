@@ -4,6 +4,7 @@ import Logo from './Logo';
 import { 
   auth, 
   googleProvider, 
+  isFirebaseConfigured,
   signInWithPopup,
 } from '../services/firebase';
 import {
@@ -32,6 +33,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   const getFirebaseErrorMessage = (code: string) => {
     switch (code) {
+      case 'auth/configuration-not-found': return 'Autenticacao Firebase indisponivel neste ambiente. Configure as variaveis do frontend para habilitar login real.';
       case 'auth/email-already-in-use': return 'Este e-mail já está sendo utilizado.';
       case 'auth/weak-password': return 'A senha deve ter pelo menos 6 caracteres.';
       case 'auth/invalid-email': return 'O e-mail informado não é válido.';
@@ -42,6 +44,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   const handleSocialLogin = async (provider: AuthProvider) => {
+    if (!isFirebaseConfigured) {
+      setError({ code: 'auth/configuration-not-found', message: getFirebaseErrorMessage('auth/configuration-not-found') });
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -65,6 +71,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
+    if (!isFirebaseConfigured) {
+      setError({ code: 'auth/configuration-not-found', message: getFirebaseErrorMessage('auth/configuration-not-found') });
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -79,6 +89,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password || !name) return;
+    if (!isFirebaseConfigured) {
+      setError({ code: 'auth/configuration-not-found', message: getFirebaseErrorMessage('auth/configuration-not-found') });
+      return;
+    }
     if (password.length < 6) {
       setError({ code: 'local/short-password', message: "A senha precisa de no mínimo 6 caracteres." });
       return;
@@ -97,6 +111,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const handleRecoverPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
+    if (!isFirebaseConfigured) {
+      setError({ code: 'auth/configuration-not-found', message: getFirebaseErrorMessage('auth/configuration-not-found') });
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {

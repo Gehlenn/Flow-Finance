@@ -1,4 +1,4 @@
-# 🐛 BUGLOG - Flow Finance v0.3.1v
+﻿# 🐛 BUGLOG - Flow Finance v0.3.1v
 
 **Documento de Rastreamento de Bugs**  
 **Período**: v0.3.0 → v0.3.1v  
@@ -20,6 +20,75 @@
 ---
 
 ## CHECKPOINT DE TRANSICAO v0.6.0
+
+## CHECKPOINT DE TRANSICAO v0.9.1v
+
+### 🔴 B013 - Runtime console health com "Maximum update depth exceeded"
+**ID**: B013  
+**Versao Identificada**: v0.9.1v  
+**Severidade**: 🔴 CRITICA  
+**Impacto**: Regressao funcional no shell em múltiplos browsers, com risco de loop de render e travamento de UI  
+
+**Descricao**:
+- Testes E2E de runtime console health reportaram erro repetido de profundidade máxima de atualização.
+- Falha reproduzida em Chromium, Firefox, WebKit e Mobile Chrome.
+
+**Causa Raiz (hipótese inicial)**:
+- Efeito React com dependências instáveis e `setState` em cascata sem condição de parada robusta.
+
+**Solucao Aplicada**:
+- Estabilizacao de callbacks no `App.tsx` com `useCallback` para evitar reruns em cascata.
+- Ajuste do `useAuthAndWorkspace` com `useRef` para reduzir resubscribe e evitar loop de atualizacao.
+
+**Status**: 🟢 CORRIGIDO  
+**Data de Correcao**: 2 Abr 2026  
+**Data de Registro**: 2 Abr 2026
+
+---
+
+### 🔴 B014 - API key inválida gerando erro 400 no runtime
+**ID**: B014  
+**Versao Identificada**: v0.9.1v  
+**Severidade**: 🔴 CRITICA  
+**Impacto**: Falha de integrações de autenticação/serviço externo, ruído de console e degradação de experiência  
+
+**Descricao**:
+- Execuções E2E apontaram `API_KEY_INVALID` com resposta `400` em chamadas para serviço Google/Firebase.
+
+**Causa Raiz (hipótese inicial)**:
+- Variável de ambiente de chave não configurada ou inválida no ambiente de teste E2E.
+
+**Solucao Aplicada**:
+- `services/firebase.ts` alterado para modo degradado seguro sem inicializacao real com placeholders.
+- `components/Login.tsx` atualizado com guardas de `isFirebaseConfigured` e mensagem amigavel de configuracao ausente.
+
+**Status**: 🟢 CORRIGIDO  
+**Data de Correcao**: 2 Abr 2026  
+**Data de Registro**: 2 Abr 2026
+
+---
+
+### 🟡 B015 - E2E com `ERR_CONNECTION_REFUSED` para localhost:3000
+**ID**: B015  
+**Versao Identificada**: v0.9.1v  
+**Severidade**: 🟡 MEDIA  
+**Impacto**: Falso-negativo de regressão E2E por indisponibilidade do app sob teste  
+
+**Descricao**:
+- Specs de edição de categoria falharam com `page.goto` recusando conexão em `http://localhost:3000/`.
+
+**Causa Raiz (hipótese inicial)**:
+- Dependência de servidor local sem garantia de startup/health check antes da execução de cenários.
+
+**Solucao Aplicada**:
+- `tests/e2e/transaction-edit-category.spec.ts` ajustado para usar `baseURL` e fluxo `e2eAuth` sem URL fixa em `localhost:3000`.
+- `tests/e2e/billing.spec.ts` alinhado com UI atual de billing e skip controlado por disponibilidade de ambiente.
+
+**Status**: 🟢 CORRIGIDO  
+**Data de Correcao**: 2 Abr 2026  
+**Data de Registro**: 2 Abr 2026
+
+---
 
 ## CHECKPOINT DE TRANSICAO v0.6.5
 
@@ -656,3 +725,4 @@ export function App() {
 - Tipo: Test reliability
 - Impacto: nao bloqueia pipeline principal, mas reduz sinal de validacao do fluxo Pluggy isolado
 - Acao proposta: criar fixture de usuario e token dedicados para E2E Pluggy
+

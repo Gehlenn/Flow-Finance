@@ -130,7 +130,9 @@ describe('firestore rules emulator', () => {
   });
 
   afterAll(async () => {
-    await testEnv.cleanup();
+    if (testEnv) {
+      await testEnv.cleanup();
+    }
   });
 
   it('allows a workspace member to read workspace accounts', async () => {
@@ -179,6 +181,11 @@ describe('firestore rules emulator', () => {
     await assertFails(getDoc(doc(outsiderDb, 'tenants', 'tenant-1')));
   });
 
+  it('blocks a non-manager tenant member from reading another tenant member document', async () => {
+    const db = testEnv.authenticatedContext('viewer-1').firestore();
+    await assertFails(getDoc(doc(db, 'tenant_members', 'tenant-1_owner-1')));
+  });
+
   it('blocks writes with a mismatched tenant id inside a workspace', async () => {
     const db = testEnv.authenticatedContext('owner-1').firestore();
     await assertFails(setDoc(doc(db, 'workspaces', 'ws-1', 'accounts', 'acc-tenant-mismatch'), {
@@ -189,6 +196,36 @@ describe('firestore rules emulator', () => {
       currency: 'BRL',
       user_id: 'owner-1',
       tenant_id: 'tenant-999',
+      workspace_id: 'ws-1',
+      created_at: '2026-04-02T00:00:00.000Z',
+      updated_at: '2026-04-02T00:00:00.000Z',
+    }));
+  });
+
+  it('allows an owner to create workspace-scoped subscriptions and blocks tenant mismatches', async () => {
+    const db = testEnv.authenticatedContext('owner-1').firestore();
+
+    await assertSucceeds(setDoc(doc(db, 'workspaces', 'ws-1', 'subscriptions', 'sub-1'), {
+      id: 'sub-1',
+      name: 'Netflix',
+      amount: 39.9,
+      cycle: 'monthly',
+      status: 'active',
+      user_id: 'owner-1',
+      tenant_id: 'tenant-1',
+      workspace_id: 'ws-1',
+      created_at: '2026-04-02T00:00:00.000Z',
+      updated_at: '2026-04-02T00:00:00.000Z',
+    }));
+
+    await assertFails(setDoc(doc(db, 'workspaces', 'ws-1', 'subscriptions', 'sub-tenant-mismatch'), {
+      id: 'sub-tenant-mismatch',
+      name: 'Wrong tenant subscription',
+      amount: 49.9,
+      cycle: 'monthly',
+      status: 'active',
+      user_id: 'owner-1',
+      tenant_id: 'tenant-x',
       workspace_id: 'ws-1',
       created_at: '2026-04-02T00:00:00.000Z',
       updated_at: '2026-04-02T00:00:00.000Z',

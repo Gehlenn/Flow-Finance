@@ -18,6 +18,12 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/tenant_members/$(tenantMemberDocId(tenantId)));
     }
 
+    function isTenantOwner(tenantId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/tenants/$(tenantId))
+        && get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerUserId == request.auth.uid;
+    }
+
     function isTenantMember(tenantId) {
       return isSignedIn()
         && exists(/databases/$(database)/documents/tenant_members/$(tenantMemberDocId(tenantId)))
@@ -81,19 +87,43 @@ service cloud.firestore {
       return workspaceMemberDoc(workspaceId).data.tenantId == workspaceDoc(workspaceId).data.tenantId;
     }
 
+    function requestMatchesWorkspaceContext(workspaceId) {
+      return requestMatchesWorkspace(workspaceId)
+        && requestMatchesTenant(workspaceDoc(workspaceId).data.tenantId)
+        && memberMatchesWorkspaceTenant(workspaceId)
+        && requestMatchesCurrentUser();
+    }
+
+    function resourceMatchesWorkspaceContext(workspaceId) {
+      return resource.data.workspace_id == workspaceId
+        && resource.data.tenant_id == workspaceDoc(workspaceId).data.tenantId
+        && memberMatchesWorkspaceTenant(workspaceId);
+    }
+
     match /users/{userId} {
       allow read, write: if isCurrentUser(userId);
     }
 
     match /tenants/{tenantId} {
-      allow create: if isSignedIn() && request.resource.data.ownerUserId == request.auth.uid;
-      allow read: if isTenantMember(tenantId) || (isSignedIn() && resource.data.ownerUserId == request.auth.uid);
-      allow update, delete: if isSignedIn() && resource.data.ownerUserId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.id == tenantId
+        && request.resource.data.ownerUserId == request.auth.uid;
+      allow read: if resource.data.id == tenantId
+        && (isTenantOwner(tenantId) || isTenantMember(tenantId));
+      allow update, delete: if resource.data.id == tenantId
+        && isTenantOwner(tenantId);
     }
 
     match /tenant_members/{memberId} {
       allow read: if isSignedIn()
-        && (resource.data.userId == request.auth.uid || isTenantMember(resource.data.tenantId));
+        && resource.data.tenantId is string
+        && resource.data.workspaceId is string
+        && workspaceBelongsToTenant(resource.data.workspaceId, resource.data.tenantId)
+        && (
+          resource.data.userId == request.auth.uid
+          || isTenantOwner(resource.data.tenantId)
+          || canManageWorkspace(resource.data.workspaceId)
+        );
       allow create: if isSignedIn()
         && request.resource.data.tenantId is string
         && request.resource.data.workspaceId is string
@@ -118,61 +148,67 @@ service cloud.firestore {
       match /accounts/{accountId} {
         allow read: if isWorkspaceMember(workspaceId);
         allow create: if canEditWorkspaceData(workspaceId)
-          && requestMatchesWorkspace(workspaceId)
-          && requestMatchesTenant(workspaceDoc(workspaceId).data.tenantId)
-          && memberMatchesWorkspaceTenant(workspaceId)
-          && requestMatchesCurrentUser();
+          && requestMatchesWorkspaceContext(workspaceId);
         allow update: if canEditWorkspaceData(workspaceId)
-          && resource.data.workspace_id == workspaceId
-          && resource.data.tenant_id == workspaceDoc(workspaceId).data.tenantId
-          && requestMatchesWorkspace(workspaceId)
-          && requestMatchesTenant(workspaceDoc(workspaceId).data.tenantId)
-          && memberMatchesWorkspaceTenant(workspaceId)
-          && requestMatchesCurrentUser();
+          && resourceMatchesWorkspaceContext(workspaceId)
+          && requestMatchesWorkspaceContext(workspaceId);
         allow delete: if canEditWorkspaceData(workspaceId)
-          && resource.data.workspace_id == workspaceId
-          && resource.data.tenant_id == workspaceDoc(workspaceId).data.tenantId
-          && memberMatchesWorkspaceTenant(workspaceId);
+          && resourceMatchesWorkspaceContext(workspaceId);
       }
 
       match /transactions/{transactionId} {
         allow read: if isWorkspaceMember(workspaceId);
         allow create: if canEditWorkspaceData(workspaceId)
-          && requestMatchesWorkspace(workspaceId)
-          && requestMatchesTenant(workspaceDoc(workspaceId).data.tenantId)
-          && memberMatchesWorkspaceTenant(workspaceId)
-          && requestMatchesCurrentUser();
+          && requestMatchesWorkspaceContext(workspaceId);
         allow update: if canEditWorkspaceData(workspaceId)
-          && resource.data.workspace_id == workspaceId
-          && resource.data.tenant_id == workspaceDoc(workspaceId).data.tenantId
-          && requestMatchesWorkspace(workspaceId)
-          && requestMatchesTenant(workspaceDoc(workspaceId).data.tenantId)
-          && memberMatchesWorkspaceTenant(workspaceId)
-          && requestMatchesCurrentUser();
+          && resourceMatchesWorkspaceContext(workspaceId)
+          && requestMatchesWorkspaceContext(workspaceId);
         allow delete: if canEditWorkspaceData(workspaceId)
-          && resource.data.workspace_id == workspaceId
-          && resource.data.tenant_id == workspaceDoc(workspaceId).data.tenantId
-          && memberMatchesWorkspaceTenant(workspaceId);
+          && resourceMatchesWorkspaceContext(workspaceId);
       }
 
       match /goals/{goalId} {
         allow read: if isWorkspaceMember(workspaceId);
         allow create: if canEditWorkspaceData(workspaceId)
-          && requestMatchesWorkspace(workspaceId)
-          && requestMatchesTenant(workspaceDoc(workspaceId).data.tenantId)
-          && memberMatchesWorkspaceTenant(workspaceId)
-          && requestMatchesCurrentUser();
+          && requestMatchesWorkspaceContext(workspaceId);
         allow update: if canEditWorkspaceData(workspaceId)
-          && resource.data.workspace_id == workspaceId
-          && resource.data.tenant_id == workspaceDoc(workspaceId).data.tenantId
-          && requestMatchesWorkspace(workspaceId)
-          && requestMatchesTenant(workspaceDoc(workspaceId).data.tenantId)
-          && memberMatchesWorkspaceTenant(workspaceId)
-          && requestMatchesCurrentUser();
+          && resourceMatchesWorkspaceContext(workspaceId)
+          && requestMatchesWorkspaceContext(workspaceId);
         allow delete: if canEditWorkspaceData(workspaceId)
-          && resource.data.workspace_id == workspaceId
-          && resource.data.tenant_id == workspaceDoc(workspaceId).data.tenantId
-          && memberMatchesWorkspaceTenant(workspaceId);
+          && resourceMatchesWorkspaceContext(workspaceId);
+      }
+
+      match /insights/{insightId} {
+        allow read: if isWorkspaceMember(workspaceId);
+        allow create: if canEditWorkspaceData(workspaceId)
+          && requestMatchesWorkspaceContext(workspaceId);
+        allow update: if canEditWorkspaceData(workspaceId)
+          && resourceMatchesWorkspaceContext(workspaceId)
+          && requestMatchesWorkspaceContext(workspaceId);
+        allow delete: if canEditWorkspaceData(workspaceId)
+          && resourceMatchesWorkspaceContext(workspaceId);
+      }
+
+      match /imports/{importId} {
+        allow read: if isWorkspaceMember(workspaceId);
+        allow create: if canEditWorkspaceData(workspaceId)
+          && requestMatchesWorkspaceContext(workspaceId);
+        allow update: if canEditWorkspaceData(workspaceId)
+          && resourceMatchesWorkspaceContext(workspaceId)
+          && requestMatchesWorkspaceContext(workspaceId);
+        allow delete: if canManageWorkspace(workspaceId)
+          && resourceMatchesWorkspaceContext(workspaceId);
+      }
+
+      match /subscriptions/{subscriptionId} {
+        allow read: if isWorkspaceMember(workspaceId);
+        allow create: if canEditWorkspaceData(workspaceId)
+          && requestMatchesWorkspaceContext(workspaceId);
+        allow update: if canEditWorkspaceData(workspaceId)
+          && resourceMatchesWorkspaceContext(workspaceId)
+          && requestMatchesWorkspaceContext(workspaceId);
+        allow delete: if canEditWorkspaceData(workspaceId)
+          && resourceMatchesWorkspaceContext(workspaceId);
       }
 
       match /saas_usage/{usageId} {

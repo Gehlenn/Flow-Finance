@@ -12,14 +12,21 @@ describe('firestore.rules multi-tenant coverage', () => {
     expect(rules).toContain('match /billing_hooks/{eventId}');
   });
 
+  it('covers future workspace-scoped collections', () => {
+    expect(rules).toContain('match /insights/{insightId}');
+    expect(rules).toContain('match /imports/{importId}');
+    expect(rules).toContain('match /subscriptions/{subscriptionId}');
+  });
+
   it('keeps workspace permission helpers in place', () => {
     expect(rules).toContain('function isTenantMember(tenantId)');
+    expect(rules).toContain('function isTenantOwner(tenantId)');
     expect(rules).toContain('function canManageWorkspace(workspaceId)');
     expect(rules).toContain('function canEditWorkspaceData(workspaceId)');
     expect(rules).toContain('function workspaceBelongsToTenant(workspaceId, tenantId)');
     expect(rules).toContain('function memberMatchesWorkspaceTenant(workspaceId)');
-    expect(rules).toContain("workspaceRole(workspaceId) in ['owner', 'admin']");
-    expect(rules).toContain("workspaceRole(workspaceId) in ['owner', 'admin', 'member']");
+    expect(rules).toContain('function requestMatchesWorkspaceContext(workspaceId)');
+    expect(rules).toContain('function resourceMatchesWorkspaceContext(workspaceId)');
   });
 
   it('guards audit events by workspace scope', () => {
@@ -30,7 +37,9 @@ describe('firestore.rules multi-tenant coverage', () => {
 
   it('restricts tenant reads to tenant members', () => {
     expect(rules).toContain("match /tenants/{tenantId}");
+    expect(rules).toContain('resource.data.id == tenantId');
     expect(rules).toContain('isTenantMember(tenantId)');
+    expect(rules).toContain('isTenantOwner(tenantId)');
     expect(rules).toContain("match /tenant_members/{memberId}");
   });
 });

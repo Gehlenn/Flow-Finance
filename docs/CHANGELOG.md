@@ -1,3 +1,28 @@
+﻿# [0.9.1v] - 2026-04-02
+
+### Transição de Versão — Auditoria Sistêmica + QA de Fluxos Críticos
+
+#### ✅ Auditoria Técnica
+- Revisão de arquitetura, segurança e escalabilidade SaaS executada para Web e Mobile.
+- Priorização de riscos em: sanitização de entradas, robustez de segredo JWT, quotas de IA, sincronização e duplicação de lógica de categorização.
+
+#### Testes e Cobertura
+- `npm run lint`: aprovado
+- `npm test`: aprovado
+- `npm run test:coverage:critical`: aprovado
+	- Statements: `99.70%`
+	- Branches: `98.28%`
+	- Functions: `100%`
+	- Lines: `100%`
+- `npm run test:e2e`: aprovado (`28 passed`, `57 skipped`)
+
+#### 📚 Documentação
+- README atualizado com status de transição 0.9.1v e baseline de validações.
+- ROADMAP atualizado com checkpoint 0.9.1v e backlog imediato de hardening.
+- GDD atualizado com adendo de regras e fluxos críticos da transição.
+- BUGLOG atualizado com incidentes E2E e rastreabilidade por versão.
+- Conflitos de merge em documentacao principal resolvidos (README, CHANGELOG, ROADMAP, GDD e BUGLOG).
+
 # v0.8.0 — 25/03/2026
 - Scanner aceita imagem e PDF
 - Tratamento de erro Gemini aprimorado
@@ -707,3 +732,4 @@ Esta versão marca a transição completa para produção com IA GPT-4, autentic
 - testes: 377/377 passing (npm test)
 - cobertura critica: 99.76% stmts / 98.3% branches (npm run test:coverage:critical)
 - e2e: 30 passed / 35 skipped (npm run test:e2e)
+

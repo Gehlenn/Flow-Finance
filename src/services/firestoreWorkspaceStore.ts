@@ -83,6 +83,53 @@ export type AuditLogDocument = {
   createdAt: string;
 };
 
+export type AuditLogCursor = {
+  createdAt: string;
+  id: string;
+};
+
+export type WorkspaceInsightDocument = {
+  id: string;
+  tenant_id: string;
+  workspace_id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: string;
+  severity?: 'low' | 'medium' | 'high';
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type WorkspaceImportDocument = {
+  id: string;
+  tenant_id: string;
+  workspace_id: string;
+  user_id: string;
+  source: string;
+  status: 'pending' | 'completed' | 'failed';
+  imported_count?: number;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type WorkspaceSubscriptionDocument = {
+  id: string;
+  tenant_id: string;
+  workspace_id: string;
+  user_id: string;
+  name: string;
+  merchant?: string;
+  amount: number;
+  cycle: 'monthly' | 'weekly' | 'annual' | 'unknown';
+  status: 'active' | 'paused' | 'cancelled';
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
 export type UserIdentity = {
   userId: string;
   name?: string | null;
@@ -90,6 +137,7 @@ export type UserIdentity = {
 };
 
 export type SyncEntity = 'accounts' | 'transactions' | 'goals';
+export type WorkspaceScopedEntity = SyncEntity | 'insights' | 'imports' | 'subscriptions';
 
 export type ProfileState = {
   name: string | null;
@@ -148,7 +196,7 @@ function tenantMemberCollection() {
   return collection(db, 'tenant_members');
 }
 
-function workspaceEntityCollection(workspaceId: string, entity: SyncEntity) {
+function workspaceEntityCollection(workspaceId: string, entity: WorkspaceScopedEntity) {
   return collection(db, 'workspaces', workspaceId, entity);
 }
 
@@ -449,8 +497,8 @@ export async function listWorkspaceAuditEventsPage(input: {
   fromDate?: string;
   toDate?: string;
   resourceType?: string;
-  afterCreatedAt?: string;
-}): Promise<{ events: AuditLogDocument[]; nextCursor: string | null }> {
+  after?: AuditLogCursor | null;
+}): Promise<{ events: AuditLogDocument[]; nextCursor: AuditLogCursor | null }> {
   const constraints: QueryConstraint[] = [
     where('workspaceId', '==', input.workspaceId),
   ];
@@ -468,8 +516,9 @@ export async function listWorkspaceAuditEventsPage(input: {
   }
 
   constraints.push(orderBy('createdAt', 'desc'));
-  if (input.afterCreatedAt) {
-    constraints.push(startAfter(input.afterCreatedAt));
+  constraints.push(orderBy('id', 'desc'));
+  if (input.after) {
+    constraints.push(startAfter(input.after.createdAt, input.after.id));
   }
   constraints.push(limit(input.maxItems || 25));
 
@@ -480,13 +529,50 @@ export async function listWorkspaceAuditEventsPage(input: {
 
   const events = snapshot.docs.map((auditSnapshot) => auditSnapshot.data() as AuditLogDocument);
   const nextCursor = events.length === (input.maxItems || 25)
-    ? events[events.length - 1]?.createdAt || null
+    ? {
+      createdAt: events[events.length - 1]?.createdAt || '',
+      id: events[events.length - 1]?.id || '',
+    }
     : null;
 
   return {
     events,
     nextCursor,
   };
+}
+
+export async function listWorkspaceCollectionDocuments<T extends { id: string }>(
+  workspaceId: string,
+  entity: Extract<WorkspaceScopedEntity, 'insights' | 'imports' | 'subscriptions'>,
+): Promise<T[]> {
+  const snapshot = await getDocs(query(
+    workspaceEntityCollection(workspaceId, entity),
+    orderBy('updated_at', 'desc'),
+  ));
+
+  return snapshot.docs.map((documentSnapshot) => documentSnapshot.data() as T);
+}
+
+export async function upsertWorkspaceCollectionDocument<T extends {
+  id: string;
+  tenant_id?: string;
+  workspace_id?: string;
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
+} & Record<string, unknown>>(
+  entity: Extract<WorkspaceScopedEntity, 'insights' | 'imports' | 'subscriptions'>,
+  documentInput: T,
+  context: { userId: string; tenantId: string; workspaceId: string },
+): Promise<T> {
+  const stamped = stampEntityContext(documentInput, context);
+  await setDoc(
+    doc(workspaceEntityCollection(context.workspaceId, entity), String(stamped.id)),
+    stamped,
+    { merge: true },
+  );
+
+  return stamped;
 }
 
 export function subscribeToUserProfile(

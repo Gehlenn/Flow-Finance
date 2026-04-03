@@ -3,10 +3,18 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import Login from '../../components/Login';
 
+const loginMocks = vi.hoisted(() => ({
+  signInWithPopup: vi.fn(),
+  isFirebaseConfigured: true,
+}));
+
 vi.mock('../../services/firebase', () => ({
   auth: {},
   googleProvider: {},
-  signInWithPopup: vi.fn(),
+  signInWithPopup: loginMocks.signInWithPopup,
+  get isFirebaseConfigured() {
+    return loginMocks.isFirebaseConfigured;
+  },
 }));
 
 vi.mock('firebase/auth', () => ({
@@ -16,6 +24,20 @@ vi.mock('firebase/auth', () => ({
 }));
 
 describe('Login accessibility flow', () => {
+  it('informa erro amigavel quando Firebase nao esta configurado', () => {
+    loginMocks.isFirebaseConfigured = false;
+
+    render(<Login onLogin={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText('E-mail de acesso'), { target: { value: 'teste@flow.dev' } });
+    fireEvent.change(screen.getByLabelText('Senha de acesso'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: /Acessar Conta/i }));
+
+    expect(screen.getByRole('alert').textContent).toContain('Autenticacao Firebase indisponivel neste ambiente');
+
+    loginMocks.isFirebaseConfigured = true;
+  });
+
   it('renders login fields with accessible labels', () => {
     render(<Login onLogin={vi.fn()} />);
 

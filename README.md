@@ -1,4 +1,4 @@
-## Monitoramento de Integrações Externas
+﻿## Monitoramento de Integrações Externas
 O sistema recomenda configurar alertas/logs para Pluggy, Stripe e Firebase. Após cada deploy, monitore falhas, lentidão e quedas de serviço. Exemplos de boas práticas:
 - Ativar logs detalhados de erro e sucesso
 - Configurar alertas automáticos (ex: via Sentry, Firebase Crashlytics)
@@ -7,15 +7,25 @@ O sistema recomenda configurar alertas/logs para Pluggy, Stripe e Firebase. Apó
 
 # Flow Finance - Controle de Fluxo de Caixa Inteligente
 
-**Versão:** 0.8.0  
-**Última Atualização:** 25 de Março de 2026  
-**Status:** Auditoria técnica completa, cobertura crítica >98%, ver AUDIT_REPORT_v0.8.0.md
+**Versão:** 0.9.1v  
+**Última Atualização:** 2 de Abril de 2026  
+**Status:** Transicao 0.9.1v validada end-to-end com lint, testes, cobertura critica >= 98% e E2E verde
 
 Bem-vindo ao **Flow Finance**, uma aplicação moderna para gestão financeira pessoal e profissional, equipada com um assistente de IA (GPT-4) para facilitar o lançamento de despesas e receitas.
 
 ## 🚀 Visão Geral
 
 O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvolvida com **React + Vite**, **Firebase** (auth/data) e **OpenAI GPT-4** (via backend proxy seguro). O projeto segue arquitetura **Clean Architecture** com separação clara de responsabilidades.
+
+## ✅ Checkpoint de Transição 0.9.1v
+
+- Auditoria sistêmica executada com foco em OWASP, fluxos críticos e prontidão SaaS.
+- Validações executadas:
+   - `npm run lint` (aprovado)
+   - `npm test` (aprovado)
+   - `npm run test:coverage:critical` (aprovado com 99.70% statements e 98.28% branches no recorte critico)
+   - `npm run test:e2e` (aprovado: 28 passed / 57 skipped)
+- Riscos prioritários identificados: sanitização de `description`, robustez de segredo JWT em produção, quota obrigatória nos endpoints de IA, conflitos de sincronização e duplicação de lógica de categorização.
 
 
 ### Principais Funcionalidades (v0.8.x)
@@ -450,3 +460,4 @@ O repositório utiliza **Dependabot** para monitorar e atualizar dependências d
 Pull requests automáticas são abertas semanalmente para manter o projeto seguro e atualizado.
 
 Configuração: `.github/dependabot.yml`
+

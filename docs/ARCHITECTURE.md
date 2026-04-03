@@ -58,8 +58,12 @@ Firestore remains responsible for:
 
 - `users/{userId}` for lightweight profile state such as name/theme/reminders/alerts
 - `tenants/{tenantId}`
+- `tenant_members/{tenantId_userId}`
 - `workspaces/{workspaceId}`
 - `workspace_members/{workspaceId_userId}`
+- `workspaces/{workspaceId}/insights/{insightId}`
+- `workspaces/{workspaceId}/imports/{importId}`
+- `workspaces/{workspaceId}/subscriptions/{subscriptionId}`
 - `workspaces/{workspaceId}/billing_state/{docId}`
 - `workspaces/{workspaceId}/saas_usage/{docId}`
 - `workspaces/{workspaceId}/billing_hooks/{eventId}`
@@ -116,8 +120,8 @@ The dedicated audit page with filters lives in [pages/WorkspaceAudit.tsx](/E:/ap
 - Vercel remains responsible for the frontend SPA deployment.
 - Firestore security rule validation is not executed inside Vercel. It runs in GitHub Actions through [.github/workflows/firestore-rules.yml](/E:/app%20e%20jogos%20criados/Flow-Finance/.github/workflows/firestore-rules.yml), which provisions Java 21 for the Firebase emulator.
 - Local rule validation uses `npm run test:firestore:rules`. The wrapper in [run-firestore-rules.mjs](/E:/app%20e%20jogos%20criados/Flow-Finance/scripts/run-firestore-rules.mjs) prefers an installed Temurin JDK 21 on Windows so the emulator does not depend on the global `PATH` being updated.
-- The audit UI now supports date-range and resource-type filters with incremental pagination so large workspaces do not dump the full event list into the first render.
-- Firestore rules now cross-check tenant ownership between `workspace_members`, `workspaces`, financial documents, billing documents, and audit events to reduce cross-tenant document injection risk.
+- The audit UI now supports date-range and resource-type filters with Firestore cursor pagination so large workspaces do not dump the full event list into the first render and paging remains stable even with repeated timestamps.
+- Firestore rules now cross-check tenant ownership between `tenant_members`, `workspace_members`, `workspaces`, financial documents, future workspace-scoped collections, billing documents, and audit events to reduce cross-tenant document injection risk.
 
 OpenAPI docs are exposed in non-production environments through:
 

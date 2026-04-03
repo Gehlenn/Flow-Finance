@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { auth, onAuthStateChanged } from '../services/firebase';
 import { addBreadcrumb, clearUser, setUser } from '../src/config/sentry';
 import { getStoredWorkspaceId } from '../src/config/api.config';
@@ -51,6 +51,11 @@ export function useAuthAndWorkspace() {
     plan: null,
     role: null,
   });
+  const userRef = useRef(user);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   const hydrateWorkspace = useCallback(async (userIdentity: AuthenticatedUser) => {
     if (!userIdentity.id) {
@@ -73,7 +78,7 @@ export function useAuthAndWorkspace() {
     return workspace;
   }, []);
 
-  const refreshWorkspace = useCallback(async () => hydrateWorkspace(user), [hydrateWorkspace, user]);
+  const refreshWorkspace = useCallback(async () => hydrateWorkspace(userRef.current), [hydrateWorkspace]);
 
   const setUserName = useCallback((name: string | null) => {
     setCurrentUser((current) => ({ ...current, name }));
@@ -193,7 +198,7 @@ export function useAuthAndWorkspace() {
     });
 
     return () => unsubscribe();
-  }, [e2eBootstrap, hydrateWorkspace, isE2EBootstrapActive, refreshWorkspace]);
+  }, [e2eBootstrap, hydrateWorkspace, isE2EBootstrapActive]);
 
   useEffect(() => {
     if (!isInitialLoading || isE2EBootstrapActive || typeof window === 'undefined') {

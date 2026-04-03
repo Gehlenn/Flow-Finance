@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   BarChart3,
@@ -44,6 +44,12 @@ if (typeof window !== 'undefined') {
 
 const App: React.FC = () => {
   const authState = useAuthAndWorkspace();
+  const handleDisableCloudSync = useCallback(() => {
+    authState.setCloudSyncEnabled(false);
+  }, [authState.setCloudSyncEnabled]);
+  const handleDisableBackendSync = useCallback(() => {
+    authState.setBackendSyncEnabled(false);
+  }, [authState.setBackendSyncEnabled]);
   const syncEngine = useSyncEngine({
     userId: authState.user.id,
     activeTenantId: authState.activeWorkspace.tenantId,
@@ -51,8 +57,8 @@ const App: React.FC = () => {
     isE2EBootstrapActive: authState.isE2EBootstrapActive,
     cloudSyncEnabled: authState.cloudSyncEnabled,
     backendSyncEnabled: authState.backendSyncEnabled,
-    onDisableCloudSync: () => authState.setCloudSyncEnabled(false),
-    onDisableBackendSync: () => authState.setBackendSyncEnabled(false),
+    onDisableCloudSync: handleDisableCloudSync,
+    onDisableBackendSync: handleDisableBackendSync,
   });
   const financialState = useFinancialState({
     userId: authState.user.id,

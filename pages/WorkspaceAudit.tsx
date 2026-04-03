@@ -2,6 +2,7 @@
 import { CalendarRange, ChevronLeft, Filter, Loader2, Search, ShieldCheck } from 'lucide-react';
 import {
   ensureActiveWorkspace,
+  type AuditLogCursor,
   getCurrentWorkspaceIdentity,
   listWorkspaceAuditEventsPage,
   type AuditLogDocument,
@@ -72,7 +73,7 @@ const WorkspaceAuditPage: React.FC<WorkspaceAuditPageProps> = ({
   const [range, setRange] = useState<RangeValue>('30d');
   const [resourceType, setResourceType] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [nextCursor, setNextCursor] = useState<AuditLogCursor | null>(null);
 
   const canAccessAudit = canViewWorkspaceAudit(activeWorkspaceRole || workspace?.role);
 
@@ -140,7 +141,7 @@ const WorkspaceAuditPage: React.FC<WorkspaceAuditPageProps> = ({
         workspaceId: workspace.workspaceId,
         maxItems: PAGE_SIZE,
         resourceType: resourceType === 'all' ? undefined : resourceType,
-        afterCreatedAt: nextCursor,
+        after: nextCursor,
         ...resolveDateRange(range),
       });
 

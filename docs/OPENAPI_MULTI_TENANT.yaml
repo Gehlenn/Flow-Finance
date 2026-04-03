@@ -179,5 +179,11 @@ paths:
                     items:
                       $ref: '#/components/schemas/AuditLogEntry'
                   nextCursor:
-                    type: string
+                    type: object
                     nullable: true
+                    properties:
+                      createdAt:
+                        type: string
+                        format: date-time
+                      id:
+                        type: string
