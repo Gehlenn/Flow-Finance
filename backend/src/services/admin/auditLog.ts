@@ -34,7 +34,8 @@ export type AuditAction =
   | 'transaction.deleted'
   | 'goal.created'
   | 'goal.updated'
-  | 'goal.deleted';
+  | 'goal.deleted'
+  | 'integration.external_event_received';
 
 export type AuditStatus = 'success' | 'failure' | 'blocked';
 

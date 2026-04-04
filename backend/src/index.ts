@@ -26,6 +26,7 @@ import adminRoutes from './routes/adminRoutes';
 import tenantRoutes from './routes/tenantRoutes';
 import billingRoutes from './routes/billingRoutes';
 import syncRoutes from './routes/sync';
+import externalIntegrationRoutes from './routes/externalIntegration';
 import { featureGateOpenFinance } from './middleware/featureGate';
 import workspaceRoutes from './routes/workspace';
 import { initializeWorkspaceStorePersistence } from './services/admin/workspaceStore';
@@ -238,6 +239,9 @@ app.use('/api/finance', financeRoutes);
 
 // Cloud sync routes (accounts/transactions/goals/subscriptions)
 app.use('/api/sync', syncRoutes);
+
+// External integration routes (event contracts from third-party systems)
+app.use('/api/integrations/external', externalIntegrationRoutes);
 
 
 // Workspace multi-tenant routes
