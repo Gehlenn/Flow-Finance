@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   enqueueEvent,
   getPendingEvents,
@@ -8,10 +8,12 @@ import {
   clearEventQueue,
   getEventQueueMetrics,
   configureEventQueueStore,
+  resetEventQueueStore,
 } from '../../src/events/eventQueue';
 
 describe('Event Queue Resilience', () => {
   beforeEach(async () => {
+    await resetEventQueueStore();
     await clearEventQueue();
   });
 
@@ -106,6 +108,7 @@ describe('Event Queue Resilience', () => {
     const pending = await getPendingEvents();
     // Should only include evt1 (ready now) - evt2 is in future
     expect(pending.some((e) => e.id === 'evt-1')).toBe(true);
+    expect(pending.some((e) => e.id === 'evt-2')).toBe(false);
   });
 
   it('handles concurrent event operations safely', async () => {

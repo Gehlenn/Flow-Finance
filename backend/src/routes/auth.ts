@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { optionalAuthMiddleware } from '../middleware/auth';
-import { authLimiter } from '../middleware/rateLimit';
+import { authLimiterByUser } from '../middleware/rateLimit';
 import {
   loginController,
   firebaseSessionController,
@@ -21,20 +21,20 @@ const router = Router();
  * Body: { email: string, password: string }
  * Returns: { token: string, expiresIn: number, user: { userId: string, email: string } }
  */
-router.post('/login', authLimiter, validate(LoginSchema), loginController);
-router.post('/firebase', authLimiter, validate(FirebaseSessionSchema), firebaseSessionController);
+router.post('/login', authLimiterByUser, validate(LoginSchema), loginController);
+router.post('/firebase', authLimiterByUser, validate(FirebaseSessionSchema), firebaseSessionController);
 
 /**
  * GET /api/auth/oauth/google/start
  * Inicia fluxo OAuth Google e retorna URL autorizada + state
  */
-router.get('/oauth/google/start', authLimiter, startGoogleOAuthController);
+router.get('/oauth/google/start', authLimiterByUser, startGoogleOAuthController);
 
 /**
  * GET /api/auth/oauth/google/callback
  * Callback OAuth Google (scaffold mock-first)
  */
-router.get('/oauth/google/callback', authLimiter, googleOAuthCallbackController);
+router.get('/oauth/google/callback', authLimiterByUser, googleOAuthCallbackController);
 
 /**
  * POST /api/auth/refresh

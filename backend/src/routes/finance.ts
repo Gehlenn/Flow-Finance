@@ -1,16 +1,36 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
+import { randomUUID } from 'crypto';
 import { authMiddleware } from '../middleware/auth';
 import { authz, requireFeature } from '../middleware/authz';
 import { workspaceContextMiddleware } from '../middleware/workspaceContext';
+import { financeEventsLimiterByUser } from '../middleware/rateLimit';
 import { financeMetricsController } from '../controllers/financeController';
 import { asyncHandler } from '../middleware/errorHandler';
 import { appendDomainEvent, getDomainEvents } from '../services/finance/eventStore';
+import { acknowledgeEvent, enqueueEvent, getPendingEvents, retryEvent } from '../events/eventQueue';
 
 const router = Router();
 
 router.use(authMiddleware);
 router.use(workspaceContextMiddleware);
+
+type QueuedDomainEventInput = Parameters<typeof appendDomainEvent>[0];
+
+async function flushQueuedDomainEvents(): Promise<void> {
+  const pending = await getPendingEvents();
+
+  for (const item of pending) {
+    const payload = item.payload as QueuedDomainEventInput;
+
+    try {
+      await appendDomainEvent(payload);
+      await acknowledgeEvent(item.id);
+    } catch {
+      await retryEvent(item.id);
+    }
+  }
+}
 
 /**
  * POST /api/finance/metrics
@@ -18,7 +38,7 @@ router.use(workspaceContextMiddleware);
  */
 router.post('/metrics', authz('finance:read'), requireFeature('advancedInsights'), financeMetricsController);
 
-router.post('/events', authz('finance:read'), asyncHandler(async (req: Request, res: Response) => {
+router.post('/events', authz('finance:read'), financeEventsLimiterByUser, asyncHandler(async (req: Request, res: Response) => {
   const payload = req.body as {
     id?: string;
     type: string;
@@ -34,7 +54,9 @@ router.post('/events', authz('finance:read'), asyncHandler(async (req: Request, 
     return;
   }
 
-  const event = await appendDomainEvent({
+  await flushQueuedDomainEvents();
+
+  const eventInput: QueuedDomainEventInput = {
     id: payload.id,
     workspaceId: req.workspaceId!,
     tenantId: req.tenantId,
@@ -45,9 +67,20 @@ router.post('/events', authz('finance:read'), asyncHandler(async (req: Request, 
     payload: payload.payload,
     metadata: payload.metadata,
     occurredAt: payload.occurredAt || new Date().toISOString(),
-  });
+  };
 
-  res.status(201).json({ event });
+  const queueItem = await enqueueEvent(randomUUID(), eventInput);
+
+  try {
+    const event = await appendDomainEvent(eventInput);
+    await acknowledgeEvent(queueItem.id);
+    res.status(201).json({ event });
+    return;
+  } catch {
+    await retryEvent(queueItem.id);
+    res.status(202).json({ queued: true, retryScheduled: true });
+    return;
+  }
 }));
 
 router.get('/events', authz('finance:read'), asyncHandler(async (req: Request, res: Response) => {

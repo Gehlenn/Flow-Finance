@@ -1,5 +1,6 @@
 import rateLimit from 'express-rate-limit';
 import env from '../config/env';
+import { createRateLimitByUser } from './rateLimitByUser';
 
 export const apiLimiter = rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS, // 15 minutes
@@ -27,4 +28,31 @@ export const authLimiter = rateLimit({
   message: 'Too many login attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+export const aiLimiterByUser = createRateLimitByUser({
+  windowMs: 60 * 1000,
+  max: 10,
+  skip: (req) => req.path === '/health',
+});
+
+export const authLimiterByUser = createRateLimitByUser({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+});
+
+export const billingLimiterByUser = createRateLimitByUser({
+  windowMs: 60 * 1000,
+  max: 30,
+});
+
+export const bankingLimiterByUser = createRateLimitByUser({
+  windowMs: 60 * 1000,
+  max: 60,
+  skip: (req) => req.path === '/health' || req.path.includes('/webhooks/'),
+});
+
+export const financeEventsLimiterByUser = createRateLimitByUser({
+  windowMs: 60 * 1000,
+  max: 120,
 });

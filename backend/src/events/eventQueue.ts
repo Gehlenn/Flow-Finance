@@ -57,6 +57,10 @@ export async function configureEventQueueStore(store: EventQueueStore): Promise<
   eventQueueStore = store;
 }
 
+export async function resetEventQueueStore(): Promise<void> {
+  eventQueueStore = new InMemoryEventQueueStore();
+}
+
 /**
  * Add event to durable queue with retry logic.
  */

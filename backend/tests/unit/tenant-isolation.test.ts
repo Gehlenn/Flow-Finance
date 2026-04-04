@@ -1,229 +1,128 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
+
+vi.mock('../../src/services/admin/workspaceStore', () => ({
+  getWorkspaceAsync: vi.fn(),
+  isUserInWorkspaceAsync: vi.fn(),
+  getTenantAsync: vi.fn(),
+}));
+
 import { workspaceContextMiddleware } from '../../src/middleware/workspaceContext';
+import { getTenantAsync, getWorkspaceAsync, isUserInWorkspaceAsync } from '../../src/services/admin/workspaceStore';
 
-/**
- * TENANT ISOLATION AUDIT TESTS
- * Verify that multi-tenant isolation is enforced at every boundary.
- * These are NEGATIVE tests - they should all FAIL if isolation is broken.
- */
+function createRequest(overrides: Partial<Request> = {}): Request {
+  const headers: Record<string, string> = {
+    'x-workspace-id': 'ws-1',
+  };
 
-describe('Tenant Isolation — Negative Tests', () => {
-  describe('workspaceContextMiddleware', () => {
-    it('rejects request without workspaceId', async () => {
-      const req = {
-        headers: {},
-        userId: 'user-1',
-      } as unknown as Request;
+  return {
+    header: (name: string) => headers[name.toLowerCase()] || headers[name],
+    params: {},
+    query: {},
+    body: {},
+    userId: 'user-1',
+    ...overrides,
+  } as unknown as Request;
+}
 
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as unknown as Response;
+function createResponse(): Response {
+  return {
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn(),
+  } as unknown as Response;
+}
 
-      const next = vi.fn();
+async function runMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
+  workspaceContextMiddleware(req, res, next);
+  await new Promise((resolve) => setImmediate(resolve));
+}
 
-      // Mock async functions to throw or return false
-      vi.mock('../../src/services/admin/workspaceStore', () => ({
-        getWorkspaceAsync: vi.fn().mockResolvedValue(null),
-        isUserInWorkspaceAsync: vi.fn().mockResolvedValue(false),
-        getTenantAsync: vi.fn().mockResolvedValue(null),
-      }));
-
-      // Should reject
-      await workspaceContextMiddleware(req, res as Response, next);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-    });
-
-    it('rejects request if workspace not found', async () => {
-      const req = {
-        headers: { 'x-workspace-id': 'ws-nonexistent' },
-        userId: 'user-1',
-      } as unknown as Request;
-
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as unknown as Response;
-
-      const next = vi.fn();
-
-      // Mock to return null workspace
-      vi.mock('../../src/services/admin/workspaceStore', () => ({
-        getWorkspaceAsync: vi.fn().mockResolvedValue(null),
-      }));
-
-      // Should reject
-      await workspaceContextMiddleware(req, res as Response, next);
-
-      expect(res.status).toHaveBeenCalledWith(404);
-    });
-
-    it('rejects request if user not member of workspace', async () => {
-      const req = {
-        headers: { 'x-workspace-id': 'ws-other-tenant' },
-        userId: 'user-1',
-      } as unknown as Request;
-
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as unknown as Response;
-
-      const next = vi.fn();
-
-      // Mock: workspace exists but user is not member
-      vi.mock('../../src/services/admin/workspaceStore', () => ({
-        getWorkspaceAsync: vi.fn().mockResolvedValue({
-          workspaceId: 'ws-other-tenant',
-          tenantId: 'tenant-other',
-        }),
-        isUserInWorkspaceAsync: vi.fn().mockResolvedValue(false),
-      }));
-
-      // Should reject
-      await workspaceContextMiddleware(req, res as Response, next);
-
-      expect(res.status).toHaveBeenCalledWith(403);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          error: expect.stringContaining('Acesso negado'),
-        }),
-      );
-    });
+describe('tenant isolation middleware', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  describe('Query filtering by workspace_id', () => {
-    /**
-     * CRITICAL: Verify that all domain event queries filter by workspace_id.
-     * A query without workspace_id filter would leak events across workspaces.
-     */
-    it('ensures domain_events queries include workspace_id filter', () => {
-      // This is a static code check.
-      // The query should include: WHERE workspace_id = $1
-      // See: backend/src/services/persistence/postgresStateStore.ts:1080
-      // Verify manually or add schema constraint in DB.
-      expect(true).toBe(true); // Placeholder for enforcement
-    });
+  it('rejects request without workspaceId', async () => {
+    const req = createRequest({
+      header: () => undefined,
+      params: {},
+      query: {},
+      body: {},
+    } as Partial<Request>);
+    const res = createResponse();
+    const next = vi.fn();
 
-    /**
-     * CRITICAL: Verify that workspace_monthly_usage queries filter by workspace_id.
-     */
-    it('ensures usage_events queries include workspace_id filter', () => {
-      // Query must include: WHERE workspace_id = $1
-      // See: backend/src/services/persistence/postgresStateStore.ts:1044
-      expect(true).toBe(true); // Placeholder for enforcement
-    });
+    await runMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(next).not.toHaveBeenCalled();
   });
 
-  describe('Audit log isolation', () => {
-    /**
-     * CRITICAL: Audit log queries must filter by tenant_id + workspace_id.
-     * Otherwise, a user could see audit events from another tenant's workspace.
-     */
-    it('ensures audit_events queries filter by both tenant_id and workspace_id', () => {
-      // Query should include:
-      // WHERE tenant_id = $1 AND workspace_id = $2 (or at least tenant_id)
-      // See: backend/src/services/persistence/postgresStateStore.ts:731+
-      expect(true).toBe(true); // Placeholder
-    });
+  it('rejects request when workspace does not exist', async () => {
+    vi.mocked(getWorkspaceAsync).mockResolvedValue(undefined);
+
+    const req = createRequest();
+    const res = createResponse();
+    const next = vi.fn();
+
+    await runMiddleware(req, res, next);
+
+    expect(getWorkspaceAsync).toHaveBeenCalledWith('ws-1');
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(next).not.toHaveBeenCalled();
   });
 
-  describe('Shared store isolation', () => {
-    /**
-     * Firestore collections use subcollections scoped by workspace.
-     * Example: workspaces/{workspaceId}/transactions/{id}
-     * This inherently isolates data.
-     */
-    it('ensures Firestore collections use workspace scoping', () => {
-      // Verify that collections are accessed via:
-      // collection(db, 'workspaces', workspaceId, 'entity_type')
-      // Not: collection(db, 'global_transactions') or similar
-      expect(true).toBe(true); // Placeholder
-    });
-  });
-});
+  it('rejects request when user is not a workspace member', async () => {
+    vi.mocked(getWorkspaceAsync).mockResolvedValue({
+      workspaceId: 'ws-1',
+      tenantId: 'tenant-1',
+      plan: 'free',
+      entitlements: {
+        limits: { transactionsPerMonth: 10, aiQueriesPerMonth: 10, bankConnections: 1 },
+        features: [],
+      },
+    } as Awaited<ReturnType<typeof getWorkspaceAsync>>);
+    vi.mocked(isUserInWorkspaceAsync).mockResolvedValue(false);
 
-describe('Tenant Isolation — Positive Contract Tests', () => {
-  /**
-   * POSITIVE tests verify that AUTHORIZED access works correctly.
-   * If these fail, isolation is broken (false negatives).
-   */
+    const req = createRequest();
+    const res = createResponse();
+    const next = vi.fn();
 
-  it('allows user to access their own workspace data', async () => {
-    const req = {
-      headers: { 'x-workspace-id': 'ws-1' },
-      userId: 'user-1',
-    } as unknown as Request;
+    await runMiddleware(req, res, next);
 
-    const res = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn(),
-    } as unknown as Response;
-
-    let nextCalled = false;
-    const next = () => {
-      nextCalled = true;
-    };
-
-    // Mock: workspace exists and user is member
-    vi.mock('../../src/services/admin/workspaceStore', () => ({
-      getWorkspaceAsync: vi.fn().mockResolvedValue({
-        workspaceId: 'ws-1',
-        tenantId: 'tenant-1',
-      }),
-      isUserInWorkspaceAsync: vi.fn().mockResolvedValue(true),
-      getTenantAsync: vi.fn().mockResolvedValue({
-        id: 'tenant-1',
-        plan: 'pro',
-      }),
-    }));
-
-    // Should allow
-    await workspaceContextMiddleware(req, res as Response, next);
-
-    // next() should have been called
-    expect(nextCalled).toBe(true);
+    expect(isUserInWorkspaceAsync).toHaveBeenCalledWith('user-1', 'ws-1');
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
   });
 
-  it('allows multi-workspace access for user with multiple memberships', async () => {
-    const ws1Req = {
-      headers: { 'x-workspace-id': 'ws-1' },
-      userId: 'user-1',
-    } as unknown as Request;
+  it('injects tenant and workspace context when user is authorized', async () => {
+    vi.mocked(getWorkspaceAsync).mockResolvedValue({
+      workspaceId: 'ws-1',
+      tenantId: 'tenant-1',
+      plan: 'pro',
+      entitlements: {
+        limits: { transactionsPerMonth: 1000, aiQueriesPerMonth: 100, bankConnections: 10 },
+        features: ['advancedInsights'],
+      },
+    } as Awaited<ReturnType<typeof getWorkspaceAsync>>);
+    vi.mocked(isUserInWorkspaceAsync).mockResolvedValue(true);
+    vi.mocked(getTenantAsync).mockResolvedValue({
+      tenantId: 'tenant-1',
+      name: 'Tenant 1',
+      plan: 'pro',
+      ownerUserId: 'user-1',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as Awaited<ReturnType<typeof getTenantAsync>>);
 
-    const ws2Req = {
-      headers: { 'x-workspace-id': 'ws-2' },
-      userId: 'user-1',
-    } as unknown as Request;
+    const req = createRequest();
+    const res = createResponse();
+    const next = vi.fn();
 
-    const res = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn(),
-    } as unknown as Response;
+    await runMiddleware(req, res, next);
 
-    let nextCalls = 0;
-    const next = () => {
-      nextCalls++;
-    };
-
-    // Mock: user has membership in both workspaces
-    vi.mock('../../src/services/admin/workspaceStore', () => ({
-      getWorkspaceAsync: vi.fn((id: string) =>
-        Promise.resolve({
-          workspaceId: id,
-          tenantId: id === 'ws-1' ? 'tenant-1' : 'tenant-2',
-        }),
-      ),
-      isUserInWorkspaceAsync: vi.fn().mockResolvedValue(true),
-      getTenantAsync: vi.fn().mockResolvedValue({ id: 'tenant-x', plan: 'pro' }),
-    }));
-
-    // Both requests should be allowed
-    await workspaceContextMiddleware(ws1Req, res as Response, next);
-    await workspaceContextMiddleware(ws2Req, res as Response, next);
-
-    expect(nextCalls).toBe(2);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect((req as Request & { tenantId?: string }).tenantId).toBe('tenant-1');
+    expect((req as Request & { workspaceId?: string }).workspaceId).toBe('ws-1');
   });
 });

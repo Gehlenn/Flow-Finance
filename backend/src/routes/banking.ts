@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth';
 import { authz } from '../middleware/authz';
+import { bankingLimiterByUser } from '../middleware/rateLimit';
 import { quotaMiddleware } from '../middleware/quota';
 import { validate } from '../middleware/validate';
 import { workspaceContextMiddleware } from '../middleware/workspaceContext';
@@ -25,6 +26,7 @@ router.post('/webhooks/pluggy', pluggyWebhookController);
 
 router.use(authMiddleware);
 router.use(workspaceContextMiddleware);
+router.use(bankingLimiterByUser);
 
 router.get('/banks', authz('bankConnections:read'), listBanksController);
 router.get('/connectors', authz('bankConnections:read'), listConnectorsController);

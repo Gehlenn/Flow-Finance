@@ -3,11 +3,13 @@ import { createSubscription, exportData } from '../billing/billingController';
 import { authMiddleware } from '../middleware/auth';
 import { workspaceContextMiddleware } from '../middleware/workspaceContext';
 import { authz } from '../middleware/authz';
+import { billingLimiterByUser } from '../middleware/rateLimit';
 
 const router = Router();
 
 router.use(authMiddleware);
 router.use(workspaceContextMiddleware);
+router.use(billingLimiterByUser);
 
 router.post('/subscription', authz('billing:manage'), createSubscription);
 router.get('/export', authz('billing:read'), exportData);
