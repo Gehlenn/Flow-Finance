@@ -26,6 +26,7 @@ export function buildOpenApiSpec(): OpenApiSpec {
       { name: 'Finance' },
       { name: 'AI' },
       { name: 'SaaS' },
+      { name: 'Integrations' },
       { name: 'Banking' },
       { name: 'Billing' },
       { name: 'Admin' },
@@ -408,6 +409,23 @@ export function buildOpenApiSpec(): OpenApiSpec {
           tags: ['SaaS'],
           summary: 'Stripe webhook receiver',
           responses: { '200': { description: 'Webhook accepted' } },
+        },
+      },
+      '/api/integrations/external/events': {
+        post: {
+          tags: ['Integrations'],
+          summary: 'Receive external operational/financial reflection events',
+          parameters: [
+            { name: 'x-integration-key', in: 'header', required: true, schema: { type: 'string' } },
+            { name: 'x-integration-signature', in: 'header', required: false, schema: { type: 'string' } },
+            { name: 'x-integration-timestamp', in: 'header', required: false, schema: { type: 'string' } },
+          ],
+          responses: {
+            '202': { description: 'Event applied' },
+            '200': { description: 'Duplicate ignored' },
+            '400': { description: 'Validation failed' },
+            '401': { description: 'Auth/signature failed' },
+          },
         },
       },
       '/api/ai/cfo': { post: { tags: ['AI'], summary: 'Generate CFO analysis', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'CFO response' } } } },

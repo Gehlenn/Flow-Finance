@@ -11,6 +11,7 @@ describe('openapi docs', () => {
     expect(spec.paths['/api/sync/push']).toBeDefined();
     expect(spec.paths['/api/finance/events']).toBeDefined();
     expect(spec.paths['/api/saas/usage/increment']).toBeDefined();
+    expect(spec.paths['/api/integrations/external/events']).toBeDefined();
     expect(spec.paths['/api/workspace/{workspaceId}/users']).toBeDefined();
   });
 
