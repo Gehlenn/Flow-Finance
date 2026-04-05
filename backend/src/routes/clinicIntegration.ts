@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { externalIntegrationAuth } from '../middleware/externalIntegrationAuth';
-import { createRateLimitByUser } from '../middleware/rateLimitByUser';
+import redisClient from '../config/redis';
+import { createDistributedRateLimitByUser } from '../middleware/distributedRateLimitByUser';
 import { validate } from '../middleware/validate';
 import { ClinicWebhookPayloadSchema } from '../validation/clinicAutomation.schema';
 import { receiveClinicFinancialEvent } from '../controllers/clinicController';
@@ -10,7 +11,9 @@ const router = Router();
 /**
  * Rate limit de borda por IP para conter burst antes de qualquer custo de auth.
  */
-const clinicEdgeLimiter = createRateLimitByUser({
+const clinicEdgeLimiter = createDistributedRateLimitByUser({
+  redis: redisClient,
+  namespace: 'clinic-edge',
   windowMs: 60 * 1000,
   max: 300,
   keyGenerator: (req) => {
@@ -23,7 +26,9 @@ const clinicEdgeLimiter = createRateLimitByUser({
  * Rate limit específico para ingestão da clínica.
  * Limite generoso para lotes de eventos mas com janela curta para detectar abuso.
  */
-const clinicIngestAuthenticatedLimiter = createRateLimitByUser({
+const clinicIngestAuthenticatedLimiter = createDistributedRateLimitByUser({
+  redis: redisClient,
+  namespace: 'clinic-auth',
   windowMs: 60 * 1000,        // 1 minuto
   max: 200,                    // 200 eventos/minuto por IP de origem
   keyGenerator: (req) => {
