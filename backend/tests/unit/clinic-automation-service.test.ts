@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { ClinicWebhookPayloadSchema } from '../../src/validation/clinicAutomation.schema';
 
 // Mock dependencies BEFORE imports
 vi.mock('../../src/config/logger');
@@ -118,6 +119,38 @@ describe('ClinicAutomationService', () => {
 
       expect(signature).toBeDefined();
       expect(signature.length).toBe(64); // SHA256 hex = 64 chars
+    });
+
+    it('deve rejeitar externalEventId com caracteres inválidos', () => {
+      const payload = {
+        type: 'payment_received',
+        externalEventId: 'evt invalid/1',
+        externalPatientId: 'patient-123',
+        amount: 100,
+        currency: 'BRL',
+        date: new Date().toISOString(),
+        paymentMethod: 'pix',
+        description: 'Pagamento',
+      };
+
+      const result = ClinicWebhookPayloadSchema.safeParse(payload);
+      expect(result.success).toBe(false);
+    });
+
+    it('deve rejeitar externalEventId acima de 128 caracteres', () => {
+      const payload = {
+        type: 'payment_received',
+        externalEventId: `evt_${'a'.repeat(130)}`,
+        externalPatientId: 'patient-123',
+        amount: 100,
+        currency: 'BRL',
+        date: new Date().toISOString(),
+        paymentMethod: 'pix',
+        description: 'Pagamento',
+      };
+
+      const result = ClinicWebhookPayloadSchema.safeParse(payload);
+      expect(result.success).toBe(false);
     });
   });
 

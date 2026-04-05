@@ -16,6 +16,12 @@ export const ClinicEventTypeSchema = z.enum([
   'receivable_reminder_cleared'
 ]);
 
+const ExternalEventIdSchema = z.string()
+  .trim()
+  .min(1)
+  .max(128)
+  .regex(/^[A-Za-z0-9:_-]+$/, 'externalEventId must contain only technical identifier characters');
+
 export type ClinicEventType = z.infer<typeof ClinicEventTypeSchema>;
 
 /**
@@ -36,7 +42,7 @@ export const ClinicWebhookAuthSchema = z.object({
 export const PaymentReceivedSchema = z.object({
   type: z.literal('payment_received'),
   // Identificação
-  externalEventId: z.string().describe('ID único externo do evento na clínica'),
+  externalEventId: ExternalEventIdSchema.describe('ID único externo do evento na clínica'),
   externalPatientId: z.string().describe('ID do paciente na clínica'),
   externalFacilityId: z.string().optional().describe('ID do estabelecimento/unidade'),
   // Dados financeiros
@@ -58,7 +64,7 @@ export type PaymentReceivedEvent = z.infer<typeof PaymentReceivedSchema>;
 export const ExpenseRecordedSchema = z.object({
   type: z.literal('expense_recorded'),
   // Identificação
-  externalEventId: z.string().describe('ID único externo do evento'),
+  externalEventId: ExternalEventIdSchema.describe('ID único externo do evento'),
   externalFacilityId: z.string().optional().describe('ID do estabelecimento/unidade'),
   // Dados financeiros
   amount: z.number().positive().finite().max(999999999),
@@ -79,7 +85,7 @@ export type ExpenseRecordedEvent = z.infer<typeof ExpenseRecordedSchema>;
 export const ReceivableReminderCreatedSchema = z.object({
   type: z.literal('receivable_reminder_created'),
   // Identificação
-  externalEventId: z.string().describe('ID único do lembrete'),
+  externalEventId: ExternalEventIdSchema.describe('ID único do lembrete'),
   externalPatientId: z.string().describe('ID do paciente'),
   externalFacilityId: z.string().optional(),
   // Dados de cobrança
@@ -99,7 +105,7 @@ export type ReceivableReminderCreatedEvent = z.infer<typeof ReceivableReminderCr
  */
 export const ReceivableReminderUpdatedSchema = z.object({
   type: z.literal('receivable_reminder_updated'),
-  externalEventId: z.string(),
+  externalEventId: ExternalEventIdSchema,
   externalPatientId: z.string(),
   externalFacilityId: z.string().optional(),
   dueAmount: z.number().positive().finite().max(999999999),
@@ -117,7 +123,7 @@ export type ReceivableReminderUpdatedEvent = z.infer<typeof ReceivableReminderUp
  */
 export const ReceivableReminderClearedSchema = z.object({
   type: z.literal('receivable_reminder_cleared'),
-  externalEventId: z.string().describe('ID do lembrete original'),
+  externalEventId: ExternalEventIdSchema.describe('ID do lembrete original'),
   externalPatientId: z.string(),
   externalFacilityId: z.string().optional(),
   clearedAmount: z.number().positive().finite().max(999999999),

@@ -60,6 +60,30 @@ export class IdempotentEventStore {
   ): Promise<boolean> {
     const key = this.generateIdempotencyKey(sourceSystem, externalEventId);
 
+    const record = {
+      eventId: internalEventId,
+      externalEventId,
+      sourceSystem,
+      processedAt: new Date().toISOString(),
+      result,
+      metadata: metadata || {}
+    };
+
+    const json = JSON.stringify(record);
+
+    // Caminho preferencial: gravação atômica no Redis usando NX + TTL
+    // Evita janela de corrida entre leitura e escrita em cenários concorrentes.
+    const savedAtomically = await this.tryAtomicSetIfAbsent(key, json);
+    if (savedAtomically !== null) {
+      if (!savedAtomically) {
+        logger.info(
+          { sourceSystem, externalEventId, key },
+          'Duplicate event detected: already processed (atomic)'
+        );
+      }
+      return savedAtomically;
+    }
+
     // Verificar se já existe
     const existing = await this.redis.get(key);
     if (existing) {
@@ -70,18 +94,7 @@ export class IdempotentEventStore {
       return false; // Já processado
     }
 
-    // Registrar novo evento
-    const record = {
-      eventId: internalEventId,
-      externalEventId,
-      sourceSystem,
-      processedAt: new Date().toISOString(),
-      result,
-      metadata: metadata || {}
-    };
-
     // Salvar com TTL
-    const json = JSON.stringify(record);
     await this.redis.setEx(key, this.ttlSeconds, json);
 
     logger.info(
@@ -90,6 +103,43 @@ export class IdempotentEventStore {
     );
 
     return true; // Novo evento
+  }
+
+  private async tryAtomicSetIfAbsent(key: string, value: string): Promise<boolean | null> {
+    const redisAny = this.redis as any;
+    const setFn = redisAny?.set;
+
+    if (typeof setFn !== 'function') {
+      return null;
+    }
+
+    try {
+      // node-redis style
+      const objectResult = await setFn.call(redisAny, key, value, { EX: this.ttlSeconds, NX: true });
+      if (objectResult === 'OK') {
+        return true;
+      }
+      if (objectResult === null) {
+        return false;
+      }
+    } catch {
+      // ioredis style fallback abaixo
+    }
+
+    try {
+      // ioredis style
+      const positionalResult = await setFn.call(redisAny, key, value, 'EX', this.ttlSeconds, 'NX');
+      if (positionalResult === 'OK') {
+        return true;
+      }
+      if (positionalResult === null) {
+        return false;
+      }
+    } catch {
+      return null;
+    }
+
+    return null;
   }
 
   /**

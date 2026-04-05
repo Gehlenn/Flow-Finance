@@ -44,7 +44,28 @@ function createNoOpRedisClient() {
   const store = new Map<string, string>();
   return {
     get: async (key: string) => store.get(key) ?? null,
-    set: async (key: string, value: string) => { store.set(key, value); return 'OK'; },
+    set: async (...args: any[]) => {
+      const [key, value, optionsOrEx, _maybeTtl, maybeNx] = args;
+
+      let useNx = false;
+      if (optionsOrEx && typeof optionsOrEx === 'object') {
+        useNx = Boolean(optionsOrEx.NX);
+      } else if (
+        typeof optionsOrEx === 'string'
+        && optionsOrEx.toUpperCase() === 'EX'
+        && typeof maybeNx === 'string'
+        && maybeNx.toUpperCase() === 'NX'
+      ) {
+        useNx = true;
+      }
+
+      if (useNx && store.has(String(key))) {
+        return null;
+      }
+
+      store.set(String(key), String(value));
+      return 'OK';
+    },
     setEx: async (key: string, _ttl: number, value: string) => { store.set(key, value); return 'OK'; },
     exists: async (key: string) => (store.has(key) ? 1 : 0),
     del: async (key: string) => { store.delete(key); return 1; },

@@ -120,6 +120,33 @@ describe('Clinic Integration API', () => {
     expect(res.body.error).toBe('Invalid request');
   });
 
+  it('deve retornar 400 para externalEventId com formato inválido', async () => {
+    const invalidPayload = {
+      type: 'payment_received',
+      externalEventId: 'evt invalid/1',
+      externalPatientId: 'patient-xyz',
+      amount: 120,
+      currency: 'BRL',
+      date: new Date().toISOString(),
+      paymentMethod: 'pix',
+      description: 'Pagamento inválido para teste',
+    };
+
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const rawBody = JSON.stringify(invalidPayload);
+    const signature = signWebhook(timestamp, rawBody, hmacSecret);
+
+    const res = await request(app)
+      .post('/api/integrations/clinic/financial-events')
+      .set('x-integration-key', integrationKey)
+      .set('x-integration-timestamp', timestamp)
+      .set('x-integration-signature', signature)
+      .send(invalidPayload);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Invalid request');
+  });
+
   it('deve aceitar evento novo (202) e responder idempotente em duplicata (200)', async () => {
     const externalEventId = `evt-idem-${Date.now()}`;
     const payload = buildPaymentPayload(externalEventId);

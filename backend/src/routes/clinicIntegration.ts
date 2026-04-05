@@ -8,15 +8,28 @@ import { receiveClinicFinancialEvent } from '../controllers/clinicController';
 const router = Router();
 
 /**
+ * Rate limit de borda por IP para conter burst antes de qualquer custo de auth.
+ */
+const clinicEdgeLimiter = createRateLimitByUser({
+  windowMs: 60 * 1000,
+  max: 300,
+  keyGenerator: (req) => {
+    const ip = (req.ip ?? 'unknown').replace('::ffff:', '');
+    return `clinic-edge::${ip}`;
+  },
+});
+
+/**
  * Rate limit específico para ingestão da clínica.
  * Limite generoso para lotes de eventos mas com janela curta para detectar abuso.
  */
-const clinicIngestLimiter = createRateLimitByUser({
+const clinicIngestAuthenticatedLimiter = createRateLimitByUser({
   windowMs: 60 * 1000,        // 1 minuto
   max: 200,                    // 200 eventos/minuto por IP de origem
   keyGenerator: (req) => {
+    const integrationKey = req.header('x-integration-key') || 'unknown-key';
     const ip = (req.ip ?? 'unknown').replace('::ffff:', '');
-    return `clinic::${ip}`;
+    return `clinic-auth::${integrationKey}::${ip}`;
   },
 });
 
@@ -47,8 +60,9 @@ const clinicIngestLimiter = createRateLimitByUser({
  */
 router.post(
   '/financial-events',
+  clinicEdgeLimiter,
   externalIntegrationAuth,
-  clinicIngestLimiter,
+  clinicIngestAuthenticatedLimiter,
   validate(ClinicWebhookPayloadSchema),
   receiveClinicFinancialEvent,
 );
