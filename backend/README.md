@@ -1,12 +1,12 @@
 # Flow Finance Backend API
 
-> Secure backend server for Flow Finance app — handles authentication, rate limiting, and Gemini AI proxy.
+> Secure backend server for Flow Finance app — handles authentication, rate limiting, and AI proxy (OpenAI/Gemini).
 
 ## Overview
 
 The backend serves as:
 - **Authentication proxy**: Issues JWT tokens for mobile app users
-- **AI proxy**: Routes all Gemini API calls server-side (API key never exposed to client)
+- **AI proxy**: Routes OpenAI/Gemini API calls server-side (API keys never exposed to client)
 - **Rate limiter**: Prevents abuse of AI endpoints
 - **Logger**: Centralized observability for production incidents
 
@@ -15,7 +15,7 @@ The backend serves as:
 ```
 Express Server (port 3001)
 ├── /api/auth/* → JWT token generation & validation
-├── /api/ai/*   → Gemini API proxy with rate limiting
+├── /api/ai/*   → OpenAI/Gemini API proxy with rate limiting
 ├── /health     → Server status
 └── /api/version → API version
 ```
@@ -33,7 +33,7 @@ Express Server (port 3001)
 
 - **Node.js** 18+ ([download](https://nodejs.org))
 - **npm** 8+ (comes with Node.js)
-- **Gemini API Key** ([get it here](https://aistudio.google.com/app/apikeys))
+- **OpenAI API Key ou Gemini API Key** (ao menos um provider configurado)
 
 ### Installation
 
@@ -56,6 +56,8 @@ Edit `backend/.env`:
 
 ```env
 # Required
+OPENAI_API_KEY=your_openai_key
+# or
 GEMINI_API_KEY=your_api_key_from_google_ai_studio
 
 # Recommended
@@ -556,10 +558,15 @@ Server health check.
 **Response:**
 ```json
 {
-  "status": "ok",
+  "status": "ok|degraded|error",
   "timestamp": "2024-01-15T10:30:00Z",
   "uptime": 123.45,
-  "version": "0.1.0"
+  "version": "0.1.0",
+  "dependencies": {
+    "database": { "status": "healthy" },
+    "redis": { "status": "healthy|not_configured" },
+    "ai": { "openaiConfigured": true, "geminiConfigured": false }
+  }
 }
 ```
 
@@ -787,7 +794,7 @@ LOG_LEVEL=debug
 
 ## Contributing
 
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
+See [CONTRIBUTING.md](../docs/CONTRIBUTING.md) for guidelines.
 
 ## License
 

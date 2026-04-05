@@ -11,11 +11,11 @@ O sistema recomenda configurar alertas/logs para Pluggy, Stripe e Firebase. Apó
 **Última Atualização:** 2 de Abril de 2026  
 **Status:** Transicao 0.9.1v validada end-to-end com lint, testes, cobertura critica >= 98% e E2E verde
 
-Bem-vindo ao **Flow Finance**, uma aplicação moderna para gestão financeira pessoal e profissional, equipada com um assistente de IA (GPT-4) para facilitar o lançamento de despesas e receitas.
+Bem-vindo ao **Flow Finance**, uma aplicação moderna para gestão financeira pessoal e profissional, equipada com assistente de IA para facilitar o lançamento de despesas e receitas.
 
 ## 🚀 Visão Geral
 
-O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvolvida com **React + Vite**, **Firebase** (auth/data) e **OpenAI GPT-4** (via backend proxy seguro). O projeto segue arquitetura **Clean Architecture** com separação clara de responsabilidades.
+O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvolvida com **React + Vite**, **Firebase** (auth/data) e backend com **OpenAI GPT-4 ou Gemini** (configurável, via proxy seguro). O projeto segue arquitetura **Clean Architecture** com separação clara de responsabilidades.
 
 ## ✅ Checkpoint de Transição 0.9.1v
 
@@ -41,7 +41,7 @@ O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvol
    - **Cobertura de testes**: fluxo validado por testes unitários e E2E.
 -   **Metas e Alertas Inteligentes:** Defina objetivos financeiros, receba alertas de overspending em tempo real por categoria, sugestões de corte automáticas (com valor sugerido) e metas automáticas de corte, economia e reserva de emergência geradas por IA.
 -   **Open Banking (Pluggy + Mock):** Fluxo real via backend protegido com fallback local para desenvolvimento.
--   **Scanner de Recibos:** OCR para extrair dados de comprovantes (Gemini Vision).
+-   **Scanner de Recibos:** OCR para extrair dados de comprovantes (Tesseract.js com fallback e integração opcional por IA no backend).
 -   **Central de Apoio:** Acesso rápido a suporte via IA, contato e documentos legais.
 -   **Modo Escuro/Claro:** Interface adaptável à sua preferência.
 -   **Totalmente Responsivo:** Funciona bem em desktop e mobile (PWA pronto).
@@ -61,11 +61,28 @@ O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvol
 ### Backend
 - **Node.js 20** + **Express 4**
 - **TypeScript 5.3**
-- **OpenAI SDK** (GPT-4 para consultas financeiras)
-- **Gemini SDK** (OCR de recibos - opcional)
+- **OpenAI SDK** e **Gemini SDK** (fallback e configuração por ambiente)
 - **PostgreSQL** (persistência futura opcional para Open Finance)
 - **JWT** (autenticação stateless)
 - **Pino** (logging estruturado)
+
+---
+
+## 🧰 Development Utilities
+
+```bash
+# Limpeza de dados (Firestore + backend/data)
+npm run db:reset
+
+# Segurança: varredura de secrets em arquivos versionados
+npm run security:scan-secrets
+
+# Qualidade
+npm run lint
+npm test
+npm run test:coverage:critical
+npm run test:e2e
+```
 
 ### Cloud & Deploy
 - **Frontend:** Vercel (SPA estático)
@@ -263,9 +280,10 @@ npm run test:e2e
 
 ## 📚 Documentação Adicional
 
-- [Arquitetura SaaS](./SAAS_ARCHITECTURE.md)
-- [Guia de Desenvolvimento](./CONTRIBUTING.md)
+- [Arquitetura SaaS](./docs/SAAS_ARCHITECTURE.md)
+- [Guia de Desenvolvimento](./docs/CONTRIBUTING.md)
 - [API Documentation](./backend/README.md)
+- [Archive de Versoes Anteriores](./docs/archive/README.md)
 
 ---
 
@@ -331,7 +349,7 @@ Sempre que adicionar novos arquivos ou pastas, execute o seguinte comando para a
 npm run docs:update
 ```
 
-Para mais detalhes sobre como contribuir e manter a documentação, consulte o arquivo [CONTRIBUTING.md](./CONTRIBUTING.md).
+Para mais detalhes sobre como contribuir e manter a documentação, consulte o arquivo [CONTRIBUTING.md](./docs/CONTRIBUTING.md).
 
 ---
 
