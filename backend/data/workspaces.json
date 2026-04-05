@@ -1,21 +1,21 @@
 {
   "tenants": [
     {
-      "tenantId": "ad1c2f92-2eb8-41b1-9594-3f34a2f5e0a3",
+      "tenantId": "c21e7f1d-2c37-4f3b-881b-36e85d181236",
       "name": "Workspace Admin",
       "plan": "pro",
-      "createdAt": "2026-04-05T09:17:00.975Z",
-      "updatedAt": "2026-04-05T09:17:00.976Z"
+      "createdAt": "2026-04-05T09:19:04.596Z",
+      "updatedAt": "2026-04-05T09:19:04.598Z"
     }
   ],
   "workspaces": [
     {
-      "workspaceId": "ad37f6c0-7c72-4595-8e33-0cb60b5c4b1a",
-      "tenantId": "ad1c2f92-2eb8-41b1-9594-3f34a2f5e0a3",
+      "workspaceId": "c04a714e-9908-4b56-b127-da873fe2fd69",
+      "tenantId": "c21e7f1d-2c37-4f3b-881b-36e85d181236",
       "name": "Workspace Admin",
       "isDefault": true,
-      "createdAt": "2026-04-05T09:17:00.975Z",
-      "updatedAt": "2026-04-05T09:17:00.975Z",
+      "createdAt": "2026-04-05T09:19:04.596Z",
+      "updatedAt": "2026-04-05T09:19:04.596Z",
       "plan": "pro",
       "status": "active",
       "entitlements": {
@@ -32,32 +32,32 @@
           "bankConnections": 20
         }
       },
-      "billingCustomerId": "cust_ad37f6c0-7c72-4595-8e33-0cb60b5c4b1a",
+      "billingCustomerId": "cust_c04a714e-9908-4b56-b127-da873fe2fd69",
       "subscription": {
-        "subscriptionId": "sub_a2f56cfa-7c02-45d0-bee8-7aa4826afc88",
+        "subscriptionId": "sub_4f86594d-ebb9-484f-afe4-1ad429cf1747",
         "provider": "internal",
         "status": "active",
         "plan": "pro",
-        "startedAt": "2026-04-05T09:17:00.976Z",
-        "renewsAt": "2026-05-05T09:17:00.976Z"
+        "startedAt": "2026-04-05T09:19:04.598Z",
+        "renewsAt": "2026-05-05T09:19:04.598Z"
       }
     }
   ],
   "workspaceUsers": [
     {
       "userId": "owner-admin-viewer",
-      "workspaceId": "ad37f6c0-7c72-4595-8e33-0cb60b5c4b1a",
-      "tenantId": "ad1c2f92-2eb8-41b1-9594-3f34a2f5e0a3",
+      "workspaceId": "c04a714e-9908-4b56-b127-da873fe2fd69",
+      "tenantId": "c21e7f1d-2c37-4f3b-881b-36e85d181236",
       "role": "owner",
-      "joinedAt": "2026-04-05T09:17:00.975Z",
+      "joinedAt": "2026-04-05T09:19:04.596Z",
       "status": "active"
     },
     {
       "userId": "viewer-admin-viewer",
-      "workspaceId": "ad37f6c0-7c72-4595-8e33-0cb60b5c4b1a",
-      "tenantId": "ad1c2f92-2eb8-41b1-9594-3f34a2f5e0a3",
+      "workspaceId": "c04a714e-9908-4b56-b127-da873fe2fd69",
+      "tenantId": "c21e7f1d-2c37-4f3b-881b-36e85d181236",
       "role": "viewer",
-      "joinedAt": "2026-04-05T09:17:00.978Z",
+      "joinedAt": "2026-04-05T09:19:04.600Z",
       "invitedBy": "owner-admin-viewer",
       "status": "active"
     }
@@ -65,8 +65,8 @@
   "userPreferences": [
     {
       "userId": "owner-admin-viewer",
-      "lastSelectedWorkspaceId": "ad37f6c0-7c72-4595-8e33-0cb60b5c4b1a",
-      "updatedAt": "2026-04-05T09:17:00.975Z"
+      "lastSelectedWorkspaceId": "c04a714e-9908-4b56-b127-da873fe2fd69",
+      "updatedAt": "2026-04-05T09:19:04.596Z"
     }
   ]
 }
