@@ -31,7 +31,7 @@ O Flow Finance é uma plataforma completa de gestão financeira com IA, desenvol
 ### Principais Funcionalidades (v0.8.x)
 
 -   **Dashboard Interativo:** Visão geral de receitas, despesas e saldo com gráficos animados.
--   **Assistente de IA (CFO Virtual):** Consultas financeiras em linguagem natural via GPT-4.
+-   **Assistente de IA (CFO Virtual):** Consultas financeiras em linguagem natural via backend com OpenAI/Gemini.
 -   **Análise Financeira Automatizada:** Pipeline de IA para insights, detecção de riscos, perfil financeiro, money map, previsão de cashflow e recomendações ativas do Autopilot.
 -   **Gestão de Transações:**
    - Adicione, edite, categorize e importe transações (CSV/OFX).

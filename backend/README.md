@@ -734,12 +734,12 @@ Never commit `.env` to version control. Use `.env.example` as template only.
 
 ## Troubleshooting
 
-### "GEMINI_API_KEY is not set"
+### "No AI provider configured"
 
-**Solution:** Make sure `.env` file exists and contains `GEMINI_API_KEY`.
+**Solution:** Make sure `.env` file exists and contains at least one key: `OPENAI_API_KEY` or `GEMINI_API_KEY`.
 
 ```bash
-cat .env | grep GEMINI_API_KEY
+cat .env | grep -E "OPENAI_API_KEY|GEMINI_API_KEY"
 ```
 
 ### "Invalid token" errors

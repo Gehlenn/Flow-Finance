@@ -433,7 +433,7 @@ export function buildOpenApiSpec(): OpenApiSpec {
       '/api/ai/scan-receipt': { post: { tags: ['AI'], summary: 'OCR receipt scan', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Scanned receipt fields' } } } },
       '/api/ai/classify-transactions': { post: { tags: ['AI'], summary: 'Categorize transactions', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Classification result' } } } },
       '/api/ai/insights': { post: { tags: ['AI'], summary: 'Generate AI insights', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Insight list' } } } },
-      '/api/ai/token-count': { post: { tags: ['AI'], summary: 'Estimate token count', responses: { '200': { description: 'Token estimate' } } } },
+      '/api/ai/token-count': { post: { tags: ['AI'], summary: 'Estimate token count', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Token estimate' } } } },
       '/api/banking/health': { get: { tags: ['Banking'], summary: 'Banking provider health', responses: { '200': { description: 'Provider health' } } } },
       '/api/banking/banks': { get: { tags: ['Banking'], summary: 'List supported banks', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Bank list' } } } },
       '/api/banking/connectors': { get: { tags: ['Banking'], summary: 'List banking connectors', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Connector list' } } } },
