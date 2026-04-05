@@ -625,7 +625,7 @@ X-RateLimit-Reset: 1705314600
 See [.env.example](.env.example) for all available options.
 
 **Critical (must set):**
-- `GEMINI_API_KEY` — Your Gemini API key
+- `OPENAI_API_KEY` or `GEMINI_API_KEY` — At least one AI provider key
 - `JWT_SECRET` — Strong random string for signing tokens
 
 **Optional (sensible defaults):**
@@ -760,12 +760,26 @@ FRONTEND_URL=http://localhost:5173
 
 ## Security Notes
 
-- **API Keys**: Gemini API key stays server-side only — never exposed to client
+- **API Keys**: AI provider keys stay server-side only — never exposed to client
+- **AI Providers**: OpenAI and Gemini are server-side only; no provider key is exposed to frontend
 - **Tokens**: JWT tokens are stateless and expire after 7 days
 - **Secrets**: Use environment variables for all secrets (never hardcode)
 - **HTTPS**: Always use HTTPS in production (Helmet enforces secure headers)
 - **Rate Limiting**: Protects against abuse and DDoS attacks
 - **CORS**: Only allows requests from whitelisted `FRONTEND_URL`
+
+### AI CFO Hardening (v0.9.1)
+
+- `POST /api/ai/cfo` now follows the same protected chain as other AI routes:
+  - JWT auth required
+  - workspace context required
+  - rate limit per user
+  - quota guard (`aiQueries`)
+- Request schema enforcement:
+  - `question`: required, max 1000 chars
+  - `context`: optional, max 20000 chars
+  - `intent`: optional enum (`spending_advice`, `budget_question`, `risk_question`, `savings_question`, `investment_question`, `general_finance`)
+- Controller normalization applies safe defaults and rejects malformed payloads.
 
 ## Monitoring
 

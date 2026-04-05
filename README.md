@@ -91,6 +91,13 @@ npm run test:e2e
 - **Storage:** Firebase Storage (recibos)
 - **Monitoring:** Sentry (error tracking)
 
+### AI CFO - Segurança Operacional
+- Endpoint: `POST /api/ai/cfo` via backend proxy seguro.
+- Proteções ativas: autenticação JWT, contexto de workspace, rate limit por usuário e quota de uso (`aiQueries`).
+- Payload validado em schema (limites de tamanho para `question/context` e `intent` restrito).
+- Provider de IA configurável por ambiente: OpenAI com fallback para Gemini.
+- Resposta sempre consultiva, sem garantia financeira absoluta e sem inferência fora do contexto enviado.
+
 ---
 
 ## Docker Setup & Deployment
