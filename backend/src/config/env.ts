@@ -44,6 +44,23 @@ export const env = {
   OPENAI_API_KEY: readEnv('OPENAI_API_KEY'),            // GPT-4 via GPT Go subscription
   OPENAI_MODEL: readEnv('OPENAI_MODEL', 'gpt-4'),
   OPENAI_MAX_TOKENS: readEnv('OPENAI_MAX_TOKENS', '4096'),
+
+  // AI Model Configuration (Orchestrator)
+  // Models selection by type: chat (lightweight), analysis (heavyweight), ocr
+  OPENAI_CHAT_MODEL: readEnv('OPENAI_CHAT_MODEL', 'gpt-4-turbo'),
+  OPENAI_ANALYSIS_MODEL: readEnv('OPENAI_ANALYSIS_MODEL', 'gpt-4-turbo'),
+  OPENAI_OCR_MODEL: readEnv('OPENAI_OCR_MODEL', 'gpt-4-turbo'),
+  GEMINI_CHAT_MODEL: readEnv('GEMINI_CHAT_MODEL', 'gemini-2.5-flash'),
+  GEMINI_ANALYSIS_MODEL: readEnv('GEMINI_ANALYSIS_MODEL', 'gemini-2.5-pro'),
+  GEMINI_OCR_MODEL: readEnv('GEMINI_OCR_MODEL', 'gemini-2.5-pro-vision'),
+
+  // AI Orchestrator Configuration
+  AI_PRIMARY_PROVIDER: readEnv('AI_PRIMARY_PROVIDER', 'openai'),        // openai | gemini
+  AI_FALLBACK_PROVIDER: readEnv('AI_FALLBACK_PROVIDER', 'gemini'),     // fallback if primary fails
+  AI_TIMEOUT_MS: readEnv('AI_TIMEOUT_MS', '30000'),                    // timeout per request
+  AI_MAX_RETRIES: readEnv('AI_MAX_RETRIES', '2'),                      // retries on failure
+  AI_RETRY_DELAY_MS: readEnv('AI_RETRY_DELAY_MS', '500'),              // exponential backoff
+
   JWT_SECRET,
   JWT_ACCESS_EXPIRES_IN: readEnv('JWT_ACCESS_EXPIRES_IN', '15m'),
   JWT_REFRESH_EXPIRES_IN: readEnv('JWT_REFRESH_EXPIRES_IN', '30d'),
@@ -78,6 +95,20 @@ export const env = {
   PLUGGY_BANK_CONNECTORS: readEnv('PLUGGY_BANK_CONNECTORS'),
   PLUGGY_DEFAULT_CREDENTIALS_JSON: readEnv('PLUGGY_DEFAULT_CREDENTIALS_JSON'),
   PLUGGY_WEBHOOK_SECRET: readEnv('PLUGGY_WEBHOOK_SECRET'),
+
+  // Feature Flags (cost-optimization & future-ready)
+  // Format: FEATURE_<NAME>=true/false
+  // Defaults: expensive/experimental features OFF, core features ON (see FeatureFlagService.DEFAULTS)
+  FEATURE_OPEN_FINANCE: readEnv('FEATURE_OPEN_FINANCE', 'false'),              // Expensive Open Finance/Pluggy (~R$1k+/month)
+  FEATURE_AI_CHAT: readEnv('FEATURE_AI_CHAT', 'true'),                         // Lightweight chat model
+  FEATURE_AI_ANALYSIS: readEnv('FEATURE_AI_ANALYSIS', 'true'),                 // Heavier analysis model
+  FEATURE_AI_OCR: readEnv('FEATURE_AI_OCR', 'true'),                           // Receipt OCR scanning
+  FEATURE_STRIPE_PAYMENTS: readEnv('FEATURE_STRIPE_PAYMENTS', 'true'),         // Payment processing
+  FEATURE_SAAS_MULTI_TENANT: readEnv('FEATURE_SAAS_MULTI_TENANT', 'true'),     // SaaS multi-tenant
+  FEATURE_SAAS_BILLING: readEnv('FEATURE_SAAS_BILLING', 'true'),               // Billing system
+  FEATURE_SENTRY_INTEGRATION: readEnv('FEATURE_SENTRY_INTEGRATION', 'true'),   // Error tracking
+  FEATURE_HEALTH_CHECKS: readEnv('FEATURE_HEALTH_CHECKS', 'true'),             // Health checks
+  FEATURE_EXTERNAL_INTEGRATIONS: readEnv('FEATURE_EXTERNAL_INTEGRATIONS', 'true'), // External integrations
 };
 
 // Validate required environment variables

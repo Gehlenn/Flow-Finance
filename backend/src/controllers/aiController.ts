@@ -5,6 +5,7 @@ import { generateContent, estimateTokens } from '../config/ai';
 import logger from '../config/logger';
 import { AppError, asyncHandler } from '../middleware/errorHandler';
 import { safeJsonParse, validateAIResponse } from '../utils/jsonHelpers';
+import { validatePromptInput, getSafeBlockedResponse } from '../services/ai/PromptInjectionGuard';
 import {
   InterpretRequest,
   InterpretResponse,
@@ -86,10 +87,22 @@ export const interpretController = asyncHandler(async (req: Request, res: Respon
     throw new AppError(400, 'Text is required');
   }
 
-  logger.debug({ userId: req.userId, textLength: text.length }, 'Interpret request');
+  // Prompt injection guard
+  const guardResult = validatePromptInput(text);
+  if (guardResult.level === 'block') {
+    logger.warn(
+      { riskScore: guardResult.riskScore, reasons: guardResult.reasons, userId: req.userId },
+      'Interpret request blocked by PromptInjectionGuard'
+    );
+    res.status(400).json(buildInterpretFallbackResponse());
+    return;
+  }
+
+  const sanitizedText = guardResult.sanitizedInput;
+  logger.debug({ userId: req.userId, textLength: sanitizedText.length }, 'Interpret request');
 
   const prompt = `Aja como o cérebro financeiro do app Flow Finance.
-Analise o texto: "${text}".
+Analise o texto: "${sanitizedText}".
 ${memoryContext ? `\nContexto do usuário: ${memoryContext}` : ''}
 
 Regras de categoria:
@@ -268,9 +281,29 @@ export const cfoController = asyncHandler(async (req: Request, res: Response) =>
     intent?: unknown;
   });
 
+  // Prompt injection guard — camada de proteção antes de chamar o LLM
+  const guardResult = validatePromptInput(question);
+  if (guardResult.level === 'block') {
+    logger.warn(
+      { riskScore: guardResult.riskScore, reasons: guardResult.reasons, userId: req.userId },
+      'CFO request blocked by PromptInjectionGuard'
+    );
+    res.status(400).json({ answer: getSafeBlockedResponse() });
+    return;
+  }
+  if (guardResult.level === 'review') {
+    logger.info(
+      { riskScore: guardResult.riskScore, reasons: guardResult.reasons, userId: req.userId },
+      'CFO request flagged for review by PromptInjectionGuard — proceeding with sanitized input'
+    );
+  }
+
+  // Use sanitized input going forward
+  const sanitizedQuestion = guardResult.sanitizedInput;
+
   logger.info({ path: '/api/ai/cfo', method: 'POST', hasQuestion: true, hasContext: context.length > 0 }, 'CFO endpoint called');
 
-  logger.info({ intent, questionLength: question.length }, 'CFO request received');
+  logger.info({ intent, questionLength: sanitizedQuestion.length }, 'CFO request received');
 
   const SAFETY_PREAMBLE = `
 Você é o CFO Virtual do Flow Finance, um assistente financeiro pessoal.
@@ -302,7 +335,7 @@ ${context}
 
 TIPO DE PERGUNTA: ${intentGuide[intent] || intent}
 
-PERGUNTA DO USUÁRIO: "${question}"
+PERGUNTA DO USUÁRIO: "${sanitizedQuestion}"
 
 Responda de forma consultiva, personalizada e baseada exclusivamente nos dados acima.
 `;

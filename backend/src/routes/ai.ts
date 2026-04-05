@@ -4,6 +4,7 @@ import { authz, requireFeature } from '../middleware/authz';
 import { aiLimiterByUser } from '../middleware/rateLimit';
 import { quotaMiddleware } from '../middleware/quota';
 import { workspaceContextMiddleware } from '../middleware/workspaceContext';
+import { aiInputSecurityMiddleware } from '../middleware/aiSecurity';
 import {
   interpretController,
   scanReceiptController,
@@ -37,7 +38,7 @@ router.use(authz('ai:use'));
  * Body: { question: string, context?: string, intent?: CFOIntent }
  * Returns: { answer: string }
  */
-router.post('/cfo', quotaMiddleware('aiQueries'), validate(CFOSchema), cfoController);
+router.post('/cfo', quotaMiddleware('aiQueries'), validate(CFOSchema), aiInputSecurityMiddleware('question'), cfoController);
 
 /**
  * POST /api/ai/interpret
@@ -46,7 +47,7 @@ router.post('/cfo', quotaMiddleware('aiQueries'), validate(CFOSchema), cfoContro
  * Body: { text: string, memoryContext?: string }
  * Returns: { intent: 'transaction'|'reminder', data: TransactionData[] | ReminderData[] }
  */
-router.post('/interpret', quotaMiddleware('aiQueries'), validate(InterpretSchema), interpretController);
+router.post('/interpret', quotaMiddleware('aiQueries'), validate(InterpretSchema), aiInputSecurityMiddleware('text'), interpretController);
 
 /**
  * POST /api/ai/scan-receipt

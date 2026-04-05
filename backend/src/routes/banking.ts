@@ -5,6 +5,7 @@ import { bankingLimiterByUser } from '../middleware/rateLimit';
 import { quotaMiddleware } from '../middleware/quota';
 import { validate } from '../middleware/validate';
 import { workspaceContextMiddleware } from '../middleware/workspaceContext';
+import { featureGateOpenFinance } from '../middleware/featureGate';
 import {
   bankingHealthController,
   connectBankController,
@@ -21,11 +22,14 @@ import { ConnectBankSchema, ConnectTokenSchema, DisconnectBankSchema, SyncBankSc
 
 const router = Router();
 
+// Health check and webhooks accessible even if feature is disabled (for ops/monitoring)
 router.get('/health', bankingHealthController);
 router.post('/webhooks/pluggy', pluggyWebhookController);
 
+// Protected routes: auth → workspace → feature gate → rate limit
 router.use(authMiddleware);
 router.use(workspaceContextMiddleware);
+router.use(featureGateOpenFinance()); // Gate all authenticated routes behind feature flag
 router.use(bankingLimiterByUser);
 
 router.get('/banks', authz('bankConnections:read'), listBanksController);

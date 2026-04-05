@@ -1,7 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Landmark, ShieldCheck, Plus, RefreshCw, X, Loader2, Search, Trash2, ExternalLink, ChevronRight } from 'lucide-react';
+import { Landmark, ShieldCheck, Plus, RefreshCw, X, Loader2, Search, Trash2, ExternalLink, ChevronRight, Lock, Sparkles } from 'lucide-react';
 import { getWorkspaceScopedStorageKey } from '../src/utils/workspaceStorage';
+
+/** Feature flag para Open Finance — controlado via variável de ambiente Vite */
+const OPEN_FINANCE_ENABLED = import.meta.env.VITE_FEATURE_OPEN_FINANCE === 'true';
 
 interface BankAccount {
   id: string;
@@ -129,6 +132,61 @@ const OpenFinance: React.FC<{
   };
 
   const filtered = AVAILABLE_INSTITUTIONS.filter(i => i.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+  // ── Open Finance desabilitado: exibe tela "Em breve" ─────────────────────────
+  if (!OPEN_FINANCE_ENABLED) {
+    return (
+      <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 pb-10">
+        {/* Header padrão */}
+        <div className="bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] p-6 rounded-[2rem] flex justify-between items-center shadow-lg shadow-indigo-500/20 shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+          <div className="relative z-10">
+            <h2 className="text-2xl font-black text-white tracking-tight leading-none">Contas</h2>
+            <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mt-1.5">Ecossistema Open Finance</p>
+          </div>
+          <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center text-white relative z-10">
+            <Landmark size={22} />
+          </div>
+        </div>
+
+        {/* Card Em breve */}
+        <div className="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-[2.5rem] p-10 text-white flex flex-col items-center text-center gap-6 shadow-2xl relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_60%_-20%,rgba(99,102,241,0.3),transparent_70%)] pointer-events-none" />
+
+          <div className="relative z-10 w-20 h-20 rounded-full bg-indigo-500/20 border-2 border-indigo-500/40 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+            <Lock size={36} className="text-indigo-300" />
+          </div>
+
+          <div className="relative z-10 space-y-2">
+            <div className="flex items-center justify-center gap-2 text-indigo-300 bg-white/5 px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest w-fit mx-auto border border-white/10">
+              <Sparkles size={10} /> Em breve
+            </div>
+            <h3 className="text-3xl font-black text-white mt-4 tracking-tight">
+              Open Finance
+            </h3>
+            <p className="text-slate-400 text-sm font-medium max-w-xs mx-auto mt-2 leading-relaxed">
+              Conecte e sincronize automaticamente suas contas bancárias, corretoras e carteiras cripto em um único lugar.
+            </p>
+          </div>
+
+          <div className="relative z-10 grid grid-cols-3 gap-4 w-full mt-2">
+            {['Bancos', 'Corretoras', 'Cripto'].map((label) => (
+              <div key={label} className="bg-white/5 rounded-2xl p-4 border border-white/10 flex flex-col items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+                  <ShieldCheck size={16} className="text-indigo-400" />
+                </div>
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
+              </div>
+            ))}
+          </div>
+
+          <p className="relative z-10 text-[8px] font-black text-slate-600 uppercase tracking-widest mt-2">
+            Disponível em breve · Aguarde novidades
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 pb-10">

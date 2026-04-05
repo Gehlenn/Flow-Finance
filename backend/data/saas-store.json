@@ -1,8 +1,47 @@
 {
-  "usageByWorkspace": {},
+  "usageByWorkspace": {
+    "ws-1": {
+      "2026-04": {
+        "transactions": 0,
+        "aiQueries": 4,
+        "bankConnections": 0
+      }
+    }
+  },
   "usageByUser": {},
   "billingHooksByWorkspace": {},
   "billingHooksByUser": {},
-  "usageEventsByWorkspace": {},
+  "usageEventsByWorkspace": {
+    "ws-1": [
+      {
+        "id": "usage_1775380633761_h0keja0f",
+        "workspaceId": "ws-1",
+        "resource": "aiQueries",
+        "amount": 1,
+        "at": "2026-04-05T09:17:13.761Z"
+      },
+      {
+        "id": "usage_1775380633765_qbmifvg9",
+        "workspaceId": "ws-1",
+        "resource": "aiQueries",
+        "amount": 1,
+        "at": "2026-04-05T09:17:13.765Z"
+      },
+      {
+        "id": "usage_1775380711356_4q8r23ml",
+        "workspaceId": "ws-1",
+        "resource": "aiQueries",
+        "amount": 1,
+        "at": "2026-04-05T09:18:31.356Z"
+      },
+      {
+        "id": "usage_1775380711362_bca6a0pg",
+        "workspaceId": "ws-1",
+        "resource": "aiQueries",
+        "amount": 1,
+        "at": "2026-04-05T09:18:31.362Z"
+      }
+    ]
+  },
   "userPlans": {}
 }
