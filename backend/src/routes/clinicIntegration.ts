@@ -5,7 +5,7 @@ import { createDistributedRateLimitByUser } from '../middleware/distributedRateL
 import { createClinicPayloadLimitMiddleware } from '../middleware/clinicPayloadLimit';
 import { validate } from '../middleware/validate';
 import { ClinicWebhookPayloadSchema } from '../validation/clinicAutomation.schema';
-import { receiveClinicFinancialEvent } from '../controllers/clinicController';
+import { getClinicIntegrationHealth, receiveClinicFinancialEvent } from '../controllers/clinicController';
 
 const router = Router();
 
@@ -85,6 +85,12 @@ router.post(
   clinicIngestAuthenticatedLimiter,
   validate(ClinicWebhookPayloadSchema),
   receiveClinicFinancialEvent,
+);
+
+router.get(
+  '/health',
+  externalIntegrationAuth,
+  getClinicIntegrationHealth,
 );
 
 export default router;

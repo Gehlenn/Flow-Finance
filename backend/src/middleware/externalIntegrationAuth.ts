@@ -46,9 +46,9 @@ function verifyHmacSignature(req: Request, secrets: string[]): boolean {
 
   const signature = req.header('x-integration-signature');
   const timestamp = req.header('x-integration-timestamp');
-  const rawBody = req.rawBody;
+  const rawBody = typeof req.rawBody === 'string' ? req.rawBody : '';
 
-  if (!signature || !timestamp || !rawBody) {
+  if (!signature || !timestamp) {
     return false;
   }
 

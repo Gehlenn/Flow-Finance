@@ -236,4 +236,35 @@ describe('Clinic Integration API', () => {
 
     expect(statuses).toContain(429);
   });
+
+  it('deve retornar 401 no health quando x-integration-key for inválida', async () => {
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const signature = signWebhook(timestamp, '', hmacSecret);
+
+    const res = await request(app)
+      .get('/api/integrations/clinic/health')
+      .set('x-integration-key', 'wrong-key')
+      .set('x-integration-timestamp', timestamp)
+      .set('x-integration-signature', signature);
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('Invalid integration key');
+  });
+
+  it('deve retornar status de health da integração clínica com autenticação válida', async () => {
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const signature = signWebhook(timestamp, '', hmacSecret);
+
+    const res = await request(app)
+      .get('/api/integrations/clinic/health')
+      .set('x-integration-key', integrationKey)
+      .set('x-integration-timestamp', timestamp)
+      .set('x-integration-signature', signature);
+
+    expect([200, 503]).toContain(res.status);
+    expect(typeof res.body.healthy).toBe('boolean');
+    expect(res.body.dependencies).toBeDefined();
+    expect(res.body.features).toBeDefined();
+    expect(res.body.safeguards).toBeDefined();
+  });
 });

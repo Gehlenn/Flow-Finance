@@ -103,3 +103,40 @@ export const receiveClinicFinancialEvent = asyncHandler(async (req: Request, res
   const isDuplicate = result.message?.includes('already processed');
   res.status(isDuplicate ? 200 : 202).json(result);
 });
+
+export const getClinicIntegrationHealth = asyncHandler(async (_req: Request, res: Response) => {
+  const service = getClinicService();
+  const featureFlagService = getFeatureFlagService();
+  const environment = (process.env.NODE_ENV || 'production') as 'development' | 'staging' | 'production';
+
+  const context = {
+    environment,
+    sourceSystem: 'clinic-automation' as const,
+  };
+
+  const ingest = featureFlagService.isEnabled('clinic_automation_ingest_enabled', context);
+  const autoPost = featureFlagService.isEnabled('clinic_automation_auto_post_enabled', context);
+
+  const health = await service.healthCheck();
+
+  const payloadLimitBytes = Number.parseInt(process.env.CLINIC_WEBHOOK_MAX_PAYLOAD_BYTES || '', 10);
+  const edgeRateLimitMax = Number.parseInt(process.env.CLINIC_EDGE_RATE_LIMIT_MAX || '', 10);
+  const authRateLimitMax = Number.parseInt(process.env.CLINIC_AUTH_RATE_LIMIT_MAX || '', 10);
+
+  res.status(health.healthy ? 200 : 503).json({
+    healthy: health.healthy,
+    checkedAt: new Date().toISOString(),
+    environment,
+    dependencies: health.details,
+    features: {
+      clinicAutomationIngest: ingest,
+      clinicAutomationAutoPost: autoPost,
+    },
+    safeguards: {
+      payloadMaxBytes: Number.isFinite(payloadLimitBytes) && payloadLimitBytes > 0 ? payloadLimitBytes : 256 * 1024,
+      edgeRateLimitMax: Number.isFinite(edgeRateLimitMax) && edgeRateLimitMax > 0 ? edgeRateLimitMax : 300,
+      authRateLimitMax: Number.isFinite(authRateLimitMax) && authRateLimitMax > 0 ? authRateLimitMax : 200,
+      timestampSkewSeconds: Number.parseInt(process.env.FLOW_EXTERNAL_INTEGRATION_MAX_SKEW_SECONDS || '300', 10),
+    },
+  });
+});
