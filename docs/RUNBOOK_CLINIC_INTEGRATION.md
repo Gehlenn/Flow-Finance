@@ -21,6 +21,7 @@
 9. [Health endpoint](#9-health-endpoint)
 10. [Thresholds de alerta](#10-thresholds-de-alerta)
 11. [Procedimentos de incidente](#11-procedimentos-de-incidente)
+12. [Status consolidado da entrega](#12-status-consolidado-da-entrega)
 
 ---
 
@@ -471,3 +472,30 @@ FF_CLINIC_INGEST=true
 - [ ] Verificar eventos duplicados/perdidos no período de indisponibilidade
 - [ ] Atualizar `docs/BUGLOG.md` com causa raiz e solução
 - [ ] Revisar thresholds de alerta se necessário
+
+---
+
+## 12. Status consolidado da entrega
+
+**Data de consolidação:** 2026-04-05  
+**Branch:** `main`  
+**Head validado:** `84a08d4`
+
+### Checklist técnico consolidado
+
+- [x] `monitorIntegration` e exports de observabilidade disponíveis e integrados.
+- [x] Kill switches adicionados no `EnhancedFeatureFlagService`.
+- [x] Configuração central de flags criada em `backend/src/config/featureFlags.ts`.
+- [x] `PromptInjectionGuard` integrado no `aiController`.
+- [x] Rota e controller da integração clínica implementados.
+- [x] Compatibilidade de tipos Redis no fluxo de idempotência/rate limit corrigida.
+- [x] Auditoria de testes `.skip`: não há arquivos `*.skip.*`; `test.skip` remanescentes são condicionais de ambiente (E2E local) e não bloqueiam CI.
+- [x] Validação final executada com sucesso (`npm run lint`, `npm test`, `npm run test:coverage:critical`).
+
+### Commits relevantes desta rodada
+
+- `a806149` feat(observability): add clinic integration health endpoint
+- `214233d` refactor(config): make trust proxy setting configurable via TRUST_PROXY env var
+- `d5c8129` docs(runbook): add clinic integration operational runbook (flags, kill switches, alerts)
+- `7a885b4` fix(clinic-integration): enforce signed raw body on body routes and rate limit health
+- `84a08d4` chore(scripts): add hardened codex environment setup script and guide
