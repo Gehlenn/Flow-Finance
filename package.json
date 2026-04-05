@@ -25,6 +25,7 @@
     "test:watch": "vitest --exclude tests/e2e/**",
     "test:coverage": "vitest run --coverage --exclude tests/e2e/**",
     "test:coverage:critical": "vitest run --config vitest.critical.config.ts",
+    "validate:cfo:route": "node scripts/validate-cfo-route.mjs",
     "health:io": "vitest run --pool=threads tests/health/io-integrations.health.test.ts",
     "health:runtime": "playwright test tests/e2e/runtime-console-health.spec.ts --project=chromium --workers=1",
     "health:runtime:mobile": "playwright test tests/e2e/runtime-console-health.spec.ts --project=\"Mobile Chrome\" --project=\"Mobile Safari\" --workers=1",
