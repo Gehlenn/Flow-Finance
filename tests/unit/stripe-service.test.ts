@@ -39,12 +39,12 @@ describe('stripeService helpers', () => {
     expect(() => parseStripeWebhookEvent('{invalid')).toThrow(AppError);
   });
 
-  it('persists Stripe customer lookup through workspace billing state', () => {
+  it('persists Stripe customer lookup through workspace billing state', async () => {
     const workspace = createWorkspace('Workspace Stripe', 'owner-1');
 
     rememberStripeCustomerForWorkspace(workspace.workspaceId, 'cus_stripe_123');
 
-    expect(findWorkspaceForStripeCustomer('cus_stripe_123')?.workspaceId).toBe(workspace.workspaceId);
+    expect((await findWorkspaceForStripeCustomer('cus_stripe_123'))?.workspaceId).toBe(workspace.workspaceId);
   });
 
   it('getPlanFromStripeEvent returns pro when price id matches', () => {

@@ -21,13 +21,25 @@ import { Account } from '../../models/Account';
 import { buildFinancialGraph, invalidateGraphCache } from '../ai/financialGraph';
 import { detectFinancialLeaks } from '../ai/leakDetector';
 import { generateMonthlyReport } from '../finance/reportEngine';
-import { API_ENDPOINTS, getAuthHeaders } from '../config/api.config';
+import { API_ENDPOINTS, getAuthHeaders, getStoredWorkspaceId } from '../config/api.config';
 
 
 // ─── PART 5 — Storage ─────────────────────────────────────────────────────────
 
 const MAX_EVENTS  = 200;
-let eventCache: FinancialEvent[] = [];
+const eventCacheByWorkspace = new Map<string, FinancialEvent[]>();
+
+function getActiveWsId(): string {
+  return (typeof window !== 'undefined' ? getStoredWorkspaceId() : null) ?? 'global';
+}
+
+function getWorkspaceEventCache(): FinancialEvent[] {
+  const wsId = getActiveWsId();
+  if (!eventCacheByWorkspace.has(wsId)) {
+    eventCacheByWorkspace.set(wsId, []);
+  }
+  return eventCacheByWorkspace.get(wsId)!;
+}
 
 function buildEventEndpoint(): string {
   return API_ENDPOINTS.USER.PROFILE.replace('/user/profile', '/finance/events');
@@ -74,7 +86,7 @@ export async function refreshFinancialEvents(limit = MAX_EVENTS): Promise<Financ
 
   const headers = getAuthHeaders();
   if (!headers.Authorization) {
-    return eventCache;
+    return getWorkspaceEventCache();
   }
 
   try {
@@ -84,23 +96,24 @@ export async function refreshFinancialEvents(limit = MAX_EVENTS): Promise<Financ
     });
 
     if (!response.ok) {
-      return eventCache;
+      return getWorkspaceEventCache();
     }
 
     const body = await response.json() as {
       events?: Array<{ id: string; type: FinancialEventType; payload: unknown; occurredAt: string }>;
     };
 
-    eventCache = (body.events || []).map((event) => ({
+    const refreshed = (body.events || []).map((event) => ({
       id: event.id,
       type: event.type,
       payload: event.payload,
       created_at: event.occurredAt,
     }));
-    return eventCache;
+    eventCacheByWorkspace.set(getActiveWsId(), refreshed);
+    return refreshed;
   } catch (error) {
     console.warn('[EventEngine] Failed to fetch remote events:', error);
-    return eventCache;
+    return getWorkspaceEventCache();
   }
 }
 
@@ -121,7 +134,9 @@ export function emitFinancialEvent(
     id: makeId(),
     created_at: now(),
   };
-  eventCache = [full, ...eventCache].slice(0, MAX_EVENTS);
+  const wsId = getActiveWsId();
+  const updated = [full, ...getWorkspaceEventCache()].slice(0, MAX_EVENTS);
+  eventCacheByWorkspace.set(wsId, updated);
   void persistEventRemotely(full);
   subscribers.forEach(cb => {
     try { cb(full); } catch (e) { console.error('[EventEngine] subscriber error', e); }
@@ -149,17 +164,17 @@ export function subscribeToEvent(
 
 /** Retorna todos os eventos armazenados (mais recentes primeiro). */
 export function getFinancialEvents(): FinancialEvent[] {
-  return eventCache;
+  return getWorkspaceEventCache();
 }
 
 /** Retorna eventos filtrados por tipo. */
 export function getEventsByType(type: FinancialEventType): FinancialEvent[] {
-  return eventCache.filter(e => e.type === type);
+  return getWorkspaceEventCache().filter(e => e.type === type);
 }
 
 /** Limpa todos os eventos armazenados. */
 export function clearFinancialEvents(): void {
-  eventCache = [];
+  eventCacheByWorkspace.set(getActiveWsId(), []);
 }
 
 // ─── PART 3 — Typed event helpers ────────────────────────────────────────────

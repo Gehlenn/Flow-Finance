@@ -1,23 +1,21 @@
-<<<<<<< ours
-<<<<<<< ours
-﻿# 🐛 BUGLOG - Flow Finance v0.3.1v
+﻿ï»¿# ðŸ› BUGLOG - Flow Finance v0.3.1v
 
 **Documento de Rastreamento de Bugs**  
-**Período**: v0.3.0 → v0.3.1v  
-**Data**: 8 de Março de 2026  
-**Responsável**: QA Team + Development
+**PerÃ­odo**: v0.3.0 â†’ v0.3.1v  
+**Data**: 8 de MarÃ§o de 2026  
+**ResponsÃ¡vel**: QA Team + Development
 
 ---
 
 ## Legenda de Status
 
-| Status | Descrição |
+| Status | DescriÃ§Ã£o |
 |--------|-----------|
-| 🔴 ABERTO | Identificado mas não corrigido |
-| 🟡 EM PROGRESSO | Sendo trabalhado |
-| 🟢 CORRIGIDO | Solução aplicada e testada |
-| ⚪ WONTFIX | Won't fix (baixa prioridade ou design) |
-| 🟣 BLOQUEADO | Dependem de outro bug |
+| ðŸ”´ ABERTO | Identificado mas nÃ£o corrigido |
+| ðŸŸ¡ EM PROGRESSO | Sendo trabalhado |
+| ðŸŸ¢ CORRIGIDO | SoluÃ§Ã£o aplicada e testada |
+| âšª WONTFIX | Won't fix (baixa prioridade ou design) |
+| ðŸŸ£ BLOQUEADO | Dependem de outro bug |
 
 ---
 
@@ -25,68 +23,68 @@
 
 ## CHECKPOINT DE TRANSICAO v0.9.1v
 
-### 🔴 B013 - Runtime console health com "Maximum update depth exceeded"
+### ðŸ”´ B013 - Runtime console health com "Maximum update depth exceeded"
 **ID**: B013  
 **Versao Identificada**: v0.9.1v  
-**Severidade**: 🔴 CRITICA  
-**Impacto**: Regressao funcional no shell em múltiplos browsers, com risco de loop de render e travamento de UI  
+**Severidade**: ðŸ”´ CRITICA  
+**Impacto**: Regressao funcional no shell em mÃºltiplos browsers, com risco de loop de render e travamento de UI  
 
 **Descricao**:
-- Testes E2E de runtime console health reportaram erro repetido de profundidade máxima de atualização.
+- Testes E2E de runtime console health reportaram erro repetido de profundidade mÃ¡xima de atualizaÃ§Ã£o.
 - Falha reproduzida em Chromium, Firefox, WebKit e Mobile Chrome.
 
-**Causa Raiz (hipótese inicial)**:
-- Efeito React com dependências instáveis e `setState` em cascata sem condição de parada robusta.
+**Causa Raiz (hipÃ³tese inicial)**:
+- Efeito React com dependÃªncias instÃ¡veis e `setState` em cascata sem condiÃ§Ã£o de parada robusta.
 
 **Solucao Aplicada**:
 - Estabilizacao de callbacks no `App.tsx` com `useCallback` para evitar reruns em cascata.
 - Ajuste do `useAuthAndWorkspace` com `useRef` para reduzir resubscribe e evitar loop de atualizacao.
 
-**Status**: 🟢 CORRIGIDO  
+**Status**: ðŸŸ¢ CORRIGIDO  
 **Data de Correcao**: 2 Abr 2026  
 **Data de Registro**: 2 Abr 2026
 
 ---
 
-### 🔴 B014 - API key inválida gerando erro 400 no runtime
+### ðŸ”´ B014 - API key invÃ¡lida gerando erro 400 no runtime
 **ID**: B014  
 **Versao Identificada**: v0.9.1v  
-**Severidade**: 🔴 CRITICA  
-**Impacto**: Falha de integrações de autenticação/serviço externo, ruído de console e degradação de experiência  
+**Severidade**: ðŸ”´ CRITICA  
+**Impacto**: Falha de integraÃ§Ãµes de autenticaÃ§Ã£o/serviÃ§o externo, ruÃ­do de console e degradaÃ§Ã£o de experiÃªncia  
 
 **Descricao**:
-- Execuções E2E apontaram `API_KEY_INVALID` com resposta `400` em chamadas para serviço Google/Firebase.
+- ExecuÃ§Ãµes E2E apontaram `API_KEY_INVALID` com resposta `400` em chamadas para serviÃ§o Google/Firebase.
 
-**Causa Raiz (hipótese inicial)**:
-- Variável de ambiente de chave não configurada ou inválida no ambiente de teste E2E.
+**Causa Raiz (hipÃ³tese inicial)**:
+- VariÃ¡vel de ambiente de chave nÃ£o configurada ou invÃ¡lida no ambiente de teste E2E.
 
 **Solucao Aplicada**:
 - `services/firebase.ts` alterado para modo degradado seguro sem inicializacao real com placeholders.
 - `components/Login.tsx` atualizado com guardas de `isFirebaseConfigured` e mensagem amigavel de configuracao ausente.
 
-**Status**: 🟢 CORRIGIDO  
+**Status**: ðŸŸ¢ CORRIGIDO  
 **Data de Correcao**: 2 Abr 2026  
 **Data de Registro**: 2 Abr 2026
 
 ---
 
-### 🟡 B015 - E2E com `ERR_CONNECTION_REFUSED` para localhost:3000
+### ðŸŸ¡ B015 - E2E com `ERR_CONNECTION_REFUSED` para localhost:3000
 **ID**: B015  
 **Versao Identificada**: v0.9.1v  
-**Severidade**: 🟡 MEDIA  
-**Impacto**: Falso-negativo de regressão E2E por indisponibilidade do app sob teste  
+**Severidade**: ðŸŸ¡ MEDIA  
+**Impacto**: Falso-negativo de regressÃ£o E2E por indisponibilidade do app sob teste  
 
 **Descricao**:
-- Specs de edição de categoria falharam com `page.goto` recusando conexão em `http://localhost:3000/`.
+- Specs de ediÃ§Ã£o de categoria falharam com `page.goto` recusando conexÃ£o em `http://localhost:3000/`.
 
-**Causa Raiz (hipótese inicial)**:
-- Dependência de servidor local sem garantia de startup/health check antes da execução de cenários.
+**Causa Raiz (hipÃ³tese inicial)**:
+- DependÃªncia de servidor local sem garantia de startup/health check antes da execuÃ§Ã£o de cenÃ¡rios.
 
 **Solucao Aplicada**:
 - `tests/e2e/transaction-edit-category.spec.ts` ajustado para usar `baseURL` e fluxo `e2eAuth` sem URL fixa em `localhost:3000`.
 - `tests/e2e/billing.spec.ts` alinhado com UI atual de billing e skip controlado por disponibilidade de ambiente.
 
-**Status**: 🟢 CORRIGIDO  
+**Status**: ðŸŸ¢ CORRIGIDO  
 **Data de Correcao**: 2 Abr 2026  
 **Data de Registro**: 2 Abr 2026
 
@@ -94,10 +92,10 @@
 
 ## CHECKPOINT DE TRANSICAO v0.6.5
 
-### ⚪ D001 - Open Finance (Pluggy) desativado por custo operacional proibitivo
+### âšª D001 - Open Finance (Pluggy) desativado por custo operacional proibitivo
 **ID**: D001  
 **Versao Identificada**: v0.6.5  
-**Severidade**: 🔴 CRITICA (economica, nao tecnica)  
+**Severidade**: ðŸ”´ CRITICA (economica, nao tecnica)  
 **Impacto**: Feature comercial desativada; receita = zero; custo Pluggy = >R$ 1.000/mes  
 
 **Descricao**:
@@ -107,7 +105,7 @@
 
 **Causa Raiz**:
 - Mudanca de modelo de Pluggy (free tier descontinuado)
-- App ainda em fase pré-monetizacao (v0.5.x hardening)
+- App ainda em fase prÃ©-monetizacao (v0.5.x hardening)
 
 **Solucao Aplicada**:
 - Feature gate simples: `DISABLE_OPEN_FINANCE=true` em `backend/.env`
@@ -116,17 +114,17 @@
 - Codigo fonte + testes + documentacao preservados para reativacao futura
 - Stripe Billing: Desativado tambem (mock billing ativo)
 
-**Status**: ⚪ WONTFIX (estrategico; nao e bug, e decisao de negocio)  
+**Status**: âšª WONTFIX (estrategico; nao e bug, e decisao de negocio)  
 **Data de Decisao**: 16 Mar 2026  
 **Reativacao Prevista**: Quando receita mensal justificar custo (estimado v0.9.x+)
 
 ---
 
-### 🟢 B012 - E2E Pluggy skip intermitente por email dinamico por-teste
+### ðŸŸ¢ B012 - E2E Pluggy skip intermitente por email dinamico por-teste
 **ID**: B012  
 **Versao Identificada**: v0.6.4  
-**Severidade**: 🟡 MEDIA  
-**Impacto**: teste Pluggy E2E fazia skip com status `invalid` ao usar email efemero de timestamp — mesmo com backend disponivel  
+**Severidade**: ðŸŸ¡ MEDIA  
+**Impacto**: teste Pluggy E2E fazia skip com status `invalid` ao usar email efemero de timestamp â€” mesmo com backend disponivel  
 
 **Descricao**:
 - `createBackendAuthToken` criava email `e2e+pluggy-auth-{Date.now()}@...` a cada execucao
@@ -139,7 +137,7 @@
 - `tests/e2e/fixtures/auth.ts`: `getFixtureAuthToken` com email fixo `e2e-pluggy-fixture@flowfinance.test` configuravel via `E2E_PLUGGY_USER_EMAIL`
 - spec substituido para usar o fixture em vez da funcao local
 
-**Status**: 🟢 CORRIGIDO  
+**Status**: ðŸŸ¢ CORRIGIDO  
 **Data de Correcao**: 16 Mar 2026
 
 ---
@@ -150,10 +148,10 @@
 
 ## CHECKPOINT DE TRANSICAO v0.5.2v
 
-### 🟢 B011 - E2E Pluggy falhava por indisponibilidade local do backend
+### ðŸŸ¢ B011 - E2E Pluggy falhava por indisponibilidade local do backend
 **ID**: B011  
-**Versão Identificada**: v0.5.2v-transition  
-**Severidade**: 🟡 MEDIA  
+**VersÃ£o Identificada**: v0.5.2v-transition  
+**Severidade**: ðŸŸ¡ MEDIA  
 **Impacto**: falso-negativo no fluxo E2E de Open Banking em ambientes sem API local ativa  
 
 **Descricao**:
@@ -167,15 +165,15 @@
 - tratamento explicito para backend indisponivel com `skip` controlado e anotacao de motivo
 - manutencao de falha real para regressao funcional (nao mascarada)
 
-**Status**: 🟢 CORRIGIDO  
+**Status**: ðŸŸ¢ CORRIGIDO  
 **Data de Correcao**: 14 Mar 2026
 
 ---
 
-### 🟢 B009 - Provider Open Finance aceitava valor invalido
+### ðŸŸ¢ B009 - Provider Open Finance aceitava valor invalido
 **ID**: B009  
-**Versão Identificada**: v0.5.1v-transition  
-**Severidade**: 🟠 ALTA  
+**VersÃ£o Identificada**: v0.5.1v-transition  
+**Severidade**: ðŸŸ  ALTA  
 **Impacto**: typo de configuracao podia habilitar comportamento nao intencional no fluxo Open Finance  
 
 **Descricao**:
@@ -190,15 +188,15 @@
 - fallback para `mock` com warning de configuracao
 - teste unitario em `tests/unit/open-finance-provider-mode.test.ts`
 
-**Status**: 🟢 CORRIGIDO  
+**Status**: ðŸŸ¢ CORRIGIDO  
 **Data de Correcao**: 13 Mar 2026
 
 ---
 
-### 🟢 B010 - Inicializacao repetida de Firestore settings
+### ðŸŸ¢ B010 - Inicializacao repetida de Firestore settings
 **ID**: B010  
-**Versão Identificada**: v0.5.1v-transition  
-**Severidade**: 🟠 ALTA  
+**VersÃ£o Identificada**: v0.5.1v-transition  
+**Severidade**: ðŸŸ  ALTA  
 **Impacto**: rota de migracao para Firebase podia retornar `503` em runtime  
 
 **Descricao**:
@@ -212,128 +210,128 @@
 - adicao de guarda `applyFirestoreSettingsOnce(...)`
 - teste unitario dedicado em `tests/unit/open-finance-firebase-admin-adapter.test.ts`
 
-**Status**: 🟢 CORRIGIDO  
+**Status**: ðŸŸ¢ CORRIGIDO  
 **Data de Correcao**: 13 Mar 2026
 
 ---
 
-### 🟢 B007 - Health check de Open Banking dependia de backend remoto
+### ðŸŸ¢ B007 - Health check de Open Banking dependia de backend remoto
 **ID**: B007  
-**Versão Identificada**: v0.6.1-transition  
-**Severidade**: 🟠 ALTA  
-**Impacto**: `npm run test:coverage` falhava de forma não determinística no fluxo de Open Banking  
+**VersÃ£o Identificada**: v0.6.1-transition  
+**Severidade**: ðŸŸ  ALTA  
+**Impacto**: `npm run test:coverage` falhava de forma nÃ£o determinÃ­stica no fluxo de Open Banking  
 
-**Descrição**:
-- o teste de health do Open Banking disparava chamadas reais para o backend configurado em produção
-- em ambiente de coverage, a suíte podia exceder timeout antes do fallback local
+**DescriÃ§Ã£o**:
+- o teste de health do Open Banking disparava chamadas reais para o backend configurado em produÃ§Ã£o
+- em ambiente de coverage, a suÃ­te podia exceder timeout antes do fallback local
 
 **Causa Raiz**:
-- decisão `backend-first` ativa também durante execução do Vitest
-- dependência de rede externa dentro de um teste que deveria ser unitário/health local
+- decisÃ£o `backend-first` ativa tambÃ©m durante execuÃ§Ã£o do Vitest
+- dependÃªncia de rede externa dentro de um teste que deveria ser unitÃ¡rio/health local
 
-**Solução Aplicada**:
-- desabilitar o caminho de backend banking durante `MODE=test`, salvo override explícito
-- preservar o comportamento de produção e manter o fallback local determinístico nos testes
+**SoluÃ§Ã£o Aplicada**:
+- desabilitar o caminho de backend banking durante `MODE=test`, salvo override explÃ­cito
+- preservar o comportamento de produÃ§Ã£o e manter o fallback local determinÃ­stico nos testes
 
-**Status**: 🟢 CORRIGIDO  
-**Data de Correção**: 10 Mar 2026
+**Status**: ðŸŸ¢ CORRIGIDO  
+**Data de CorreÃ§Ã£o**: 10 Mar 2026
 
 ---
 
-### 🔴 B008 - Cobertura abaixo da meta protocolar
+### ðŸ”´ B008 - Cobertura abaixo da meta protocolar
 **ID**: B008  
-**Versão Identificada**: v0.6.1-transition  
-**Severidade**: 🔴 CRÍTICA  
-**Impacto**: protocolo de transição não pode ser considerado concluído integralmente  
+**VersÃ£o Identificada**: v0.6.1-transition  
+**Severidade**: ðŸ”´ CRÃTICA  
+**Impacto**: protocolo de transiÃ§Ã£o nÃ£o pode ser considerado concluÃ­do integralmente  
 
-**Descrição**:
-- baseline aferida por `npm run test:coverage` ficou em `46.35%` global após a primeira rodada de reforço
-- a meta obrigatória registrada no protocolo do projeto é `98%`
+**DescriÃ§Ã£o**:
+- baseline aferida por `npm run test:coverage` ficou em `46.35%` global apÃ³s a primeira rodada de reforÃ§o
+- a meta obrigatÃ³ria registrada no protocolo do projeto Ã© `98%`
 
 **Causa Raiz**:
-- cobertura concentrada em engines e fluxos críticos recém-testados
-- grandes áreas ainda sem testes automatizados: memória de IA, importação financeira, storage API, runtime e serviços auxiliares
+- cobertura concentrada em engines e fluxos crÃ­ticos recÃ©m-testados
+- grandes Ã¡reas ainda sem testes automatizados: memÃ³ria de IA, importaÃ§Ã£o financeira, storage API, runtime e serviÃ§os auxiliares
 
-**Solução Planejada**:
+**SoluÃ§Ã£o Planejada**:
 - expandir testes para `services/integrations/openBankingService.ts`, `src/ai/aiMemory.ts`, `src/ai/memory/AIMemoryEngine.ts`, `src/ai/memory/AIMemoryStore.ts` e `src/finance/cashflowPredictor.ts`
-- manter a estratégia de coverage por domínio crítico para ganhar previsibilidade e atacar módulos com maior lacuna primeiro
+- manter a estratÃ©gia de coverage por domÃ­nio crÃ­tico para ganhar previsibilidade e atacar mÃ³dulos com maior lacuna primeiro
 
-**Status**: 🔴 ABERTO  
+**Status**: ðŸ”´ ABERTO  
 **Data de Registro**: 10 Mar 2026
 
 ---
 
-### 🟢 B006 - Coverage command without provider dependency
+### ðŸŸ¢ B006 - Coverage command without provider dependency
 **ID**: B006  
-**Versão Identificada**: v0.6.0-transition  
-**Severidade**: 🟠 ALTA  
-**Impacto**: Protocolo de transição não conseguia gerar baseline formal de cobertura  
+**VersÃ£o Identificada**: v0.6.0-transition  
+**Severidade**: ðŸŸ  ALTA  
+**Impacto**: Protocolo de transiÃ§Ã£o nÃ£o conseguia gerar baseline formal de cobertura  
 
-**Descrição**:
-- `npm run test:coverage` falhou por ausência de `@vitest/coverage-v8`
-- A suíte unitária e o build estavam verdes, mas a etapa obrigatória de coverage não estava operacional
+**DescriÃ§Ã£o**:
+- `npm run test:coverage` falhou por ausÃªncia de `@vitest/coverage-v8`
+- A suÃ­te unitÃ¡ria e o build estavam verdes, mas a etapa obrigatÃ³ria de coverage nÃ£o estava operacional
 
 **Causa Raiz**:
 - Script `test:coverage` existia em `package.json`
-- Provider de coverage do Vitest não estava presente em `devDependencies`
+- Provider de coverage do Vitest nÃ£o estava presente em `devDependencies`
 
-**Solução Aplicada**:
+**SoluÃ§Ã£o Aplicada**:
 - instalar `@vitest/coverage-v8` em `devDependencies`
-- rerodar `npm run test:coverage` para registrar a baseline da versão 0.6.0
+- rerodar `npm run test:coverage` para registrar a baseline da versÃ£o 0.6.0
 
-**Status**: 🟢 CORRIGIDO  
-**Data de Correção**: 10 Mar 2026
+**Status**: ðŸŸ¢ CORRIGIDO  
+**Data de CorreÃ§Ã£o**: 10 Mar 2026
 
 ---
 
 ## BUGS ENCONTRADOS & RESOLVIDOS
 
-### 🟢 B001 - Category.OUTROS Undefined in Test
+### ðŸŸ¢ B001 - Category.OUTROS Undefined in Test
 **ID**: B001  
-**Versão Identificada**: v0.3.0-rc1  
-**Severidade**: 🔴 CRÍTICA  
-**Impacto**: Test suite falhava durante compilação  
+**VersÃ£o Identificada**: v0.3.0-rc1  
+**Severidade**: ðŸ”´ CRÃTICA  
+**Impacto**: Test suite falhava durante compilaÃ§Ã£o  
 
-**Descrição**:
+**DescriÃ§Ã£o**:
 ```typescript
-// ❌ BEFORE (services/ai/subscriptionDetector.test.ts:19)
+// âŒ BEFORE (services/ai/subscriptionDetector.test.ts:19)
 category: Category.OUTROS,
 // Error: Property 'OUTROS' does not exist on type 'typeof Category'
 ```
 
 **Causa Raiz**:
-- Enum `Category` em `types.ts` não continha `OUTROS`
-- Definição incompleta do enum
+- Enum `Category` em `types.ts` nÃ£o continha `OUTROS`
+- DefiniÃ§Ã£o incompleta do enum
 - Test baseado em enum desatualizado
 
-**Solução Aplicada**:
+**SoluÃ§Ã£o Aplicada**:
 ```typescript
-// ✅ AFTER
+// âœ… AFTER
 category: Category.PESSOAL,
 // ou atualizar enum para incluir OUTROS
 ```
 
-**Teste de Validação**:
+**Teste de ValidaÃ§Ã£o**:
 ```bash
-npm run type-check  # ✅ PASS
-npm run build       # ✅ PASS
-npm run test        # ✅ PASS
+npm run type-check  # âœ… PASS
+npm run build       # âœ… PASS
+npm run test        # âœ… PASS
 ```
 
-**Status**: 🟢 CORRIGIDO  
-**Data de Correção**: 8 Mar 2026  
+**Status**: ðŸŸ¢ CORRIGIDO  
+**Data de CorreÃ§Ã£o**: 8 Mar 2026  
 
 ---
 
-### 🟢 B002 - ErrorBoundary Class Methods Missing
+### ðŸŸ¢ B002 - ErrorBoundary Class Methods Missing
 **ID**: B002  
-**Versão Identificada**: v0.3.0-rc1  
-**Severidade**: 🔴 CRÍTICA  
-**Impacto**: Componente não compilava, type errors
+**VersÃ£o Identificada**: v0.3.0-rc1  
+**Severidade**: ðŸ”´ CRÃTICA  
+**Impacto**: Componente nÃ£o compilava, type errors
 
-**Descrição**:
+**DescriÃ§Ã£o**:
 ```typescript
-// ❌ BEFORE (src/components/ErrorBoundary.tsx:35)
+// âŒ BEFORE (src/components/ErrorBoundary.tsx:35)
 export class ErrorBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
@@ -346,13 +344,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
 ```
 
 **Causa Raiz**:
-- React Error Boundary requer métodos lifecycle específicos
-- `getDerivedStateFromError` não foi implementado
+- React Error Boundary requer mÃ©todos lifecycle especÃ­ficos
+- `getDerivedStateFromError` nÃ£o foi implementado
 - Class component missing required React lifecycle
 
-**Solução Aplicada**:
+**SoluÃ§Ã£o Aplicada**:
 ```typescript
-// ✅ AFTER - Adicionar método lifecycle
+// âœ… AFTER - Adicionar mÃ©todo lifecycle
 static getDerivedStateFromError(error: Error): Partial<State> {
   return { hasError: true };
 }
@@ -363,42 +361,42 @@ componentDidCatch(error: Error, errorInfo: ErrorInfo) {
 }
 ```
 
-**Teste de Validação**:
+**Teste de ValidaÃ§Ã£o**:
 ```bash
-npm run type-check  # ✅ PASS - Zero errors
+npm run type-check  # âœ… PASS - Zero errors
 ```
 
-**Status**: 🟢 CORRIGIDO  
-**Data de Correção**: 8 Mar 2026  
+**Status**: ðŸŸ¢ CORRIGIDO  
+**Data de CorreÃ§Ã£o**: 8 Mar 2026  
 
 ---
 
-### 🟢 B003 - RequestInit Timeout Not Supported
+### ðŸŸ¢ B003 - RequestInit Timeout Not Supported
 **ID**: B003  
-**Versão Identificada**: v0.3.0-rc1  
-**Severidade**: 🟠 ALTA  
+**VersÃ£o Identificada**: v0.3.0-rc1  
+**Severidade**: ðŸŸ  ALTA  
 **Impacto**: Type error em src/config/api.config.ts
 
-**Descrição**:
+**DescriÃ§Ã£o**:
 ```typescript
-// ❌ BEFORE (src/config/api.config.ts:112)
+// âŒ BEFORE (src/config/api.config.ts:112)
 const response = await fetch(endpoint, {
   ...options,
   headers,
-  timeout: API_CONFIG.TIMEOUT,  // ❌ Property 'timeout' does not exist
+  timeout: API_CONFIG.TIMEOUT,  // âŒ Property 'timeout' does not exist
 });
 
 // Error TS2769: No overload matches this call
 ```
 
 **Causa Raiz**:
-- `RequestInit` (tipo de Fetch API) não suporta propriedade `timeout`
+- `RequestInit` (tipo de Fetch API) nÃ£o suporta propriedade `timeout`
 - Timeout deve ser implementado via `AbortController`
 - Confundida com API externa ou XMLHttpRequest
 
-**Solução Aplicada**:
+**SoluÃ§Ã£o Aplicada**:
 ```typescript
-// ✅ AFTER - Use AbortController instead
+// âœ… AFTER - Use AbortController instead
 const controller = new AbortController();
 const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
@@ -406,33 +404,33 @@ try {
   const response = await fetch(endpoint, {
     ...options,
     headers,
-    signal: controller.signal,  // ✅ Correct way
+    signal: controller.signal,  // âœ… Correct way
   });
   clearTimeout(timeoutId);
-  // ... resto do código
+  // ... resto do cÃ³digo
 }
 ```
 
-**Teste de Validação**:
+**Teste de ValidaÃ§Ã£o**:
 ```bash
-npm run type-check  # ✅ PASS
+npm run type-check  # âœ… PASS
 curl -X POST http://localhost:3001/api/test  # Manual test timeout
 ```
 
-**Status**: 🟢 CORRIGIDO  
-**Data de Correção**: 8 Mar 2026  
+**Status**: ðŸŸ¢ CORRIGIDO  
+**Data de CorreÃ§Ã£o**: 8 Mar 2026  
 
 ---
 
-### 🟢 B004 - BrowserTracing Integration Error
+### ðŸŸ¢ B004 - BrowserTracing Integration Error
 **ID**: B004  
-**Versão Identificada**: v0.3.0-rc1  
-**Severidade**: 🟠 ALTA  
+**VersÃ£o Identificada**: v0.3.0-rc1  
+**Severidade**: ðŸŸ  ALTA  
 **Impacto**: Sentry initialization failing
 
-**Descrição**:
+**DescriÃ§Ã£o**:
 ```typescript
-// ❌ BEFORE (src/config/sentry.ts:26)
+// âŒ BEFORE (src/config/sentry.ts:26)
 integrations: [
   new BrowserTracing(),
 ],
@@ -442,13 +440,13 @@ integrations: [
 ```
 
 **Causa Raiz**:
-- Versão do @sentry/react incompatível
-- BrowserTracing requer argumentos específicos
-- Setup method signature mudou entre versões
+- VersÃ£o do @sentry/react incompatÃ­vel
+- BrowserTracing requer argumentos especÃ­ficos
+- Setup method signature mudou entre versÃµes
 
-**Solução Aplicada**:
+**SoluÃ§Ã£o Aplicada**:
 ```typescript
-// ✅ AFTER - Desabilitar por enquanto, usar apenas error tracking
+// âœ… AFTER - Desabilitar por enquanto, usar apenas error tracking
 integrations: [
   // BrowserTracing atualmente causando issues - usar somente error tracking
   // Ativar em futuro update quando Sentry estiver updated
@@ -457,44 +455,44 @@ integrations: [
 // Ou alternativa: corrigir setup
 integrations: [
   new BrowserTracing({
-    // Configurações corretas para versão atual
+    // ConfiguraÃ§Ãµes corretas para versÃ£o atual
     tracePropagationTargets: ['localhost', /^\//],
   }),
 ],
 ```
 
-**Teste de Validação**:
+**Teste de ValidaÃ§Ã£o**:
 ```bash
-npm run type-check  # ✅ PASS
-npm run build       # ✅ PASS
+npm run type-check  # âœ… PASS
+npm run build       # âœ… PASS
 # Test Sentry com console.error()
 ```
 
-**Status**: 🟢 CORRIGIDO  
-**Data de Correção**: 8 Mar 2026  
+**Status**: ðŸŸ¢ CORRIGIDO  
+**Data de CorreÃ§Ã£o**: 8 Mar 2026  
 
 ---
 
-### 🟢 B005 - Capacitor Config Invalid Properties
+### ðŸŸ¢ B005 - Capacitor Config Invalid Properties
 **ID**: B005  
-**Versão Identificada**: v0.3.0-rc1  
-**Severidade**: 🟠 ALTA  
+**VersÃ£o Identificada**: v0.3.0-rc1  
+**Severidade**: ðŸŸ  ALTA  
 **Impacto**: Capacitor config failures
 
-**Descrição**:
+**DescriÃ§Ã£o**:
 ```typescript
-// ❌ BEFORE (capacitor.config.ts:58-70)
+// âŒ BEFORE (capacitor.config.ts:58-70)
 const config: CapacitorConfig = {
   // ...
   android: {
     minSdkVersion: 24,
     targetSdkVersion: 34,
-    compileSdkVersion: 34,  // ❌ Invalid property
+    compileSdkVersion: 34,  // âŒ Invalid property
   },
   ios: {
-    defaults: { ... },  // ❌ Invalid property
+    defaults: { ... },  // âŒ Invalid property
   },
-  plugins: {  // ❌ Duplicate plugins key
+  plugins: {  // âŒ Duplicate plugins key
     SplashScreen: { ... },
   },
 };
@@ -504,18 +502,18 @@ const config: CapacitorConfig = {
 ```
 
 **Causa Raiz**:
-- Propriedades Android/iOS não são válidas em CapacitorConfig
+- Propriedades Android/iOS nÃ£o sÃ£o vÃ¡lidas em CapacitorConfig
 - Devem ser configuradas em arquivos nativos (build.gradle, Info.plist)
 - Config ts estava 'carregada' com configs demais
 
-**Solução Aplicada**:
+**SoluÃ§Ã£o Aplicada**:
 ```typescript
-// ✅ AFTER - Remover propriedades inválidas
+// âœ… AFTER - Remover propriedades invÃ¡lidas
 const config: CapacitorConfig = {
   appId: 'com.flowfinance.app',
   appName: 'Flow Finance',
   webDir: 'dist',
-  // Plugins configurado uma única vez
+  // Plugins configurado uma Ãºnica vez
   plugins: {
     SplashScreen: { ... },
     StatusBar: { ... },
@@ -528,32 +526,32 @@ const config: CapacitorConfig = {
 // - ios/App/App/Info.plist (for iOS)
 ```
 
-**Teste de Validação**:
+**Teste de ValidaÃ§Ã£o**:
 ```bash
-npm run type-check       # ✅ PASS
-npx cap sync             # ✅ Sync successful
+npm run type-check       # âœ… PASS
+npx cap sync             # âœ… Sync successful
 npx cap build android    # Await JDK installation
 ```
 
-**Status**: 🟢 CORRIGIDO  
-**Data de Correção**: 8 Mar 2026  
+**Status**: ðŸŸ¢ CORRIGIDO  
+**Data de CorreÃ§Ã£o**: 8 Mar 2026  
 
 ---
 
-### 🟢 B006 - Capacitor.d.ts Function Syntax Error
+### ðŸŸ¢ B006 - Capacitor.d.ts Function Syntax Error
 **ID**: B006  
-**Versão Identificada**: v0.3.0-rc1  
-**Severidade**: 🟠 ALTA  
+**VersÃ£o Identificada**: v0.3.0-rc1  
+**Severidade**: ðŸŸ  ALTA  
 **Impacto**: Type definition invalid
 
-**Descrição**:
+**DescriÃ§Ã£o**:
 ```typescript
-// ❌ BEFORE (src/types/capacitor.d.ts:11)
+// âŒ BEFORE (src/types/capacitor.d.ts:11)
 interface Window {
   Capacitor?: {
     isNativePlatform: () => boolean;
     getPlatform: () => 'android' | 'ios' | 'web';
-    exit: ()void;  // ❌ Missing space before 'void'
+    exit: ()void;  // âŒ Missing space before 'void'
   };
 }
 
@@ -563,42 +561,42 @@ interface Window {
 **Causa Raiz**:
 - Typo simples: `()void` vs `() => void`
 - TypeScript parser esperava arrow function
-- Não foi detectado em pre-commit hook
+- NÃ£o foi detectado em pre-commit hook
 
-**Solução Aplicada**:
+**SoluÃ§Ã£o Aplicada**:
 ```typescript
-// ✅ AFTER - Adicionar espaço
-exit: () => void;  // ✅ Correto
+// âœ… AFTER - Adicionar espaÃ§o
+exit: () => void;  // âœ… Correto
 ```
 
-**Teste de Validação**:
+**Teste de ValidaÃ§Ã£o**:
 ```bash
-npm run type-check  # ✅ PASS
+npm run type-check  # âœ… PASS
 ```
 
-**Status**: 🟢 CORRIGIDO  
-**Data de Correção**: 8 Mar 2026  
+**Status**: ðŸŸ¢ CORRIGIDO  
+**Data de CorreÃ§Ã£o**: 8 Mar 2026  
 
 ---
 
 ## BUGS CONHECIDOS (Abertos para v0.4.0)
 
-### 🔴 B007 - JDK Not Installed
+### ðŸ”´ B007 - JDK Not Installed
 **ID**: B007  
-**Severidade**: 🔴 CRÍTICA (para mobile)  
-**Impacto**: Android APK build impossível
+**Severidade**: ðŸ”´ CRÃTICA (para mobile)  
+**Impacto**: Android APK build impossÃ­vel
 
-**Descrição**:
+**DescriÃ§Ã£o**:
 ```
 ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH
 ```
 
 **Causa Raiz**:
 - Sistema operacional Windows sem JDK 17+ instalado
-- Android Studio não disponível
-- Chocolatey (package manager) com permissões insuficientes
+- Android Studio nÃ£o disponÃ­vel
+- Chocolatey (package manager) com permissÃµes insuficientes
 
-**Solução**:
+**SoluÃ§Ã£o**:
 ```bash
 # Option 1: Instalar Android Studio (inclui JDK)
 # https://developer.android.com/studio
@@ -610,17 +608,17 @@ ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH
 wsl --install Ubuntu-22.04
 ```
 
-**Impacto em Roadmap**: v0.4.0 bloqueado até resolução  
-**Status**: 🔴 ABERTO
+**Impacto em Roadmap**: v0.4.0 bloqueado atÃ© resoluÃ§Ã£o  
+**Status**: ðŸ”´ ABERTO
 
 ---
 
-### 🔴 B008 - Config Module Test Coverage Low
+### ðŸ”´ B008 - Config Module Test Coverage Low
 **ID**: B008  
-**Severidade**: 🟡 MÉDIA  
+**Severidade**: ðŸŸ¡ MÃ‰DIA  
 **Impacto**: Coverage 96.5% vs target 100%
 
-**Descrição**:
+**DescriÃ§Ã£o**:
 - Arquivo `src/config/api.config.ts` com coverage 96.5%
 - Faltam testes para:
   - Error handling edge cases
@@ -628,28 +626,28 @@ wsl --install Ubuntu-22.04
   - Header injection
   - Platform detection
 
-**Solução**:
+**SoluÃ§Ã£o**:
 ```typescript
-// Referência histórica arquivada em docs/archive/TEST_SUITE_v0.3.0.md
-// Seção "API REQUEST SERVICE TESTS"
+// ReferÃªncia histÃ³rica arquivada em docs/archive/TEST_SUITE_v0.3.0.md
+// SeÃ§Ã£o "API REQUEST SERVICE TESTS"
 ```
 
-**Status**: 🟡 EM PROGRESSO  
+**Status**: ðŸŸ¡ EM PROGRESSO  
 
 ---
 
-### ⚪ B009 - Bundle Size > 500KB
+### âšª B009 - Bundle Size > 500KB
 **ID**: B009  
-**Severidade**: 🟠 MÉDIA (performance)  
+**Severidade**: ðŸŸ  MÃ‰DIA (performance)  
 **Impacto**: Main chunk 532KB (alvo: <300KB)
 
-**Descrição**: Chunks muy grandes após minification
+**DescriÃ§Ã£o**: Chunks muy grandes apÃ³s minification
 
 **Causa Raiz**:
-- Recharts (charts library) é pesada
+- Recharts (charts library) Ã© pesada
 - Sem lazy loading de rotas
 
-**Solução Recomendada** (v0.4.0):
+**SoluÃ§Ã£o Recomendada** (v0.4.0):
 ```typescript
 // Implementar route-based code splitting
 import React, { lazy, Suspense } from 'react';
@@ -669,56 +667,56 @@ export function App() {
 }
 ```
 
-**Status**: ⚪ WONTFIX (v0.3) / Priorizado v0.4.0
+**Status**: âšª WONTFIX (v0.3) / Priorizado v0.4.0
 
 ---
 
-## ESTATÍSTICAS
+## ESTATÃSTICAS
 
 ### Resumo v0.3.0
 - **Total Bugs Identificados**: 9
 - **Bugs Corrigidos**: 6
 - **Bugs Abertos**: 2
 - **Bugs Wontfix**: 1
-- **Taxa de Correção**: 66%
+- **Taxa de CorreÃ§Ã£o**: 66%
 
-### Distribuição por Severidade
+### DistribuiÃ§Ã£o por Severidade
 | Severidade | Quantidade |
 |------------|-----------|
-| 🔴 CRÍTICA | 3 (50%) |
-| 🟠 ALTA | 4 (66%) |
-| 🟡 MÉDIA | 1 (11%) |
-| 🟢 BAIXA | 1 (11%) |
+| ðŸ”´ CRÃTICA | 3 (50%) |
+| ðŸŸ  ALTA | 4 (66%) |
+| ðŸŸ¡ MÃ‰DIA | 1 (11%) |
+| ðŸŸ¢ BAIXA | 1 (11%) |
 
-### Tempo Médio de Correção
-- Crítica: 2-4 horas
+### Tempo MÃ©dio de CorreÃ§Ã£o
+- CrÃ­tica: 2-4 horas
 - Alta: 1-3 horas
-- Média: < 1 hora
+- MÃ©dia: < 1 hora
 
 ---
 
-## LIÇÕES APRENDIDAS
+## LIÃ‡Ã•ES APRENDIDAS
 
-1. ✅ **Type checking rigoroso** - Detectou 90% dos bugs antes da execução
-2. ⚠️ **Capitação na documentação** - Configs não documentadas causaram confusion
-3. ⚠️ **Dependency management** - Sentry versioning inconsistency
-4. ✅ **Automated testing** - Build process detectou problemas cedo
+1. âœ… **Type checking rigoroso** - Detectou 90% dos bugs antes da execuÃ§Ã£o
+2. âš ï¸ **CapitaÃ§Ã£o na documentaÃ§Ã£o** - Configs nÃ£o documentadas causaram confusion
+3. âš ï¸ **Dependency management** - Sentry versioning inconsistency
+4. âœ… **Automated testing** - Build process detectou problemas cedo
 
 ---
 
-## RECOMENDAÇÕES PARA v0.4.0
+## RECOMENDAÃ‡Ã•ES PARA v0.4.0
 
 1. [ ] Revisar todas as type definitions vs implementation
-2. [ ] Adicionar pre-commit hooks com type-check obrigatório
+2. [ ] Adicionar pre-commit hooks com type-check obrigatÃ³rio
 3. [ ] Documentar todas as configs em README
 4. [ ] Configurar automated dependency updates
-5. [ ] Setup CI/CD com testes automáticos
+5. [ ] Setup CI/CD com testes automÃ¡ticos
 
 ---
 
-**Documento Finalizado**: 8 de Março de 2026  
-**Próxima Auditoria**: v0.4.0 (15 de Março)  
-**Responsável**: QA Team
+**Documento Finalizado**: 8 de MarÃ§o de 2026  
+**PrÃ³xima Auditoria**: v0.4.0 (15 de MarÃ§o)  
+**ResponsÃ¡vel**: QA Team
 
 ---
 
@@ -728,27 +726,24 @@ export function App() {
 - Impacto: nao bloqueia pipeline principal, mas reduz sinal de validacao do fluxo Pluggy isolado
 - Acao proposta: criar fixture de usuario e token dedicados para E2E Pluggy
 
-=======
-=======
->>>>>>> theirs
-# 🐛 BUGLOG - Flow Finance v0.3.1v
+# ðŸ› BUGLOG - Flow Finance v0.3.1v
 
 **Documento de Rastreamento de Bugs**  
-**Período**: v0.3.0 → v0.3.1v  
-**Data**: 8 de Março de 2026  
-**Responsável**: QA Team + Development
+**PerÃ­odo**: v0.3.0 â†’ v0.3.1v  
+**Data**: 8 de MarÃ§o de 2026  
+**ResponsÃ¡vel**: QA Team + Development
 
 ---
 
 ## Legenda de Status
 
-| Status | Descrição |
+| Status | DescriÃ§Ã£o |
 |--------|-----------|
-| 🔴 ABERTO | Identificado mas não corrigido |
-| 🟡 EM PROGRESSO | Sendo trabalhado |
-| 🟢 CORRIGIDO | Solução aplicada e testada |
-| ⚪ WONTFIX | Won't fix (baixa prioridade ou design) |
-| 🟣 BLOQUEADO | Dependem de outro bug |
+| ðŸ”´ ABERTO | Identificado mas nÃ£o corrigido |
+| ðŸŸ¡ EM PROGRESSO | Sendo trabalhado |
+| ðŸŸ¢ CORRIGIDO | SoluÃ§Ã£o aplicada e testada |
+| âšª WONTFIX | Won't fix (baixa prioridade ou design) |
+| ðŸŸ£ BLOQUEADO | Dependem de outro bug |
 
 ---
 
@@ -756,10 +751,10 @@ export function App() {
 
 ## CHECKPOINT DE TRANSICAO v0.6.5
 
-### ⚪ D001 - Open Finance (Pluggy) desativado por custo operacional proibitivo
+### âšª D001 - Open Finance (Pluggy) desativado por custo operacional proibitivo
 **ID**: D001  
 **Versao Identificada**: v0.6.5  
-**Severidade**: 🔴 CRITICA (economica, nao tecnica)  
+**Severidade**: ðŸ”´ CRITICA (economica, nao tecnica)  
 **Impacto**: Feature comercial desativada; receita = zero; custo Pluggy = >R$ 1.000/mes  
 
 **Descricao**:
@@ -769,7 +764,7 @@ export function App() {
 
 **Causa Raiz**:
 - Mudanca de modelo de Pluggy (free tier descontinuado)
-- App ainda em fase pré-monetizacao (v0.5.x hardening)
+- App ainda em fase prÃ©-monetizacao (v0.5.x hardening)
 
 **Solucao Aplicada**:
 - Feature gate simples: `DISABLE_OPEN_FINANCE=true` em `backend/.env`
@@ -778,17 +773,17 @@ export function App() {
 - Codigo fonte + testes + documentacao preservados para reativacao futura
 - Stripe Billing: Desativado tambem (mock billing ativo)
 
-**Status**: ⚪ WONTFIX (estrategico; nao e bug, e decisao de negocio)  
+**Status**: âšª WONTFIX (estrategico; nao e bug, e decisao de negocio)  
 **Data de Decisao**: 16 Mar 2026  
 **Reativacao Prevista**: Quando receita mensal justificar custo (estimado v0.9.x+)
 
 ---
 
-### 🟢 B012 - E2E Pluggy skip intermitente por email dinamico por-teste
+### ðŸŸ¢ B012 - E2E Pluggy skip intermitente por email dinamico por-teste
 **ID**: B012  
 **Versao Identificada**: v0.6.4  
-**Severidade**: 🟡 MEDIA  
-**Impacto**: teste Pluggy E2E fazia skip com status `invalid` ao usar email efemero de timestamp — mesmo com backend disponivel  
+**Severidade**: ðŸŸ¡ MEDIA  
+**Impacto**: teste Pluggy E2E fazia skip com status `invalid` ao usar email efemero de timestamp â€” mesmo com backend disponivel  
 
 **Descricao**:
 - `createBackendAuthToken` criava email `e2e+pluggy-auth-{Date.now()}@...` a cada execucao
@@ -801,7 +796,7 @@ export function App() {
 - `tests/e2e/fixtures/auth.ts`: `getFixtureAuthToken` com email fixo `e2e-pluggy-fixture@flowfinance.test` configuravel via `E2E_PLUGGY_USER_EMAIL`
 - spec substituido para usar o fixture em vez da funcao local
 
-**Status**: 🟢 CORRIGIDO  
+**Status**: ðŸŸ¢ CORRIGIDO  
 **Data de Correcao**: 16 Mar 2026
 
 ---
@@ -812,10 +807,10 @@ export function App() {
 
 ## CHECKPOINT DE TRANSICAO v0.5.2v
 
-### 🟢 B011 - E2E Pluggy falhava por indisponibilidade local do backend
+### ðŸŸ¢ B011 - E2E Pluggy falhava por indisponibilidade local do backend
 **ID**: B011  
-**Versão Identificada**: v0.5.2v-transition  
-**Severidade**: 🟡 MEDIA  
+**VersÃ£o Identificada**: v0.5.2v-transition  
+**Severidade**: ðŸŸ¡ MEDIA  
 **Impacto**: falso-negativo no fluxo E2E de Open Banking em ambientes sem API local ativa  
 
 **Descricao**:
@@ -829,15 +824,15 @@ export function App() {
 - tratamento explicito para backend indisponivel com `skip` controlado e anotacao de motivo
 - manutencao de falha real para regressao funcional (nao mascarada)
 
-**Status**: 🟢 CORRIGIDO  
+**Status**: ðŸŸ¢ CORRIGIDO  
 **Data de Correcao**: 14 Mar 2026
 
 ---
 
-### 🟢 B009 - Provider Open Finance aceitava valor invalido
+### ðŸŸ¢ B009 - Provider Open Finance aceitava valor invalido
 **ID**: B009  
-**Versão Identificada**: v0.5.1v-transition  
-**Severidade**: 🟠 ALTA  
+**VersÃ£o Identificada**: v0.5.1v-transition  
+**Severidade**: ðŸŸ  ALTA  
 **Impacto**: typo de configuracao podia habilitar comportamento nao intencional no fluxo Open Finance  
 
 **Descricao**:
@@ -852,15 +847,15 @@ export function App() {
 - fallback para `mock` com warning de configuracao
 - teste unitario em `tests/unit/open-finance-provider-mode.test.ts`
 
-**Status**: 🟢 CORRIGIDO  
+**Status**: ðŸŸ¢ CORRIGIDO  
 **Data de Correcao**: 13 Mar 2026
 
 ---
 
-### 🟢 B010 - Inicializacao repetida de Firestore settings
+### ðŸŸ¢ B010 - Inicializacao repetida de Firestore settings
 **ID**: B010  
-**Versão Identificada**: v0.5.1v-transition  
-**Severidade**: 🟠 ALTA  
+**VersÃ£o Identificada**: v0.5.1v-transition  
+**Severidade**: ðŸŸ  ALTA  
 **Impacto**: rota de migracao para Firebase podia retornar `503` em runtime  
 
 **Descricao**:
@@ -874,128 +869,128 @@ export function App() {
 - adicao de guarda `applyFirestoreSettingsOnce(...)`
 - teste unitario dedicado em `tests/unit/open-finance-firebase-admin-adapter.test.ts`
 
-**Status**: 🟢 CORRIGIDO  
+**Status**: ðŸŸ¢ CORRIGIDO  
 **Data de Correcao**: 13 Mar 2026
 
 ---
 
-### 🟢 B007 - Health check de Open Banking dependia de backend remoto
+### ðŸŸ¢ B007 - Health check de Open Banking dependia de backend remoto
 **ID**: B007  
-**Versão Identificada**: v0.6.1-transition  
-**Severidade**: 🟠 ALTA  
-**Impacto**: `npm run test:coverage` falhava de forma não determinística no fluxo de Open Banking  
+**VersÃ£o Identificada**: v0.6.1-transition  
+**Severidade**: ðŸŸ  ALTA  
+**Impacto**: `npm run test:coverage` falhava de forma nÃ£o determinÃ­stica no fluxo de Open Banking  
 
-**Descrição**:
-- o teste de health do Open Banking disparava chamadas reais para o backend configurado em produção
-- em ambiente de coverage, a suíte podia exceder timeout antes do fallback local
+**DescriÃ§Ã£o**:
+- o teste de health do Open Banking disparava chamadas reais para o backend configurado em produÃ§Ã£o
+- em ambiente de coverage, a suÃ­te podia exceder timeout antes do fallback local
 
 **Causa Raiz**:
-- decisão `backend-first` ativa também durante execução do Vitest
-- dependência de rede externa dentro de um teste que deveria ser unitário/health local
+- decisÃ£o `backend-first` ativa tambÃ©m durante execuÃ§Ã£o do Vitest
+- dependÃªncia de rede externa dentro de um teste que deveria ser unitÃ¡rio/health local
 
-**Solução Aplicada**:
-- desabilitar o caminho de backend banking durante `MODE=test`, salvo override explícito
-- preservar o comportamento de produção e manter o fallback local determinístico nos testes
+**SoluÃ§Ã£o Aplicada**:
+- desabilitar o caminho de backend banking durante `MODE=test`, salvo override explÃ­cito
+- preservar o comportamento de produÃ§Ã£o e manter o fallback local determinÃ­stico nos testes
 
-**Status**: 🟢 CORRIGIDO  
-**Data de Correção**: 10 Mar 2026
+**Status**: ðŸŸ¢ CORRIGIDO  
+**Data de CorreÃ§Ã£o**: 10 Mar 2026
 
 ---
 
-### 🔴 B008 - Cobertura abaixo da meta protocolar
+### ðŸ”´ B008 - Cobertura abaixo da meta protocolar
 **ID**: B008  
-**Versão Identificada**: v0.6.1-transition  
-**Severidade**: 🔴 CRÍTICA  
-**Impacto**: protocolo de transição não pode ser considerado concluído integralmente  
+**VersÃ£o Identificada**: v0.6.1-transition  
+**Severidade**: ðŸ”´ CRÃTICA  
+**Impacto**: protocolo de transiÃ§Ã£o nÃ£o pode ser considerado concluÃ­do integralmente  
 
-**Descrição**:
-- baseline aferida por `npm run test:coverage` ficou em `46.35%` global após a primeira rodada de reforço
-- a meta obrigatória registrada no protocolo do projeto é `98%`
+**DescriÃ§Ã£o**:
+- baseline aferida por `npm run test:coverage` ficou em `46.35%` global apÃ³s a primeira rodada de reforÃ§o
+- a meta obrigatÃ³ria registrada no protocolo do projeto Ã© `98%`
 
 **Causa Raiz**:
-- cobertura concentrada em engines e fluxos críticos recém-testados
-- grandes áreas ainda sem testes automatizados: memória de IA, importação financeira, storage API, runtime e serviços auxiliares
+- cobertura concentrada em engines e fluxos crÃ­ticos recÃ©m-testados
+- grandes Ã¡reas ainda sem testes automatizados: memÃ³ria de IA, importaÃ§Ã£o financeira, storage API, runtime e serviÃ§os auxiliares
 
-**Solução Planejada**:
+**SoluÃ§Ã£o Planejada**:
 - expandir testes para `services/integrations/openBankingService.ts`, `src/ai/aiMemory.ts`, `src/ai/memory/AIMemoryEngine.ts`, `src/ai/memory/AIMemoryStore.ts` e `src/finance/cashflowPredictor.ts`
-- manter a estratégia de coverage por domínio crítico para ganhar previsibilidade e atacar módulos com maior lacuna primeiro
+- manter a estratÃ©gia de coverage por domÃ­nio crÃ­tico para ganhar previsibilidade e atacar mÃ³dulos com maior lacuna primeiro
 
-**Status**: 🔴 ABERTO  
+**Status**: ðŸ”´ ABERTO  
 **Data de Registro**: 10 Mar 2026
 
 ---
 
-### 🟢 B006 - Coverage command without provider dependency
+### ðŸŸ¢ B006 - Coverage command without provider dependency
 **ID**: B006  
-**Versão Identificada**: v0.6.0-transition  
-**Severidade**: 🟠 ALTA  
-**Impacto**: Protocolo de transição não conseguia gerar baseline formal de cobertura  
+**VersÃ£o Identificada**: v0.6.0-transition  
+**Severidade**: ðŸŸ  ALTA  
+**Impacto**: Protocolo de transiÃ§Ã£o nÃ£o conseguia gerar baseline formal de cobertura  
 
-**Descrição**:
-- `npm run test:coverage` falhou por ausência de `@vitest/coverage-v8`
-- A suíte unitária e o build estavam verdes, mas a etapa obrigatória de coverage não estava operacional
+**DescriÃ§Ã£o**:
+- `npm run test:coverage` falhou por ausÃªncia de `@vitest/coverage-v8`
+- A suÃ­te unitÃ¡ria e o build estavam verdes, mas a etapa obrigatÃ³ria de coverage nÃ£o estava operacional
 
 **Causa Raiz**:
 - Script `test:coverage` existia em `package.json`
-- Provider de coverage do Vitest não estava presente em `devDependencies`
+- Provider de coverage do Vitest nÃ£o estava presente em `devDependencies`
 
-**Solução Aplicada**:
+**SoluÃ§Ã£o Aplicada**:
 - instalar `@vitest/coverage-v8` em `devDependencies`
-- rerodar `npm run test:coverage` para registrar a baseline da versão 0.6.0
+- rerodar `npm run test:coverage` para registrar a baseline da versÃ£o 0.6.0
 
-**Status**: 🟢 CORRIGIDO  
-**Data de Correção**: 10 Mar 2026
+**Status**: ðŸŸ¢ CORRIGIDO  
+**Data de CorreÃ§Ã£o**: 10 Mar 2026
 
 ---
 
 ## BUGS ENCONTRADOS & RESOLVIDOS
 
-### 🟢 B001 - Category.OUTROS Undefined in Test
+### ðŸŸ¢ B001 - Category.OUTROS Undefined in Test
 **ID**: B001  
-**Versão Identificada**: v0.3.0-rc1  
-**Severidade**: 🔴 CRÍTICA  
-**Impacto**: Test suite falhava durante compilação  
+**VersÃ£o Identificada**: v0.3.0-rc1  
+**Severidade**: ðŸ”´ CRÃTICA  
+**Impacto**: Test suite falhava durante compilaÃ§Ã£o  
 
-**Descrição**:
+**DescriÃ§Ã£o**:
 ```typescript
-// ❌ BEFORE (services/ai/subscriptionDetector.test.ts:19)
+// âŒ BEFORE (services/ai/subscriptionDetector.test.ts:19)
 category: Category.OUTROS,
 // Error: Property 'OUTROS' does not exist on type 'typeof Category'
 ```
 
 **Causa Raiz**:
-- Enum `Category` em `types.ts` não continha `OUTROS`
-- Definição incompleta do enum
+- Enum `Category` em `types.ts` nÃ£o continha `OUTROS`
+- DefiniÃ§Ã£o incompleta do enum
 - Test baseado em enum desatualizado
 
-**Solução Aplicada**:
+**SoluÃ§Ã£o Aplicada**:
 ```typescript
-// ✅ AFTER
+// âœ… AFTER
 category: Category.PESSOAL,
 // ou atualizar enum para incluir OUTROS
 ```
 
-**Teste de Validação**:
+**Teste de ValidaÃ§Ã£o**:
 ```bash
-npm run type-check  # ✅ PASS
-npm run build       # ✅ PASS
-npm run test        # ✅ PASS
+npm run type-check  # âœ… PASS
+npm run build       # âœ… PASS
+npm run test        # âœ… PASS
 ```
 
-**Status**: 🟢 CORRIGIDO  
-**Data de Correção**: 8 Mar 2026  
+**Status**: ðŸŸ¢ CORRIGIDO  
+**Data de CorreÃ§Ã£o**: 8 Mar 2026  
 
 ---
 
-### 🟢 B002 - ErrorBoundary Class Methods Missing
+### ðŸŸ¢ B002 - ErrorBoundary Class Methods Missing
 **ID**: B002  
-**Versão Identificada**: v0.3.0-rc1  
-**Severidade**: 🔴 CRÍTICA  
-**Impacto**: Componente não compilava, type errors
+**VersÃ£o Identificada**: v0.3.0-rc1  
+**Severidade**: ðŸ”´ CRÃTICA  
+**Impacto**: Componente nÃ£o compilava, type errors
 
-**Descrição**:
+**DescriÃ§Ã£o**:
 ```typescript
-// ❌ BEFORE (src/components/ErrorBoundary.tsx:35)
+// âŒ BEFORE (src/components/ErrorBoundary.tsx:35)
 export class ErrorBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
@@ -1008,13 +1003,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
 ```
 
 **Causa Raiz**:
-- React Error Boundary requer métodos lifecycle específicos
-- `getDerivedStateFromError` não foi implementado
+- React Error Boundary requer mÃ©todos lifecycle especÃ­ficos
+- `getDerivedStateFromError` nÃ£o foi implementado
 - Class component missing required React lifecycle
 
-**Solução Aplicada**:
+**SoluÃ§Ã£o Aplicada**:
 ```typescript
-// ✅ AFTER - Adicionar método lifecycle
+// âœ… AFTER - Adicionar mÃ©todo lifecycle
 static getDerivedStateFromError(error: Error): Partial<State> {
   return { hasError: true };
 }
@@ -1025,42 +1020,42 @@ componentDidCatch(error: Error, errorInfo: ErrorInfo) {
 }
 ```
 
-**Teste de Validação**:
+**Teste de ValidaÃ§Ã£o**:
 ```bash
-npm run type-check  # ✅ PASS - Zero errors
+npm run type-check  # âœ… PASS - Zero errors
 ```
 
-**Status**: 🟢 CORRIGIDO  
-**Data de Correção**: 8 Mar 2026  
+**Status**: ðŸŸ¢ CORRIGIDO  
+**Data de CorreÃ§Ã£o**: 8 Mar 2026  
 
 ---
 
-### 🟢 B003 - RequestInit Timeout Not Supported
+### ðŸŸ¢ B003 - RequestInit Timeout Not Supported
 **ID**: B003  
-**Versão Identificada**: v0.3.0-rc1  
-**Severidade**: 🟠 ALTA  
+**VersÃ£o Identificada**: v0.3.0-rc1  
+**Severidade**: ðŸŸ  ALTA  
 **Impacto**: Type error em src/config/api.config.ts
 
-**Descrição**:
+**DescriÃ§Ã£o**:
 ```typescript
-// ❌ BEFORE (src/config/api.config.ts:112)
+// âŒ BEFORE (src/config/api.config.ts:112)
 const response = await fetch(endpoint, {
   ...options,
   headers,
-  timeout: API_CONFIG.TIMEOUT,  // ❌ Property 'timeout' does not exist
+  timeout: API_CONFIG.TIMEOUT,  // âŒ Property 'timeout' does not exist
 });
 
 // Error TS2769: No overload matches this call
 ```
 
 **Causa Raiz**:
-- `RequestInit` (tipo de Fetch API) não suporta propriedade `timeout`
+- `RequestInit` (tipo de Fetch API) nÃ£o suporta propriedade `timeout`
 - Timeout deve ser implementado via `AbortController`
 - Confundida com API externa ou XMLHttpRequest
 
-**Solução Aplicada**:
+**SoluÃ§Ã£o Aplicada**:
 ```typescript
-// ✅ AFTER - Use AbortController instead
+// âœ… AFTER - Use AbortController instead
 const controller = new AbortController();
 const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
@@ -1068,33 +1063,33 @@ try {
   const response = await fetch(endpoint, {
     ...options,
     headers,
-    signal: controller.signal,  // ✅ Correct way
+    signal: controller.signal,  // âœ… Correct way
   });
   clearTimeout(timeoutId);
-  // ... resto do código
+  // ... resto do cÃ³digo
 }
 ```
 
-**Teste de Validação**:
+**Teste de ValidaÃ§Ã£o**:
 ```bash
-npm run type-check  # ✅ PASS
+npm run type-check  # âœ… PASS
 curl -X POST http://localhost:3001/api/test  # Manual test timeout
 ```
 
-**Status**: 🟢 CORRIGIDO  
-**Data de Correção**: 8 Mar 2026  
+**Status**: ðŸŸ¢ CORRIGIDO  
+**Data de CorreÃ§Ã£o**: 8 Mar 2026  
 
 ---
 
-### 🟢 B004 - BrowserTracing Integration Error
+### ðŸŸ¢ B004 - BrowserTracing Integration Error
 **ID**: B004  
-**Versão Identificada**: v0.3.0-rc1  
-**Severidade**: 🟠 ALTA  
+**VersÃ£o Identificada**: v0.3.0-rc1  
+**Severidade**: ðŸŸ  ALTA  
 **Impacto**: Sentry initialization failing
 
-**Descrição**:
+**DescriÃ§Ã£o**:
 ```typescript
-// ❌ BEFORE (src/config/sentry.ts:26)
+// âŒ BEFORE (src/config/sentry.ts:26)
 integrations: [
   new BrowserTracing(),
 ],
@@ -1104,13 +1099,13 @@ integrations: [
 ```
 
 **Causa Raiz**:
-- Versão do @sentry/react incompatível
-- BrowserTracing requer argumentos específicos
-- Setup method signature mudou entre versões
+- VersÃ£o do @sentry/react incompatÃ­vel
+- BrowserTracing requer argumentos especÃ­ficos
+- Setup method signature mudou entre versÃµes
 
-**Solução Aplicada**:
+**SoluÃ§Ã£o Aplicada**:
 ```typescript
-// ✅ AFTER - Desabilitar por enquanto, usar apenas error tracking
+// âœ… AFTER - Desabilitar por enquanto, usar apenas error tracking
 integrations: [
   // BrowserTracing atualmente causando issues - usar somente error tracking
   // Ativar em futuro update quando Sentry estiver updated
@@ -1119,44 +1114,44 @@ integrations: [
 // Ou alternativa: corrigir setup
 integrations: [
   new BrowserTracing({
-    // Configurações corretas para versão atual
+    // ConfiguraÃ§Ãµes corretas para versÃ£o atual
     tracePropagationTargets: ['localhost', /^\//],
   }),
 ],
 ```
 
-**Teste de Validação**:
+**Teste de ValidaÃ§Ã£o**:
 ```bash
-npm run type-check  # ✅ PASS
-npm run build       # ✅ PASS
+npm run type-check  # âœ… PASS
+npm run build       # âœ… PASS
 # Test Sentry com console.error()
 ```
 
-**Status**: 🟢 CORRIGIDO  
-**Data de Correção**: 8 Mar 2026  
+**Status**: ðŸŸ¢ CORRIGIDO  
+**Data de CorreÃ§Ã£o**: 8 Mar 2026  
 
 ---
 
-### 🟢 B005 - Capacitor Config Invalid Properties
+### ðŸŸ¢ B005 - Capacitor Config Invalid Properties
 **ID**: B005  
-**Versão Identificada**: v0.3.0-rc1  
-**Severidade**: 🟠 ALTA  
+**VersÃ£o Identificada**: v0.3.0-rc1  
+**Severidade**: ðŸŸ  ALTA  
 **Impacto**: Capacitor config failures
 
-**Descrição**:
+**DescriÃ§Ã£o**:
 ```typescript
-// ❌ BEFORE (capacitor.config.ts:58-70)
+// âŒ BEFORE (capacitor.config.ts:58-70)
 const config: CapacitorConfig = {
   // ...
   android: {
     minSdkVersion: 24,
     targetSdkVersion: 34,
-    compileSdkVersion: 34,  // ❌ Invalid property
+    compileSdkVersion: 34,  // âŒ Invalid property
   },
   ios: {
-    defaults: { ... },  // ❌ Invalid property
+    defaults: { ... },  // âŒ Invalid property
   },
-  plugins: {  // ❌ Duplicate plugins key
+  plugins: {  // âŒ Duplicate plugins key
     SplashScreen: { ... },
   },
 };
@@ -1166,18 +1161,18 @@ const config: CapacitorConfig = {
 ```
 
 **Causa Raiz**:
-- Propriedades Android/iOS não são válidas em CapacitorConfig
+- Propriedades Android/iOS nÃ£o sÃ£o vÃ¡lidas em CapacitorConfig
 - Devem ser configuradas em arquivos nativos (build.gradle, Info.plist)
 - Config ts estava 'carregada' com configs demais
 
-**Solução Aplicada**:
+**SoluÃ§Ã£o Aplicada**:
 ```typescript
-// ✅ AFTER - Remover propriedades inválidas
+// âœ… AFTER - Remover propriedades invÃ¡lidas
 const config: CapacitorConfig = {
   appId: 'com.flowfinance.app',
   appName: 'Flow Finance',
   webDir: 'dist',
-  // Plugins configurado uma única vez
+  // Plugins configurado uma Ãºnica vez
   plugins: {
     SplashScreen: { ... },
     StatusBar: { ... },
@@ -1190,32 +1185,32 @@ const config: CapacitorConfig = {
 // - ios/App/App/Info.plist (for iOS)
 ```
 
-**Teste de Validação**:
+**Teste de ValidaÃ§Ã£o**:
 ```bash
-npm run type-check       # ✅ PASS
-npx cap sync             # ✅ Sync successful
+npm run type-check       # âœ… PASS
+npx cap sync             # âœ… Sync successful
 npx cap build android    # Await JDK installation
 ```
 
-**Status**: 🟢 CORRIGIDO  
-**Data de Correção**: 8 Mar 2026  
+**Status**: ðŸŸ¢ CORRIGIDO  
+**Data de CorreÃ§Ã£o**: 8 Mar 2026  
 
 ---
 
-### 🟢 B006 - Capacitor.d.ts Function Syntax Error
+### ðŸŸ¢ B006 - Capacitor.d.ts Function Syntax Error
 **ID**: B006  
-**Versão Identificada**: v0.3.0-rc1  
-**Severidade**: 🟠 ALTA  
+**VersÃ£o Identificada**: v0.3.0-rc1  
+**Severidade**: ðŸŸ  ALTA  
 **Impacto**: Type definition invalid
 
-**Descrição**:
+**DescriÃ§Ã£o**:
 ```typescript
-// ❌ BEFORE (src/types/capacitor.d.ts:11)
+// âŒ BEFORE (src/types/capacitor.d.ts:11)
 interface Window {
   Capacitor?: {
     isNativePlatform: () => boolean;
     getPlatform: () => 'android' | 'ios' | 'web';
-    exit: ()void;  // ❌ Missing space before 'void'
+    exit: ()void;  // âŒ Missing space before 'void'
   };
 }
 
@@ -1225,42 +1220,42 @@ interface Window {
 **Causa Raiz**:
 - Typo simples: `()void` vs `() => void`
 - TypeScript parser esperava arrow function
-- Não foi detectado em pre-commit hook
+- NÃ£o foi detectado em pre-commit hook
 
-**Solução Aplicada**:
+**SoluÃ§Ã£o Aplicada**:
 ```typescript
-// ✅ AFTER - Adicionar espaço
-exit: () => void;  // ✅ Correto
+// âœ… AFTER - Adicionar espaÃ§o
+exit: () => void;  // âœ… Correto
 ```
 
-**Teste de Validação**:
+**Teste de ValidaÃ§Ã£o**:
 ```bash
-npm run type-check  # ✅ PASS
+npm run type-check  # âœ… PASS
 ```
 
-**Status**: 🟢 CORRIGIDO  
-**Data de Correção**: 8 Mar 2026  
+**Status**: ðŸŸ¢ CORRIGIDO  
+**Data de CorreÃ§Ã£o**: 8 Mar 2026  
 
 ---
 
 ## BUGS CONHECIDOS (Abertos para v0.4.0)
 
-### 🔴 B007 - JDK Not Installed
+### ðŸ”´ B007 - JDK Not Installed
 **ID**: B007  
-**Severidade**: 🔴 CRÍTICA (para mobile)  
-**Impacto**: Android APK build impossível
+**Severidade**: ðŸ”´ CRÃTICA (para mobile)  
+**Impacto**: Android APK build impossÃ­vel
 
-**Descrição**:
+**DescriÃ§Ã£o**:
 ```
 ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH
 ```
 
 **Causa Raiz**:
 - Sistema operacional Windows sem JDK 17+ instalado
-- Android Studio não disponível
-- Chocolatey (package manager) com permissões insuficientes
+- Android Studio nÃ£o disponÃ­vel
+- Chocolatey (package manager) com permissÃµes insuficientes
 
-**Solução**:
+**SoluÃ§Ã£o**:
 ```bash
 # Option 1: Instalar Android Studio (inclui JDK)
 # https://developer.android.com/studio
@@ -1272,17 +1267,17 @@ ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH
 wsl --install Ubuntu-22.04
 ```
 
-**Impacto em Roadmap**: v0.4.0 bloqueado até resolução  
-**Status**: 🔴 ABERTO
+**Impacto em Roadmap**: v0.4.0 bloqueado atÃ© resoluÃ§Ã£o  
+**Status**: ðŸ”´ ABERTO
 
 ---
 
-### 🔴 B008 - Config Module Test Coverage Low
+### ðŸ”´ B008 - Config Module Test Coverage Low
 **ID**: B008  
-**Severidade**: 🟡 MÉDIA  
+**Severidade**: ðŸŸ¡ MÃ‰DIA  
 **Impacto**: Coverage 96.5% vs target 100%
 
-**Descrição**:
+**DescriÃ§Ã£o**:
 - Arquivo `src/config/api.config.ts` com coverage 96.5%
 - Faltam testes para:
   - Error handling edge cases
@@ -1290,28 +1285,28 @@ wsl --install Ubuntu-22.04
   - Header injection
   - Platform detection
 
-**Solução**:
+**SoluÃ§Ã£o**:
 ```typescript
-// Referência histórica arquivada em docs/archive/TEST_SUITE_v0.3.0.md
-// Seção "API REQUEST SERVICE TESTS"
+// ReferÃªncia histÃ³rica arquivada em docs/archive/TEST_SUITE_v0.3.0.md
+// SeÃ§Ã£o "API REQUEST SERVICE TESTS"
 ```
 
-**Status**: 🟡 EM PROGRESSO  
+**Status**: ðŸŸ¡ EM PROGRESSO  
 
 ---
 
-### ⚪ B009 - Bundle Size > 500KB
+### âšª B009 - Bundle Size > 500KB
 **ID**: B009  
-**Severidade**: 🟠 MÉDIA (performance)  
+**Severidade**: ðŸŸ  MÃ‰DIA (performance)  
 **Impacto**: Main chunk 532KB (alvo: <300KB)
 
-**Descrição**: Chunks muy grandes após minification
+**DescriÃ§Ã£o**: Chunks muy grandes apÃ³s minification
 
 **Causa Raiz**:
-- Recharts (charts library) é pesada
+- Recharts (charts library) Ã© pesada
 - Sem lazy loading de rotas
 
-**Solução Recomendada** (v0.4.0):
+**SoluÃ§Ã£o Recomendada** (v0.4.0):
 ```typescript
 // Implementar route-based code splitting
 import React, { lazy, Suspense } from 'react';
@@ -1331,56 +1326,56 @@ export function App() {
 }
 ```
 
-**Status**: ⚪ WONTFIX (v0.3) / Priorizado v0.4.0
+**Status**: âšª WONTFIX (v0.3) / Priorizado v0.4.0
 
 ---
 
-## ESTATÍSTICAS
+## ESTATÃSTICAS
 
 ### Resumo v0.3.0
 - **Total Bugs Identificados**: 9
 - **Bugs Corrigidos**: 6
 - **Bugs Abertos**: 2
 - **Bugs Wontfix**: 1
-- **Taxa de Correção**: 66%
+- **Taxa de CorreÃ§Ã£o**: 66%
 
-### Distribuição por Severidade
+### DistribuiÃ§Ã£o por Severidade
 | Severidade | Quantidade |
 |------------|-----------|
-| 🔴 CRÍTICA | 3 (50%) |
-| 🟠 ALTA | 4 (66%) |
-| 🟡 MÉDIA | 1 (11%) |
-| 🟢 BAIXA | 1 (11%) |
+| ðŸ”´ CRÃTICA | 3 (50%) |
+| ðŸŸ  ALTA | 4 (66%) |
+| ðŸŸ¡ MÃ‰DIA | 1 (11%) |
+| ðŸŸ¢ BAIXA | 1 (11%) |
 
-### Tempo Médio de Correção
-- Crítica: 2-4 horas
+### Tempo MÃ©dio de CorreÃ§Ã£o
+- CrÃ­tica: 2-4 horas
 - Alta: 1-3 horas
-- Média: < 1 hora
+- MÃ©dia: < 1 hora
 
 ---
 
-## LIÇÕES APRENDIDAS
+## LIÃ‡Ã•ES APRENDIDAS
 
-1. ✅ **Type checking rigoroso** - Detectou 90% dos bugs antes da execução
-2. ⚠️ **Capitação na documentação** - Configs não documentadas causaram confusion
-3. ⚠️ **Dependency management** - Sentry versioning inconsistency
-4. ✅ **Automated testing** - Build process detectou problemas cedo
+1. âœ… **Type checking rigoroso** - Detectou 90% dos bugs antes da execuÃ§Ã£o
+2. âš ï¸ **CapitaÃ§Ã£o na documentaÃ§Ã£o** - Configs nÃ£o documentadas causaram confusion
+3. âš ï¸ **Dependency management** - Sentry versioning inconsistency
+4. âœ… **Automated testing** - Build process detectou problemas cedo
 
 ---
 
-## RECOMENDAÇÕES PARA v0.4.0
+## RECOMENDAÃ‡Ã•ES PARA v0.4.0
 
 1. [ ] Revisar todas as type definitions vs implementation
-2. [ ] Adicionar pre-commit hooks com type-check obrigatório
+2. [ ] Adicionar pre-commit hooks com type-check obrigatÃ³rio
 3. [ ] Documentar todas as configs em README
 4. [ ] Configurar automated dependency updates
-5. [ ] Setup CI/CD com testes automáticos
+5. [ ] Setup CI/CD com testes automÃ¡ticos
 
 ---
 
-**Documento Finalizado**: 8 de Março de 2026  
-**Próxima Auditoria**: v0.4.0 (15 de Março)  
-**Responsável**: QA Team
+**Documento Finalizado**: 8 de MarÃ§o de 2026  
+**PrÃ³xima Auditoria**: v0.4.0 (15 de MarÃ§o)  
+**ResponsÃ¡vel**: QA Team
 
 ---
 
@@ -1391,8 +1386,4 @@ export function App() {
 - Acao proposta: criar fixture de usuario e token dedicados para E2E Pluggy
 
 
-## [B013] | Cobertura crítica bloqueada por acesso ao npm registry no ambiente local | Falha operacional de rede/política impede instalação de dependências | Validar cobertura em CI com `npm ci` + artefatos e manter bloqueio rastreado até normalização | v0.9.1
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
+## [B013] | Cobertura crÃ­tica bloqueada por acesso ao npm registry no ambiente local | Falha operacional de rede/polÃ­tica impede instalaÃ§Ã£o de dependÃªncias | Validar cobertura em CI com `npm ci` + artefatos e manter bloqueio rastreado atÃ© normalizaÃ§Ã£o | v0.9.1

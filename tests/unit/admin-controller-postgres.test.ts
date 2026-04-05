@@ -77,6 +77,10 @@ describe('adminController Postgres read path', () => {
 
     expect(persistenceMocks.queryAuditEvents).toHaveBeenCalledWith({
       resource: 'ws-1',
+      resourceId: undefined,
+      resourceType: undefined,
+      tenantId: undefined,
+      workspaceId: 'ws-1',
       limit: undefined,
       since: undefined,
       until: undefined,

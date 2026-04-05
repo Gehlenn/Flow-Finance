@@ -33,7 +33,7 @@ vi.mock('../../backend/src/config/logger', () => ({
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function req(body: Record<string, unknown> = {}, userId = 'user-A', query: Record<string, unknown> = {}) {
-  return { body, userId, userEmail: `${userId}@test.com`, headers: {}, query };
+  return { body, userId, workspaceId: 'ws-test', userEmail: `${userId}@test.com`, headers: {}, query };
 }
 
 function reqNoAuth(body: Record<string, unknown> = {}, query: Record<string, unknown> = {}) {

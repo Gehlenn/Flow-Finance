@@ -1,71 +1,70 @@
-<<<<<<< ours
-﻿# FLOW FINANCE — ROADMAP (v0.9.1)
+﻿ï»¿# FLOW FINANCE â€” ROADMAP (v0.9.1)
 
 **Data:** 2026-04-02
-**Status:** Transição v0.9.1 iniciada
-**Objetivo:** prontidão SaaS segura para Web (Vercel) e Mobile (iOS/Android)
+**Status:** TransiÃ§Ã£o v0.9.1 iniciada
+**Objetivo:** prontidÃ£o SaaS segura para Web (Vercel) e Mobile (iOS/Android)
 
-## Prioridades 0.9.1 → 0.9.3
+## Prioridades 0.9.1 â†’ 0.9.3
 
-1. **Auth & Sessão de Produção**
+1. **Auth & SessÃ£o de ProduÃ§Ã£o**
    - Migrar mock local para Auth real (Firebase Auth/Clerk/Auth.js)
-   - Refresh token seguro, rotação e revogação
+   - Refresh token seguro, rotaÃ§Ã£o e revogaÃ§Ã£o
 
 2. **Multi-tenant e Isolamento de Dados**
-   - Modelo tenant-aware obrigatório em leitura/escrita
-   - Auditoria de autorização por workspace
+   - Modelo tenant-aware obrigatÃ³rio em leitura/escrita
+   - Auditoria de autorizaÃ§Ã£o por workspace
 
-**Data:** 17 de Março de 2026
-**Status Atual:** v0.9.1v (transição auditada com foco em hardening SaaS e QA)
+**Data:** 17 de MarÃ§o de 2026
+**Status Atual:** v0.9.1v (transiÃ§Ã£o auditada com foco em hardening SaaS e QA)
 **Meta Estrategica:** v1.0 publico com AI Financial Assistant completo
 
-4. **IA Financeira Confiável**
+4. **IA Financeira ConfiÃ¡vel**
    - Mover chamadas de IA para backend/proxy seguro
-   - Classificação com score de confiança + fallback determinístico
+   - ClassificaÃ§Ã£o com score de confianÃ§a + fallback determinÃ­stico
 
 5. **Qualidade e Observabilidade**
-   - Cobertura mínima de 98% em escopo crítico
-   - SLO de erro e latência para fluxos de saldo e sincronização
+   - Cobertura mÃ­nima de 98% em escopo crÃ­tico
+   - SLO de erro e latÃªncia para fluxos de saldo e sincronizaÃ§Ã£o
 
 ## Marcos
 
 **Mudancas:**
 - Endpoint `/api/banking/*` retorna HTTP 503 Service Unavailable quando `DISABLE_OPEN_FINANCE=true`
 - Middleware `featureGateOpenFinance` em `backend/src/middleware/featureGate.ts`
-- Flag obrigatoria em `backend/.env` para reativacao; padrão = desativado
+- Flag obrigatoria em `backend/.env` para reativacao; padrÃ£o = desativado
 - Codigo fonte mantido para reativacao zero-effort
 
 **Impacto:**
-- ✅ Stripe Billing: Desativado tambem (pular por enquanto; manter mock billing sim)
-- ✅ Core IA: Intacto (AI Context Builder, Pattern Detector, Timeline, Classifier)
-- ✅ Testes: Validados pós-desativacao sem regressao
-- ✅ Caminho crédito/débito: Funciona via entrada manual + IA
+- âœ… Stripe Billing: Desativado tambem (pular por enquanto; manter mock billing sim)
+- âœ… Core IA: Intacto (AI Context Builder, Pattern Detector, Timeline, Classifier)
+- âœ… Testes: Validados pÃ³s-desativacao sem regressao
+- âœ… Caminho crÃ©dito/dÃ©bito: Funciona via entrada manual + IA
 
 ---
 
 ## Visao por Fases
 
 - `0.5.x` -> Hardening (qualidade e arquitetura)
-- `0.6.x` -> Inteligência financeira (concluída)
-- `0.7.x` -> Automação financeira (Autopilot evolutivo: recomendações ativas, overspending, metas automáticas)
+- `0.6.x` -> InteligÃªncia financeira (concluÃ­da)
+- `0.7.x` -> AutomaÃ§Ã£o financeira (Autopilot evolutivo: recomendaÃ§Ãµes ativas, overspending, metas automÃ¡ticas)
 - `0.8.x` -> Integracoes financeiras
 - `0.9.x` -> Preparacao SaaS
 - `1.0` -> Lancamento publico
 
 ---
 
-## v0.7.x - Automação financeira (em andamento)
+## v0.7.x - AutomaÃ§Ã£o financeira (em andamento)
 
 ### Objetivo
 - Evoluir o Autopilot para detectar overspending em tempo real por categoria
-- Gerar recomendações ativas e sugestões de corte automáticas (com valor sugerido por categoria dominante)
-- Criar metas automáticas de corte, economia e reserva de emergência baseadas em comportamento/histórico
-- Enriquecer feedback e acompanhamento de resposta do usuário
+- Gerar recomendaÃ§Ãµes ativas e sugestÃµes de corte automÃ¡ticas (com valor sugerido por categoria dominante)
+- Criar metas automÃ¡ticas de corte, economia e reserva de emergÃªncia baseadas em comportamento/histÃ³rico
+- Enriquecer feedback e acompanhamento de resposta do usuÃ¡rio
 
-### Implementações
-- Engine do Autopilot ampliada para detecção de overspending por categoria, sugestão de corte automático e metas automáticas
-- Testes unitários e cobertura crítica validados (>98%)
-- Documentação e changelog atualizados
+### ImplementaÃ§Ãµes
+- Engine do Autopilot ampliada para detecÃ§Ã£o de overspending por categoria, sugestÃ£o de corte automÃ¡tico e metas automÃ¡ticas
+- Testes unitÃ¡rios e cobertura crÃ­tica validados (>98%)
+- DocumentaÃ§Ã£o e changelog atualizados
 
 ---
 
@@ -78,7 +77,7 @@
 - E2E Pluggy estabilizado para indisponibilidade local de backend (skip controlado)
 - Lint, testes e cobertura critica aprovados no recorte protocolar
 - Sprint 1 de hardening finalizada (A003-A006) com testes e build backend validados
-- Sprint 2 iniciada com suíte de readiness cobrindo os 6 pilares da fase 0.6.x
+- Sprint 2 iniciada com suÃ­te de readiness cobrindo os 6 pilares da fase 0.6.x
 
 ### Checkpoint 0.6.3
 - Event-driven listeners registrados (autopilot, AI queue, forecast, audit, cache)
@@ -91,13 +90,13 @@
 - D2 concluido: Pattern Detector com confianca por insight e testes de fronteira para picos/recorrencia
 
 ### Checkpoint 0.6.4
-- D3 concluido: Financial Timeline Engine — `aggregateByMonth`, `detectBalanceTrend` (regressao linear), `detectTimelineAnomalies` (2x mediana)
-- D4 concluido: Financial Profile Classifier — confidence, topCategories, insights acionaveis, perfil `Undefined`
+- D3 concluido: Financial Timeline Engine â€” `aggregateByMonth`, `detectBalanceTrend` (regressao linear), `detectTimelineAnomalies` (2x mediana)
+- D4 concluido: Financial Profile Classifier â€” confidence, topCategories, insights acionaveis, perfil `Undefined`
 - A004 lint fix: `AICFOAgent.ts` importa `FinancialProfile` centralizado
 - 377/377 testes; cobertura critica 99.76%/98.3%
 
 ### Checkpoint 0.6.5 (atual)
-- D5 concluido: Widget de Inteligencia Financeira no Dashboard — tendencia, perfil, confidence, insights, anomalias
+- D5 concluido: Widget de Inteligencia Financeira no Dashboard â€” tendencia, perfil, confidence, insights, anomalias
 - D6 concluido: Endpoint backend `POST /api/finance/metrics` com auth e validacao
 - D7 concluido: Fixture E2E Pluggy com email fixo via env var (fix intermitencia B010-E2E)
 - 387/387 testes; cobertura critica 99.76%/98.3%; lint verde
@@ -172,14 +171,14 @@ Extracao automatica:
 - data
 
 
-### 3. Categorização automática e edição inteligente
-- Sugestão automática de categoria por IA ao editar transação (merchant-aware)
-- Modal de edição com botão "Desfazer" para restaurar categoria anterior
+### 3. CategorizaÃ§Ã£o automÃ¡tica e ediÃ§Ã£o inteligente
+- SugestÃ£o automÃ¡tica de categoria por IA ao editar transaÃ§Ã£o (merchant-aware)
+- Modal de ediÃ§Ã£o com botÃ£o "Desfazer" para restaurar categoria anterior
 - Feedback visual e acessibilidade aprimorados
-- Cobertura de testes unitários e E2E para todo o fluxo
+- Cobertura de testes unitÃ¡rios e E2E para todo o fluxo
 Exemplos:
 - Uber -> transporte
-- iFood -> alimentação
+- iFood -> alimentaÃ§Ã£o
 
 ### 4. Detector de assinaturas
 Deteccao de servicos como:
@@ -192,62 +191,62 @@ Deteccao de servicos como:
 ---
 
 
-## v0.9.x - Preparação SaaS
+## v0.9.x - PreparaÃ§Ã£o SaaS
 
 ### Checkpoint 0.9.1v (02/04/2026)
-- Auditoria sistêmica concluída com priorização de riscos OWASP e escalabilidade.
-- Cobertura crítica validada com baseline acima da meta protocolar no recorte sensível.
+- Auditoria sistÃªmica concluÃ­da com priorizaÃ§Ã£o de riscos OWASP e escalabilidade.
+- Cobertura crÃ­tica validada com baseline acima da meta protocolar no recorte sensÃ­vel.
 - Regressao unitaria/integrada aprovada; regressao E2E aprovada apos estabilizacao de runtime/configuracao.
 - Backlog imediato de hardening para release:
-	- sanitização de entrada em campos livres de transação
-	- enforce de `JWT_SECRET` forte em produção
-	- quota obrigatória para endpoints de IA
-	- estratégia formal de resolução de conflitos de sincronização
-	- unificação da lógica de categorização IA em serviço único
+	- sanitizaÃ§Ã£o de entrada em campos livres de transaÃ§Ã£o
+	- enforce de `JWT_SECRET` forte em produÃ§Ã£o
+	- quota obrigatÃ³ria para endpoints de IA
+	- estratÃ©gia formal de resoluÃ§Ã£o de conflitos de sincronizaÃ§Ã£o
+	- unificaÃ§Ã£o da lÃ³gica de categorizaÃ§Ã£o IA em serviÃ§o Ãºnico
 
-### 1. Autenticação completa
+### 1. AutenticaÃ§Ã£o completa
 - JWT
 - refresh tokens
 - OAuth
 
-### 2. Multi-tenant e Administração
+### 2. Multi-tenant e AdministraÃ§Ã£o
 - Isolamento de dados por workspace/empresa
-- Painel de administração (gestão de usuários, planos, auditoria)
-- Logs de auditoria detalhados (ações do usuário, alterações sensíveis)
-- Política de retenção e exclusão de dados (LGPD/GDPR)
+- Painel de administraÃ§Ã£o (gestÃ£o de usuÃ¡rios, planos, auditoria)
+- Logs de auditoria detalhados (aÃ§Ãµes do usuÃ¡rio, alteraÃ§Ãµes sensÃ­veis)
+- PolÃ­tica de retenÃ§Ã£o e exclusÃ£o de dados (LGPD/GDPR)
 
 ### 3. Plano de assinatura e billing real
-- Stripe, recorrência, trial, downgrade/upgrade
-- Exportação de dados (PDF, Excel, integração contábil)
+- Stripe, recorrÃªncia, trial, downgrade/upgrade
+- ExportaÃ§Ã£o de dados (PDF, Excel, integraÃ§Ã£o contÃ¡bil)
 
-### 4. Notificações e alertas
-- Notificações push/email para eventos críticos (ex: saldo baixo, meta atingida)
+### 4. NotificaÃ§Ãµes e alertas
+- NotificaÃ§Ãµes push/email para eventos crÃ­ticos (ex: saldo baixo, meta atingida)
 
-### 5. Monitoramento e segurança
-- Monitoramento de performance e uptime (SLA público)
+### 5. Monitoramento e seguranÃ§a
+- Monitoramento de performance e uptime (SLA pÃºblico)
 - Plano de disaster recovery e backup automatizado
-- Certificação de segurança (OWASP, testes de penetração)
+- CertificaÃ§Ã£o de seguranÃ§a (OWASP, testes de penetraÃ§Ã£o)
 
 ---
 
-## v1.0 - Lançamento Público
+## v1.0 - LanÃ§amento PÃºblico
 
 - Onboarding guiado e tour interativo
 - FAQ e central de ajuda integrada
-- Integração com marketplaces de apps (Google Play, App Store, Vercel, etc.)
-- Canal de feedback do usuário e NPS
+- IntegraÃ§Ã£o com marketplaces de apps (Google Play, App Store, Vercel, etc.)
+- Canal de feedback do usuÃ¡rio e NPS
 
 ---
 
-## Pós v1.0 - Escala e diferenciação
+## PÃ³s v1.0 - Escala e diferenciaÃ§Ã£o
 
-- API pública para integrações externas (webhooks, parceiros)
-- Marketplace de plugins/integrações (contabilidade, bancos, ERPs)
-- IA preditiva para investimentos e recomendações personalizadas
-- Suporte a múltiplas moedas e contas internacionais
+- API pÃºblica para integraÃ§Ãµes externas (webhooks, parceiros)
+- Marketplace de plugins/integraÃ§Ãµes (contabilidade, bancos, ERPs)
+- IA preditiva para investimentos e recomendaÃ§Ãµes personalizadas
+- Suporte a mÃºltiplas moedas e contas internacionais
 - White-label/SaaS B2B (licenciamento para consultorias/contadores)
-- Gamificação (badges, conquistas, ranking de economia)
-- Relatórios avançados e dashboards customizáveis
+- GamificaÃ§Ã£o (badges, conquistas, ranking de economia)
+- RelatÃ³rios avanÃ§ados e dashboards customizÃ¡veis
 Isolamento por:
 - users
 - accounts
@@ -270,19 +269,19 @@ Monetizacao com:
 ## v1.0 - Lancamento Publico
 ### Features nucleares
 
-# v0.9.9 - UI/UX Clean & Intuitivo (pré-1.0)
+# v0.9.9 - UI/UX Clean & Intuitivo (prÃ©-1.0)
 
 ### Objetivo
 - Ajustar toda a interface do app para um visual mais clean, moderno e intuitivo
-- Reduzir quantidade de botões e elementos redundantes
-- Foco em experiência fluida, onboarding simplificado e feedback visual claro
+- Reduzir quantidade de botÃµes e elementos redundantes
+- Foco em experiÃªncia fluida, onboarding simplificado e feedback visual claro
 - Garantir acessibilidade e responsividade em todos os dispositivos
 
-### Implementações
-- Refatoração dos principais fluxos de navegação
+### ImplementaÃ§Ãµes
+- RefatoraÃ§Ã£o dos principais fluxos de navegaÃ§Ã£o
 - Redesign de telas e componentes para clareza e simplicidade
-- Testes de usabilidade e validação com usuários reais
-- Atualização de documentação visual e guidelines de design
+- Testes de usabilidade e validaÃ§Ã£o com usuÃ¡rios reais
+- AtualizaÃ§Ã£o de documentaÃ§Ã£o visual e guidelines de design
 
 ---
 
@@ -349,82 +348,81 @@ Database
 - [ ] D6 Exposicao de metricas D3/D4 em endpoint/backend para consumo mobile
 - [ ] D7 Hardening E2E Open Banking com fixture autenticada estavel (reduzir skips)
 
-=======
-## Planejamento Próxima Sprint
-- Foco em testes E2E robustos para jornadas sensíveis
-- Explorar integração de notificações push
-- Avaliar expansão de relatórios e exportação de dados
+## Planejamento PrÃ³xima Sprint
+- Foco em testes E2E robustos para jornadas sensÃ­veis
+- Explorar integraÃ§Ã£o de notificaÃ§Ãµes push
+- Avaliar expansÃ£o de relatÃ³rios e exportaÃ§Ã£o de dados
 - Refinar onboarding e tutoriais in-app
 
-## Sugestões Técnicas e de UX
-- Melhorar feedback visual em operações críticas
+## SugestÃµes TÃ©cnicas e de UX
+- Melhorar feedback visual em operaÃ§Ãµes crÃ­ticas
 - Adotar lazy loading em listas grandes
 - Revisar acessibilidade (atalhos, foco, contraste)
 - Automatizar testes E2E no CI
 
 # v0.8.0 (mar/2026)
-- Scanner: imagem/PDF ✅
-- Erro Gemini: UX aprimorada ✅
-- Open Banking: removido da UI ✅
-- Monitor de performance: ocultado ✅
-- Dashboard.tsx: refatorado ✅
+- Scanner: imagem/PDF âœ…
+- Erro Gemini: UX aprimorada âœ…
+- Open Banking: removido da UI âœ…
+- Monitor de performance: ocultado âœ…
+- Dashboard.tsx: refatorado âœ…
 
-## Próximos passos
-- Testes E2E para jornadas críticas
-- Monitoramento pós-deploy de integrações
+## PrÃ³ximos passos
+- Testes E2E para jornadas crÃ­ticas
+- Monitoramento pÃ³s-deploy de integraÃ§Ãµes
 
 # FLOW FINANCE - ROADMAP OFICIAL
 
-**Data:** 17 de Março de 2026
-**Status Atual:** v0.7.0 (Sprint 3 em andamento; baseline técnico evoluído)
+**Data:** 17 de MarÃ§o de 2026
+**Status Atual:** v0.7.0 (Sprint 3 em andamento; baseline tÃ©cnico evoluÃ­do)
 **Meta Estrategica:** v1.0 publico com AI Financial Assistant completo
 
 ---
 
-## ⚠️ DECISAO ESTRATEGICA: Open Finance (Pluggy) DESATIVADO
+## âš ï¸ DECISAO ESTRATEGICA: Open Finance (Pluggy) DESATIVADO
 
 **Data:** 16 de Marco de 2026  
-**Motivo:** Custo operacional Pluggy >R$ 1.000/mes — inviavel economicamente na fase pré-receita  
+**Motivo:** Custo operacional Pluggy >R$ 1.000/mes â€” inviavel economicamente na fase prÃ©-receita  
 **Status:** Infraestrutura mantida intacta com feature gate simples (`DISABLE_OPEN_FINANCE=true` no backend)  
 **Reativacao:** Quando aplicacao atingir SMU (Single Monthly Unit) receita justificando custo  
 
 **Mudancas:**
 - Endpoint `/api/banking/*` retorna HTTP 503 Service Unavailable quando `DISABLE_OPEN_FINANCE=true`
 - Middleware `featureGateOpenFinance` em `backend/src/middleware/featureGate.ts`
-- Flag obrigatoria em `backend/.env` para reativacao; padrão = desativado
+- Flag obrigatoria em `backend/.env` para reativacao; padrÃ£o = desativado
 - Codigo fonte mantido para reativacao zero-effort
 
 **Impacto:**
-- ✅ Stripe Billing: Desativado tambem (pular por enquanto; manter mock billing sim)
-- ✅ Core IA: Intacto (AI Context Builder, Pattern Detector, Timeline, Classifier)
-- ✅ Testes: Validados pós-desativacao sem regressao
-- ✅ Caminho crédito/débito: Funciona via entrada manual + IA
+- âœ… Stripe Billing: Desativado tambem (pular por enquanto; manter mock billing sim)
+- âœ… Core IA: Intacto (AI Context Builder, Pattern Detector, Timeline, Classifier)
+- âœ… Testes: Validados pÃ³s-desativacao sem regressao
+- âœ… Caminho crÃ©dito/dÃ©bito: Funciona via entrada manual + IA
 
 ---
 
 ## Visao por Fases
 
 - `0.5.x` -> Hardening (qualidade e arquitetura)
-- `0.6.x` -> Inteligência financeira (concluída)
-- `0.7.x` -> Automação financeira (Autopilot evolutivo: recomendações ativas, overspending, metas automáticas)
+- `0.6.x` -> InteligÃªncia financeira (concluÃ­da)
+- `0.7.x` -> AutomaÃ§Ã£o financeira (Autopilot evolutivo: recomendaÃ§Ãµes ativas, overspending, metas automÃ¡ticas)
 - `0.8.x` -> Integracoes financeiras
 - `0.9.x` -> Preparacao SaaS
 - `1.0` -> Lancamento publico
 
 ---
 
-## v0.7.x - Automação financeira (em andamento)
+## v0.7.x - AutomaÃ§Ã£o financeira (em andamento)
 
 ### Objetivo
 - Evoluir o Autopilot para detectar overspending em tempo real por categoria
-- Gerar recomendações ativas e sugestões de corte automáticas (com valor sugerido por categoria dominante)
-- Criar metas automáticas de corte, economia e reserva de emergência baseadas em comportamento/histórico
-- Enriquecer feedback e acompanhamento de resposta do usuário
+- Gerar recomendaÃ§Ãµes ativas e sugestÃµes de corte automÃ¡ticas (com valor sugerido por categoria dominante)
+- Criar metas automÃ¡ticas de corte, economia e reserva de emergÃªncia baseadas em comportamento/histÃ³rico
+- Enriquecer feedback e acompanhamento de resposta do usuÃ¡rio
 
-### Implementações
-- Engine do Autopilot ampliada para detecção de overspending por categoria, sugestão de corte automático e metas automáticas
-- Testes unitários e cobertura crítica validados (>98%)
-- Documentação e changelog atualizados
+### ImplementaÃ§Ãµes
+- Engine do Autopilot ampliada para detecÃ§Ã£o de overspending por categoria, sugestÃ£o de corte automÃ¡tico e metas automÃ¡ticas
+- Testes unitÃ¡rios e cobertura crÃ­tica validados (>98%)
+- DocumentaÃ§Ã£o e changelog atualizados
 
 ---
 
@@ -437,7 +435,7 @@ Database
 - E2E Pluggy estabilizado para indisponibilidade local de backend (skip controlado)
 - Lint, testes e cobertura critica aprovados no recorte protocolar
 - Sprint 1 de hardening finalizada (A003-A006) com testes e build backend validados
-- Sprint 2 iniciada com suíte de readiness cobrindo os 6 pilares da fase 0.6.x
+- Sprint 2 iniciada com suÃ­te de readiness cobrindo os 6 pilares da fase 0.6.x
 
 ### Checkpoint 0.6.3
 - Event-driven listeners registrados (autopilot, AI queue, forecast, audit, cache)
@@ -450,13 +448,13 @@ Database
 - D2 concluido: Pattern Detector com confianca por insight e testes de fronteira para picos/recorrencia
 
 ### Checkpoint 0.6.4
-- D3 concluido: Financial Timeline Engine — `aggregateByMonth`, `detectBalanceTrend` (regressao linear), `detectTimelineAnomalies` (2x mediana)
-- D4 concluido: Financial Profile Classifier — confidence, topCategories, insights acionaveis, perfil `Undefined`
+- D3 concluido: Financial Timeline Engine â€” `aggregateByMonth`, `detectBalanceTrend` (regressao linear), `detectTimelineAnomalies` (2x mediana)
+- D4 concluido: Financial Profile Classifier â€” confidence, topCategories, insights acionaveis, perfil `Undefined`
 - A004 lint fix: `AICFOAgent.ts` importa `FinancialProfile` centralizado
 - 377/377 testes; cobertura critica 99.76%/98.3%
 
 ### Checkpoint 0.6.5 (atual)
-- D5 concluido: Widget de Inteligencia Financeira no Dashboard — tendencia, perfil, confidence, insights, anomalias
+- D5 concluido: Widget de Inteligencia Financeira no Dashboard â€” tendencia, perfil, confidence, insights, anomalias
 - D6 concluido: Endpoint backend `POST /api/finance/metrics` com auth e validacao
 - D7 concluido: Fixture E2E Pluggy com email fixo via env var (fix intermitencia B010-E2E)
 - 387/387 testes; cobertura critica 99.76%/98.3%; lint verde
@@ -531,14 +529,14 @@ Extracao automatica:
 - data
 
 
-### 3. Categorização automática e edição inteligente
-- Sugestão automática de categoria por IA ao editar transação (merchant-aware)
-- Modal de edição com botão "Desfazer" para restaurar categoria anterior
+### 3. CategorizaÃ§Ã£o automÃ¡tica e ediÃ§Ã£o inteligente
+- SugestÃ£o automÃ¡tica de categoria por IA ao editar transaÃ§Ã£o (merchant-aware)
+- Modal de ediÃ§Ã£o com botÃ£o "Desfazer" para restaurar categoria anterior
 - Feedback visual e acessibilidade aprimorados
-- Cobertura de testes unitários e E2E para todo o fluxo
+- Cobertura de testes unitÃ¡rios e E2E para todo o fluxo
 Exemplos:
 - Uber -> transporte
-- iFood -> alimentação
+- iFood -> alimentaÃ§Ã£o
 
 ### 4. Detector de assinaturas
 Deteccao de servicos como:
@@ -551,51 +549,51 @@ Deteccao de servicos como:
 ---
 
 
-## v0.9.x - Preparação SaaS
+## v0.9.x - PreparaÃ§Ã£o SaaS
 
-### 1. Autenticação completa
+### 1. AutenticaÃ§Ã£o completa
 - JWT
 - refresh tokens
 - OAuth
 
-### 2. Multi-tenant e Administração
+### 2. Multi-tenant e AdministraÃ§Ã£o
 - Isolamento de dados por workspace/empresa
-- Painel de administração (gestão de usuários, planos, auditoria)
-- Logs de auditoria detalhados (ações do usuário, alterações sensíveis)
-- Política de retenção e exclusão de dados (LGPD/GDPR)
+- Painel de administraÃ§Ã£o (gestÃ£o de usuÃ¡rios, planos, auditoria)
+- Logs de auditoria detalhados (aÃ§Ãµes do usuÃ¡rio, alteraÃ§Ãµes sensÃ­veis)
+- PolÃ­tica de retenÃ§Ã£o e exclusÃ£o de dados (LGPD/GDPR)
 
 ### 3. Plano de assinatura e billing real
-- Stripe, recorrência, trial, downgrade/upgrade
-- Exportação de dados (PDF, Excel, integração contábil)
+- Stripe, recorrÃªncia, trial, downgrade/upgrade
+- ExportaÃ§Ã£o de dados (PDF, Excel, integraÃ§Ã£o contÃ¡bil)
 
-### 4. Notificações e alertas
-- Notificações push/email para eventos críticos (ex: saldo baixo, meta atingida)
+### 4. NotificaÃ§Ãµes e alertas
+- NotificaÃ§Ãµes push/email para eventos crÃ­ticos (ex: saldo baixo, meta atingida)
 
-### 5. Monitoramento e segurança
-- Monitoramento de performance e uptime (SLA público)
+### 5. Monitoramento e seguranÃ§a
+- Monitoramento de performance e uptime (SLA pÃºblico)
 - Plano de disaster recovery e backup automatizado
-- Certificação de segurança (OWASP, testes de penetração)
+- CertificaÃ§Ã£o de seguranÃ§a (OWASP, testes de penetraÃ§Ã£o)
 
 ---
 
-## v1.0 - Lançamento Público
+## v1.0 - LanÃ§amento PÃºblico
 
 - Onboarding guiado e tour interativo
 - FAQ e central de ajuda integrada
-- Integração com marketplaces de apps (Google Play, App Store, Vercel, etc.)
-- Canal de feedback do usuário e NPS
+- IntegraÃ§Ã£o com marketplaces de apps (Google Play, App Store, Vercel, etc.)
+- Canal de feedback do usuÃ¡rio e NPS
 
 ---
 
-## Pós v1.0 - Escala e diferenciação
+## PÃ³s v1.0 - Escala e diferenciaÃ§Ã£o
 
-- API pública para integrações externas (webhooks, parceiros)
-- Marketplace de plugins/integrações (contabilidade, bancos, ERPs)
-- IA preditiva para investimentos e recomendações personalizadas
-- Suporte a múltiplas moedas e contas internacionais
+- API pÃºblica para integraÃ§Ãµes externas (webhooks, parceiros)
+- Marketplace de plugins/integraÃ§Ãµes (contabilidade, bancos, ERPs)
+- IA preditiva para investimentos e recomendaÃ§Ãµes personalizadas
+- Suporte a mÃºltiplas moedas e contas internacionais
 - White-label/SaaS B2B (licenciamento para consultorias/contadores)
-- Gamificação (badges, conquistas, ranking de economia)
-- Relatórios avançados e dashboards customizáveis
+- GamificaÃ§Ã£o (badges, conquistas, ranking de economia)
+- RelatÃ³rios avanÃ§ados e dashboards customizÃ¡veis
 Isolamento por:
 - users
 - accounts
@@ -618,19 +616,19 @@ Monetizacao com:
 ## v1.0 - Lancamento Publico
 ### Features nucleares
 
-# v0.9.9 - UI/UX Clean & Intuitivo (pré-1.0)
+# v0.9.9 - UI/UX Clean & Intuitivo (prÃ©-1.0)
 
 ### Objetivo
 - Ajustar toda a interface do app para um visual mais clean, moderno e intuitivo
-- Reduzir quantidade de botões e elementos redundantes
-- Foco em experiência fluida, onboarding simplificado e feedback visual claro
+- Reduzir quantidade de botÃµes e elementos redundantes
+- Foco em experiÃªncia fluida, onboarding simplificado e feedback visual claro
 - Garantir acessibilidade e responsividade em todos os dispositivos
 
-### Implementações
-- Refatoração dos principais fluxos de navegação
+### ImplementaÃ§Ãµes
+- RefatoraÃ§Ã£o dos principais fluxos de navegaÃ§Ã£o
 - Redesign de telas e componentes para clareza e simplicidade
-- Testes de usabilidade e validação com usuários reais
-- Atualização de documentação visual e guidelines de design
+- Testes de usabilidade e validaÃ§Ã£o com usuÃ¡rios reais
+- AtualizaÃ§Ã£o de documentaÃ§Ã£o visual e guidelines de design
 
 ---
 
@@ -698,12 +696,8 @@ Database
 - [ ] D7 Hardening E2E Open Banking com fixture autenticada estavel (reduzir skips)
 
 
-## v0.9.1 — Endurecimento imediato (curto prazo)
-- Auth backend-first com refresh token rotativo e revogação.
-- Tenancy estrita por workspace em persistência e leitura.
-- Billing readiness: webhook idempotente + reconciliação.
-- Gate de release condicionado a cobertura crítica >= 98%.
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
+## v0.9.1 â€” Endurecimento imediato (curto prazo)
+- Auth backend-first com refresh token rotativo e revogaÃ§Ã£o.
+- Tenancy estrita por workspace em persistÃªncia e leitura.
+- Billing readiness: webhook idempotente + reconciliaÃ§Ã£o.
+- Gate de release condicionado a cobertura crÃ­tica >= 98%.
