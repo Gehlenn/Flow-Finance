@@ -1,20 +1,27 @@
 import { z } from 'zod';
 
 export const CFOSchema = z.object({
-  question: z.string().min(1, 'question is required'),
-  context: z.string().optional(),
-  intent: z.string().optional(),
+  question: z.string().trim().min(1, 'question is required').max(1000, 'question must be <= 1000 chars'),
+  context: z.string().max(20000, 'context must be <= 20000 chars').optional(),
+  intent: z.enum([
+    'spending_advice',
+    'budget_question',
+    'risk_question',
+    'savings_question',
+    'investment_question',
+    'general_finance',
+  ]).optional(),
 });
 
 export const InterpretSchema = z.object({
-  text: z.string().min(1, 'text is required'),
-  memoryContext: z.string().optional(),
+  text: z.string().trim().min(1, 'text is required').max(4000, 'text must be <= 4000 chars'),
+  memoryContext: z.string().max(20000, 'memoryContext must be <= 20000 chars').optional(),
 });
 
 export const ScanReceiptSchema = z.object({
   imageBase64: z.string().min(1, 'imageBase64 is required'),
-  imageMimeType: z.string().min(1, 'imageMimeType is required'),
-  context: z.string().optional(),
+  imageMimeType: z.string().min(1, 'imageMimeType is required').max(120, 'imageMimeType must be <= 120 chars'),
+  context: z.string().max(8000, 'context must be <= 8000 chars').optional(),
 });
 
 export const ClassifyTransactionsSchema = z.object({
@@ -40,5 +47,5 @@ export const GenerateInsightsSchema = z.object({
 });
 
 export const TokenCountSchema = z.object({
-  text: z.string().min(1, 'text is required'),
+  text: z.string().trim().min(1, 'text is required').max(20000, 'text must be <= 20000 chars'),
 });

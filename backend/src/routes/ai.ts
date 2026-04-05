@@ -24,14 +24,20 @@ import {
 
 const router = Router();
 
-// CFO route is public (no auth required) for testing
-router.post('/cfo', aiLimiterByUser, validate(CFOSchema), cfoController);
-
-// All other AI routes require authentication and are rate-limited
+// All AI routes require authentication and are rate-limited
 router.use(authMiddleware);
 router.use(workspaceContextMiddleware);
 router.use(aiLimiterByUser);
 router.use(authz('ai:use'));
+
+/**
+ * POST /api/ai/cfo
+ * Conversational financial assistant
+ *
+ * Body: { question: string, context?: string, intent?: CFOIntent }
+ * Returns: { answer: string }
+ */
+router.post('/cfo', quotaMiddleware('aiQueries'), validate(CFOSchema), cfoController);
 
 /**
  * POST /api/ai/interpret

@@ -22,6 +22,37 @@ import {
   StrategicReport,
 } from '../types';
 
+const MAX_CFO_CONTEXT_CHARS = 20000;
+const ALLOWED_CFO_INTENTS = new Set([
+  'spending_advice',
+  'budget_question',
+  'risk_question',
+  'savings_question',
+  'investment_question',
+  'general_finance',
+]);
+
+export function normalizeCFORequestInput(payload: {
+  question?: unknown;
+  context?: unknown;
+  intent?: unknown;
+}): { question: string; context: string; intent: string } {
+  const question = typeof payload.question === 'string' ? payload.question.trim() : '';
+  if (!question) {
+    throw new AppError(400, 'question is required');
+  }
+
+  const rawContext = typeof payload.context === 'string' ? payload.context : '';
+  const context = rawContext.length > MAX_CFO_CONTEXT_CHARS
+    ? rawContext.slice(0, MAX_CFO_CONTEXT_CHARS)
+    : rawContext;
+
+  const rawIntent = typeof payload.intent === 'string' ? payload.intent : '';
+  const intent = ALLOWED_CFO_INTENTS.has(rawIntent) ? rawIntent : 'general_finance';
+
+  return { question, context, intent };
+}
+
 function buildInterpretFallbackResponse(): InterpretResponse {
   return {
     intent: 'transaction',
@@ -231,14 +262,13 @@ export const tokenCountController = asyncHandler(async (req: Request, res: Respo
 
 // ─── CFO CONTROLLER — free‑form financial assistant using OpenAI ─────────────
 export const cfoController = asyncHandler(async (req: Request, res: Response) => {
-  const { question, context, intent } = req.body as { question: string; context: string; intent: string };
+  const { question, context, intent } = normalizeCFORequestInput(req.body as {
+    question?: unknown;
+    context?: unknown;
+    intent?: unknown;
+  });
 
-  logger.info({ path: '/api/ai/cfo', method: 'POST', hasQuestion: !!question, hasContext: !!context }, 'CFO endpoint called');
-
-  if (!question || typeof question !== 'string') {
-    logger.warn({ received: req.body }, 'CFO request missing question');
-    throw new AppError(400, 'question is required');
-  }
+  logger.info({ path: '/api/ai/cfo', method: 'POST', hasQuestion: true, hasContext: context.length > 0 }, 'CFO endpoint called');
 
   logger.info({ intent, questionLength: question.length }, 'CFO request received');
 
@@ -287,7 +317,6 @@ Responda de forma consultiva, personalizada e baseada exclusivamente nos dados a
     logger.error({ 
       error: error?.message || String(error),
       errorType: error?.constructor?.name,
-      stack: error?.stack,
       status: error?.status,
     }, 'CFO generation error');
     throw new AppError(500, `Failed to generate CFO response: ${error?.message || 'Unknown error'}`);
