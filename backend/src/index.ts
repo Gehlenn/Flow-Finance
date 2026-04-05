@@ -14,6 +14,7 @@ import { requestContextMiddleware } from './middleware/requestContext';
 import { initRedis, checkRedisHealth } from './config/redis';
 import { checkDatabaseHealth } from './config/database';
 import { createCorsOptions, resolveAllowedOrigins } from './config/cors';
+import { resolveTrustProxySetting } from './config/server';
 import { buildOpenApiSpec, isApiDocsEnabled, renderSwaggerHtml } from './docs/openapi';
 
 // Routes
@@ -56,7 +57,11 @@ function getRequestContext(req: Request): { requestId?: string; routeScope?: str
 }
 
 // Trust proxy for Vercel/serverless environments
-app.set('trust proxy', 1);
+app.set('trust proxy', resolveTrustProxySetting({
+  trustProxy: process.env.TRUST_PROXY,
+  nodeEnv: process.env.NODE_ENV,
+  vercel: process.env.VERCEL,
+}));
 
 // Initialize AI providers
 const aiHealthStatus: Record<string, 'healthy' | 'unhealthy'> = {};
