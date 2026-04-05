@@ -30,6 +30,8 @@
     "health:all": "npm run health:io ; npm run health:runtime ; npm run health:runtime:mobile",
     "teste:e2e": "npm run test:e2e",
     "test:e2e": "playwright test",
+    "db:reset": "node scripts/reset-database.mjs",
+    "security:scan-secrets": "node scripts/scan-secrets.mjs",
     "setup:mobile": "cap add android && cap add ios && cap sync",
     "build:android": "npm run build && cap sync android && cap build android",
     "build:android:release": "npm run build && cap sync android && cap build android --prod",
