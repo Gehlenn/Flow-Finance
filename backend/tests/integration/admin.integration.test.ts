@@ -66,6 +66,8 @@ describe('Admin API', () => {
     process.env.POSTGRES_STATE_STORE_ENABLED = 'false';
     process.env.OPEN_FINANCE_PROVIDER = 'mock';
     process.env.OPEN_FINANCE_STORE_DRIVER = 'memory';
+    process.env.DISABLE_LEGACY_STATE_BLOBS = 'true';
+    process.env.FEATURE_OPEN_FINANCE = 'true';
     ({ default: app } = await import('../../src/index'));
   });
 
@@ -73,6 +75,8 @@ describe('Admin API', () => {
     process.env.POSTGRES_STATE_STORE_ENABLED = 'false';
     process.env.OPEN_FINANCE_PROVIDER = 'mock';
     process.env.OPEN_FINANCE_STORE_DRIVER = 'memory';
+    process.env.DISABLE_LEGACY_STATE_BLOBS = 'true';
+    process.env.FEATURE_OPEN_FINANCE = 'true';
     resetWorkspaceStoreForTests();
     resetSaasStoreForTests();
   });

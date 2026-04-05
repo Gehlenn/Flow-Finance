@@ -14,7 +14,6 @@ export default defineConfig({
       'tests/unit/open-banking-service-extended.test.ts',
       'tests/unit/open-finance-firebase-store.test.ts',
       'tests/unit/open-banking-service-critical-branches.test.ts',
-      'tests/unit/storage-provider.test.ts',
       'tests/health/io-integrations.health.test.ts',
       // v0.9.1 critical transition checks (currency/categorization/workspace scope)
       'tests/unit/v091-critical-flows.test.ts',

@@ -5,6 +5,56 @@ import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceS
 import { resetCloudSyncStoreForTests } from '../../src/services/sync/cloudSyncStore';
 import { getAuditEvents, resetAuditLogForTests } from '../../src/services/admin/auditLog';
 
+vi.mock('../../src/config/database', () => ({
+  query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+  testConnection: vi.fn().mockResolvedValue(false),
+  checkDatabaseHealth: vi.fn().mockResolvedValue(false),
+  closePool: vi.fn().mockResolvedValue(undefined),
+  pool: {
+    query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+    connect: vi.fn().mockResolvedValue({
+      query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+      release: vi.fn(),
+    }),
+    end: vi.fn().mockResolvedValue(undefined),
+    on: vi.fn(),
+  },
+  default: {
+    query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+    connect: vi.fn().mockResolvedValue({
+      query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+      release: vi.fn(),
+    }),
+    end: vi.fn().mockResolvedValue(undefined),
+    on: vi.fn(),
+  },
+}));
+
+vi.mock('../../src/services/persistence/postgresStateStore', () => ({
+  isPostgresStateStoreEnabled: vi.fn().mockReturnValue(false),
+  initializePostgresStateStore: vi.fn().mockResolvedValue(false),
+  saveWorkspaceStoreState: vi.fn().mockResolvedValue(undefined),
+  loadWorkspaceStoreState: vi.fn().mockResolvedValue(null),
+  saveWorkspaceSaasState: vi.fn().mockResolvedValue(undefined),
+  loadWorkspaceSaasState: vi.fn().mockResolvedValue(null),
+  saveJsonState: vi.fn().mockResolvedValue(undefined),
+  loadJsonState: vi.fn().mockResolvedValue(null),
+  insertAuditEvent: vi.fn().mockResolvedValue(undefined),
+  loadRecentAuditEvents: vi.fn().mockResolvedValue([]),
+  queryAuditEvents: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
+  queryWorkspaceMeteringSummary: vi.fn().mockResolvedValue(null),
+  queryWorkspaceUsageEvents: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
+  queryWorkspaceById: vi.fn().mockResolvedValue(null),
+  queryWorkspacesForUser: vi.fn().mockResolvedValue([]),
+  queryWorkspaceUsers: vi.fn().mockResolvedValue([]),
+  queryLastWorkspaceForUser: vi.fn().mockResolvedValue(null),
+  queryWorkspaceByBillingCustomerId: vi.fn().mockResolvedValue(null),
+  queryTenantById: vi.fn().mockResolvedValue(null),
+  queryTenantsForUser: vi.fn().mockResolvedValue([]),
+  queryDomainEvents: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
+  insertDomainEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../../src/services/openFinance/providerMode', () => ({
   isSupportedOpenFinanceProvider: () => true,
   isPluggyProviderEnabled: () => false,
@@ -17,6 +67,8 @@ describe('Workspace storage isolation', () => {
     process.env.POSTGRES_STATE_STORE_ENABLED = 'false';
     process.env.OPEN_FINANCE_PROVIDER = 'mock';
     process.env.OPEN_FINANCE_STORE_DRIVER = 'memory';
+    process.env.DISABLE_LEGACY_STATE_BLOBS = 'true';
+    process.env.FEATURE_OPEN_FINANCE = 'true';
     ({ default: app } = await import('../../src/index'));
   });
 
@@ -24,6 +76,8 @@ describe('Workspace storage isolation', () => {
     process.env.POSTGRES_STATE_STORE_ENABLED = 'false';
     process.env.OPEN_FINANCE_PROVIDER = 'mock';
     process.env.OPEN_FINANCE_STORE_DRIVER = 'memory';
+    process.env.DISABLE_LEGACY_STATE_BLOBS = 'true';
+    process.env.FEATURE_OPEN_FINANCE = 'true';
     resetWorkspaceStoreForTests();
     resetCloudSyncStoreForTests();
     resetAuditLogForTests();
@@ -86,38 +140,63 @@ describe('Workspace storage isolation', () => {
     expect(logs.some((entry) => entry.workspaceId === secondWorkspace.body.workspaceId && entry.resourceId === 'goal_ws2')).toBe(true);
   });
 
-  it('isolates banking connections by workspace for the same user', async () => {
-    const ownerUserId = 'owner-banking-same-user';
+  it('isolates saas usage state by workspace for the same user', async () => {
+    const ownerUserId = 'owner-usage-same-user';
 
     const firstWorkspace = await request(app)
       .post('/api/tenant')
-      .send({ name: 'Bank Workspace One', ownerUserId });
+      .send({ name: 'Usage Workspace One', ownerUserId });
 
     const secondWorkspace = await request(app)
       .post('/api/tenant')
-      .send({ name: 'Bank Workspace Two', ownerUserId });
+      .send({ name: 'Usage Workspace Two', ownerUserId });
 
-    await request(app)
-      .post('/api/banking/connect')
+    const firstUpdate = await request(app)
+      .put('/api/saas/usage')
       .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
       .set('x-workspace-id', firstWorkspace.body.workspaceId)
       .send({
-        bankId: 'nubank',
+        usage: {
+          '2026-04': {
+            transactions: 5,
+            aiQueries: 1,
+            bankConnections: 0,
+          },
+        },
       });
 
-    const firstList = await request(app)
-      .get('/api/banking/connections')
+    const secondUpdate = await request(app)
+      .put('/api/saas/usage')
+      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('x-workspace-id', secondWorkspace.body.workspaceId)
+      .send({
+        usage: {
+          '2026-04': {
+            transactions: 9,
+            aiQueries: 3,
+            bankConnections: 0,
+          },
+        },
+      });
+
+    expect(firstUpdate.status).toBe(200);
+    expect(secondUpdate.status).toBe(200);
+
+    const firstRead = await request(app)
+      .get('/api/saas/usage')
       .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
       .set('x-workspace-id', firstWorkspace.body.workspaceId);
 
-    const secondList = await request(app)
-      .get('/api/banking/connections')
+    const secondRead = await request(app)
+      .get('/api/saas/usage')
       .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
       .set('x-workspace-id', secondWorkspace.body.workspaceId);
 
-    expect(firstList.status).toBe(200);
-    expect(secondList.status).toBe(200);
-    expect(firstList.body).toHaveLength(1);
-    expect(secondList.body).toHaveLength(0);
+    expect(firstRead.status).toBe(200);
+    expect(secondRead.status).toBe(200);
+    expect(firstRead.body.usage['2026-04'].transactions).toBe(5);
+    expect(secondRead.body.usage['2026-04'].transactions).toBe(9);
+    expect(firstRead.body.workspaceId).toBe(firstWorkspace.body.workspaceId);
+    expect(secondRead.body.workspaceId).toBe(secondWorkspace.body.workspaceId);
   }, 15000);
 });
