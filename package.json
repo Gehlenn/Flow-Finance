@@ -19,6 +19,7 @@
     "resources:generate": "cordova-res android && cordova-res ios",
     "teste": "npm test",
     "test": "node scripts/run-vitest-stable.mjs",
+    "test:backend": "vitest run backend/tests/unit",
     "test:unit": "node scripts/run-vitest-stable.mjs",
     "test:firestore:rules": "node scripts/run-firestore-rules.mjs",
     "test:watch": "vitest --exclude tests/e2e/**",

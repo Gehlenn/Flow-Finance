@@ -45,7 +45,8 @@ function buildDefaultKey(req: Request): string {
 
   // Fallback to IP
   const ip = req.headers['x-forwarded-for'] as string
-    || req.socket.remoteAddress
+    || req.socket?.remoteAddress
+    || req.ip
     || 'unknown';
   return `ip::${ip}`;
 }

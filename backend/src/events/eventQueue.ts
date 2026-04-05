@@ -107,14 +107,22 @@ export async function retryEvent(id: string): Promise<EventQueueItem | null> {
   if (item.retries >= MAX_RETRIES) {
     logger.warn({ id, retries: item.retries }, 'Event exceeded max retries, moving to dead-letter');
     await eventQueueStore.remove(id);
-    return item; // Return for dead-letter handling
+    return { ...item }; // Return snapshot for dead-letter handling
   }
 
-  item.retries += 1;
-  item.nextRetryAt = Date.now() + calculateBackoffMs(item.retries);
+  const nextRetries = item.retries + 1;
+  const candidateNextRetryAt = Date.now() + calculateBackoffMs(nextRetries);
+  // Keep retry timestamp monotonic even when retries happen within the same millisecond.
+  const nextRetryAt = Math.max(candidateNextRetryAt, item.nextRetryAt + 1);
 
-  await eventQueueStore.save(item);
-  return item;
+  const updatedItem: EventQueueItem = {
+    ...item,
+    retries: nextRetries,
+    nextRetryAt,
+  };
+
+  await eventQueueStore.save(updatedItem);
+  return updatedItem;
 }
 
 /**
