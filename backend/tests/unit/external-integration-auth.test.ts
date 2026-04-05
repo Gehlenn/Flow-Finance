@@ -20,6 +20,7 @@ describe('externalIntegrationAuth', () => {
   beforeEach(() => {
     req = {
       headers: {},
+      method: 'POST',
       header: ((name: string) => req.headers[name.toLowerCase()]) as Request['header'],
       rawBody: '{"test":"payload"}',
     };
@@ -110,6 +111,40 @@ describe('externalIntegrationAuth', () => {
     const timestamp = String(Math.floor(Date.now() / 1000));
     req.headers['x-integration-timestamp'] = timestamp;
     req.headers['x-integration-signature'] = sign(timestamp, req.rawBody || '', 'super-secret');
+
+    externalIntegrationAuth(req as Request, res as Response, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(statusMock).not.toHaveBeenCalled();
+  });
+
+  it('retorna 401 quando requisição com body não possui rawBody para validar assinatura', () => {
+    process.env.FLOW_EXTERNAL_INTEGRATION_KEYS = 'valid-key';
+    process.env.FLOW_EXTERNAL_INTEGRATION_HMAC_SECRETS = 'super-secret';
+
+    req.headers['x-integration-key'] = 'valid-key';
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    req.headers['x-integration-timestamp'] = timestamp;
+    req.headers['x-integration-signature'] = sign(timestamp, '{"test":"payload"}', 'super-secret');
+    req.rawBody = undefined;
+
+    externalIntegrationAuth(req as Request, res as Response, next);
+
+    expect(statusMock).toHaveBeenCalledWith(401);
+    expect(jsonMock).toHaveBeenCalledWith({ error: 'Invalid integration signature' });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('aceita assinatura para GET sem body mesmo sem rawBody', () => {
+    process.env.FLOW_EXTERNAL_INTEGRATION_KEYS = 'valid-key';
+    process.env.FLOW_EXTERNAL_INTEGRATION_HMAC_SECRETS = 'super-secret';
+
+    req.method = 'GET';
+    req.rawBody = undefined;
+    req.headers['x-integration-key'] = 'valid-key';
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    req.headers['x-integration-timestamp'] = timestamp;
+    req.headers['x-integration-signature'] = sign(timestamp, '', 'super-secret');
 
     externalIntegrationAuth(req as Request, res as Response, next);
 

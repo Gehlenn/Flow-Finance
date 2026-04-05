@@ -89,6 +89,7 @@ router.post(
 
 router.get(
   '/health',
+  clinicEdgeLimiter,
   externalIntegrationAuth,
   getClinicIntegrationHealth,
 );

@@ -267,4 +267,22 @@ describe('Clinic Integration API', () => {
     expect(res.body.features).toBeDefined();
     expect(res.body.safeguards).toBeDefined();
   });
+
+  it('deve retornar 429 no health quando exceder limite de borda por IP', async () => {
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const signature = signWebhook(timestamp, '', hmacSecret);
+
+    const responses = await Promise.all(
+      Array.from({ length: 6 }, () => (
+        request(app)
+          .get('/api/integrations/clinic/health')
+          .set('x-integration-key', integrationKey)
+          .set('x-integration-timestamp', timestamp)
+          .set('x-integration-signature', signature)
+      ))
+    );
+
+    const statuses = responses.map((response) => response.status);
+    expect(statuses).toContain(429);
+  });
 });

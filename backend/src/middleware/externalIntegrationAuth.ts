@@ -46,6 +46,17 @@ function verifyHmacSignature(req: Request, secrets: string[]): boolean {
 
   const signature = req.header('x-integration-signature');
   const timestamp = req.header('x-integration-timestamp');
+  const method = String(req.method || '').toUpperCase();
+  const contentLengthHeader = req.header('content-length');
+  const parsedContentLength = Number.parseInt(contentLengthHeader || '0', 10);
+  const hasPositiveContentLength = Number.isFinite(parsedContentLength) && parsedContentLength > 0;
+  const expectsSignedRequestBody = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
+    || hasPositiveContentLength;
+
+  if (expectsSignedRequestBody && typeof req.rawBody !== 'string') {
+    return false;
+  }
+
   const rawBody = typeof req.rawBody === 'string' ? req.rawBody : '';
 
   if (!signature || !timestamp) {
