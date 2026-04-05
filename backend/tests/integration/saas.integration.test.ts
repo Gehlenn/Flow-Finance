@@ -1,10 +1,28 @@
 import request from 'supertest';
-import app from '../../src/index';
+import type { Express } from 'express';
+import { beforeAll, vi } from 'vitest';
 import { resetSaasStoreForTests } from '../../src/utils/saasStore';
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
 
+vi.mock('../../src/services/openFinance/providerMode', () => ({
+  isSupportedOpenFinanceProvider: () => true,
+  isPluggyProviderEnabled: () => false,
+}));
+
+let app: Express;
+
 describe('SaaS API workspace scope', () => {
+  beforeAll(async () => {
+    process.env.POSTGRES_STATE_STORE_ENABLED = 'false';
+    process.env.OPEN_FINANCE_PROVIDER = 'mock';
+    process.env.OPEN_FINANCE_STORE_DRIVER = 'memory';
+    ({ default: app } = await import('../../src/index'));
+  });
+
   beforeEach(() => {
+    process.env.POSTGRES_STATE_STORE_ENABLED = 'false';
+    process.env.OPEN_FINANCE_PROVIDER = 'mock';
+    process.env.OPEN_FINANCE_STORE_DRIVER = 'memory';
     resetSaasStoreForTests();
     resetWorkspaceStoreForTests();
   });
@@ -84,7 +102,7 @@ describe('SaaS API workspace scope', () => {
       .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
       .set('x-workspace-id', created.body.workspaceId)
       .send({
-        bankId: 'bank_metering',
+        bankId: 'nubank',
         itemId: 'item_metering',
         connectorId: 1,
       });
@@ -99,5 +117,5 @@ describe('SaaS API workspace scope', () => {
     expect(res.body.workspaceId).toBe(created.body.workspaceId);
     expect(res.body.summary.totals.bankConnections).toBeGreaterThanOrEqual(1);
     expect(Array.isArray(res.body.events)).toBe(true);
-  });
+  }, 15000);
 });

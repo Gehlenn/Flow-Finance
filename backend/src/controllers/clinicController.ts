@@ -5,6 +5,8 @@ import { IntegrationTelemetry, IntegrationMonitor } from '../services/observabil
 import { createDefaultEnhancedFeatureFlagService } from '../services/featureFlags/EnhancedFeatureFlagService';
 import { ClinicWebhookPayload } from '../validation/clinicAutomation.schema';
 import logger from '../config/logger';
+import redisClient from '../config/redis';
+import type { RedisLike } from '../services/clinic/IdempotentEventStore';
 
 // Lazy-init: serviços construídos na primeira chamada (sem Redis obrigatório no boot)
 let _service: ClinicAutomationService | null = null;
@@ -23,16 +25,19 @@ function getClinicService(): ClinicAutomationService {
   return _service;
 }
 
-function buildRedisClient() {
-  // Reuse the shared Redis client if it was already initialized
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { getRedisClient } = require('../config/redis');
-    return getRedisClient();
-  } catch {
-    // No Redis available — return a minimal no-op client for dev/test
-    return createNoOpRedisClient();
+function buildRedisClient(): RedisLike {
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  if (process.env.REDIS_URL) {
+    return redisClient as unknown as RedisLike;
   }
+
+  if (isProduction) {
+    throw new Error('REDIS_URL is required for clinic automation in production');
+  }
+
+  // Dev/test only fallback when Redis is intentionally absent.
+  return createNoOpRedisClient();
 }
 
 function createNoOpRedisClient() {

@@ -528,10 +528,53 @@ clinic_webhook externalEventId=payment-9876 type=payment_received success=true d
 ## Próximos Passos
 
 1. ✅ Implementação base de telemetria, flags, injection guard, clinic integration
-2. ⏳ Integrar rotas clinic em `backend/src/index.ts`
-3. ⏳ Testar com simulador de webhook
-4. ⏳ Monitorar alertas Sentry por 1-2 weeks
-5. ⏳ Habilitar clinic_automation_ingest em staging
-6. ⏳ Habilitar em produção após sucesso em staging
-7. ⏳ Criar painel admin para gerenciar flags
+2. ✅ Rotas clinic integradas em `backend/src/index.ts`
+3. ✅ Assinatura HMAC centralizada no middleware (`externalIntegrationAuth`)
+4. ✅ Janela anti-replay por timestamp (`FLOW_EXTERNAL_INTEGRATION_MAX_SKEW_SECONDS`, default 300s)
+5. ✅ Fail closed em produção sem Redis para rota clínica
+6. ⏳ Testar com simulador de webhook
+7. ⏳ Monitorar alertas Sentry por 1-2 weeks
+8. ⏳ Habilitar clinic_automation_ingest em staging
+9. ⏳ Habilitar em produção após sucesso em staging
+10. ⏳ Criar painel admin para gerenciar flags
+
+---
+
+## Atualização Operacional (2026-04-05)
+
+### Regras de Segurança Aplicadas na Rota Clínica
+
+1. **Assinatura HMAC em ponto único**
+  - A validação de assinatura agora é centralizada no middleware `externalIntegrationAuth`.
+  - O serviço `ClinicAutomationService` não faz uma segunda validação com algoritmo/segredo alternativo.
+
+2. **Proteção anti-replay por timestamp**
+  - `x-integration-timestamp` agora é validado com janela máxima configurável.
+  - Variável: `FLOW_EXTERNAL_INTEGRATION_MAX_SKEW_SECONDS` (default: 300 segundos).
+  - Requests com timestamp fora da janela são rejeitados como assinatura inválida.
+
+3. **Fallback Redis seguro por ambiente**
+  - Em `production`, a integração clínica exige `REDIS_URL`.
+  - Sem Redis em produção: falha explícita (não aceita fallback em memória).
+  - Em `dev/test`, fallback em memória permanece para facilitar desenvolvimento local.
+
+### Kill Switches e Flags - Operação Recomendada
+
+- Flag principal de ingestão clínica: `clinic_automation_ingest_enabled`
+- Kill switch operacional: `kill_switch_clinic_automation`
+
+#### Procedimento de contingência
+1. Ativar kill switch ao detectar erro sistêmico ou comportamento suspeito.
+2. Confirmar queda de tráfego em `POST /api/integrations/clinic/financial-events`.
+3. Monitorar eventos `integration=clinic-automation` no Sentry por 15 minutos.
+4. Corrigir causa raiz, validar em staging e desativar kill switch gradualmente.
+
+### Alertas mínimos recomendados
+
+1. **Spike de 401 em integração clínica**
+  - Possível chave expirada, assinatura inválida ou replay.
+2. **Spike de 429 no endpoint clínico**
+  - Possível burst anômalo ou abuso de origem.
+3. **Erros de ingestão com `clinic_automation_ingest_enabled=true`**
+  - Acionar triagem de payload/schema e idempotência.
 

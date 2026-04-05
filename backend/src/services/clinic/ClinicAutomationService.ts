@@ -42,7 +42,7 @@ export class ClinicAutomationService {
    */
   async processWebhookEvent(
     payload: ClinicWebhookPayload,
-    signature: string,
+    _signature: string,
     sourceIp: string,
     contextOverrides?: Partial<FeatureFlagContext>
   ): Promise<ClinicWebhookResponse> {
@@ -94,12 +94,7 @@ export class ClinicAutomationService {
         };
       }
 
-      // 2. Validar HMAC signature (se necessário em produção)
-      if (process.env.NODE_ENV === 'production') {
-        await this.validateWebhookSignature(payload, signature);
-      }
-
-      // 3. Verificar idempotência
+      // 2. Verificar idempotência
       const isNew = await this.eventStore.recordProcessed(
         sourceSystem,
         externalEventId,
@@ -129,14 +124,14 @@ export class ClinicAutomationService {
         };
       }
 
-      // 4. Processar evento específico com telemetria
+      // 3. Processar evento específico com telemetria
       await this.monitor.executeClinicWebhookCall(
         'webhook_ingest',
         () => this.routeAndProcessEvent(payload, internalEventId, ingestContext),
         { requestId, tenantId: (payload as any).externalFacilityId }
       );
 
-      // 5. Registrar sucesso
+      // 4. Registrar sucesso
       await this.eventStore.recordProcessed(
         sourceSystem,
         externalEventId,
@@ -347,40 +342,6 @@ export class ClinicAutomationService {
       processed: true,
       message: `Receivable reminder cleared`
     };
-  }
-
-  /**
-   * Validar HMAC signature da requisição.
-   * Assinatura deve ser HMAC-SHA256(payload, sharedSecret).
-   */
-  private async validateWebhookSignature(payload: any, providedSignature: string): Promise<void> {
-    const sharedSecret = process.env.CLINIC_WEBHOOK_SECRET;
-
-    if (!sharedSecret) {
-      this.logger.error({}, 'CLINIC_WEBHOOK_SECRET not configured');
-      throw new Error('Server webhook validation not configured');
-    }
-
-    const crypto = await import('crypto');
-    const payloadJson = JSON.stringify(payload);
-    const expectedSignature = crypto
-      .createHmac('sha256', sharedSecret)
-      .update(payloadJson)
-      .digest('hex');
-
-    if (providedSignature !== expectedSignature) {
-      this.logger.warn(
-        { provided: providedSignature.substring(0, 8), expected: expectedSignature.substring(0, 8) },
-        'Webhook signature validation failed'
-      );
-
-      Sentry.captureMessage(
-        'Clinic webhook signature validation failed - potential security incident',
-        'error'
-      );
-
-      throw new Error('Webhook signature validation failed');
-    }
   }
 
   /**

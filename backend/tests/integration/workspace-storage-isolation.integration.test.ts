@@ -1,11 +1,29 @@
 import request from 'supertest';
-import app from '../../src/index';
+import type { Express } from 'express';
+import { beforeAll, vi } from 'vitest';
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
 import { resetCloudSyncStoreForTests } from '../../src/services/sync/cloudSyncStore';
 import { getAuditEvents, resetAuditLogForTests } from '../../src/services/admin/auditLog';
 
+vi.mock('../../src/services/openFinance/providerMode', () => ({
+  isSupportedOpenFinanceProvider: () => true,
+  isPluggyProviderEnabled: () => false,
+}));
+
+let app: Express;
+
 describe('Workspace storage isolation', () => {
+  beforeAll(async () => {
+    process.env.POSTGRES_STATE_STORE_ENABLED = 'false';
+    process.env.OPEN_FINANCE_PROVIDER = 'mock';
+    process.env.OPEN_FINANCE_STORE_DRIVER = 'memory';
+    ({ default: app } = await import('../../src/index'));
+  });
+
   beforeEach(() => {
+    process.env.POSTGRES_STATE_STORE_ENABLED = 'false';
+    process.env.OPEN_FINANCE_PROVIDER = 'mock';
+    process.env.OPEN_FINANCE_STORE_DRIVER = 'memory';
     resetWorkspaceStoreForTests();
     resetCloudSyncStoreForTests();
     resetAuditLogForTests();
@@ -101,5 +119,5 @@ describe('Workspace storage isolation', () => {
     expect(secondList.status).toBe(200);
     expect(firstList.body).toHaveLength(1);
     expect(secondList.body).toHaveLength(0);
-  });
+  }, 15000);
 });

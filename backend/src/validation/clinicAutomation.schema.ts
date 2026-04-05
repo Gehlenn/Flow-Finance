@@ -10,7 +10,6 @@ import { z } from 'zod';
  */
 export const ClinicEventTypeSchema = z.enum([
   'payment_received',
-  'payment_pending',
   'expense_recorded',
   'receivable_reminder_created',
   'receivable_reminder_updated',

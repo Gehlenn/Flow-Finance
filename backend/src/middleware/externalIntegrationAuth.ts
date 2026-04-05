@@ -1,6 +1,8 @@
 import { NextFunction, Request, Response } from 'express';
 import crypto from 'crypto';
 
+const DEFAULT_MAX_TIMESTAMP_SKEW_SECONDS = 300;
+
 function getAllowedIntegrationKeys(): string[] {
   return String(process.env.FLOW_EXTERNAL_INTEGRATION_KEYS || '')
     .split(',')
@@ -15,6 +17,28 @@ function getAllowedHmacSecrets(): string[] {
     .filter(Boolean);
 }
 
+function getMaxTimestampSkewSeconds(): number {
+  const parsed = Number.parseInt(process.env.FLOW_EXTERNAL_INTEGRATION_MAX_SKEW_SECONDS || '', 10);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed;
+  }
+  return DEFAULT_MAX_TIMESTAMP_SKEW_SECONDS;
+}
+
+function parseTimestampToSeconds(rawTimestamp: string): number | null {
+  const numeric = Number(rawTimestamp);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return null;
+  }
+
+  // Accept milliseconds and normalize to seconds when needed.
+  if (numeric > 1_000_000_000_000) {
+    return Math.floor(numeric / 1000);
+  }
+
+  return Math.floor(numeric);
+}
+
 function verifyHmacSignature(req: Request, secrets: string[]): boolean {
   if (!secrets.length) {
     return true;
@@ -25,6 +49,17 @@ function verifyHmacSignature(req: Request, secrets: string[]): boolean {
   const rawBody = req.rawBody;
 
   if (!signature || !timestamp || !rawBody) {
+    return false;
+  }
+
+  const parsedTimestampSeconds = parseTimestampToSeconds(timestamp);
+  if (parsedTimestampSeconds === null) {
+    return false;
+  }
+
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const maxSkew = getMaxTimestampSkewSeconds();
+  if (Math.abs(nowSeconds - parsedTimestampSeconds) > maxSkew) {
     return false;
   }
 

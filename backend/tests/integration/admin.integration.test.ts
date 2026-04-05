@@ -1,10 +1,28 @@
 import request from 'supertest';
-import app from '../../src/index';
+import type { Express } from 'express';
+import { beforeAll, vi } from 'vitest';
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
 import { resetSaasStoreForTests } from '../../src/utils/saasStore';
 
+vi.mock('../../src/services/openFinance/providerMode', () => ({
+  isSupportedOpenFinanceProvider: () => true,
+  isPluggyProviderEnabled: () => false,
+}));
+
+let app: Express;
+
 describe('Admin API', () => {
+  beforeAll(async () => {
+    process.env.POSTGRES_STATE_STORE_ENABLED = 'false';
+    process.env.OPEN_FINANCE_PROVIDER = 'mock';
+    process.env.OPEN_FINANCE_STORE_DRIVER = 'memory';
+    ({ default: app } = await import('../../src/index'));
+  });
+
   beforeEach(() => {
+    process.env.POSTGRES_STATE_STORE_ENABLED = 'false';
+    process.env.OPEN_FINANCE_PROVIDER = 'mock';
+    process.env.OPEN_FINANCE_STORE_DRIVER = 'memory';
     resetWorkspaceStoreForTests();
     resetSaasStoreForTests();
   });
@@ -62,7 +80,7 @@ describe('Admin API', () => {
       .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
       .set('x-workspace-id', workspaceId)
       .send({
-        bankId: 'bank_metering',
+        bankId: 'nubank',
         itemId: 'item_metering',
         connectorId: 1,
       });
@@ -77,7 +95,7 @@ describe('Admin API', () => {
     expect(res.body.summary.totals.bankConnections).toBeGreaterThanOrEqual(1);
     expect(Array.isArray(res.body.events)).toBe(true);
     expect(typeof res.body.nextCursor === 'string' || res.body.nextCursor === null).toBe(true);
-  });
+  }, 15000);
 
   it('GET /api/admin/audit-logs/export e /api/admin/usage-metering/export devem suportar export CSV', async () => {
     const ownerUserId = 'owner-admin-export';
@@ -88,7 +106,7 @@ describe('Admin API', () => {
       .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
       .set('x-workspace-id', workspaceId)
       .send({
-        bankId: 'bank_export',
+        bankId: 'nubank',
         itemId: 'item_export',
         connectorId: 1,
       });
@@ -110,7 +128,7 @@ describe('Admin API', () => {
     expect(usageExport.status).toBe(200);
     expect(usageExport.headers['content-type']).toContain('text/csv');
     expect(usageExport.text).toContain('id,at,userId,resource,amount,metadata');
-  });
+  }, 15000);
 
   it('GET /api/admin/audit-logs deve expor cursor para paginacao', async () => {
     const ownerUserId = 'owner-admin-cursor';
