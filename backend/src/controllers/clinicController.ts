@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { ClinicAutomationService } from '../services/clinic';
 import { IntegrationTelemetry, IntegrationMonitor } from '../services/observability';
-import { createDefaultEnhancedFeatureFlagService } from '../services/featureFlags/EnhancedFeatureFlagService';
+import { getFeatureFlagService } from '../config/featureFlags';
 import { ClinicWebhookPayload } from '../validation/clinicAutomation.schema';
 import logger from '../config/logger';
 import redisClient from '../config/redis';
@@ -15,7 +15,7 @@ function getClinicService(): ClinicAutomationService {
   if (!_service) {
     const telemetry = new IntegrationTelemetry(logger);
     const monitor = new IntegrationMonitor(telemetry, logger);
-    const featureFlagService = createDefaultEnhancedFeatureFlagService();
+    const featureFlagService = getFeatureFlagService();
 
     // RedisClientType-compatible object built from environment (graceful fallback if Redis is absent)
     const redis = buildRedisClient();

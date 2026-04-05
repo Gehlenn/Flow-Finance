@@ -288,6 +288,33 @@ export class EnhancedFeatureFlagService {
   }
 
   /**
+   * Forçar estado enabled/disabled de uma flag (útil para overrides de ambiente).
+   */
+  setEnabled(
+    flagName: FeatureFlagName,
+    enabled: boolean,
+    changedBy: string,
+    reason?: string
+  ): void {
+    const flag = this.flags.get(flagName);
+    if (!flag) {
+      throw new Error(`Feature flag ${flagName} not found`);
+    }
+
+    flag.enabled = enabled;
+
+    logger.info(
+      {
+        flagName,
+        enabled,
+        changedBy,
+        reason: reason || 'none provided'
+      },
+      `Feature flag state updated for ${flagName}`
+    );
+  }
+
+  /**
    * Obter status de auditoria de kill switches.
    */
   getKillSwitchAuditLog(): typeof this.killSwitchAuditLog {

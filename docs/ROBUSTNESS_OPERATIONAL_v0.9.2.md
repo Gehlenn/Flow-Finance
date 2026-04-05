@@ -578,3 +578,8 @@ clinic_webhook externalEventId=payment-9876 type=payment_received success=true d
 3. **Erros de ingestão com `clinic_automation_ingest_enabled=true`**
   - Acionar triagem de payload/schema e idempotência.
 
+### Runbook complementar
+
+Para operação diária, contingência e checklist de liberação, consultar:
+- `docs/OPERACAO_FLAGS_KILL_SWITCHES_ALERTAS.md`
+

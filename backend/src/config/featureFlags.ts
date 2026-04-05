@@ -60,6 +60,18 @@ export function resetFeatureFlagService(): void {
 function applyEnvironmentOverrides(service: EnhancedFeatureFlagService): void {
   const env = (process.env.NODE_ENV || 'development') as 'development' | 'staging' | 'production';
 
+  if (process.env.FF_CLINIC_INGEST === 'true') {
+    service.setEnabled('clinic_automation_ingest_enabled', true, 'env-config', `FF_CLINIC_INGEST=true in ${env}`);
+  } else if (process.env.FF_CLINIC_INGEST === 'false') {
+    service.setEnabled('clinic_automation_ingest_enabled', false, 'env-config', `FF_CLINIC_INGEST=false in ${env}`);
+  }
+
+  if (process.env.FF_CLINIC_AUTO_POST === 'true') {
+    service.setEnabled('clinic_automation_auto_post_enabled', true, 'env-config', `FF_CLINIC_AUTO_POST=true in ${env}`);
+  } else if (process.env.FF_CLINIC_AUTO_POST === 'false') {
+    service.setEnabled('clinic_automation_auto_post_enabled', false, 'env-config', `FF_CLINIC_AUTO_POST=false in ${env}`);
+  }
+
   const overrideMap: Array<{ envVar: string; action: () => void }> = [
     {
       envVar: 'FF_KILL_AI',
