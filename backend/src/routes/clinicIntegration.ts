@@ -2,11 +2,25 @@ import { Router } from 'express';
 import { externalIntegrationAuth } from '../middleware/externalIntegrationAuth';
 import redisClient from '../config/redis';
 import { createDistributedRateLimitByUser } from '../middleware/distributedRateLimitByUser';
+import { createClinicPayloadLimitMiddleware } from '../middleware/clinicPayloadLimit';
 import { validate } from '../middleware/validate';
 import { ClinicWebhookPayloadSchema } from '../validation/clinicAutomation.schema';
 import { receiveClinicFinancialEvent } from '../controllers/clinicController';
 
 const router = Router();
+
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(value || '', 10);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed;
+  }
+  return fallback;
+}
+
+const clinicEdgeLimitMax = parsePositiveInt(process.env.CLINIC_EDGE_RATE_LIMIT_MAX, 300);
+const clinicAuthLimitMax = parsePositiveInt(process.env.CLINIC_AUTH_RATE_LIMIT_MAX, 200);
+
+const clinicPayloadLimit = createClinicPayloadLimitMiddleware();
 
 /**
  * Rate limit de borda por IP para conter burst antes de qualquer custo de auth.
@@ -15,7 +29,7 @@ const clinicEdgeLimiter = createDistributedRateLimitByUser({
   redis: redisClient,
   namespace: 'clinic-edge',
   windowMs: 60 * 1000,
-  max: 300,
+  max: clinicEdgeLimitMax,
   keyGenerator: (req) => {
     const ip = (req.ip ?? 'unknown').replace('::ffff:', '');
     return `clinic-edge::${ip}`;
@@ -30,7 +44,7 @@ const clinicIngestAuthenticatedLimiter = createDistributedRateLimitByUser({
   redis: redisClient,
   namespace: 'clinic-auth',
   windowMs: 60 * 1000,        // 1 minuto
-  max: 200,                    // 200 eventos/minuto por IP de origem
+  max: clinicAuthLimitMax,
   keyGenerator: (req) => {
     const integrationKey = req.header('x-integration-key') || 'unknown-key';
     const ip = (req.ip ?? 'unknown').replace('::ffff:', '');
@@ -66,6 +80,7 @@ const clinicIngestAuthenticatedLimiter = createDistributedRateLimitByUser({
 router.post(
   '/financial-events',
   clinicEdgeLimiter,
+  clinicPayloadLimit,
   externalIntegrationAuth,
   clinicIngestAuthenticatedLimiter,
   validate(ClinicWebhookPayloadSchema),
