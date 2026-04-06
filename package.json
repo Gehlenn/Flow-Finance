@@ -51,7 +51,7 @@
     "@capacitor/core": "^8.2.0",
     "@google/genai": "1.40.0",
     "@google/generative-ai": "^0.24.1",
-    "@sentry/react": "^10.42.0",
+    "@sentry/react": "^10.47.0",
     "@sentry/tracing": "^7.120.4",
     "decimal.js": "^10.4.3",
     "firebase": "^12.9.0",
