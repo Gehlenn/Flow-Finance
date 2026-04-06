@@ -1,26 +1,12 @@
 import { test, expect, Page } from '@playwright/test';
-
-async function isAuthenticatedShell(page: Page): Promise<boolean> {
-  const probes = [
-    page.getByRole('button', { name: /AI CFO/i }),
-    page.getByRole('button', { name: /Insights/i }),
-    page.getByRole('button', { name: /Open Bank/i }),
-    page.getByRole('button', { name: /Ajustes|Settings/i }),
-  ];
-
-  for (const probe of probes) {
-    if (await probe.count()) return true;
-  }
-
-  return false;
-}
+import { hasAuthenticatedShell } from './helpers/skipHelpers';
 
 async function waitForAuthResolution(page: Page): Promise<void> {
   await expect.poll(async () => {
     const hasAuthGate =
       (await page.getByRole('button', { name: /Cadastre-se|Sign up/i }).count()) > 0 ||
       (await page.getByPlaceholder('Seu e-mail').count()) > 0;
-    const hasShell = await isAuthenticatedShell(page);
+    const hasShell = await hasAuthenticatedShell(page);
     const hasSplash = (await page.locator('body').getByText(/Iniciando|Loading|Flow Finan/i).count()) > 0;
 
     if (hasAuthGate) return 'auth';
@@ -39,12 +25,12 @@ test.describe('Authentication Flow', () => {
       (await page.getByRole('button', { name: /Cadastre-se|Sign up/i }).count()) > 0 ||
       (await page.getByPlaceholder('Seu e-mail').count()) > 0;
 
-    const hasShell = await isAuthenticatedShell(page);
+    const hasShell = await hasAuthenticatedShell(page);
 
     if (!hasAuthGate && !hasShell) {
       const splash = page.getByText(/Iniciando|Loading|Flow Finan/i);
       if (await splash.count()) {
-        test.skip(true, 'App remained in splash/loading state in this run.');
+        test.skip(true, '[fixture-dependent] App remained in splash/loading state in this run.');
       }
     }
 
@@ -57,7 +43,7 @@ test.describe('Authentication Flow', () => {
 
     const signUpTrigger = page.getByRole('button', { name: /Cadastre-se|Sign up/i });
     if (!(await signUpTrigger.count())) {
-      test.skip(true, 'Auth gate is not visible in this run.');
+      test.skip(true, '[fixture-dependent] Auth gate is not visible in this run.');
     }
 
     await signUpTrigger.first().click();
@@ -80,4 +66,12 @@ test.describe('Authentication Flow', () => {
     await page.getByRole('button', { name: /Esqueci a senha/i }).click();
     await expect(page.getByLabel(/E-mail para recuperar senha/i)).toBeVisible();
   });
-});
+
+  test('should expose accessible labels in account recovery form when auth gate is visible', async ({ page }) => {
+    await page.goto('/');
+    await waitForAuthResolution(page);
+
+    const signUpTrigger = page.getByRole('button', { name: /Cadastre-se|Sign up/i });
+    if (!(await signUpTrigger.count())) {
+      test.skip(true, '[fixture-dependent] Auth gate is not visible in this run.');
+    }
