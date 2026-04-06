@@ -27,9 +27,7 @@ vi.mock('../../src/services/firestoreWorkspaceStore', () => ({
   saveUserProfile: syncEngineMocks.mockSaveUserProfile,
 }));
 
-const describeUseSyncEngine = process.platform === 'win32' ? describe.skip : describe;
-
-describeUseSyncEngine('useSyncEngine', () => {
+describe('useSyncEngine', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     syncEngineMocks.mockSubscribeToUserProfile.mockImplementation((_userId, onNext) => {
