@@ -103,6 +103,21 @@ describe('externalIntegrationAuth', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  it('retorna 401 quando assinatura usa formato inválido', () => {
+    process.env.FLOW_EXTERNAL_INTEGRATION_KEYS = 'valid-key';
+    process.env.FLOW_EXTERNAL_INTEGRATION_HMAC_SECRETS = 'super-secret';
+
+    req.headers['x-integration-key'] = 'valid-key';
+    req.headers['x-integration-timestamp'] = String(Math.floor(Date.now() / 1000));
+    req.headers['x-integration-signature'] = 'sha1=abc';
+
+    externalIntegrationAuth(req as Request, res as Response, next);
+
+    expect(statusMock).toHaveBeenCalledWith(401);
+    expect(jsonMock).toHaveBeenCalledWith({ error: 'Invalid integration signature' });
+    expect(next).not.toHaveBeenCalled();
+  });
+
   it('chama next quando key e HMAC são válidos', () => {
     process.env.FLOW_EXTERNAL_INTEGRATION_KEYS = 'valid-key';
     process.env.FLOW_EXTERNAL_INTEGRATION_HMAC_SECRETS = 'super-secret';
@@ -111,6 +126,52 @@ describe('externalIntegrationAuth', () => {
     const timestamp = String(Math.floor(Date.now() / 1000));
     req.headers['x-integration-timestamp'] = timestamp;
     req.headers['x-integration-signature'] = sign(timestamp, req.rawBody || '', 'super-secret');
+
+    externalIntegrationAuth(req as Request, res as Response, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(statusMock).not.toHaveBeenCalled();
+  });
+
+  it('chama next quando key contém espaços nas bordas e valor válido', () => {
+    process.env.FLOW_EXTERNAL_INTEGRATION_KEYS = 'valid-key';
+    process.env.FLOW_EXTERNAL_INTEGRATION_HMAC_SECRETS = 'super-secret';
+
+    req.headers['x-integration-key'] = '  valid-key  ';
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    req.headers['x-integration-timestamp'] = timestamp;
+    req.headers['x-integration-signature'] = sign(timestamp, req.rawBody || '', 'super-secret');
+
+    externalIntegrationAuth(req as Request, res as Response, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(statusMock).not.toHaveBeenCalled();
+  });
+
+  it('retorna 401 quando x-integration-key excede limite de header', () => {
+    process.env.FLOW_EXTERNAL_INTEGRATION_KEYS = 'valid-key';
+    process.env.FLOW_EXTERNAL_INTEGRATION_HMAC_SECRETS = 'super-secret';
+
+    req.headers['x-integration-key'] = 'x'.repeat(513);
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    req.headers['x-integration-timestamp'] = timestamp;
+    req.headers['x-integration-signature'] = sign(timestamp, req.rawBody || '', 'super-secret');
+
+    externalIntegrationAuth(req as Request, res as Response, next);
+
+    expect(statusMock).toHaveBeenCalledWith(401);
+    expect(jsonMock).toHaveBeenCalledWith({ error: 'Invalid integration key' });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('aceita assinatura SHA-256 em hexadecimal maiúsculo', () => {
+    process.env.FLOW_EXTERNAL_INTEGRATION_KEYS = 'valid-key';
+    process.env.FLOW_EXTERNAL_INTEGRATION_HMAC_SECRETS = 'super-secret';
+
+    req.headers['x-integration-key'] = 'valid-key';
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    req.headers['x-integration-timestamp'] = timestamp;
+    req.headers['x-integration-signature'] = sign(timestamp, req.rawBody || '', 'super-secret').toUpperCase();
 
     externalIntegrationAuth(req as Request, res as Response, next);
 

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { skipIf } from './helpers/skipHelpers';
 
 test.describe('Edição de Categoria - TransactionList', () => {
   test('Usuário edita categoria de uma transação e recebe feedback visual', async ({ page }) => {
@@ -6,7 +7,10 @@ test.describe('Edição de Categoria - TransactionList', () => {
 
     const historyButton = page.getByRole('button', { name: /Historico/i });
     if (!(await historyButton.count())) {
-      test.skip(true, 'Shell autenticado não expôs o histórico nesta execução.');
+      await skipIf(true, {
+        reason: 'Shell autenticado não expôs o histórico nesta execução.',
+        category: 'fixture-dependent',
+      });
     }
 
     await historyButton.first().click();
@@ -17,7 +21,10 @@ test.describe('Edição de Categoria - TransactionList', () => {
     // Seleciona uma transação de teste (ajuste o texto conforme seed)
     const txDesc = 'Restaurante';
     if (!(await page.getByText(txDesc).count())) {
-      test.skip(true, 'Não há fixture de transação compatível nesta execução local.');
+      await skipIf(true, {
+        reason: 'Não há fixture de transação compatível nesta execução local.',
+        category: 'fixture-dependent',
+      });
     }
     await page.getByText(txDesc).click();
 

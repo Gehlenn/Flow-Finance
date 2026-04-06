@@ -1,5 +1,6 @@
 import { test, expect, APIRequestContext, Page, TestInfo } from '@playwright/test';
 import { getFixtureAuthToken } from './fixtures/auth';
+import { hasAuthenticatedShell, skipIf } from './helpers/skipHelpers';
 
 const BACKEND_BASE_URL = process.env.PLAYWRIGHT_BACKEND_URL || 'http://localhost:3001';
 
@@ -111,27 +112,12 @@ async function openAddBankFlow(page: Page): Promise<boolean> {
   return false;
 }
 
-async function isAuthenticatedShell(page: Page): Promise<boolean> {
-  const probes = [
-    page.getByRole('button', { name: /AI CFO/i }),
-    page.getByRole('button', { name: /Insights/i }),
-    page.getByRole('button', { name: /Open Bank/i }),
-    page.getByRole('button', { name: /Ajustes|Settings/i }),
-  ];
-
-  for (const probe of probes) {
-    if (await probe.count()) return true;
-  }
-
-  return false;
-}
-
 async function waitForAuthResolution(page: Page): Promise<void> {
   await expect.poll(async () => {
     const hasAuthGate =
       (await page.getByRole('button', { name: /Cadastre-se|Sign up/i }).count()) > 0 ||
       (await page.getByPlaceholder('Seu e-mail').count()) > 0;
-    const hasShell = await isAuthenticatedShell(page);
+    const hasShell = await hasAuthenticatedShell(page);
     const hasSplash = (await page.locator('body').getByText(/Iniciando|Loading|Flow Finan/i).count()) > 0;
 
     if (hasAuthGate) return 'auth';
@@ -151,7 +137,10 @@ test.describe('Open Banking - Pluggy Connect', () => {
         type: 'backend-unavailable',
         description: authResult.message,
       });
-      test.skip(true, 'Backend indisponível para validar Open Banking nesta execução.');
+      await skipIf(true, {
+        reason: 'Backend indisponível para validar Open Banking nesta execução.',
+        category: 'backend-dependent',
+      });
     }
 
     if (authResult.status === 'invalid') {
@@ -159,7 +148,10 @@ test.describe('Open Banking - Pluggy Connect', () => {
         type: 'backend-auth',
         description: authResult.message,
       });
-      test.skip(true, 'Não foi possível autenticar no backend para validar connect-token.');
+      await skipIf(true, {
+        reason: 'Não foi possível autenticar no backend para validar connect-token.',
+        category: 'backend-dependent',
+      });
     }
 
     if (authResult.status !== 'ok') {
@@ -190,12 +182,19 @@ test.describe('Open Banking - Pluggy Connect', () => {
     });
 
     if (tokenProbe.status === 'disabled') {
-      test.skip(true, 'Open Finance desativado por decisao de negocio nesta fase do produto.');
+      await skipIf(true, {
+        reason: 'Open Finance desativado por decisao de negocio nesta fase do produto.',
+        category: 'business-decision',
+        allowForceSkip: false,
+      });
     }
 
     const stillUnauthorized = /status 401|status 403/i.test(tokenProbe.message);
     if (stillUnauthorized) {
-      test.skip(true, 'Connect-token retornou 401/403 mesmo após nova autenticação da fixture nesta execução.');
+      await skipIf(true, {
+        reason: 'Connect-token retornou 401/403 mesmo após nova autenticação da fixture nesta execução.',
+        category: 'backend-dependent',
+      });
     }
 
     await page.goto('/');

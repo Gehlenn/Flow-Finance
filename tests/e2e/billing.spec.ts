@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { skipIf, skipIfMobile } from './helpers/skipHelpers';
 
 test.describe('Billing Flow', () => {
   test.beforeEach(async ({ page }) => {
@@ -73,33 +74,35 @@ test.describe('Billing Flow', () => {
     });
   });
 
-  test('should render billing overview and support upgrade fallback', async ({ page, isMobile }) => {
-    if (isMobile) {
-      test.skip(true, 'Billing E2E desktop-only.');
-    }
+  test('should render billing overview and support upgrade fallback', async ({ page }, testInfo) => {
+    await skipIfMobile(testInfo);
 
     await page.goto('/?e2eAuth=1&userId=billing-user&userEmail=billing%40flow.dev&userName=Billing%20QA&token=billing-token');
     await page.getByRole('button', { name: /Ajustes/i }).click();
 
     const planCard = page.getByText(/Plan: Free/i);
     if (!(await planCard.count())) {
-      test.skip(true, 'Billing overview não ficou disponível nesta execução local.');
+      await skipIf(true, {
+        reason: 'Billing overview não ficou disponível nesta execução local.',
+        category: 'fixture-dependent',
+      });
     }
 
     await expect(planCard).toBeVisible();
   });
 
-  test('should open Stripe portal redirect when available', async ({ page, isMobile }) => {
-    if (isMobile) {
-      test.skip(true, 'Billing E2E desktop-only.');
-    }
+  test('should open Stripe portal redirect when available', async ({ page }, testInfo) => {
+    await skipIfMobile(testInfo);
 
     await page.goto('/?e2eAuth=1&userId=billing-user&userEmail=billing%40flow.dev&userName=Billing%20QA&token=billing-token');
     await page.getByRole('button', { name: /Ajustes/i }).click();
 
     const workspaceAdminButton = page.getByRole('button', { name: /Open workspace admin/i });
     if (!(await workspaceAdminButton.count())) {
-      test.skip(true, 'Workspace admin/billing management indisponível nesta execução local.');
+      await skipIf(true, {
+        reason: 'Workspace admin/billing management indisponível nesta execução local.',
+        category: 'fixture-dependent',
+      });
     }
 
     await workspaceAdminButton.click();

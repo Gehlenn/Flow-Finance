@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import crypto from 'crypto';
 
 const DEFAULT_MAX_TIMESTAMP_SKEW_SECONDS = 300;
+const MAX_HEADER_VALUE_LENGTH = 512;
 
 function getAllowedIntegrationKeys(): string[] {
   return String(process.env.FLOW_EXTERNAL_INTEGRATION_KEYS || '')
@@ -26,6 +27,10 @@ function getMaxTimestampSkewSeconds(): number {
 }
 
 function parseTimestampToSeconds(rawTimestamp: string): number | null {
+  if (!/^\d{10,13}$/.test(rawTimestamp)) {
+    return null;
+  }
+
   const numeric = Number(rawTimestamp);
   if (!Number.isFinite(numeric) || numeric <= 0) {
     return null;
@@ -39,13 +44,43 @@ function parseTimestampToSeconds(rawTimestamp: string): number | null {
   return Math.floor(numeric);
 }
 
+function sanitizeHeaderValue(value: string | undefined): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  if (!normalized || normalized.length > MAX_HEADER_VALUE_LENGTH) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function hasMatchingIntegrationKey(providedKey: string, allowedKeys: string[]): boolean {
+  const providedBuffer = Buffer.from(providedKey, 'utf8');
+
+  for (const candidate of allowedKeys) {
+    const candidateBuffer = Buffer.from(candidate, 'utf8');
+
+    if (
+      providedBuffer.length === candidateBuffer.length
+      && crypto.timingSafeEqual(providedBuffer, candidateBuffer)
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function verifyHmacSignature(req: Request, secrets: string[]): boolean {
   if (!secrets.length) {
     return true;
   }
 
-  const signature = req.header('x-integration-signature');
-  const timestamp = req.header('x-integration-timestamp');
+  const signature = sanitizeHeaderValue(req.header('x-integration-signature'));
+  const timestamp = sanitizeHeaderValue(req.header('x-integration-timestamp'));
   const method = String(req.method || '').toUpperCase();
   const contentLengthHeader = req.header('content-length');
   const parsedContentLength = Number.parseInt(contentLengthHeader || '0', 10);
@@ -63,6 +98,13 @@ function verifyHmacSignature(req: Request, secrets: string[]): boolean {
     return false;
   }
 
+  const signatureMatch = /^sha256=([a-f0-9]{64})$/i.exec(signature);
+  if (!signatureMatch) {
+    return false;
+  }
+
+  const providedDigest = Buffer.from(signatureMatch[1], 'hex');
+
   const parsedTimestampSeconds = parseTimestampToSeconds(timestamp);
   if (parsedTimestampSeconds === null) {
     return false;
@@ -77,21 +119,13 @@ function verifyHmacSignature(req: Request, secrets: string[]): boolean {
   const message = `${timestamp}.${rawBody}`;
 
   for (const secret of secrets) {
-    const expected = crypto
+    const expectedDigest = crypto
       .createHmac('sha256', secret)
       .update(message)
-      .digest('hex');
-
-    const expectedValue = `sha256=${expected}`;
+      .digest();
 
     try {
-      const signatureBuffer = Buffer.from(signature);
-      const expectedBuffer = Buffer.from(expectedValue);
-
-      if (
-        signatureBuffer.length === expectedBuffer.length
-        && crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
-      ) {
+      if (providedDigest.length === expectedDigest.length && crypto.timingSafeEqual(providedDigest, expectedDigest)) {
         return true;
       }
     } catch {
@@ -113,8 +147,8 @@ export function externalIntegrationAuth(
     return;
   }
 
-  const providedKey = req.header('x-integration-key');
-  if (!providedKey || !allowedKeys.includes(providedKey)) {
+  const providedKey = sanitizeHeaderValue(req.header('x-integration-key'));
+  if (!providedKey || !hasMatchingIntegrationKey(providedKey, allowedKeys)) {
     res.status(401).json({ error: 'Invalid integration key' });
     return;
   }

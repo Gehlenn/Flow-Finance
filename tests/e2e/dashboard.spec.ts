@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { skipIfNoAuthShell, skipIfDesktop } from './helpers/skipHelpers';
 
 const NAV_LABELS = [/AI CFO/i, /Insights/i, /Open Bank/i, /Ajustes|Settings/i];
 
@@ -18,19 +19,15 @@ test.describe('Dashboard', () => {
   });
 
   test('should render authenticated nav when available', async ({ page }) => {
+    await skipIfNoAuthShell(page);
     const count = await visibleNavCount(page);
-    if (count === 0) {
-      test.skip(true, 'Authenticated shell not visible in this run.');
-    }
 
     expect(count).toBeGreaterThanOrEqual(3);
   });
 
   test('should navigate available sections without runtime failure', async ({ page }) => {
+    await skipIfNoAuthShell(page);
     const count = await visibleNavCount(page);
-    if (count === 0) {
-      test.skip(true, 'Authenticated shell not visible in this run.');
-    }
 
     for (const pattern of NAV_LABELS) {
       const button = page.getByRole('button', { name: pattern });
@@ -42,15 +39,11 @@ test.describe('Dashboard', () => {
     await expect(page.locator('body')).toBeVisible();
   });
 
-  test('should keep shell usable on mobile', async ({ page, isMobile }) => {
-    if (!isMobile) {
-      test.skip(true, 'Mobile-only check.');
-    }
+  test('should keep shell usable on mobile', async ({ page }, testInfo) => {
+    await skipIfDesktop(testInfo);
+    await skipIfNoAuthShell(page);
 
     const count = await visibleNavCount(page);
-    if (count === 0) {
-      test.skip(true, 'Authenticated shell not visible in this run.');
-    }
 
     const homeButton = page.getByRole('button', { name: /Inicio|Inicio|Home/i });
     if (await homeButton.count()) {

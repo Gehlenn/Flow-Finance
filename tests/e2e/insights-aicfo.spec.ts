@@ -1,22 +1,9 @@
 import { test, expect, Page } from '@playwright/test';
+import { skipIfNoAuthShell } from './helpers/skipHelpers';
 
 async function openApp(page: Page): Promise<void> {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
-}
-
-async function hasAuthenticatedShell(page: Page): Promise<boolean> {
-  const probes = [
-    page.getByRole('button', { name: /AI CFO/i }),
-    page.getByRole('button', { name: /Insights/i }),
-    page.getByRole('button', { name: /Ajustes|Settings/i }),
-  ];
-
-  for (const probe of probes) {
-    if (await probe.count()) return true;
-  }
-
-  return false;
 }
 
 test.describe('Insights + AI CFO', () => {
@@ -29,9 +16,7 @@ test.describe('Insights + AI CFO', () => {
 
     await openApp(page);
 
-    if (!(await hasAuthenticatedShell(page))) {
-      test.skip(true, 'Authenticated shell not visible in this run.');
-    }
+    await skipIfNoAuthShell(page);
 
     const insightsButton = page.getByRole('button', { name: /Insights/i }).first();
     await insightsButton.click();
