@@ -12,7 +12,7 @@ import { validateJsonMiddleware } from './middleware/jsonValidation';
 import { apiLimiter } from './middleware/rateLimit';
 import { requestContextMiddleware } from './middleware/requestContext';
 import { initRedis, checkRedisHealth } from './config/redis';
-import { checkDatabaseHealth } from './config/database';
+import { checkDatabaseHealth, hasDatabaseConfig } from './config/database';
 import { createCorsOptions, resolveAllowedOrigins } from './config/cors';
 import { resolveTrustProxySetting } from './config/server';
 import { buildOpenApiSpec, isApiDocsEnabled, renderSwaggerHtml } from './docs/openapi';
@@ -157,17 +157,21 @@ void initRedis();
 
 // Health check with dependency verification
 app.get('/health', async (_req: Request, res: Response) => {
-  const checks: Record<string, { status: 'healthy' | 'unhealthy'; latency?: number }> = {
+  const checks: Record<string, { status: 'healthy' | 'unhealthy'; latency?: number; configured?: boolean }> = {
     server: { status: 'healthy' },
   };
 
   // Check database
-  const dbStart = Date.now();
-  try {
-    const dbHealthy = await checkDatabaseHealth();
-    checks.database = { status: dbHealthy ? 'healthy' : 'unhealthy', latency: Date.now() - dbStart };
-  } catch (error) {
-    checks.database = { status: 'unhealthy', latency: Date.now() - dbStart };
+  if (hasDatabaseConfig()) {
+    const dbStart = Date.now();
+    try {
+      const dbHealthy = await checkDatabaseHealth();
+      checks.database = { status: dbHealthy ? 'healthy' : 'unhealthy', latency: Date.now() - dbStart, configured: true };
+    } catch (error) {
+      checks.database = { status: 'unhealthy', latency: Date.now() - dbStart, configured: true };
+    }
+  } else {
+    checks.database = { status: 'healthy', configured: false };
   }
 
   // Check Redis (if configured)

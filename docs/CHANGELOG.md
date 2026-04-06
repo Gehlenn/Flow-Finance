@@ -1,4 +1,13 @@
-﻿ï»¿# [0.9.3] - 2026-04-06
+﻿ï»¿# [0.9.4] - 2026-04-06
+
+### Hotfix de observabilidade e probes
+
+#### Backend health
+- Corrigido falso `503` em `/health` quando `DATABASE_URL` nao esta configurado.
+- Health check agora trata Postgres como dependencia opcional quando nao habilitado/configurado explicitamente.
+- Adicionados testes unitarios e de integracao para o contrato de health.
+
+# [0.9.3] - 2026-04-06
 
 ### Release de hardening para deploy separado no Vercel
 

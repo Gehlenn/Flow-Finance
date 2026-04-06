@@ -1,8 +1,8 @@
 {
   "name": "flow-finance",
-  "description": "Flow Finance - Intelligent Cash Flow Control App (release v0.9.3)",
+  "description": "Flow Finance - Intelligent Cash Flow Control App (release v0.9.4)",
   "private": true,
-  "version": "0.9.3",
+  "version": "0.9.4",
   "type": "module",
   "scripts": {
     "setup": "node setup.js",

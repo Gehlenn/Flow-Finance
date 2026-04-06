@@ -7,7 +7,7 @@ O sistema recomenda configurar alertas/logs para Pluggy, Stripe e Firebase. ApÃ
 
 # Flow Finance - Controle de Fluxo de Caixa Inteligente
 
-**Versao:** 0.9.3  
+**Versao:** 0.9.4  
 **Ultima Atualizacao:** 6 de Abril de 2026  
 **Status:** Release pronta para deploy separado frontend/backend no Vercel com auth por cookie HttpOnly, sync localStorage->Firestore e smoke test operacional
 
@@ -17,7 +17,7 @@ Bem-vindo ao **Flow Finance**, uma aplicaÃ§Ã£o moderna para gestÃ£o financ
 
 O Flow Finance Ã© uma plataforma completa de gestÃ£o financeira com IA, desenvolvida com **React + Vite**, **Firebase** (auth/data) e backend com **OpenAI GPT-4 ou Gemini** (configurÃ¡vel, via proxy seguro). O projeto segue arquitetura **Clean Architecture** com separaÃ§Ã£o clara de responsabilidades.
 
-## Checkpoint de Release 0.9.3
+## Checkpoint de Release 0.9.4
 
 - Migracao de auth para cookies HttpOnly com `SameSite=None` em producao para frontend e backend em dominios separados.
 - OAuth Google endurecido com allowlist de `redirectUri`.
@@ -25,6 +25,7 @@ O Flow Finance Ã© uma plataforma completa de gestÃ£o financeira com IA, dese
 - Handlers de integracao clinica deixam de reportar falso sucesso quando ainda nao implementados.
 - Sync write-through de metas: localStorage imediato + push/pull via backend para Firestore.
 - Script operacional de smoke test criado em `scripts/smoke-prod-auth-sync.ps1`.
+- Hotfix no backend: `/health` nao retorna mais falso `503` quando Postgres nao esta configurado para o ambiente atual.
 
 
 ### Principais Funcionalidades (v0.8.x)

@@ -23,6 +23,27 @@ function parseBooleanLike(value: string | undefined, fallback: boolean): boolean
   return fallback;
 }
 
+export function hasDatabaseConfig(params?: {
+  databaseUrl?: string;
+  dbHost?: string;
+  dbName?: string;
+  dbUser?: string;
+  dbPassword?: string;
+}): boolean {
+  return Boolean(
+    params?.databaseUrl
+    || params?.dbHost
+    || params?.dbName
+    || params?.dbUser
+    || params?.dbPassword
+    || process.env.DATABASE_URL
+    || process.env.DB_HOST
+    || process.env.DB_NAME
+    || process.env.DB_USER
+    || process.env.DB_PASSWORD,
+  );
+}
+
 export function resolveDatabaseSslConfig(params?: {
   nodeEnv?: string;
   dbSslEnabled?: string;
