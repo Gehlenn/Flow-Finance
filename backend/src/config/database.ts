@@ -7,6 +7,48 @@
 import { Pool } from 'pg';
 import logger from './logger';
 
+function parseBooleanLike(value: string | undefined, fallback: boolean): boolean {
+  if (!value) {
+    return fallback;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'true') {
+    return true;
+  }
+  if (normalized === 'false') {
+    return false;
+  }
+
+  return fallback;
+}
+
+export function resolveDatabaseSslConfig(params?: {
+  nodeEnv?: string;
+  dbSslEnabled?: string;
+  dbSslRejectUnauthorized?: string;
+  dbSslCa?: string;
+}): false | { rejectUnauthorized: boolean; ca?: string } {
+  const isProduction = String(params?.nodeEnv || process.env.NODE_ENV || 'development') === 'production';
+  const sslEnabled = parseBooleanLike(params?.dbSslEnabled || process.env.DB_SSL_ENABLED, isProduction);
+
+  if (!sslEnabled) {
+    return false;
+  }
+
+  const rejectUnauthorized = parseBooleanLike(
+    params?.dbSslRejectUnauthorized || process.env.DB_SSL_REJECT_UNAUTHORIZED,
+    true,
+  );
+
+  const rawCa = String(params?.dbSslCa || process.env.DB_SSL_CA || '').trim();
+  const ca = rawCa.length > 0 ? rawCa.replace(/\\n/g, '\n') : undefined;
+
+  return ca ? { rejectUnauthorized, ca } : { rejectUnauthorized };
+}
+
+const sslConfig = resolveDatabaseSslConfig();
+
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
 const dbConfig = hasDatabaseUrl
   ? {
@@ -14,7 +56,7 @@ const dbConfig = hasDatabaseUrl
       max: parseInt(process.env.DB_MAX_CONNECTIONS || '20'),
       idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000'),
       connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '2000'),
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      ssl: sslConfig,
     }
   : {
       host: process.env.DB_HOST || 'localhost',
@@ -25,7 +67,7 @@ const dbConfig = hasDatabaseUrl
       max: parseInt(process.env.DB_MAX_CONNECTIONS || '20'),
       idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000'),
       connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '2000'),
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      ssl: sslConfig,
     };
 
 // Create connection pool

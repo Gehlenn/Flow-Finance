@@ -28,7 +28,6 @@ export default defineConfig({
         'src/finance/cashflowPredictor.ts',
         'src/agents/cfo/CFOAdvisor.ts',
         'services/integrations/openBankingService.ts',
-        'src/storage/StorageProvider.ts',
         // v0.9.1 critical audited modules
         'backend/src/utils/currencyUtils.ts',
         'src/utils/workspaceStorage.ts',

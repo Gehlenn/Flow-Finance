@@ -15,6 +15,19 @@ import {
   verifyFirebaseIdToken,
 } from '../services/auth/firebaseIdentityService';
 
+export function isInsecureLocalLoginAllowed(): boolean {
+  const override = String(process.env.AUTH_ALLOW_INSECURE_LOCAL_LOGIN || '').trim().toLowerCase();
+  if (override === 'true') {
+    return true;
+  }
+  if (override === 'false') {
+    return false;
+  }
+
+  const nodeEnv = String(process.env.NODE_ENV || 'development').trim().toLowerCase();
+  return nodeEnv === 'development' || nodeEnv === 'test';
+}
+
 // Extend Express Request interface
 declare global {
   namespace Express {
@@ -41,11 +54,13 @@ export const loginController = asyncHandler(async (req: Request, res: Response) 
     throw new AppError(400, 'Email and password are required');
   }
 
-  // For MVP: Accept any email/password (in production, hash and verify)
-  // In production, implement:
-  // 1. Look up user in database by email
-  // 2. Hash provided password and compare to stored hash
-  // 3. Return error if mismatch
+  // Legacy local login is intentionally blocked unless explicitly enabled.
+  if (!isInsecureLocalLoginAllowed()) {
+    throw new AppError(
+      503,
+      'Email/password login is disabled. Use Firebase session exchange or configure secure credential verification.'
+    );
+  }
   
   const userId = typeof requestedUserId === 'string' && requestedUserId.trim().length > 0
     ? requestedUserId.trim()

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { optionalAuthMiddleware } from '../middleware/auth';
-import { authLimiterByUser } from '../middleware/rateLimit';
+import { authLimiterByUser, authRefreshLimiterByUser } from '../middleware/rateLimit';
 import {
   loginController,
   firebaseSessionController,
@@ -43,7 +43,7 @@ router.get('/oauth/google/callback', authLimiterByUser, googleOAuthCallbackContr
  * Headers: Authorization: Bearer <old_token>
  * Returns: { token: string, expiresIn: number }
  */
-router.post('/refresh', optionalAuthMiddleware, refreshController);
+router.post('/refresh', optionalAuthMiddleware, authRefreshLimiterByUser, refreshController);
 
 /**
  * GET /api/auth/validate

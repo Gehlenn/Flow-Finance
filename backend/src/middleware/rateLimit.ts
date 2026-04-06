@@ -41,6 +41,11 @@ export const authLimiterByUser = createRateLimitByUser({
   max: 5,
 });
 
+export const authRefreshLimiterByUser = createRateLimitByUser({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+});
+
 export const billingLimiterByUser = createRateLimitByUser({
   windowMs: 60 * 1000,
   max: 30,
