@@ -8,8 +8,7 @@ type TesseractModule = {
 
 async function loadTesseract(): Promise<TesseractModule | null> {
   try {
-    const dynamicImport = new Function('m', 'return import(m)') as (m: string) => Promise<unknown>;
-    return (await dynamicImport('tesseract.js')) as TesseractModule;
+    return (await import('tesseract.js')) as unknown as TesseractModule;
   } catch {
     return null;
   }

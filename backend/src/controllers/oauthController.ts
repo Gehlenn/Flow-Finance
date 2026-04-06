@@ -7,6 +7,7 @@ import { generateAccessToken, decodeToken } from '../middleware/auth';
 import { issueRefreshToken } from '../services/auth/refreshTokenStore';
 import { JWTPayload } from '../types';
 import { recordAuditEvent } from '../services/admin/auditLog';
+import { setAuthCookies } from '../services/auth/authCookies';
 
 export const startGoogleOAuthController = asyncHandler(async (req: Request, res: Response) => {
   const redirectUri = typeof req.query.redirectUri === 'string' ? req.query.redirectUri : undefined;
@@ -17,7 +18,11 @@ export const startGoogleOAuthController = asyncHandler(async (req: Request, res:
     res.json(started);
   } catch (error) {
     logger.error({ error }, 'Failed to start Google OAuth');
-    throw new AppError(500, error instanceof Error ? error.message : 'Failed to start Google OAuth');
+    const message = error instanceof Error ? error.message : 'Failed to start Google OAuth';
+    if (message.toLowerCase().includes('redirect')) {
+      throw new AppError(400, message);
+    }
+    throw new AppError(500, message);
   }
 });
 
@@ -39,6 +44,7 @@ export const googleOAuthCallbackController = asyncHandler(async (req: Request, r
     }
 
     const refresh = issueRefreshToken(profile.providerUserId, profile.email);
+    const accessExpiresIn = accessPayload.exp - Math.floor(Date.now() / 1000);
 
     recordAuditEvent({
       userId: profile.providerUserId,
@@ -49,11 +55,18 @@ export const googleOAuthCallbackController = asyncHandler(async (req: Request, r
       ip: req.ip,
     });
 
+    setAuthCookies(res, {
+      accessToken,
+      accessExpiresInSeconds: accessExpiresIn,
+      refreshToken: refresh.refreshToken,
+      refreshExpiresInSeconds: refresh.expiresIn,
+    });
+
     res.json({
       token: accessToken,
       accessToken,
       refreshToken: refresh.refreshToken,
-      expiresIn: accessPayload.exp - Math.floor(Date.now() / 1000),
+      expiresIn: accessExpiresIn,
       refreshExpiresIn: refresh.expiresIn,
       user: {
         userId: profile.providerUserId,

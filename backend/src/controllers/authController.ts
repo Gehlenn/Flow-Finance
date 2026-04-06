@@ -10,6 +10,7 @@ import {
   revokeUserRefreshTokens,
 } from '../services/auth/refreshTokenStore';
 import { recordAuditEvent } from '../services/admin/auditLog';
+import { clearAuthCookies, getRefreshTokenFromRequest, setAuthCookies } from '../services/auth/authCookies';
 import {
   isFirebaseIdentityVerificationConfigured,
   verifyFirebaseIdToken,
@@ -73,6 +74,8 @@ export const loginController = asyncHandler(async (req: Request, res: Response) 
     const decodedToken = decodeToken(accessToken) as JWTPayload;
     const refresh = issueRefreshToken(userId, email);
 
+    const accessExpiresIn = decodedToken.exp - Math.floor(Date.now() / 1000);
+
     recordAuditEvent({
       userId,
       email,
@@ -82,11 +85,18 @@ export const loginController = asyncHandler(async (req: Request, res: Response) 
       userAgent: req.headers['user-agent'],
     });
 
+    setAuthCookies(res, {
+      accessToken,
+      accessExpiresInSeconds: accessExpiresIn,
+      refreshToken: refresh.refreshToken,
+      refreshExpiresInSeconds: refresh.expiresIn,
+    });
+
     res.json({
       token: accessToken,
       accessToken,
       refreshToken: refresh.refreshToken,
-      expiresIn: decodedToken.exp - Math.floor(Date.now() / 1000),
+      expiresIn: accessExpiresIn,
       refreshExpiresIn: refresh.expiresIn,
       user: {
         userId,
@@ -117,6 +127,8 @@ export const firebaseSessionController = asyncHandler(async (req: Request, res: 
     const decodedToken = decodeToken(accessToken) as JWTPayload;
     const refresh = issueRefreshToken(identity.userId, identity.email);
 
+    const accessExpiresIn = decodedToken.exp - Math.floor(Date.now() / 1000);
+
     recordAuditEvent({
       userId: identity.userId,
       email: identity.email,
@@ -130,11 +142,18 @@ export const firebaseSessionController = asyncHandler(async (req: Request, res: 
       },
     });
 
+    setAuthCookies(res, {
+      accessToken,
+      accessExpiresInSeconds: accessExpiresIn,
+      refreshToken: refresh.refreshToken,
+      refreshExpiresInSeconds: refresh.expiresIn,
+    });
+
     res.json({
       token: accessToken,
       accessToken,
       refreshToken: refresh.refreshToken,
-      expiresIn: decodedToken.exp - Math.floor(Date.now() / 1000),
+      expiresIn: accessExpiresIn,
       refreshExpiresIn: refresh.expiresIn,
       user: {
         userId: identity.userId,
@@ -161,7 +180,7 @@ export const firebaseSessionController = asyncHandler(async (req: Request, res: 
 export const refreshController = asyncHandler(async (req: Request, res: Response) => {
   const providedRefreshToken = typeof req.body?.refreshToken === 'string'
     ? req.body.refreshToken
-    : null;
+    : getRefreshTokenFromRequest(req);
 
   try {
     // Preferred path: rotation using refresh token.
@@ -169,6 +188,8 @@ export const refreshController = asyncHandler(async (req: Request, res: Response
       const rotated = rotateRefreshToken(providedRefreshToken);
       const accessToken = generateAccessToken(rotated.userId, rotated.email);
       const decodedToken = decodeToken(accessToken) as JWTPayload;
+
+      const accessExpiresIn = decodedToken.exp - Math.floor(Date.now() / 1000);
 
       logger.debug({ userId: rotated.userId }, 'Refresh token rotated');
 
@@ -179,11 +200,18 @@ export const refreshController = asyncHandler(async (req: Request, res: Response
         ip: req.ip,
       });
 
+      setAuthCookies(res, {
+        accessToken,
+        accessExpiresInSeconds: accessExpiresIn,
+        refreshToken: rotated.refreshToken,
+        refreshExpiresInSeconds: rotated.refreshExpiresIn,
+      });
+
       res.json({
         token: accessToken,
         accessToken,
         refreshToken: rotated.refreshToken,
-        expiresIn: decodedToken.exp - Math.floor(Date.now() / 1000),
+        expiresIn: accessExpiresIn,
         refreshExpiresIn: rotated.refreshExpiresIn,
       });
       return;
@@ -259,7 +287,7 @@ export const validateController = asyncHandler(async (req: Request, res: Respons
 export const logoutController = asyncHandler(async (req: Request, res: Response) => {
   const refreshToken = typeof req.body?.refreshToken === 'string'
     ? req.body.refreshToken
-    : null;
+    : getRefreshTokenFromRequest(req);
 
   if (!req.userId && !refreshToken) {
     throw new AppError(401, 'Authorization required');
@@ -285,9 +313,11 @@ export const logoutController = asyncHandler(async (req: Request, res: Response)
     metadata: { revokedCount: revokedCount + (refreshToken ? 1 : 0) },
   });
 
+  clearAuthCookies(res);
+
   res.json({
     success: true,
     revokedRefreshTokens: revokedCount + (refreshToken ? 1 : 0),
-    message: 'Logged out successfully. Please clear tokens on the client side.'
+    message: 'Logged out successfully.'
   });
 });

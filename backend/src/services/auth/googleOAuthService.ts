@@ -23,11 +23,31 @@ function isMockModeEnabled(): boolean {
   return env.NODE_ENV !== 'production';
 }
 
+function getAllowedRedirectUris(): string[] {
+  return Array.from(new Set([
+    env.GOOGLE_OAUTH_REDIRECT_URI,
+    ...String(process.env.GOOGLE_OAUTH_ALLOWED_REDIRECT_URIS || '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean),
+  ].filter(Boolean)));
+}
+
 function getConfiguredRedirectUri(override?: string): string {
-  if (override && override.trim().length > 0) {
-    return override.trim();
+  const allowedRedirectUris = getAllowedRedirectUris();
+  const candidate = override && override.trim().length > 0
+    ? override.trim()
+    : (env.GOOGLE_OAUTH_REDIRECT_URI || '');
+
+  if (!candidate) {
+    return '';
   }
-  return env.GOOGLE_OAUTH_REDIRECT_URI || '';
+
+  if (!allowedRedirectUris.includes(candidate)) {
+    throw new Error('Invalid OAuth redirect URI');
+  }
+
+  return candidate;
 }
 
 function buildGoogleAuthUrl(state: string, redirectUri: string): string {

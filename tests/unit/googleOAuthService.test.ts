@@ -20,6 +20,7 @@ import { resetOAuthStateStoreForTests } from '../../backend/src/services/auth/oa
 describe('googleOAuthService', () => {
   beforeEach(() => {
     resetOAuthStateStoreForTests();
+    delete process.env.GOOGLE_OAUTH_ALLOWED_REDIRECT_URIS;
   });
 
   it('gera URL de autenticacao e estado em mock mode', () => {
@@ -35,5 +36,9 @@ describe('googleOAuthService', () => {
     const result = await completeGoogleOAuthCallback({ code: 'mock_code', state: started.state });
     expect(result.provider).toBe('google');
     expect(result.email).toContain('@flowfinance.test');
+  });
+
+  it('rejeita override de redirectUri fora da allowlist', () => {
+    expect(() => startGoogleOAuth('https://evil.example/callback')).toThrow('Invalid OAuth redirect URI');
   });
 });

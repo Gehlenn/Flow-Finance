@@ -94,42 +94,53 @@ export class ClinicAutomationService {
         };
       }
 
-      // 2. Verificar idempotência
-      const isNew = await this.eventStore.recordProcessed(
-        sourceSystem,
-        externalEventId,
-        internalEventId,
-        'success' // Marcar como sucesso neste ponto, será atualizado se falhar
-      );
-
-      if (!isNew) {
-        // Evento já foi processado: retornar resposta de sucesso mas sem reprocessar
+      // 2. Verificar idempotência sem marcar sucesso antecipadamente.
+      const existingRecord = await this.eventStore.getProcessedRecord(sourceSystem, externalEventId);
+      if (existingRecord?.result === 'success') {
         this.logger.info(
           { internalEventId, externalEventId },
           'Duplicate event: already processed'
         );
 
-        const existingRecord = await this.eventStore.getProcessedRecord(
-          sourceSystem,
-          externalEventId
-        );
-
         return {
           success: true,
-          receivedEventId: existingRecord?.eventId || internalEventId,
+          receivedEventId: existingRecord.eventId || internalEventId,
           externalEventId,
-          processedAt: existingRecord?.processedAt || new Date().toISOString(),
+          processedAt: existingRecord.processedAt || new Date().toISOString(),
           idempotencyKey: this.eventStore.generatePayloadHash(payload),
           message: 'Event already processed (idempotent response)'
         };
       }
 
+      if (existingRecord?.result === 'failure') {
+        await this.eventStore.clearRecord(sourceSystem, externalEventId);
+      }
+
       // 3. Processar evento específico com telemetria
-      await this.monitor.executeClinicWebhookCall(
+      const outcome = await this.monitor.executeClinicWebhookCall(
         'webhook_ingest',
         () => this.routeAndProcessEvent(payload, internalEventId, ingestContext),
         { requestId, tenantId: (payload as any).externalFacilityId }
       );
+
+      if (!outcome.processed) {
+        await this.eventStore.recordProcessed(
+          sourceSystem,
+          externalEventId,
+          internalEventId,
+          'failure',
+          { eventType: payload.type, reason: outcome.message }
+        );
+
+        return {
+          success: false,
+          receivedEventId: internalEventId,
+          externalEventId,
+          processedAt: new Date().toISOString(),
+          idempotencyKey: this.eventStore.generatePayloadHash(payload),
+          message: outcome.message,
+        };
+      }
 
       // 4. Registrar sucesso
       await this.eventStore.recordProcessed(
@@ -244,15 +255,9 @@ export class ClinicAutomationService {
       'Processing payment_received event'
     );
 
-    // TODO: Implementar lógica de criação de receita no Flow
-    // - Criar transaction do tipo RECEITA
-    // - Associar ao tenantId/externalFacilityId
-    // - Usar amount, date, description
-    // - Mapear paymentMethod para categoria padrão (se necessário)
-
     return {
-      processed: true,
-      message: `Payment of ${event.currency} ${event.amount} recorded`
+      processed: false,
+      message: 'payment_received accepted by contract but not implemented in Flow persistence yet'
     };
   }
 
@@ -269,13 +274,9 @@ export class ClinicAutomationService {
       'Processing expense_recorded event'
     );
 
-    // TODO: Implementar lógica de despesa
-    // - Criar transaction do tipo DESPESA
-    // - Usar expenseCategory para guiar categorização
-
     return {
-      processed: true,
-      message: `Expense of ${event.currency} ${event.amount} recorded`
+      processed: false,
+      message: 'expense_recorded accepted by contract but not implemented in Flow persistence yet'
     };
   }
 
@@ -292,13 +293,9 @@ export class ClinicAutomationService {
       'Processing receivable_reminder_created event'
     );
 
-    // TODO: Criar reminder no Flow
-    // - Armazenar externalEventId para correlação
-    // - Definir expiração baseada em dueDate
-
     return {
-      processed: true,
-      message: `Receivable reminder created for ${event.currency} ${event.dueAmount}`
+      processed: false,
+      message: 'receivable_reminder_created accepted by contract but not implemented in Flow persistence yet'
     };
   }
 
@@ -315,11 +312,9 @@ export class ClinicAutomationService {
       'Processing receivable_reminder_updated event'
     );
 
-    // TODO: Atualizar reminder correspondente
-
     return {
-      processed: true,
-      message: `Receivable reminder updated`
+      processed: false,
+      message: 'receivable_reminder_updated accepted by contract but not implemented in Flow persistence yet'
     };
   }
 
@@ -336,11 +331,9 @@ export class ClinicAutomationService {
       'Processing receivable_reminder_cleared event'
     );
 
-    // TODO: Remover/marcar como concluído o reminder
-
     return {
-      processed: true,
-      message: `Receivable reminder cleared`
+      processed: false,
+      message: 'receivable_reminder_cleared accepted by contract but not implemented in Flow persistence yet'
     };
   }
 

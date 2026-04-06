@@ -2,10 +2,10 @@
  * ENCRYPTION SERVICE — Secure localStorage encryption
  *
  * Uses Web Crypto API to encrypt sensitive financial data before storage.
- * This ensures that even if localStorage is compromised, data remains protected.
+ * The encryption key is kept only in memory for the current runtime session.
  *
- * WARNING: This is application-level encryption, not a replacement for HTTPS/TLS.
- * Always use HTTPS in production.
+ * WARNING: This is defense in depth for local persistence, not protection against an active XSS.
+ * Always use HTTPS in production and avoid storing secrets in browser storage.
  */
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -30,37 +30,8 @@ async function getOrCreateEncryptionKey(): Promise<CryptoKey> {
   // Return cached key if available
   if (cachedKey) return cachedKey;
 
-  try {
-    // Attempt to get stored key
-    const storedKey = localStorage.getItem('_ek');
-    if (storedKey) {
-      const keyData = JSON.parse(storedKey);
-      cachedKey = await importKey(keyData.key);
-      return cachedKey;
-    }
-  } catch {
-    // If retrieval fails, generate new key
-  }
-
-  // Generate new key
   cachedKey = await crypto.subtle.generateKey(ALGORITHM, true, ['encrypt', 'decrypt']);
-
-  // Store for future use (encrypted key would be better, but requires server)
-  try {
-    const exported = await crypto.subtle.exportKey('jwk', cachedKey);
-    localStorage.setItem('_ek', JSON.stringify({ key: exported }));
-  } catch {
-    console.warn('[Encryption] Could not cache encryption key');
-  }
-
   return cachedKey;
-}
-
-/**
- * Import a previously stored key from JWK format
- */
-async function importKey(keyData: JsonWebKey): Promise<CryptoKey> {
-  return crypto.subtle.importKey('jwk', keyData, ALGORITHM, true, ['encrypt', 'decrypt']);
 }
 
 // ─── Encryption / Decryption ──────────────────────────────────────────────────

@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('eventEngine remote persistence', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetModules();
     localStorage.clear();
-    localStorage.setItem('auth_token', 'jwt-token');
+    const authSessionStore = await import('../../src/services/authSessionStore');
+    authSessionStore.clearEphemeralAccessToken();
+    authSessionStore.setEphemeralAccessToken('jwt-token');
   });
 
   it('mantem cache em memoria e tenta persistir no backend', async () => {

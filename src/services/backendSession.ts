@@ -1,4 +1,5 @@
 import { API_ENDPOINTS } from '../config/api.config';
+import { setEphemeralAccessToken } from './authSessionStore';
 
 interface FirebaseSessionBootstrapInput {
   idToken: string;
@@ -28,12 +29,15 @@ export async function bootstrapBackendSessionFromFirebase(
 ): Promise<BackendSessionPayload> {
   const firebaseResponse = await fetch(API_ENDPOINTS.AUTH.FIREBASE_SESSION, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ idToken: input.idToken }),
   });
 
   if (firebaseResponse.ok) {
-    return await firebaseResponse.json() as BackendSessionPayload;
+    const payload = await firebaseResponse.json() as BackendSessionPayload;
+    setEphemeralAccessToken(payload.accessToken || payload.token || null);
+    return payload;
   }
 
   if (!input.isDevelopment || input.allowLegacyDevelopmentFallback !== true) {
@@ -43,6 +47,7 @@ export async function bootstrapBackendSessionFromFirebase(
 
   const fallbackResponse = await fetch(API_ENDPOINTS.AUTH.LOGIN, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email: input.email,
@@ -57,5 +62,7 @@ export async function bootstrapBackendSessionFromFirebase(
     throw new Error(String(errorPayload.message || 'Failed to bootstrap backend session'));
   }
 
-  return await fallbackResponse.json() as BackendSessionPayload;
+  const payload = await fallbackResponse.json() as BackendSessionPayload;
+  setEphemeralAccessToken(payload.accessToken || payload.token || null);
+  return payload;
 }

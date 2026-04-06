@@ -68,4 +68,32 @@ describe('authController login security hardening', () => {
     expect(forwardedError).toBeInstanceOf(AppError);
     expect((forwardedError as AppError).statusCode).toBe(503);
   });
+
+  it('sets secure auth cookies when local login is explicitly allowed', async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.AUTH_ALLOW_INSECURE_LOCAL_LOGIN = 'true';
+
+    const req = {
+      body: {
+        email: 'user@example.com',
+        password: 'any-password',
+      },
+      headers: {},
+      ip: '127.0.0.1',
+    } as unknown as Request;
+
+    const res = {
+      json: vi.fn(),
+      cookie: vi.fn(),
+    } as unknown as Response;
+
+    const next = vi.fn() as unknown as NextFunction;
+
+    loginController(req, res, next);
+    await Promise.resolve();
+
+    expect(next).not.toHaveBeenCalled();
+    expect((res as any).cookie).toHaveBeenCalledTimes(2);
+    expect(res.json).toHaveBeenCalledTimes(1);
+  });
 });

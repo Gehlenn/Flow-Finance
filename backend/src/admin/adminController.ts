@@ -188,17 +188,22 @@ export const exportUsageMetering = asyncHandler(async (req: Request, res: Respon
   res.json({ workspaceId, filters, summary, events });
 });
 
+export function escapeCsvCell(value: unknown): string {
+  const normalized = String(value ?? '').replace(/"/g, '""');
+  const prefixed = /^[=+\-@]/.test(normalized) ? `'${normalized}` : normalized;
+  return `"${prefixed}"`;
+}
+
 function toCsv(rows: Array<Record<string, unknown>>): string {
   if (rows.length === 0) {
     return '';
   }
 
   const headers = Object.keys(rows[0]);
-  const escape = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
 
   return [
     headers.join(','),
-    ...rows.map((row) => headers.map((header) => escape(row[header])).join(',')),
+    ...rows.map((row) => headers.map((header) => escapeCsvCell(row[header])).join(',')),
   ].join('\n');
 }
 

@@ -4,12 +4,14 @@ import { addBreadcrumb, clearUser, setUser } from '../src/config/sentry';
 import { getStoredWorkspaceId } from '../src/config/api.config';
 import { getE2EAuthBootstrap } from '../src/utils/e2eAuthBootstrap';
 import { bootstrapBackendSessionFromFirebase } from '../src/services/backendSession';
+import { clearEphemeralAccessToken, setEphemeralAccessToken } from '../src/services/authSessionStore';
 import {
   clearActiveWorkspace,
   ensureActiveWorkspace,
   WORKSPACE_CHANGED_EVENT,
   WorkspaceSummary,
 } from '../src/services/workspaceSession';
+import { hydrateGoalsFromCloud } from '../src/services/localSyncService';
 
 const IS_DEV = import.meta.env.DEV;
 const INITIAL_LOADING_TIMEOUT_MS = 4000;
@@ -75,6 +77,10 @@ export function useAuthAndWorkspace() {
       plan: workspace.plan,
       role: workspace.role,
     });
+
+    // Hidrata dados locais com a nuvem após o workspace estar pronto (fire-and-forget)
+    hydrateGoalsFromCloud().catch(() => {/* falha silenciosa — localStorage permanece */});
+
     return workspace;
   }, []);
 
@@ -130,7 +136,7 @@ export function useAuthAndWorkspace() {
         email: e2eBootstrap.userEmail,
         name: e2eBootstrap.userName,
       });
-      localStorage.setItem('auth_token', e2eBootstrap.token);
+      setEphemeralAccessToken(e2eBootstrap.token);
       addBreadcrumb(`E2E auth bootstrap enabled for ${e2eBootstrap.userEmail}`, 'auth', 'info');
       setIsInitialLoading(false);
       return;
@@ -167,7 +173,7 @@ export function useAuthAndWorkspace() {
                 return;
               }
 
-              localStorage.setItem('auth_token', payload.token);
+              setEphemeralAccessToken(payload.accessToken || payload.token || null);
               setBackendSyncEnabled(true);
               return hydrateWorkspace({
                 id: firebaseUser.uid,
@@ -187,7 +193,7 @@ export function useAuthAndWorkspace() {
         }
       } else {
         setCurrentUser({ id: null, email: null, name: null });
-        localStorage.removeItem('auth_token');
+        clearEphemeralAccessToken();
         clearActiveWorkspace();
         setBackendSyncEnabled(false);
         setActiveWorkspace({ workspaceId: null, tenantId: null, tenantName: null, name: null, plan: null, role: null });

@@ -4,6 +4,7 @@ import env from '../config/env';
 import logger from '../config/logger';
 import { setUser, addBreadcrumb } from '../config/sentry';
 import { JWTPayload } from '../types';
+import { getAccessTokenFromRequest } from '../services/auth/authCookies';
 
 function makeTokenId(): string {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
@@ -51,14 +52,12 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
   });
 
   try {
-    const authHeader = req.headers.authorization;
+    const token = getAccessTokenFromRequest(req);
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      res.status(401).json(buildAuthError('Missing or invalid authorization header'));
+    if (!token) {
+      res.status(401).json(buildAuthError('Missing authentication token'));
       return;
     }
-
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
     // Permitir tokens mockados em ambiente de teste
     if (process.env.NODE_ENV === 'test' && token.startsWith('mock-token-for-')) {
@@ -106,11 +105,9 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
 export function optionalAuthMiddleware(req: Request, res: Response, next: NextFunction): void {
   const requestContext = getRequestContext(req);
   try {
-    const authHeader = req.headers.authorization;
-    
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      
+    const token = getAccessTokenFromRequest(req);
+
+    if (token) {
       try {
         const payload = jwt.verify(token, env.JWT_SECRET) as JWTPayload;
         if (!payload.tokenType || payload.tokenType === 'access') {
@@ -119,11 +116,10 @@ export function optionalAuthMiddleware(req: Request, res: Response, next: NextFu
           req.userExp = payload.exp;
         }
       } catch (error) {
-        // Silently fail for optional auth
         logger.debug('Optional auth token invalid');
       }
     }
-    
+
     next();
   } catch (error) {
     logger.error({ error }, 'Optional auth middleware error');

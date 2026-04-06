@@ -24,6 +24,7 @@ export function createHttpUsageStoreAdapter(baseUrl?: string): UsageStoreAdapter
       const workspace = await ensureActiveWorkspace(getCurrentWorkspaceIdentity());
       const response = await fetch(usageUrl, {
         method: 'GET',
+        credentials: 'include',
         headers: getAuthHeaders({ workspaceId: workspace.workspaceId }),
       });
 
@@ -39,6 +40,7 @@ export function createHttpUsageStoreAdapter(baseUrl?: string): UsageStoreAdapter
       const workspace = await ensureActiveWorkspace(getCurrentWorkspaceIdentity());
       await fetch(usageUrl, {
         method: 'PUT',
+        credentials: 'include',
         headers: getAuthHeaders({ workspaceId: workspace.workspaceId }),
         body: JSON.stringify({ workspaceId: workspace.workspaceId, usage: data }),
       });
@@ -53,6 +55,7 @@ export function createHttpBillingTransport(targetUrl?: string): BillingHookTrans
     const workspace = await ensureActiveWorkspace(getCurrentWorkspaceIdentity());
     const response = await fetch(endpoint, {
       method: 'POST',
+      credentials: 'include',
       headers: getAuthHeaders({ workspaceId: workspace.workspaceId }),
       body: JSON.stringify({
         ...payload,

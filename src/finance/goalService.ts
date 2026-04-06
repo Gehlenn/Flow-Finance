@@ -1,5 +1,6 @@
 import { FinancialGoal, GoalProgress, GoalStatus } from '../../models/FinancialGoal';
 import { FinancialEventEmitter } from '../events/eventEngine';
+import { pushToCloud } from '../services/localSyncService';
 
 const STORAGE_KEY = 'flow_financial_goals';
 
@@ -15,6 +16,19 @@ function readAll(): FinancialGoal[] {
 
 function writeAll(goals: FinancialGoal[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(goals));
+}
+
+/**
+ * Sincroniza metas com a nuvem de forma assíncrona (fire-and-forget).
+ * O localStorage já foi atualizado antes dessa chamada.
+ */
+function syncGoalsToCloud(goals: FinancialGoal[]): void {
+  const items = goals.map((g) => ({
+    id: g.id,
+    updatedAt: g.created_at,
+    payload: g as unknown as Record<string, unknown>,
+  }));
+  pushToCloud('goals', items).catch(() => {/* erro já tratado no serviço */});
 }
 
 // ─── CRUD (PART 2) ─────────────────────────────────────────────────────────
@@ -34,7 +48,9 @@ export function createGoal(goal: Omit<FinancialGoal, 'id' | 'created_at'>): Fina
     id: Math.random().toString(36).substr(2, 9),
     created_at: new Date().toISOString(),
   };
-  writeAll([...all, newGoal]);
+  const updated = [...all, newGoal];
+  writeAll(updated);
+  syncGoalsToCloud(updated);
 
   // Emitir evento para o event engine
   FinancialEventEmitter.goalCreated({ ...newGoal });
@@ -46,11 +62,15 @@ export function updateGoal(goal: FinancialGoal): FinancialGoal {
   const all = readAll();
   const updated = all.map(g => g.id === goal.id ? { ...goal } : g);
   writeAll(updated);
+  syncGoalsToCloud(updated);
   return goal;
 }
 
 export function deleteGoal(goalId: string): void {
-  writeAll(readAll().filter(g => g.id !== goalId));
+  const remaining = readAll().filter(g => g.id !== goalId);
+  writeAll(remaining);
+  // Envia o item deletado como tombstone para o backend
+  pushToCloud('goals', [{ id: goalId, updatedAt: new Date().toISOString(), deleted: true }]).catch(() => {/* silencioso */});
 }
 
 // Adicionar aporte a uma meta existente
@@ -63,6 +83,7 @@ export function addContribution(goalId: string, amount: number): FinancialGoal |
     current_amount: Math.min(all[idx].current_amount + amount, all[idx].target_amount),
   };
   writeAll(all);
+  syncGoalsToCloud(all);
   return all[idx];
 }
 

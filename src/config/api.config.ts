@@ -1,3 +1,5 @@
+import { getEphemeralAccessToken } from '../services/authSessionStore';
+
 /**
  * API CONFIGURATION — Backend Proxy Setup
  *
@@ -154,13 +156,13 @@ export function getAuthHeaders(options?: {
   workspaceId?: string | null;
   includeWorkspace?: boolean;
 }): Record<string, string> {
-  const token = localStorage.getItem('auth_token');
+  const token = getEphemeralAccessToken();
   const includeWorkspace = options?.includeWorkspace !== false;
   const workspaceId = options?.workspaceId ?? getStoredWorkspaceId();
 
   return {
     'Content-Type': 'application/json',
-    'Authorization': token ? `Bearer ${token}` : '',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     'X-Client-Version': '0.6.1',
     'X-Client-Platform': getPlatform(),
     ...(includeWorkspace && workspaceId ? { 'x-workspace-id': workspaceId } : {}),
@@ -204,6 +206,7 @@ export async function apiRequest<T>(
     try {
       const response = await fetch(endpoint, {
         ...options,
+        credentials: options?.credentials ?? 'include',
         headers,
         signal: controller.signal,
       });

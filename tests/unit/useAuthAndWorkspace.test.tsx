@@ -1,6 +1,7 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAuthAndWorkspace } from '../../hooks/useAuthAndWorkspace';
+import { clearEphemeralAccessToken, getEphemeralAccessToken } from '../../src/services/authSessionStore';
 
 const authWorkspaceMocks = vi.hoisted(() => ({
   mockOnAuthStateChanged: vi.fn(),
@@ -43,6 +44,7 @@ describe('useAuthAndWorkspace', () => {
 
   beforeEach(() => {
     localStorage.clear();
+    clearEphemeralAccessToken();
     vi.clearAllMocks();
     authWorkspaceMocks.mockGetE2EAuthBootstrap.mockReturnValue(null);
     authWorkspaceMocks.mockBootstrapBackendSessionFromFirebase.mockResolvedValue({ token: 'jwt-token' });
@@ -84,7 +86,8 @@ describe('useAuthAndWorkspace', () => {
     expect(result.current.user.id).toBe('user-1');
     expect(result.current.activeWorkspace.workspaceId).toBe('ws_1');
     expect(result.current.activeWorkspace.tenantId).toBe('tenant_1');
-    expect(localStorage.getItem('auth_token')).toBe('jwt-token');
+    expect(localStorage.getItem('auth_token')).toBeNull();
+    expect(getEphemeralAccessToken()).toBe('jwt-token');
     expect(authWorkspaceMocks.mockEnsureActiveWorkspace).toHaveBeenCalledWith({
       userId: 'user-1',
       email: 'user@test.dev',

@@ -51,12 +51,10 @@ async function persistEventRemotely(event: FinancialEvent): Promise<void> {
   }
 
   const headers = getAuthHeaders();
-  if (!headers.Authorization) {
-    return;
-  }
 
   await fetch(buildEventEndpoint(), {
     method: 'POST',
+    credentials: 'include',
     headers,
     body: JSON.stringify({
       id: event.id,
@@ -85,13 +83,11 @@ export async function refreshFinancialEvents(limit = MAX_EVENTS): Promise<Financ
   }
 
   const headers = getAuthHeaders();
-  if (!headers.Authorization) {
-    return getWorkspaceEventCache();
-  }
 
   try {
     const response = await fetch(`${buildEventEndpoint()}?limit=${limit}`, {
       method: 'GET',
+      credentials: 'include',
       headers,
     });
 
