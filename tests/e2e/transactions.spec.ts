@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { skipIfNoAuthShell } from './helpers/skipHelpers';
+import { skipIfNoAuthShell, skipIf } from './helpers/skipHelpers';
 
 async function openApp(page: Page): Promise<void> {
   await page.goto('/');
@@ -22,7 +22,10 @@ test.describe('Transaction Management', () => {
     });
 
     if (!(await addButton.count())) {
-      test.skip(true, '[fixture-dependent] Manual transaction action is not exposed in this run.');
+      await skipIf(true, {
+        reason: 'Manual transaction action is not exposed in this run.',
+        category: 'fixture-dependent',
+      });
     }
 
     await addButton.first().click();
