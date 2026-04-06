@@ -8,10 +8,13 @@ function isProductionLike(): boolean {
 }
 
 function getCookieOptions(maxAgeSeconds: number, path: string) {
+  const prod = isProductionLike();
   return {
     httpOnly: true,
-    secure: isProductionLike(),
-    sameSite: 'lax' as const,
+    secure: prod,
+    // SameSite=None é necessário para fetch cross-origin (frontend e backend em domínios separados no Vercel).
+    // Requer Secure=true, garantido em produção. Em dev usa Lax para localhost sem HTTPS.
+    sameSite: (prod ? 'none' : 'lax') as 'none' | 'lax',
     path,
     maxAge: Math.max(0, maxAgeSeconds) * 1000,
   };
