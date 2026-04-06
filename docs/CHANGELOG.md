@@ -1,4 +1,25 @@
-﻿ï»¿# [0.9.1v] - 2026-04-02
+﻿ï»¿# [0.9.3] - 2026-04-06
+
+### Release de hardening para deploy separado no Vercel
+
+#### Seguranca e autenticacao
+- Auth migrado de `localStorage` para cookies HttpOnly com fallback em memoria no frontend.
+- Cookies ajustados para `SameSite=None` em producao, permitindo `fetch` cross-origin com `credentials: include`.
+- OAuth Google com validacao de `redirectUri` por allowlist configuravel.
+- Scanner OCR deixa de usar `new Function()` e passa a usar `import()` nativo.
+
+#### Integridade operacional
+- Export CSV administrativo protegido contra formula injection.
+- Eventos de automacao clinica nao reportam mais `processed: true` sem persistencia real.
+- Sync de metas passa a usar write-through: cache local imediato + push/pull no backend.
+- Smoke test operacional de auth/sync adicionado para validacao pos-deploy.
+
+#### Validacoes executadas
+- `npm run lint`: aprovado
+- Smoke local auth/sync: 18/18 testes aprovados
+- Suite direcionada de sync/local storage: aprovada
+
+# [0.9.1v] - 2026-04-02
 
 ### TransiÃ§Ã£o de VersÃ£o â€” Auditoria SistÃªmica + QA de Fluxos CrÃ­ticos
 

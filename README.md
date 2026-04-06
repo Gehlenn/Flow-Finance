@@ -7,9 +7,9 @@ O sistema recomenda configurar alertas/logs para Pluggy, Stripe e Firebase. ApÃ
 
 # Flow Finance - Controle de Fluxo de Caixa Inteligente
 
-**VersÃ£o:** 0.9.1v  
-**Ãšltima AtualizaÃ§Ã£o:** 2 de Abril de 2026  
-**Status:** Transicao 0.9.1v validada end-to-end com lint, testes, cobertura critica >= 98% e E2E verde
+**Versao:** 0.9.3  
+**Ultima Atualizacao:** 6 de Abril de 2026  
+**Status:** Release pronta para deploy separado frontend/backend no Vercel com auth por cookie HttpOnly, sync localStorage->Firestore e smoke test operacional
 
 Bem-vindo ao **Flow Finance**, uma aplicaÃ§Ã£o moderna para gestÃ£o financeira pessoal e profissional, equipada com assistente de IA para facilitar o lanÃ§amento de despesas e receitas.
 
@@ -17,15 +17,14 @@ Bem-vindo ao **Flow Finance**, uma aplicaÃ§Ã£o moderna para gestÃ£o financ
 
 O Flow Finance Ã© uma plataforma completa de gestÃ£o financeira com IA, desenvolvida com **React + Vite**, **Firebase** (auth/data) e backend com **OpenAI GPT-4 ou Gemini** (configurÃ¡vel, via proxy seguro). O projeto segue arquitetura **Clean Architecture** com separaÃ§Ã£o clara de responsabilidades.
 
-## âœ… Checkpoint de TransiÃ§Ã£o 0.9.1v
+## Checkpoint de Release 0.9.3
 
-- Auditoria sistÃªmica executada com foco em OWASP, fluxos crÃ­ticos e prontidÃ£o SaaS.
-- ValidaÃ§Ãµes executadas:
-   - `npm run lint` (aprovado)
-   - `npm test` (aprovado)
-   - `npm run test:coverage:critical` (aprovado com 99.70% statements e 98.28% branches no recorte critico)
-   - `npm run test:e2e` (aprovado: 28 passed / 57 skipped)
-- Riscos prioritÃ¡rios identificados: sanitizaÃ§Ã£o de `description`, robustez de segredo JWT em produÃ§Ã£o, quota obrigatÃ³ria nos endpoints de IA, conflitos de sincronizaÃ§Ã£o e duplicaÃ§Ã£o de lÃ³gica de categorizaÃ§Ã£o.
+- Migracao de auth para cookies HttpOnly com `SameSite=None` em producao para frontend e backend em dominios separados.
+- OAuth Google endurecido com allowlist de `redirectUri`.
+- Export CSV administrativo protegido contra formula injection.
+- Handlers de integracao clinica deixam de reportar falso sucesso quando ainda nao implementados.
+- Sync write-through de metas: localStorage imediato + push/pull via backend para Firestore.
+- Script operacional de smoke test criado em `scripts/smoke-prod-auth-sync.ps1`.
 
 
 ### Principais Funcionalidades (v0.8.x)
