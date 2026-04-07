@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Category, Goal } from '../types';
 import { formatCurrency } from '../utils/helpers';
+import { SECONDARY_FLOWS_COPY } from '../src/app/secondaryFlowsCopy';
 import {
   CalendarDays,
   Check,
@@ -236,9 +237,9 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
             <Target size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-black text-slate-900 dark:text-white leading-none">Metas</h1>
+            <h1 className="text-lg font-black text-slate-900 dark:text-white leading-none">{SECONDARY_FLOWS_COPY.goals.title}</h1>
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-              {goals.length} meta{goals.length !== 1 ? 's' : ''} · {completedGoals.length} concluida{completedGoals.length !== 1 ? 's' : ''}
+              {SECONDARY_FLOWS_COPY.goals.subtitle}
             </p>
           </div>
         </div>
@@ -257,8 +258,8 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
             <Target size={24} className="text-emerald-500" />
           </div>
           <div className="text-center">
-            <p className="font-black text-slate-800 dark:text-white text-sm">Nenhuma meta ainda</p>
-            <p className="text-[10px] text-slate-400 font-bold mt-1">Crie sua primeira meta financeira</p>
+            <p className="font-black text-slate-800 dark:text-white text-sm">{SECONDARY_FLOWS_COPY.goals.emptyTitle}</p>
+            <p className="text-[10px] text-slate-400 font-bold mt-1">{SECONDARY_FLOWS_COPY.goals.emptyDescription}</p>
           </div>
           <button
             onClick={() => setShowForm(true)}

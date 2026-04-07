@@ -15,6 +15,7 @@ import {
   TrendingUp, Wallet, AlertTriangle, PiggyBank, HelpCircle
 } from 'lucide-react';
 import { buildProductFinancialIntelligence } from '../src/app/productFinancialIntelligence';
+import { AI_CFO_COPY } from '../src/app/assistantCopy';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -125,10 +126,10 @@ const WelcomeScreen: React.FC<{ onPrompt: (q: string) => void }> = ({ onPrompt }
       <BrainCircuit size={36} className="text-white" />
     </div>
     <div className="text-center">
-      <h3 className="text-xl font-black text-slate-900 dark:text-white">AI CFO</h3>
-      <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mt-1">Consultor Financeiro Virtual</p>
+      <h3 className="text-xl font-black text-slate-900 dark:text-white">{AI_CFO_COPY.welcomeTitle}</h3>
+      <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mt-1">{AI_CFO_COPY.welcomeSubtitle}</p>
       <p className="text-xs text-slate-500 dark:text-slate-400 mt-3 font-bold leading-relaxed max-w-xs">
-        Faça perguntas sobre suas finanças. Analiso seus dados em tempo real e respondo de forma personalizada.
+        {AI_CFO_COPY.welcomeDescription}
       </p>
     </div>
 
@@ -251,8 +252,8 @@ const AICFO: React.FC<AICFOProps> = ({ transactions, accounts, userId = 'local',
       <div className="bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] p-5 rounded-[2rem] flex justify-between items-center shadow-lg shadow-indigo-500/20 shrink-0 relative overflow-hidden mb-4">
         <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 blur-3xl -mr-16 -mt-16 pointer-events-none" />
         <div className="relative z-10">
-          <h2 className="text-xl font-black text-white tracking-tight leading-none">AI CFO</h2>
-          <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mt-1">Consultor Financeiro Virtual</p>
+          <h2 className="text-xl font-black text-white tracking-tight leading-none">{AI_CFO_COPY.headerTitle}</h2>
+          <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mt-1">{AI_CFO_COPY.headerSubtitle}</p>
         </div>
         <div className="flex items-center gap-2 relative z-10">
           {messages.length > 0 && (
@@ -321,7 +322,7 @@ const AICFO: React.FC<AICFOProps> = ({ transactions, accounts, userId = 'local',
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Pergunte sobre suas finanças..."
+          placeholder={AI_CFO_COPY.inputPlaceholder}
           rows={1}
           className="flex-1 bg-transparent outline-none resize-none text-sm font-bold text-slate-800 dark:text-white placeholder:text-slate-400 placeholder:font-normal py-2 max-h-32"
           style={{ scrollbarWidth: 'none' }}

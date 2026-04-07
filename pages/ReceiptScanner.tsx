@@ -7,6 +7,7 @@ import {
   Receipt, CalendarDays, Store, DollarSign,
   CreditCard, Zap, ShieldCheck
 } from 'lucide-react';
+import { SECONDARY_FLOWS_COPY } from '../src/app/secondaryFlowsCopy';
 
 interface ReceiptScannerPageProps {
   hideValues?: boolean;
@@ -144,10 +145,10 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
         </div>
         <div>
           <h1 className="text-lg font-black text-slate-900 dark:text-white leading-none">
-            Scanner de Recibo
+            {SECONDARY_FLOWS_COPY.scanner.title}
           </h1>
           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-            Foto → dados automáticos via Gemini Vision
+            {SECONDARY_FLOWS_COPY.scanner.subtitle}
           </p>
         </div>
       </div>
@@ -170,10 +171,10 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
           </div>
           <div className="text-center">
             <p className="font-black text-slate-800 dark:text-white text-sm">
-              Toque para selecionar imagem
+              {SECONDARY_FLOWS_COPY.scanner.idleTitle}
             </p>
             <p className="text-[10px] text-slate-400 font-bold mt-1">
-              JPG, PNG, WEBP · arraste ou toque
+              {SECONDARY_FLOWS_COPY.scanner.idleFormats}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -218,7 +219,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
             className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl p-4 flex items-center justify-center gap-3 font-black text-sm shadow-xl shadow-indigo-500/25 hover:shadow-indigo-500/40 active:scale-[0.98] transition-all"
           >
             <ScanLine size={18} />
-            Escanear Recibo com IA
+            {SECONDARY_FLOWS_COPY.scanner.scanCta}
           </button>
           <button onClick={handleReset} className="text-[10px] text-slate-400 font-bold text-center py-1">
             Escolher outra imagem
