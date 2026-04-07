@@ -428,6 +428,60 @@ export function buildOpenApiSpec(): OpenApiSpec {
           },
         },
       },
+      '/api/integrations/clinic/webhook': {
+        post: {
+          tags: ['Integrations'],
+          summary: 'Receive clinic automation financial events (canonical v1 endpoint)',
+          parameters: [
+            { name: 'x-integration-key', in: 'header', required: true, schema: { type: 'string' } },
+            { name: 'x-integration-signature', in: 'header', required: true, schema: { type: 'string' } },
+            { name: 'x-integration-timestamp', in: 'header', required: true, schema: { type: 'string' } },
+          ],
+          responses: {
+            '202': { description: 'Event applied' },
+            '200': { description: 'Duplicate ignored' },
+            '400': { description: 'Validation failed' },
+            '401': { description: 'Auth/signature failed' },
+            '429': { description: 'Rate limit reached' },
+          },
+        },
+      },
+      '/api/integrations/clinic/financial-events': {
+        post: {
+          tags: ['Integrations'],
+          summary: 'Deprecated clinic ingestion endpoint kept for backward compatibility',
+          deprecated: true,
+          parameters: [
+            { name: 'x-integration-key', in: 'header', required: true, schema: { type: 'string' } },
+            { name: 'x-integration-signature', in: 'header', required: true, schema: { type: 'string' } },
+            { name: 'x-integration-timestamp', in: 'header', required: true, schema: { type: 'string' } },
+          ],
+          responses: {
+            '202': { description: 'Event applied' },
+            '200': { description: 'Duplicate ignored' },
+            '400': { description: 'Validation failed' },
+            '401': { description: 'Auth/signature failed' },
+            '429': { description: 'Rate limit reached' },
+          },
+        },
+      },
+      '/api/integrations/clinic/health': {
+        get: {
+          tags: ['Integrations'],
+          summary: 'Health check for clinic automation ingest pipeline',
+          parameters: [
+            { name: 'x-integration-key', in: 'header', required: true, schema: { type: 'string' } },
+            { name: 'x-integration-signature', in: 'header', required: true, schema: { type: 'string' } },
+            { name: 'x-integration-timestamp', in: 'header', required: true, schema: { type: 'string' } },
+          ],
+          responses: {
+            '200': { description: 'Healthy' },
+            '401': { description: 'Auth/signature failed' },
+            '429': { description: 'Rate limit reached' },
+            '503': { description: 'Unhealthy dependency or safeguards state' },
+          },
+        },
+      },
       '/api/ai/cfo': { post: { tags: ['AI'], summary: 'Generate CFO analysis', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'CFO response' } } } },
       '/api/ai/interpret': { post: { tags: ['AI'], summary: 'Interpret natural language into finance actions', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Interpretation result' } } } },
       '/api/ai/scan-receipt': { post: { tags: ['AI'], summary: 'OCR receipt scan', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Scanned receipt fields' } } } },

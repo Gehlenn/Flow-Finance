@@ -1,11 +1,12 @@
-import { Router } from 'express';
+import { NextFunction, Request, Response, Router } from 'express';
 import { externalIntegrationAuth } from '../middleware/externalIntegrationAuth';
 import redisClient from '../config/redis';
 import { createDistributedRateLimitByUser } from '../middleware/distributedRateLimitByUser';
 import { createClinicPayloadLimitMiddleware } from '../middleware/clinicPayloadLimit';
 import { validate } from '../middleware/validate';
-import { ClinicWebhookPayloadSchema } from '../validation/clinicAutomation.schema';
-import { getClinicIntegrationHealth, receiveClinicFinancialEvent } from '../controllers/clinicController';
+import { ClinicWebhookIngestSchema } from '../validation/clinicAutomation.schema';
+import { getClinicIntegrationHealth, receiveClinicFinancialEvent, getClinicAuditMetrics } from '../controllers/clinicController';
+import { clinicAuditMiddleware } from '../middleware/clinicAudit';
 
 const router = Router();
 
@@ -48,9 +49,27 @@ const clinicIngestAuthenticatedLimiter = createDistributedRateLimitByUser({
   keyGenerator: (req) => {
     const integrationKey = req.header('x-integration-key') || 'unknown-key';
     const ip = (req.ip ?? 'unknown').replace('::ffff:', '');
-    return `clinic-auth::${integrationKey}::${ip}`;
+    const workspaceId = req.body?.externalFacilityId || req.body?.workspaceId || 'unknown';
+    return `clinic-auth::${integrationKey}::${workspaceId}::${ip}`;
   },
 });
+
+const clinicWebhookMiddlewares = [
+  clinicAuditMiddleware,
+  clinicEdgeLimiter,
+  clinicPayloadLimit,
+  externalIntegrationAuth,
+  clinicIngestAuthenticatedLimiter,
+  validate(ClinicWebhookIngestSchema),
+] as const;
+
+function markLegacyClinicPath(_req: Request, res: Response, next: NextFunction) {
+  // Mantém compatibilidade com clientes antigos enquanto sinaliza migração.
+  res.setHeader('Deprecation', 'true');
+  res.setHeader('Sunset', 'Wed, 30 Sep 2026 23:59:59 GMT');
+  res.setHeader('Link', '</api/integrations/clinic/webhook>; rel="successor-version"');
+  next();
+}
 
 /**
  * POST /api/integrations/clinic/financial-events
@@ -77,13 +96,12 @@ const clinicIngestAuthenticatedLimiter = createDistributedRateLimitByUser({
  *   401 Unauthorized — chave de integração inválida
  *   429 Too Many Requests — rate limit atingido
  */
+router.post('/webhook', ...clinicWebhookMiddlewares, receiveClinicFinancialEvent);
+
 router.post(
   '/financial-events',
-  clinicEdgeLimiter,
-  clinicPayloadLimit,
-  externalIntegrationAuth,
-  clinicIngestAuthenticatedLimiter,
-  validate(ClinicWebhookPayloadSchema),
+  markLegacyClinicPath,
+  ...clinicWebhookMiddlewares,
   receiveClinicFinancialEvent,
 );
 
@@ -92,6 +110,13 @@ router.get(
   clinicEdgeLimiter,
   externalIntegrationAuth,
   getClinicIntegrationHealth,
+);
+
+router.get(
+  '/metrics',
+  clinicEdgeLimiter,
+  externalIntegrationAuth,
+  getClinicAuditMetrics,
 );
 
 export default router;

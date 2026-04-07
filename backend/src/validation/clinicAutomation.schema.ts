@@ -147,6 +147,186 @@ export const ClinicWebhookPayloadSchema = z.discriminatedUnion('type', [
 
 export type ClinicWebhookPayload = z.infer<typeof ClinicWebhookPayloadSchema>;
 
+const ClinicWebhookEnvelopeV1Schema = z.discriminatedUnion('eventType', [
+  z.object({
+    schemaVersion: z.literal('1.0'),
+    sourceSystem: z.literal('clinic-automation'),
+    workspaceId: z.string().min(1),
+    externalEventId: ExternalEventIdSchema,
+    eventType: z.literal('payment_received'),
+    occurredAt: z.string().datetime(),
+    payload: z.object({
+      externalCustomerId: z.string().min(1),
+      externalReceivableId: z.string().min(1),
+      amount: z.number().positive().finite().max(999999999),
+      currency: z.literal('BRL'),
+      description: z.string().min(1).max(500),
+      category: z.string().optional(),
+      notes: z.string().max(1000).optional(),
+    }).strict(),
+  }).strict(),
+  z.object({
+    schemaVersion: z.literal('1.0'),
+    sourceSystem: z.literal('clinic-automation'),
+    workspaceId: z.string().min(1),
+    externalEventId: ExternalEventIdSchema,
+    eventType: z.literal('expense_recorded'),
+    occurredAt: z.string().datetime(),
+    payload: z.object({
+      amount: z.number().positive().finite().max(999999999),
+      currency: z.literal('BRL'),
+      description: z.string().min(1).max(500),
+      category: z.string().min(1),
+      vendor: z.string().optional(),
+      notes: z.string().max(1000).optional(),
+    }).strict(),
+  }).strict(),
+  z.object({
+    schemaVersion: z.literal('1.0'),
+    sourceSystem: z.literal('clinic-automation'),
+    workspaceId: z.string().min(1),
+    externalEventId: ExternalEventIdSchema,
+    eventType: z.literal('receivable_reminder_created'),
+    occurredAt: z.string().datetime(),
+    payload: z.object({
+      externalCustomerId: z.string().min(1),
+      externalReceivableId: z.string().min(1),
+      amount: z.number().positive().finite().max(999999999),
+      dueDate: z.string().min(10),
+      currency: z.literal('BRL'),
+      description: z.string().min(1).max(500),
+      serviceDescription: z.string().optional(),
+      notes: z.string().max(1000).optional(),
+    }).strict(),
+  }).strict(),
+  z.object({
+    schemaVersion: z.literal('1.0'),
+    sourceSystem: z.literal('clinic-automation'),
+    workspaceId: z.string().min(1),
+    externalEventId: ExternalEventIdSchema,
+    eventType: z.literal('receivable_reminder_updated'),
+    occurredAt: z.string().datetime(),
+    payload: z.object({
+      externalCustomerId: z.string().min(1),
+      externalReceivableId: z.string().min(1),
+      amount: z.number().positive().finite().max(999999999),
+      dueDate: z.string().min(10),
+      currency: z.literal('BRL'),
+      description: z.string().min(1).max(500),
+      reason: z.enum(['amount_changed', 'due_date_extended', 'other']).optional(),
+    }).strict(),
+  }).strict(),
+  z.object({
+    schemaVersion: z.literal('1.0'),
+    sourceSystem: z.literal('clinic-automation'),
+    workspaceId: z.string().min(1),
+    externalEventId: ExternalEventIdSchema,
+    eventType: z.literal('receivable_reminder_cleared'),
+    occurredAt: z.string().datetime(),
+    payload: z.object({
+      externalCustomerId: z.string().min(1),
+      externalReceivableId: z.string().min(1),
+      amount: z.number().positive().finite().max(999999999),
+      reason: z.enum(['paid', 'cancelled', 'written_off']),
+      notes: z.string().max(500).optional(),
+    }).strict(),
+  }).strict(),
+]);
+
+type ClinicWebhookEnvelopeV1 = z.infer<typeof ClinicWebhookEnvelopeV1Schema>;
+
+function normalizeDueDate(value: string): string {
+  return value.slice(0, 10);
+}
+
+function mapEnvelopeV1ToClinicPayload(envelope: ClinicWebhookEnvelopeV1): ClinicWebhookPayload {
+  const workspaceId = envelope.workspaceId.trim();
+
+  switch (envelope.eventType) {
+    case 'payment_received':
+      return {
+        type: 'payment_received',
+        externalEventId: envelope.externalEventId,
+        externalPatientId: envelope.payload.externalCustomerId,
+        externalFacilityId: workspaceId,
+        amount: envelope.payload.amount,
+        currency: envelope.payload.currency,
+        date: envelope.occurredAt,
+        paymentMethod: 'other',
+        description: envelope.payload.description,
+        category: envelope.payload.category,
+        notes: envelope.payload.notes,
+      };
+    case 'expense_recorded':
+      return {
+        type: 'expense_recorded',
+        externalEventId: envelope.externalEventId,
+        externalFacilityId: workspaceId,
+        amount: envelope.payload.amount,
+        currency: envelope.payload.currency,
+        date: envelope.occurredAt,
+        expenseCategory: envelope.payload.category,
+        description: envelope.payload.description,
+        vendor: envelope.payload.vendor,
+        notes: envelope.payload.notes,
+      };
+    case 'receivable_reminder_created':
+      return {
+        type: 'receivable_reminder_created',
+        externalEventId: envelope.externalEventId,
+        externalPatientId: envelope.payload.externalCustomerId,
+        externalFacilityId: workspaceId,
+        dueAmount: envelope.payload.amount,
+        dueDate: normalizeDueDate(envelope.payload.dueDate),
+        currency: envelope.payload.currency,
+        description: envelope.payload.description,
+        serviceDescription: envelope.payload.serviceDescription,
+        notes: envelope.payload.notes,
+      };
+    case 'receivable_reminder_updated':
+      return {
+        type: 'receivable_reminder_updated',
+        externalEventId: envelope.externalEventId,
+        externalPatientId: envelope.payload.externalCustomerId,
+        externalFacilityId: workspaceId,
+        dueAmount: envelope.payload.amount,
+        dueDate: normalizeDueDate(envelope.payload.dueDate),
+        currency: envelope.payload.currency,
+        description: envelope.payload.description,
+        updatedAt: envelope.occurredAt,
+        reason: envelope.payload.reason,
+      };
+    case 'receivable_reminder_cleared':
+      return {
+        type: 'receivable_reminder_cleared',
+        externalEventId: envelope.externalEventId,
+        externalPatientId: envelope.payload.externalCustomerId,
+        externalFacilityId: workspaceId,
+        clearedAmount: envelope.payload.amount,
+        clearedDate: envelope.occurredAt,
+        reason: envelope.payload.reason,
+        notes: envelope.payload.notes,
+      };
+    default: {
+      const exhaustive: never = envelope;
+      throw new Error(`Unsupported envelope eventType: ${(exhaustive as any).eventType}`);
+    }
+  }
+}
+
+/**
+ * Contrato aceito para ingestão clínica.
+ * - Aceita payload legado (discriminado por `type`)
+ * - Aceita envelope v1 canônico (schemaVersion/eventType/payload)
+ * Sempre normaliza para ClinicWebhookPayload para consumo dos serviços.
+ */
+export const ClinicWebhookIngestSchema = z.union([
+  ClinicWebhookPayloadSchema,
+  ClinicWebhookEnvelopeV1Schema.transform((envelope) => mapEnvelopeV1ToClinicPayload(envelope)),
+]);
+
+export type ClinicWebhookIngestPayload = z.infer<typeof ClinicWebhookIngestSchema>;
+
 /**
  * Schema completo da requisição de webhook da clínica.
  */

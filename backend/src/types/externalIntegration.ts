@@ -21,6 +21,7 @@ export interface PaymentReceivedPayload {
   currency: 'BRL';
   category?: string;
   description: string;
+  notes?: string;
 }
 
 export interface ExpenseRecordedPayload {
@@ -29,6 +30,8 @@ export interface ExpenseRecordedPayload {
   currency: 'BRL';
   category?: string;
   description: string;
+  vendor?: string;
+  notes?: string;
 }
 
 export interface ReceivableReminderPayload {
@@ -38,6 +41,9 @@ export interface ReceivableReminderPayload {
   outstandingAmount: number;
   currency: 'BRL';
   description: string;
+  serviceDescription?: string;
+  notes?: string;
+  reason?: 'amount_changed' | 'due_date_extended' | 'other';
 }
 
 export interface ReceivableReminderClearedPayload {
@@ -47,6 +53,8 @@ export interface ReceivableReminderClearedPayload {
   settledAmount: number;
   currency: 'BRL';
   description: string;
+  notes?: string;
+  reason: 'paid' | 'cancelled' | 'written_off';
 }
 
 export type PaymentReceivedEvent = ExternalBaseEvent<'payment_received', PaymentReceivedPayload>;

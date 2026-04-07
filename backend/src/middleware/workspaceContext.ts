@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { asyncHandler } from './errorHandler';
 import { getTenantAsync, getWorkspaceAsync, isUserInWorkspaceAsync } from '../services/admin/workspaceStore';
+import { updateRequestContext } from './requestContextStore';
 
 /**
  * Middleware que injeta o contexto de workspace na request.
@@ -44,5 +45,6 @@ export const workspaceContextMiddleware = asyncHandler(async (req: Request, res:
       bankConnections: workspace.entitlements?.limits.bankConnections || 0,
     },
   };
+  updateRequestContext({ tenantId: workspace.tenantId, workspaceId });
   next();
 });

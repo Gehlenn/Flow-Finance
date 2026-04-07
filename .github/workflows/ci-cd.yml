@@ -9,6 +9,8 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -16,10 +18,17 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install backend dependencies
+        run: npm ci --prefix backend
 
       - name: Lint
         run: npm run lint
@@ -50,5 +59,6 @@ jobs:
           path: |
             coverage/
             backend/coverage/
+          if-no-files-found: ignore
 
   # Adicione outros jobs conforme necessário (deploy, etc)

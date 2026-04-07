@@ -99,6 +99,11 @@ export const receiveClinicFinancialEvent = asyncHandler(async (req: Request, res
     { environment: (process.env.NODE_ENV || 'production') as any }
   );
 
+  if (!result.success) {
+    res.status(400).json(result);
+    return;
+  }
+
   // 202 Accepted para novos eventos, 200 OK para duplicatas (idempotente)
   const isDuplicate = result.message?.includes('already processed');
   res.status(isDuplicate ? 200 : 202).json(result);
@@ -138,5 +143,16 @@ export const getClinicIntegrationHealth = asyncHandler(async (_req: Request, res
       authRateLimitMax: Number.isFinite(authRateLimitMax) && authRateLimitMax > 0 ? authRateLimitMax : 200,
       timestampSkewSeconds: Number.parseInt(process.env.FLOW_EXTERNAL_INTEGRATION_MAX_SKEW_SECONDS || '300', 10),
     },
+  });
+});
+
+export const getClinicAuditMetrics = asyncHandler(async (_req: Request, res: Response) => {
+  const { getClinicAuditMetrics: getMetrics } = await import('../middleware/clinicAudit');
+  const metrics = getMetrics();
+
+  res.status(200).json({
+    service: 'clinic-automation-audit',
+    timestamp: new Date().toISOString(),
+    metrics,
   });
 });

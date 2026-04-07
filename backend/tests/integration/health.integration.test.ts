@@ -93,7 +93,8 @@ describe('Health endpoints', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('ok');
-    expect(res.body.checks.database).toEqual({ status: 'healthy', configured: false });
+    expect(res.body.checks.database).toEqual({ status: 'healthy', configured: false, required: false });
+    expect(res.body.checks.aiProviders).toEqual({ status: 'healthy', configured: false, required: false });
   });
 
   it('GET /health returns 503 when database is configured but unhealthy', async () => {
@@ -106,5 +107,6 @@ describe('Health endpoints', () => {
     expect(res.body.status).toBe('degraded');
     expect(res.body.checks.database.status).toBe('unhealthy');
     expect(res.body.checks.database.configured).toBe(true);
+    expect(res.body.checks.database.required).toBe(true);
   });
 });

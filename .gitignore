@@ -64,3 +64,6 @@ android-sdk-tools.zip
 firebase-debug.log
 flow-finance-current.zip
 .gstack/
+
+.vercel
+.env*.local

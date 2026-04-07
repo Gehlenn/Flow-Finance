@@ -43,7 +43,7 @@ export function authz(permission: string) {
       const context = await resolveAuthorizationContext(req as RequestWithWorkspace);
       assertCanPerform(context, permission);
       next();
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof AppError) {
         res.status(err.statusCode || 403).json({
           error: err.message,
@@ -64,7 +64,7 @@ export function requireFeature(feature: FeatureKey) {
       const context = await resolveAuthorizationContext(req as RequestWithWorkspace);
       assertFeatureEnabled(context, feature);
       next();
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof AppError) {
         res.status(err.statusCode || 402).json({
           error: err.message,

@@ -1,6 +1,8 @@
 import { randomUUID } from 'crypto';
 import { NextFunction, Request, Response } from 'express';
 
+import { runWithRequestContext } from './requestContextStore';
+
 declare global {
   namespace Express {
     interface Request {
@@ -30,5 +32,11 @@ export function requestContextMiddleware(req: Request, res: Response, next: Next
 
   res.setHeader('x-request-id', requestId);
 
-  next();
+  runWithRequestContext(
+    {
+      requestId,
+      routeScope: req.routeScope,
+    },
+    next,
+  );
 }

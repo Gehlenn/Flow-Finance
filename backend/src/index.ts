@@ -155,9 +155,18 @@ void initRedis();
 
 // ─── ROUTES ──────────────────────────────────────────────────────────────────
 
+type HealthCheckStatus = 'healthy' | 'unhealthy';
+
+interface HealthCheckResult {
+  status: HealthCheckStatus;
+  latency?: number;
+  configured?: boolean;
+  required?: boolean;
+}
+
 // Health check with dependency verification
 app.get('/health', async (_req: Request, res: Response) => {
-  const checks: Record<string, { status: 'healthy' | 'unhealthy'; latency?: number; configured?: boolean }> = {
+  const checks: Record<string, HealthCheckResult> = {
     server: { status: 'healthy' },
   };
 
@@ -166,12 +175,22 @@ app.get('/health', async (_req: Request, res: Response) => {
     const dbStart = Date.now();
     try {
       const dbHealthy = await checkDatabaseHealth();
-      checks.database = { status: dbHealthy ? 'healthy' : 'unhealthy', latency: Date.now() - dbStart, configured: true };
+      checks.database = {
+        status: dbHealthy ? 'healthy' : 'unhealthy',
+        latency: Date.now() - dbStart,
+        configured: true,
+        required: true,
+      };
     } catch (error) {
-      checks.database = { status: 'unhealthy', latency: Date.now() - dbStart, configured: true };
+      checks.database = {
+        status: 'unhealthy',
+        latency: Date.now() - dbStart,
+        configured: true,
+        required: true,
+      };
     }
   } else {
-    checks.database = { status: 'healthy', configured: false };
+    checks.database = { status: 'healthy', configured: false, required: false };
   }
 
   // Check Redis (if configured)
@@ -179,16 +198,44 @@ app.get('/health', async (_req: Request, res: Response) => {
     const redisStart = Date.now();
     try {
       const redisHealthy = await checkRedisHealth();
-      checks.redis = { status: redisHealthy ? 'healthy' : 'unhealthy', latency: Date.now() - redisStart };
+      checks.redis = {
+        status: redisHealthy ? 'healthy' : 'unhealthy',
+        latency: Date.now() - redisStart,
+        configured: true,
+        required: false,
+      };
     } catch (error) {
-      checks.redis = { status: 'unhealthy', latency: Date.now() - redisStart };
+      checks.redis = {
+        status: 'unhealthy',
+        latency: Date.now() - redisStart,
+        configured: true,
+        required: false,
+      };
     }
+  } else {
+    checks.redis = { status: 'healthy', configured: false, required: false };
   }
 
   // AI providers status (from initialization)
-  checks.aiProviders = { status: Object.values(aiHealthStatus).some(s => s === 'healthy') ? 'healthy' : 'unhealthy' };
+  checks.aiProviders = aiProviders.length > 0
+    ? {
+        status: Object.values(aiHealthStatus).some((status) => status === 'healthy') ? 'healthy' : 'unhealthy',
+        configured: true,
+        required: false,
+      }
+    : {
+        status: 'healthy',
+        configured: false,
+        required: false,
+      };
 
-  const isHealthy = Object.values(checks).every(c => c.status === 'healthy');
+  const isHealthy = Object.values(checks).every((check) => {
+    if (check.required === false || check.configured === false) {
+      return true;
+    }
+
+    return check.status === 'healthy';
+  });
 
   res.status(isHealthy ? 200 : 503).json({
     status: isHealthy ? 'ok' : 'degraded',

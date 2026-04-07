@@ -14,6 +14,7 @@ const paymentPayloadSchema = z.object({
   currency: z.literal('BRL'),
   category: z.string().min(2).max(64).optional(),
   description: z.string().min(3).max(280),
+  notes: z.string().min(1).max(1000).optional(),
 }).strict();
 
 const expensePayloadSchema = z.object({
@@ -22,6 +23,8 @@ const expensePayloadSchema = z.object({
   currency: z.literal('BRL'),
   category: z.string().min(2).max(64).optional(),
   description: z.string().min(3).max(280),
+  vendor: z.string().min(1).max(280).optional(),
+  notes: z.string().min(1).max(1000).optional(),
 }).strict();
 
 const reminderPayloadSchema = z.object({
@@ -31,6 +34,9 @@ const reminderPayloadSchema = z.object({
   outstandingAmount: z.number().nonnegative().max(1_000_000_000),
   currency: z.literal('BRL'),
   description: z.string().min(3).max(280),
+  serviceDescription: z.string().min(1).max(280).optional(),
+  notes: z.string().min(1).max(1000).optional(),
+  reason: z.enum(['amount_changed', 'due_date_extended', 'other']).optional(),
 }).strict();
 
 const reminderClearedPayloadSchema = z.object({
@@ -40,6 +46,8 @@ const reminderClearedPayloadSchema = z.object({
   settledAmount: z.number().nonnegative().max(1_000_000_000),
   currency: z.literal('BRL'),
   description: z.string().min(3).max(280),
+  notes: z.string().min(1).max(500).optional(),
+  reason: z.enum(['paid', 'cancelled', 'written_off']),
 }).strict();
 
 export const ExternalIntegrationEventSchema = z.discriminatedUnion('eventType', [

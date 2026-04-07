@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import * as Sentry from '@sentry/node';
 
 import { validate } from '../../middleware/validate';
-import { ClinicWebhookPayloadSchema } from '../../validation/clinicAutomation.schema';
+import { ClinicWebhookIngestSchema } from '../../validation/clinicAutomation.schema';
 import { ClinicAutomationService } from '../../services/clinic';
 import { IntegrationMonitor } from '../../services/observability';
 import { EnhancedFeatureFlagService } from '../../services/featureFlags/EnhancedFeatureFlagService';
@@ -34,7 +34,7 @@ export function createClinicIntegrationRoutes(
    * Ingerir webhook vindo da automação da clínica.
    * Payload debe conter: auth { sourceSystem, requestId, hmacSignature } + data { ...evento }
    */
-  router.post('/webhook', validate(ClinicWebhookPayloadSchema), async (req: Request, res: Response) => {
+  router.post('/webhook', validate(ClinicWebhookIngestSchema), async (req: Request, res: Response) => {
     const requestId = req.get('x-request-id') || uuidv4();
     const sourceIp = req.ip || 'unknown';
     const signature = req.get('x-webhook-signature') || '';

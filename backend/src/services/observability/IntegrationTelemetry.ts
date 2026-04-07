@@ -2,6 +2,8 @@ import * as Sentry from '@sentry/node';
 import { Logger } from 'pino';
 import { performance } from 'perf_hooks';
 
+import { getRequestContextValue } from '../../middleware/requestContextStore';
+
 export type IntegrationName =
   | 'stripe'
   | 'firebase'
@@ -342,24 +344,21 @@ export class IntegrationTelemetry {
    * Obter requestId do contexto (deve ser injetado por middleware).
    */
   private getRequestId(): string {
-    // TODO: extrair de AsyncLocalStorage ou contexto de requisição
-    return process.env.REQUEST_ID || 'unknown';
+    return getRequestContextValue('requestId') || process.env.REQUEST_ID || 'unknown';
   }
 
   /**
    * Obter userId autenticado do contexto.
    */
   private getUserId(): string | undefined {
-    // TODO: extrair de AsyncLocalStorage ou contexto de requisição
-    return process.env.USER_ID;
+    return getRequestContextValue('userId') || process.env.USER_ID;
   }
 
   /**
    * Obter tenantId do contexto.
    */
   private getTenantId(): string | undefined {
-    // TODO: extrair de AsyncLocalStorage ou contexto de requisição
-    return process.env.TENANT_ID;
+    return getRequestContextValue('tenantId') || process.env.TENANT_ID;
   }
 
   /**

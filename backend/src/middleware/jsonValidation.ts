@@ -7,7 +7,7 @@ import { AppError } from './errorHandler';
  * This catches malformed JSON before it reaches controllers
  */
 export function validateJsonMiddleware(
-  error: any,
+  error: unknown,
   req: Request,
   res: Response,
   next: NextFunction

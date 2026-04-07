@@ -12,6 +12,9 @@ describe('openapi docs', () => {
     expect(spec.paths['/api/finance/events']).toBeDefined();
     expect(spec.paths['/api/saas/usage/increment']).toBeDefined();
     expect(spec.paths['/api/integrations/external/events']).toBeDefined();
+    expect(spec.paths['/api/integrations/clinic/webhook']).toBeDefined();
+    expect(spec.paths['/api/integrations/clinic/financial-events']).toBeDefined();
+    expect(spec.paths['/api/integrations/clinic/health']).toBeDefined();
     expect(spec.paths['/api/workspace/{workspaceId}/users']).toBeDefined();
   });
 

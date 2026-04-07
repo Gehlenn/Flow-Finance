@@ -5,6 +5,7 @@ import logger from '../config/logger';
 import { setUser, addBreadcrumb } from '../config/sentry';
 import { JWTPayload } from '../types';
 import { getAccessTokenFromRequest } from '../services/auth/authCookies';
+import { updateRequestContext } from './requestContextStore';
 
 function makeTokenId(): string {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
@@ -65,6 +66,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
       req.userId = userId;
       req.userEmail = `${userId}@mock.local`;
       req.userExp = Date.now() / 1000 + 3600;
+      updateRequestContext({ userId, userEmail: req.userEmail });
       next();
       return;
     }
@@ -78,6 +80,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
       req.userId = payload.userId;
       req.userEmail = payload.email;
       req.userExp = payload.exp;
+      updateRequestContext({ userId: payload.userId, userEmail: payload.email });
 
       // Set Sentry user context for error tracking
       setUser({
@@ -114,6 +117,7 @@ export function optionalAuthMiddleware(req: Request, res: Response, next: NextFu
           req.userId = payload.userId;
           req.userEmail = payload.email;
           req.userExp = payload.exp;
+          updateRequestContext({ userId: payload.userId, userEmail: payload.email });
         }
       } catch (error) {
         logger.debug('Optional auth token invalid');

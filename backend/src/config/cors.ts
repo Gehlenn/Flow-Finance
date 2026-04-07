@@ -63,7 +63,7 @@ export function createCorsOptions(params?: {
   logger.info({ allowedOrigins, environment: nodeEnv }, 'CORS allowed origins configured');
 
   return {
-    origin(origin, callback) {
+    origin(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
       if (isOriginAllowed(origin, allowedOrigins, nodeEnv)) {
         callback(null, true);
         return;

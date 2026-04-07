@@ -35,7 +35,7 @@ const redisConfig = {
 export const redisClient: RedisClientType = createClient(redisConfig);
 
 // Handle Redis events
-redisClient.on('error', (err) => {
+redisClient.on('error', (err: Error) => {
   logger.error({ error: err }, 'Redis client error');
 });
 

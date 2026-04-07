@@ -12,7 +12,7 @@ export function asyncHandler(
 }
 
 export function errorHandler(
-  err: any,
+  err: unknown,
   req: Request,
   res: Response,
   _next: NextFunction

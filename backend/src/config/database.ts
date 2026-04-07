@@ -99,7 +99,7 @@ pool.on('connect', () => {
   logger.debug('New client connected to database');
 });
 
-pool.on('error', (err) => {
+pool.on('error', (err: Error) => {
   logger.error({ error: err }, 'Unexpected error on idle client');
 });
 

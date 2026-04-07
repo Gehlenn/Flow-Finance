@@ -1,0 +1,1 @@
+﻿[{"Name":"health","Method":"GET","Status":200,"Snippet":"{\"status\":\"ok\",\"service\":\"flow-finance-api\",\"version\":\"0.4.0\"}"},{"Name":"clinic-health-no-auth","Method":"GET","Status":401,"Snippet":""},{"Name":"financial-events-no-auth","Method":"POST","Status":401,"Snippet":""}]

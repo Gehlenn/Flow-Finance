@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { IntegrationTelemetry, IntegrationContext } from '../../src/services/observability/IntegrationTelemetry';
 import logger from '../../src/config/logger';
 import * as Sentry from '@sentry/node';
+import { runWithRequestContext } from '../../src/middleware/requestContextStore';
 
 // Mock Sentry
 vi.mock('@sentry/node', () => ({
@@ -172,6 +173,23 @@ describe('IntegrationTelemetry', () => {
       expect(Sentry.withScope).toHaveBeenCalled();
       // Logger must have been called with error
       expect(logger.error).toBeDefined();
+    });
+  });
+
+  describe('request context integration', () => {
+    it('deve ler requestId, userId e tenantId do AsyncLocalStorage', () => {
+      runWithRequestContext(
+        {
+          requestId: 'req-als',
+          userId: 'user-als',
+          tenantId: 'tenant-als',
+        },
+        () => {
+          expect((telemetry as any).getRequestId()).toBe('req-als');
+          expect((telemetry as any).getUserId()).toBe('user-als');
+          expect((telemetry as any).getTenantId()).toBe('tenant-als');
+        }
+      );
     });
   });
 });

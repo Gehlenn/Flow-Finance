@@ -9,6 +9,8 @@ on:
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     services:
       postgres:
@@ -38,9 +40,15 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
+        cache-dependency-path: |
+          package-lock.json
+          backend/package-lock.json
 
     - name: Install dependencies
       run: npm ci
+
+    - name: Install backend dependencies
+      run: npm ci --prefix backend
 
     - name: Setup test database
       run: |
@@ -66,6 +74,8 @@ jobs:
 
   e2e-tests:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
     - name: Checkout code
@@ -76,6 +86,9 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
+        cache-dependency-path: |
+          package-lock.json
+          backend/package-lock.json
 
     - name: Install dependencies
       run: npm ci
@@ -98,6 +111,8 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
     - name: Checkout code
@@ -108,9 +123,15 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
+        cache-dependency-path: |
+          package-lock.json
+          backend/package-lock.json
 
     - name: Install dependencies
       run: npm ci
+
+    - name: Install backend dependencies
+      run: npm ci --prefix backend
 
     - name: Run linter
       run: npm run lint
@@ -120,6 +141,8 @@ jobs:
 
   security-audit:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
     - name: Checkout code
@@ -130,6 +153,9 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
+        cache-dependency-path: |
+          package-lock.json
+          backend/package-lock.json
 
     - name: Install dependencies
       run: npm ci
