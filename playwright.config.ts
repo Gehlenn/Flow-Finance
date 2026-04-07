@@ -73,9 +73,10 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
-  webServer: process.env.CI ? undefined : {
+  webServer: {
     command: 'npm run dev -- --port 4173 --strictPort',
     url: 'http://localhost:4173',
-    reuseExistingServer: false,
+    reuseExistingServer: true,
+    timeout: 120 * 1000,
   },
 });
