@@ -47,7 +47,7 @@ describe('Clinic Integration API', () => {
     process.env.FF_CLINIC_INGEST = 'true';
     process.env.FF_CLINIC_AUTO_POST = 'true';
     process.env.CLINIC_EDGE_RATE_LIMIT_MAX = '5';
-    process.env.CLINIC_AUTH_RATE_LIMIT_MAX = '3';
+    process.env.CLINIC_AUTH_RATE_LIMIT_MAX = '10';
     process.env.CLINIC_WEBHOOK_MAX_PAYLOAD_BYTES = '1024';
 
     ({ default: app } = await import('../../src/index'));
@@ -60,7 +60,7 @@ describe('Clinic Integration API', () => {
     process.env.FF_CLINIC_INGEST = 'true';
     process.env.FF_CLINIC_AUTO_POST = 'true';
     process.env.CLINIC_EDGE_RATE_LIMIT_MAX = '5';
-    process.env.CLINIC_AUTH_RATE_LIMIT_MAX = '3';
+    process.env.CLINIC_AUTH_RATE_LIMIT_MAX = '10';
     process.env.CLINIC_WEBHOOK_MAX_PAYLOAD_BYTES = '1024';
     resetWorkspaceStoreForTests();
     resetDomainEventStoreForTests();
@@ -329,7 +329,7 @@ describe('Clinic Integration API', () => {
   it('deve retornar 429 em burst acima do limite autenticado configurado', async () => {
     const requests = [];
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 11; i++) {
       const payload = buildPaymentPayload(`evt-burst-${Date.now()}-${i}`, workspaceId);
       const timestamp = String(Math.floor(Date.now() / 1000));
       const rawBody = JSON.stringify(payload);
@@ -499,6 +499,10 @@ describe('Clinic Integration API', () => {
   });
 
   it('deve processar múltiplas requisições simultâneas do mesmo evento de forma thread-safe', async () => {
+    // Evita interferência do rate limit neste cenário de concorrência/idempotência.
+    process.env.CLINIC_AUTH_RATE_LIMIT_MAX = '10';
+    resetRateLimitStore();
+
     const externalEventId = `evt-concurrent-${Date.now()}`;
     const payload = buildPaymentPayload(externalEventId, workspaceId);
     const timestamp = String(Math.floor(Date.now() / 1000));

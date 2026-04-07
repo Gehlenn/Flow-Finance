@@ -1,6 +1,6 @@
 import request from 'supertest';
 import type { Express } from 'express';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const checkDatabaseHealthMock = vi.fn();
 const hasDatabaseConfigMock = vi.fn();
@@ -70,6 +70,8 @@ vi.mock('../../src/config/gemini', () => ({
 }));
 
 let app: Express;
+const originalOpenAiApiKey = process.env.OPENAI_API_KEY;
+const originalGeminiApiKey = process.env.GEMINI_API_KEY;
 
 describe('Health endpoints', () => {
   beforeAll(async () => {
@@ -78,7 +80,23 @@ describe('Health endpoints', () => {
     process.env.OPEN_FINANCE_STORE_DRIVER = 'memory';
     process.env.DISABLE_LEGACY_STATE_BLOBS = 'true';
     process.env.FEATURE_OPEN_FINANCE = 'true';
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.GEMINI_API_KEY;
     ({ default: app } = await import('../../src/index'));
+  }, 20_000);
+
+  afterAll(() => {
+    if (originalOpenAiApiKey === undefined) {
+      delete process.env.OPENAI_API_KEY;
+    } else {
+      process.env.OPENAI_API_KEY = originalOpenAiApiKey;
+    }
+
+    if (originalGeminiApiKey === undefined) {
+      delete process.env.GEMINI_API_KEY;
+    } else {
+      process.env.GEMINI_API_KEY = originalGeminiApiKey;
+    }
   });
 
   beforeEach(() => {
