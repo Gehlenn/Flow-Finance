@@ -43,7 +43,7 @@ export async function skipIf(
  */
 export async function hasAuthenticatedShell(page: Page): Promise<boolean> {
   return (await page.getByRole('button', { 
-    name: /AI CFO|Insights|Open Bank|Ajustes|Settings|Dashboard/i 
+    name: /Consultor IA|Ajustes|Settings|Inicio|Transacoes|Fluxo|Historico/i 
   }).count()) > 0;
 }
 
@@ -90,7 +90,7 @@ export async function skipIfBackendUnavailable(
   const healthUrl = `${backendUrl}/api/health`;
   
   try {
-    const response = await fetch(healthUrl, { timeout: 2000 });
+    const response = await fetch(healthUrl);
     if (!response.ok) {
       test.skip(true, `[backend-dependent] Backend health check failed (${response.status})`);
     }

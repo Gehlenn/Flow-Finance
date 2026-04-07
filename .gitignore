@@ -30,6 +30,10 @@ dist-ssr
 # Test results and screenshots
 test-results/
 playwright-report/
+playwright-report.json
+playwright-report-*.json
+playwright-results.json
+playwright-e2e-summary.json
 coverage/
 debug-screenshot.png
 *.png

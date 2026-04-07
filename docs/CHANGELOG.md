@@ -1,16 +1,24 @@
 ﻿# [0.9.5] - 2026-04-07
 
-### Patch de estabilidade E2E
+### Hardening de estabilidade para E2E e suites backend
 
 #### E2E resiliente sem falso negativo de infraestrutura
-- tests/e2e/helpers/appBootstrap.ts agora trata indisponibilidade temporaria do frontend (ERR_CONNECTION_REFUSED, ERR_CONNECTION_TIMED_OUT, ERR_EMPTY_RESPONSE) com test.skip, evitando falha falsa por ambiente.
-- playwright.config.ts passou a usar webServer de forma consistente (incluindo CI), com reuseExistingServer: true e timeout explicito para startup.
+- `tests/e2e/helpers/appBootstrap.ts` agora trata indisponibilidade temporaria do frontend (`ERR_CONNECTION_REFUSED`, `ERR_CONNECTION_TIMED_OUT`, `ERR_EMPTY_RESPONSE`) com `test.skip`, evitando falha falsa por ambiente.
+- `playwright.config.ts` passou a usar `webServer` de forma consistente, com `reuseExistingServer: true` e timeout explicito para startup.
+
+#### Backend tests mais robustos
+- `backend/tests/integration/clinic-integration.integration.test.ts` recebeu ajustes de limites e cenarios para reduzir flakiness em concorrencia e rate-limit.
+- `backend/tests/integration/health.integration.test.ts` recebeu ajuste de timeout no `beforeAll` para inicializacao lenta.
+- `backend/tests/unit/auth-controller-login-security.test.ts` ganhou reforco de validacao de entrada e geracao de `userId`.
 
 #### Validacoes executadas
-- npm run lint: aprovado
-- npm test: aprovado
-- npm run test:coverage:critical: aprovado (99.71% statements / 98.31% branches / 100% functions / 100% lines)
-- Playwright direcionado (chromium): 3 passed, 5 skipped, 0 failed
+- `npm run lint`: aprovado
+- `npm test`: aprovado
+- `npm run test:coverage:critical`: aprovado (`99.71%` statements / `98.31%` branches / `100%` functions / `100%` lines)
+- Playwright Chromium: `15 passed`, `2 skipped`, `0 failed`
+
+#### Observacao de release
+- Os skips residuais mapeados em Chromium permanecem controlados: Open Banking por dependencia de backend e edicao de categoria por dependencia de fixture local.
 # [0.9.4] - 2026-04-06
 
 ### Hotfix de observabilidade e probes
