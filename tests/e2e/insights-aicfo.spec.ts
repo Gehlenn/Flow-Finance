@@ -1,9 +1,15 @@
 import { test, expect, Page } from '@playwright/test';
 import { skipIfNoAuthShell } from './helpers/skipHelpers';
+import { gotoAuthedApp } from './helpers/appBootstrap';
+import { clickWithRetry } from './helpers/resilientActions';
 
 async function openApp(page: Page): Promise<void> {
-  await page.goto('/');
-  await page.waitForLoadState('networkidle');
+  await gotoAuthedApp(page, {
+    userId: 'insights-user',
+    userEmail: 'insights@flow.dev',
+    userName: 'Insights QA',
+    token: 'insights-token',
+  });
 }
 
 test.describe('Insights + AI CFO', () => {
@@ -18,13 +24,11 @@ test.describe('Insights + AI CFO', () => {
 
     await skipIfNoAuthShell(page);
 
-    const insightsButton = page.getByRole('button', { name: /Insights/i }).first();
-    await insightsButton.click();
+    await clickWithRetry(() => page.getByRole('button', { name: /Insights/i }));
     await expect(page.getByText(/Análise Financeira com IA|Insights/i).first()).toBeVisible();
 
-    const aiCfoButton = page.getByRole('button', { name: /AI CFO/i }).first();
-    await aiCfoButton.click();
-    await expect(page.getByText(/Consultor Financeiro Virtual|AI CFO/i).first()).toBeVisible();
+    await clickWithRetry(() => page.getByRole('button', { name: /Consultor IA/i }));
+    await expect(page.getByText(/Consultor IA|Apoio consultivo para decisoes financeiras/i).first()).toBeVisible();
 
     expect(consoleIssues).toEqual([]);
   });

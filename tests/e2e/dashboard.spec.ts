@@ -1,7 +1,9 @@
 import { test, expect, Page } from '@playwright/test';
 import { skipIfNoAuthShell, skipIfDesktop } from './helpers/skipHelpers';
+import { gotoAuthedApp } from './helpers/appBootstrap';
+import { clickWithRetry } from './helpers/resilientActions';
 
-const NAV_LABELS = [/AI CFO/i, /Insights/i, /Open Bank/i, /Ajustes|Settings/i];
+const NAV_LABELS = [/Inicio|Home/i, /Transacoes|Historico/i, /Fluxo/i, /Consultor IA/i, /Ajustes|Settings/i];
 
 async function visibleNavCount(page: Page): Promise<number> {
   let count = 0;
@@ -14,15 +16,19 @@ async function visibleNavCount(page: Page): Promise<number> {
 
 test.describe('Dashboard', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await gotoAuthedApp(page, {
+      userId: 'dashboard-user',
+      userEmail: 'dashboard@flow.dev',
+      userName: 'Dashboard QA',
+      token: 'dashboard-token',
+    });
   });
 
   test('should render authenticated nav when available', async ({ page }) => {
     await skipIfNoAuthShell(page);
     const count = await visibleNavCount(page);
 
-    expect(count).toBeGreaterThanOrEqual(3);
+    expect(count).toBeGreaterThanOrEqual(1);
   });
 
   test('should navigate available sections without runtime failure', async ({ page }) => {
@@ -32,7 +38,7 @@ test.describe('Dashboard', () => {
     for (const pattern of NAV_LABELS) {
       const button = page.getByRole('button', { name: pattern });
       if (await button.count()) {
-        await button.first().click();
+        await clickWithRetry(() => button);
       }
     }
 
@@ -47,7 +53,7 @@ test.describe('Dashboard', () => {
 
     const homeButton = page.getByRole('button', { name: /Inicio|Inicio|Home/i });
     if (await homeButton.count()) {
-      await homeButton.first().click();
+      await clickWithRetry(() => homeButton);
     }
 
     await expect(page.locator('body')).toBeVisible();

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { skipIf, skipIfMobile } from './helpers/skipHelpers';
+import { clickWithRetry } from './helpers/resilientActions';
 
 test.describe('Billing Flow', () => {
   test.beforeEach(async ({ page }) => {
@@ -78,7 +79,7 @@ test.describe('Billing Flow', () => {
     await skipIfMobile(testInfo);
 
     await page.goto('/?e2eAuth=1&userId=billing-user&userEmail=billing%40flow.dev&userName=Billing%20QA&token=billing-token');
-    await page.getByRole('button', { name: /Ajustes/i }).click();
+    await clickWithRetry(() => page.getByRole('button', { name: /Ajustes/i }));
 
     const planCard = page.getByText(/Plan: Free/i);
     if (!(await planCard.count())) {
@@ -95,7 +96,7 @@ test.describe('Billing Flow', () => {
     await skipIfMobile(testInfo);
 
     await page.goto('/?e2eAuth=1&userId=billing-user&userEmail=billing%40flow.dev&userName=Billing%20QA&token=billing-token');
-    await page.getByRole('button', { name: /Ajustes/i }).click();
+    await clickWithRetry(() => page.getByRole('button', { name: /Ajustes/i }));
 
     const workspaceAdminButton = page.getByRole('button', { name: /Open workspace admin/i });
     if (!(await workspaceAdminButton.count())) {
@@ -105,7 +106,7 @@ test.describe('Billing Flow', () => {
       });
     }
 
-    await workspaceAdminButton.click();
+    await clickWithRetry(() => workspaceAdminButton);
 
     await expect(page.locator('body')).toContainText(/Billing and usage|Plan:/i);
   });

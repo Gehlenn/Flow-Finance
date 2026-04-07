@@ -1,9 +1,15 @@
 import { test, expect, Page } from '@playwright/test';
 import { skipIfNoAuthShell, skipIf } from './helpers/skipHelpers';
+import { gotoAuthedApp } from './helpers/appBootstrap';
+import { clickWithRetry } from './helpers/resilientActions';
 
 async function openApp(page: Page): Promise<void> {
-  await page.goto('/');
-  await page.waitForLoadState('networkidle');
+  await gotoAuthedApp(page, {
+    userId: 'transactions-user',
+    userEmail: 'transactions@flow.dev',
+    userName: 'Transactions QA',
+    token: 'transactions-token',
+  });
 }
 
 test.describe('Transaction Management', () => {
@@ -18,7 +24,7 @@ test.describe('Transaction Management', () => {
     await skipIfNoAuthShell(page);
 
     const addButton = page.getByRole('button', {
-      name: /Add|Adicionar|Nova transa|Novo lancamento|Lancar|Registrar/i,
+      name: /Add|Adicionar|Nova transa|Novo lancamento|Lancar|Registrar|Adicionar lançamento/i,
     });
 
     if (!(await addButton.count())) {
@@ -28,7 +34,7 @@ test.describe('Transaction Management', () => {
       });
     }
 
-    await addButton.first().click();
+    await clickWithRetry(() => addButton);
     await expect(page.locator('body')).toBeVisible();
   });
 

@@ -1,5 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { hasAuthenticatedShell, skipIf } from './helpers/skipHelpers';
+import { clickWithRetry } from './helpers/resilientActions';
 
 async function waitForAuthResolution(page: Page): Promise<void> {
   await expect.poll(async () => {
@@ -51,7 +52,7 @@ test.describe('Authentication Flow', () => {
       });
     }
 
-    await signUpTrigger.first().click();
+    await clickWithRetry(() => signUpTrigger);
     await expect(page.getByLabel(/Nome completo|Seu nome|Name/i)).toBeVisible();
     await expect(page.getByLabel(/E-mail para cadastro|Seu e-mail|Email/i)).toBeVisible();
   });
@@ -71,7 +72,7 @@ test.describe('Authentication Flow', () => {
     await expect(page.getByLabel(/E-mail de acesso/i)).toBeVisible();
     await expect(page.getByLabel(/Senha de acesso/i)).toBeVisible();
 
-    await page.getByRole('button', { name: /Esqueci a senha/i }).click();
+    await clickWithRetry(() => page.getByRole('button', { name: /Esqueci a senha/i }));
     await expect(page.getByLabel(/E-mail para recuperar senha/i)).toBeVisible();
   });
 });

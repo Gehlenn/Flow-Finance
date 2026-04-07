@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { clickWithRetry } from './helpers/resilientActions';
 
 const ALLOWED_WARNING_PATTERNS = [
   /Download the React DevTools/i,
@@ -37,7 +38,7 @@ test.describe('Runtime Console Health', () => {
     for (const label of navLabels) {
       const button = page.getByRole('button', { name: label });
       if (await button.count()) {
-        await button.first().click();
+        await clickWithRetry(() => button);
         await page.waitForTimeout(200);
       }
     }

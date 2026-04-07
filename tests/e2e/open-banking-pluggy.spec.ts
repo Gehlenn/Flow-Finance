@@ -1,6 +1,7 @@
 import { test, expect, APIRequestContext, Page, TestInfo } from '@playwright/test';
 import { getFixtureAuthToken } from './fixtures/auth';
 import { hasAuthenticatedShell, skipIf } from './helpers/skipHelpers';
+import { clickWithRetry } from './helpers/resilientActions';
 
 const BACKEND_BASE_URL = process.env.PLAYWRIGHT_BACKEND_URL || 'http://localhost:3001';
 
@@ -86,11 +87,11 @@ async function ensureOpenBankNavigation(page: Page, testInfo: TestInfo): Promise
   const email = `e2e+pluggy-${Date.now()}@flowfinance.test`;
   const password = 'Pluggy@123';
 
-  await signUpTrigger.first().click();
+  await clickWithRetry(() => signUpTrigger);
   await page.getByPlaceholder('Seu nome').fill('E2E Pluggy');
   await page.getByPlaceholder('Seu e-mail').fill(email);
   await page.getByPlaceholder('Senha (min 6 car.)').fill(password);
-  await page.getByRole('button', { name: /Criar meu Acesso/i }).click();
+  await clickWithRetry(() => page.getByRole('button', { name: /Criar meu Acesso/i }));
 
   await page.waitForTimeout(2000);
   return (await openBankNav.count()) > 0;
@@ -104,7 +105,7 @@ async function openAddBankFlow(page: Page): Promise<boolean> {
 
   for (const button of addButtons) {
     if (await button.count()) {
-      await button.first().click();
+      await clickWithRetry(() => button);
       return true;
     }
   }
@@ -221,7 +222,7 @@ test.describe('Open Banking - Pluggy Connect', () => {
 
     const openBankNav = page.getByRole('button', { name: 'Open Bank' });
     await expect(openBankNav.first()).toBeVisible();
-    await openBankNav.click();
+    await clickWithRetry(() => openBankNav);
 
     const movedToAddBank = await openAddBankFlow(page);
     if (!movedToAddBank) {

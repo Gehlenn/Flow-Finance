@@ -1,27 +1,23 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
-  BarChart3,
   CloudCheck,
   CloudOff,
-  Download,
   History,
-  Landmark,
   LayoutDashboard,
   Loader2,
   MessageSquare,
   Plus,
   Settings as SettingsIcon,
-  Sparkles,
   Terminal,
   TrendingUp,
-  Zap,
 } from 'lucide-react';
 import AIInput from './components/AIInput';
 import Login from './components/Login';
 import NamePromptModal from './components/NamePromptModal';
 import AIDebugPanel from './components/dev/AIDebugPanel';
 import AITaskQueueMonitor from './components/dev/AITaskQueueMonitor';
+import { isFirebaseConfigured } from './services/firebase';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { addBreadcrumb, initSentry } from './src/config/sentry';
 import {
@@ -34,6 +30,7 @@ import { useAuthAndWorkspace } from './hooks/useAuthAndWorkspace';
 import { useFinancialState } from './hooks/useFinancialState';
 import { useNavigationTabs } from './hooks/useNavigationTabs';
 import { useSyncEngine } from './hooks/useSyncEngine';
+import { getMainNavigationItems } from './src/app/mainNavigation';
 
 const IS_DEV = import.meta.env.DEV;
 
@@ -67,6 +64,8 @@ const App: React.FC = () => {
     syncEngine,
   });
   const navigation = useNavigationTabs();
+  const mainNavigationItems = useMemo(() => getMainNavigationItems(IS_DEV), []);
+  const showDevPanels = IS_DEV && !authState.isE2EBootstrapActive;
 
   const [hideValues, setHideValues] = useState(false);
   const [showAIInput, setShowAIInput] = useState(false);
@@ -92,6 +91,11 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!authState.isLoggedIn) {
+      configureBillingTransport(null);
+      return;
+    }
+
+    if (!isFirebaseConfigured) {
       configureBillingTransport(null);
       return;
     }
@@ -268,25 +272,23 @@ const App: React.FC = () => {
 
         <button
           onClick={() => setShowAIInput(true)}
+          aria-label="Adicionar lançamento"
+          title="Adicionar lançamento"
           className="fixed bottom-24 right-6 w-16 h-16 bg-gradient-to-tr from-indigo-600 to-violet-600 text-white shadow-[0_15px_40px_-5px_rgba(79,70,229,0.5)] flex items-center justify-center z-50 hover:scale-110 active:scale-90 transition-all duration-300 btn-liquid rounded-[1.8rem]"
         >
           <Plus size={32} strokeWidth={2.5} />
         </button>
 
         <nav className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border-t border-slate-200 dark:border-slate-800 px-1 py-3 flex justify-between items-center z-[60] shadow-lg">
-          <NavButton active={navigation.activeTab === 'dashboard'} onClick={() => navigation.setActiveTab('dashboard')} icon={<LayoutDashboard size={17} />} label="Inicio" />
-          <NavButton active={navigation.activeTab === 'cfo'} onClick={() => navigation.setActiveTab('cfo')} icon={<MessageSquare size={17} />} label="AI CFO" />
-          <NavButton active={navigation.activeTab === 'autopilot'} onClick={() => navigation.setActiveTab('autopilot')} icon={<Zap size={17} />} label="Autopilot" />
-          <NavButton active={navigation.activeTab === 'insights'} onClick={() => navigation.setActiveTab('insights')} icon={<Sparkles size={17} />} label="Insights" />
-          <NavButton active={navigation.activeTab === 'analytics'} onClick={() => navigation.setActiveTab('analytics')} icon={<BarChart3 size={17} />} label="Analytics" />
-          <NavButton active={navigation.activeTab === 'accounts'} onClick={() => navigation.setActiveTab('accounts')} icon={<Landmark size={17} />} label="Contas" />
-          <NavButton active={navigation.activeTab === 'flow'} onClick={() => navigation.setActiveTab('flow')} icon={<TrendingUp size={17} />} label="Fluxo" />
-          <NavButton active={navigation.activeTab === 'history'} onClick={() => navigation.setActiveTab('history')} icon={<History size={17} />} label="Historico" />
-          <NavButton active={navigation.activeTab === 'import'} onClick={() => navigation.setActiveTab('import')} icon={<Download size={17} />} label="Importar" />
-          <NavButton active={navigation.activeTab === 'settings'} onClick={() => navigation.setActiveTab('settings')} icon={<SettingsIcon size={17} />} label="Ajustes" />
-          {IS_DEV && (
-            <NavButton active={navigation.activeTab === 'aicontrol'} onClick={() => navigation.setActiveTab('aicontrol')} icon={<Terminal size={17} />} label="AI Lab" />
-          )}
+          {mainNavigationItems.map((item) => (
+            <NavButton
+              key={item.tab}
+              active={navigation.activeTab === item.tab}
+              onClick={() => navigation.setActiveTab(item.tab)}
+              icon={renderTabIcon(item.tab)}
+              label={item.label}
+            />
+          ))}
         </nav>
 
         {showAIInput && (
@@ -299,8 +301,8 @@ const App: React.FC = () => {
           />
         )}
 
-        {IS_DEV && <AIDebugPanel />}
-        {IS_DEV && <AITaskQueueMonitor />}
+        {showDevPanels && <AIDebugPanel />}
+        {showDevPanels && <AITaskQueueMonitor />}
       </div>
     </ErrorBoundary>
   );
@@ -314,6 +316,27 @@ const NAV_BUTTON_CLASS_MAP = {
   iconInactive: 'p-1.5 rounded-xl',
   label: 'text-[8px] font-black uppercase tracking-widest',
 };
+
+function renderTabIcon(tab: string): React.ReactNode {
+  switch (tab) {
+    case 'dashboard':
+      return <LayoutDashboard size={17} />;
+    case 'history':
+      return <History size={17} />;
+    case 'flow':
+      return <TrendingUp size={17} />;
+    case 'cfo':
+      return <MessageSquare size={17} />;
+    case 'insights':
+      return <Activity size={17} />;
+    case 'settings':
+      return <SettingsIcon size={17} />;
+    case 'aicontrol':
+      return <Terminal size={17} />;
+    default:
+      return <LayoutDashboard size={17} />;
+  }
+}
 
 const NavButton: React.FC<{ active: boolean; onClick: () => void; icon: React.ReactNode; label: string }> = ({ active, onClick, icon, label }) => (
   <button onClick={onClick} className={`${NAV_BUTTON_CLASS_MAP.buttonBase} ${active ? NAV_BUTTON_CLASS_MAP.active : NAV_BUTTON_CLASS_MAP.inactive}`}>
