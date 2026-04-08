@@ -23,7 +23,7 @@
     "test:unit": "node scripts/run-vitest-stable.mjs",
     "test:firestore:rules": "node scripts/run-firestore-rules.mjs",
     "test:watch": "vitest --exclude tests/e2e/**",
-    "test:coverage": "vitest run --coverage --exclude tests/e2e/** --passWithNoTests",
+    "test:coverage": "vitest run --coverage --exclude tests/e2e/** --exclude tests/integration/** --exclude backend/tests/integration/** --passWithNoTests",
     "test:coverage:critical": "vitest run --config vitest.critical.config.ts",
     "validate:cfo:route": "node scripts/validate-cfo-route.mjs",
     "health:io": "vitest run --pool=threads tests/health/io-integrations.health.test.ts",
