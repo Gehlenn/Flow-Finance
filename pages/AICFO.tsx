@@ -32,6 +32,7 @@ const QUICK_PROMPTS: { label: string; question: string; icon: React.ReactNode }[
   { label: 'Posso gastar este mês?', question: 'Tenho espaço no meu orçamento para gastar mais este mês?', icon: <Wallet size={13} /> },
   { label: 'Como economizar?',       question: 'Onde posso cortar gastos para economizar mais?',           icon: <PiggyBank size={13} /> },
   { label: 'Risco nos próximos 30 dias?', question: 'Existe algum risco financeiro nos próximos 30 dias?', icon: <AlertTriangle size={13} /> },
+  { label: 'Cobrancas da clinica', question: 'Quais cobrancas da clinica vencem nesta semana e qual impacto no caixa?', icon: <HelpCircle size={13} /> },
   { label: 'Vale investir agora?',   question: 'Com base no meu saldo atual, vale a pena investir agora?', icon: <TrendingUp size={13} /> },
   { label: 'Resumo do mês',          question: 'Me dá um resumo da minha situação financeira este mês.',   icon: <Sparkles size={13} /> },
 ];

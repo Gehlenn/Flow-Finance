@@ -57,6 +57,17 @@ describe('cloudSyncStore', () => {
     expect(pulled.entities.transactions[0].id).toBe(push.reconciledIds[0].serverId);
     expect(pulled.entities.transactions[0].payload).toEqual({ id: push.reconciledIds[0].serverId, amount: 100 });
     expect(pulled.entities.accounts).toHaveLength(0);
+    expect(pulled.entities.reminders).toHaveLength(0);
+  });
+
+  it('supports reminders as a synced entity', async () => {
+    await pushSyncItems('workspace-reminders', 'reminders', [
+      { id: 'rem-1', updatedAt: '2026-03-01T10:00:00.000Z', payload: { id: 'rem-1', title: 'Cobrar paciente', amount: 200 } },
+    ]);
+
+    const pulled = await pullSyncItems('workspace-reminders');
+    expect(pulled.entities.reminders).toHaveLength(1);
+    expect(pulled.entities.reminders[0].id).toBe('rem-1');
   });
 
   it('isolates data between scopes', async () => {

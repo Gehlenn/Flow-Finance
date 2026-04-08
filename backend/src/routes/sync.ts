@@ -11,7 +11,7 @@ import { recordAuditEvent } from '../services/admin/auditLog';
 
 const router = Router();
 
-type SyncEntity = 'accounts' | 'transactions' | 'goals' | 'subscriptions';
+type SyncEntity = 'accounts' | 'transactions' | 'goals' | 'reminders' | 'subscriptions';
 type SyncPayloadItem = {
   id: string;
   updatedAt: string;
@@ -50,6 +50,7 @@ function recordEntityAuditEvents(
     accounts: { upsert: 'account.created', delete: 'account.deleted', resourceType: 'account' },
     transactions: { upsert: 'transaction.created', delete: 'transaction.deleted', resourceType: 'transaction' },
     goals: { upsert: 'goal.created', delete: 'goal.deleted', resourceType: 'goal' },
+    reminders: { upsert: 'reminder.created', delete: 'reminder.deleted', resourceType: 'reminder' },
     subscriptions: { upsert: 'billing.plan_changed', resourceType: 'subscription' },
   };
 

@@ -16,7 +16,7 @@ export type FinancialCollections = {
   alerts: Alert[];
 };
 
-export type EntityCollections = Pick<FinancialCollections, 'accounts' | 'transactions' | 'goals'>;
+export type EntityCollections = Pick<FinancialCollections, 'accounts' | 'transactions' | 'goals' | 'reminders'>;
 export type ProfileCollections = Pick<FinancialCollections, 'reminders' | 'alerts'>;
 
 export interface FinanceServiceContext {
@@ -363,9 +363,17 @@ export async function createReminder(
   } as Reminder;
 
   const nextReminders = [createdReminder, ...context.collections.reminders];
-  await context.syncProfile({ reminders: nextReminders });
+  const syncResult = await context.syncEntities(
+    { reminders: nextReminders },
+    { reminders: context.collections.reminders },
+  );
 
-  return { nextReminders, createdReminder };
+  const reconciledReminder = applyIdMapToCollection(
+    [createdReminder],
+    syncResult.idMaps.reminders,
+  )[0];
+
+  return { nextReminders: syncResult.entities.reminders, createdReminder: reconciledReminder };
 }
 
 export async function updateReminder(
@@ -376,8 +384,11 @@ export async function updateReminder(
     reminder.id === updatedReminder.id ? updatedReminder : reminder,
   );
 
-  await context.syncProfile({ reminders: nextReminders });
-  return nextReminders;
+  const syncResult = await context.syncEntities(
+    { reminders: nextReminders },
+    { reminders: context.collections.reminders },
+  );
+  return syncResult.entities.reminders;
 }
 
 export async function deleteReminder(
@@ -385,8 +396,11 @@ export async function deleteReminder(
   context: FinanceServiceContext,
 ): Promise<Reminder[]> {
   const nextReminders = context.collections.reminders.filter((reminder) => reminder.id !== reminderId);
-  await context.syncProfile({ reminders: nextReminders });
-  return nextReminders;
+  const syncResult = await context.syncEntities(
+    { reminders: nextReminders },
+    { reminders: context.collections.reminders },
+  );
+  return syncResult.entities.reminders;
 }
 
 export async function toggleReminder(
@@ -397,8 +411,11 @@ export async function toggleReminder(
     reminder.id === reminderId ? { ...reminder, completed: !reminder.completed } : reminder,
   );
 
-  await context.syncProfile({ reminders: nextReminders });
-  return nextReminders;
+  const syncResult = await context.syncEntities(
+    { reminders: nextReminders },
+    { reminders: context.collections.reminders },
+  );
+  return syncResult.entities.reminders;
 }
 
 export async function createAlert(

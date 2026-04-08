@@ -254,7 +254,7 @@ export function useNavigationTabs() {
           </Suspense>
         );
       case 'openbanking':
-        return (
+        return context.isDev ? (
           <Suspense fallback={<LoadingFallback />}>
             <OpenBankingPage
               userId={context.userId ?? 'local'}
@@ -265,7 +265,7 @@ export function useNavigationTabs() {
               onUpdateAccount={context.onUpdateAccount}
             />
           </Suspense>
-        );
+        ) : null;
       case 'aicontrol':
         return context.isDev ? (
           <Suspense fallback={<LoadingFallback />}>

@@ -26,4 +26,12 @@ describe('main navigation focus', () => {
 
     expect(items[items.length - 1]?.tab).toBe('aicontrol');
   });
+
+  it('never exposes openbanking as a main nav item in any mode', () => {
+    const prodItems = getMainNavigationItems(false);
+    const devItems = getMainNavigationItems(true);
+
+    expect(prodItems.some((item) => item.tab === 'openbanking')).toBe(false);
+    expect(devItems.some((item) => item.tab === 'openbanking')).toBe(false);
+  });
 });

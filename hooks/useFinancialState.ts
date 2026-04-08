@@ -41,7 +41,19 @@ export function useFinancialState(options: UseFinancialStateOptions) {
   const accounts = syncEngine.entities.accounts;
   const transactions = syncEngine.entities.transactions;
   const goals = syncEngine.entities.goals;
-  const reminders = syncEngine.profile.reminders;
+  const reminders = useMemo(() => {
+    const byId = new Map<string, Reminder>();
+
+    for (const reminder of syncEngine.profile.reminders) {
+      byId.set(reminder.id, reminder);
+    }
+
+    for (const reminder of syncEngine.entities.reminders) {
+      byId.set(reminder.id, reminder);
+    }
+
+    return Array.from(byId.values()).sort((left, right) => String(left.date).localeCompare(String(right.date), 'pt-BR'));
+  }, [syncEngine.entities.reminders, syncEngine.profile.reminders]);
   const alerts = syncEngine.profile.alerts;
 
   useEffect(() => {

@@ -24,6 +24,16 @@ export interface DashboardMetrics {
   activeAlerts: number;
 }
 
+export interface DashboardFocusNote {
+  title: string;
+  description: string;
+}
+
+export interface DashboardClinicReminderSummary {
+  pendingCount: number;
+  pendingAmount: number;
+}
+
 function isSameMonth(dateIso: string, referenceDate: Date): boolean {
   const date = new Date(dateIso);
   return (
@@ -63,6 +73,58 @@ export function calculateDashboardMetrics(
   };
 }
 
+export function buildDashboardFocusNote(metrics: DashboardMetrics): DashboardFocusNote {
+  const pendingRevenue = Math.max(metrics.projectedRevenueMonth - metrics.confirmedRevenueMonth, 0);
+
+  if (pendingRevenue > 0) {
+    return {
+      title: 'Receita prevista ainda nao realizada',
+      description: `Ha valores previstos que ainda nao viraram caixa neste mes: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(pendingRevenue)}.`,
+    };
+  }
+
+  if (metrics.activeAlerts > 0) {
+    return {
+      title: 'Alertas pedem revisao',
+      description: 'Revise os alertas ativos para evitar impacto no caixa de curto prazo.',
+    };
+  }
+
+  if (metrics.inflowMonth >= metrics.outflowMonth) {
+    return {
+      title: 'Caixa sob controle',
+      description: 'As entradas confirmadas do mes estao cobrindo as saidas registradas.',
+    };
+  }
+
+  return {
+    title: 'Saidas acima das entradas',
+    description: 'O ritmo de saidas superou as entradas confirmadas do mes e merece atencao.',
+  };
+}
+
+function hasClinicReminderMetadata(reminder: Reminder): boolean {
+  const metadata = reminder as unknown as Record<string, unknown>;
+  return metadata.source === 'clinic-automation' || typeof metadata.external_receivable_id === 'string';
+}
+
+export function buildDashboardClinicReminderSummary(
+  reminders: Reminder[],
+  referenceDate: Date = new Date(),
+): DashboardClinicReminderSummary {
+  const clinicPending = reminders.filter((reminder) => (
+    !reminder.completed
+    && Boolean(reminder.amount)
+    && isSameMonth(reminder.date, referenceDate)
+    && hasClinicReminderMetadata(reminder)
+  ));
+
+  return {
+    pendingCount: clinicPending.length,
+    pendingAmount: clinicPending.reduce((sum, reminder) => sum + (reminder.amount || 0), 0),
+  };
+}
+
 const Dashboard: React.FC<DashboardProps> = ({
   userName,
   activeWorkspaceName,
@@ -77,6 +139,11 @@ const Dashboard: React.FC<DashboardProps> = ({
   const metrics = useMemo(
     () => calculateDashboardMetrics(transactions, accounts, reminders, alerts.length),
     [transactions, accounts, reminders, alerts.length],
+  );
+  const focusNote = useMemo(() => buildDashboardFocusNote(metrics), [metrics]);
+  const clinicReminderSummary = useMemo(
+    () => buildDashboardClinicReminderSummary(reminders),
+    [reminders],
   );
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', {
@@ -144,6 +211,19 @@ const Dashboard: React.FC<DashboardProps> = ({
           tone="positive"
           icon={<Wallet size={14} />}
         />
+      </div>
+
+      <div className="rounded-[2rem] border border-amber-100 bg-amber-50/70 p-5 shadow-sm dark:border-amber-500/20 dark:bg-amber-500/10">
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-300">Foco do periodo</p>
+          <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">{focusNote.title}</p>
+          <p className="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">{focusNote.description}</p>
+          {clinicReminderSummary.pendingCount > 0 && (
+            <p className="mt-2 text-[11px] font-black text-amber-700 dark:text-amber-200">
+              Cobrancas da clinica pendentes: {clinicReminderSummary.pendingCount} · {valueOrHidden(clinicReminderSummary.pendingAmount)}
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="rounded-[2rem] border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">

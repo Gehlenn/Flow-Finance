@@ -136,7 +136,7 @@ export type UserIdentity = {
   email?: string | null;
 };
 
-export type SyncEntity = 'accounts' | 'transactions' | 'goals';
+export type SyncEntity = 'accounts' | 'transactions' | 'goals' | 'reminders';
 export type WorkspaceScopedEntity = SyncEntity | 'insights' | 'imports' | 'subscriptions';
 
 export type ProfileState = {
@@ -150,6 +150,7 @@ export type EntityState = {
   accounts: Account[];
   transactions: Transaction[];
   goals: Goal[];
+  reminders: Reminder[];
 };
 
 export type SyncEntityIdMap = Record<string, string>;
@@ -614,22 +615,34 @@ function sortGoals(goals: Goal[]): Goal[] {
   return [...goals].sort((left, right) => String(left.title).localeCompare(String(right.title), 'pt-BR'));
 }
 
+function sortReminders(reminders: Reminder[]): Reminder[] {
+  return [...reminders].sort((left, right) => String(left.date).localeCompare(String(right.date), 'pt-BR'));
+}
+
 export async function loadWorkspaceEntities(workspaceId: string): Promise<EntityState> {
-  const [accountSnapshot, transactionSnapshot, goalSnapshot] = await Promise.all([
+  const [accountSnapshot, transactionSnapshot, goalSnapshot, reminderSnapshot] = await Promise.all([
     getDocs(workspaceEntityCollection(workspaceId, 'accounts')),
     getDocs(workspaceEntityCollection(workspaceId, 'transactions')),
     getDocs(workspaceEntityCollection(workspaceId, 'goals')),
+    getDocs(workspaceEntityCollection(workspaceId, 'reminders')),
   ]);
 
   return {
     accounts: sortAccounts(accountSnapshot.docs.map((snapshot) => snapshot.data() as Account)),
     transactions: sortTransactions(transactionSnapshot.docs.map((snapshot) => snapshot.data() as Transaction)),
     goals: sortGoals(goalSnapshot.docs.map((snapshot) => snapshot.data() as Goal)),
+    reminders: sortReminders(reminderSnapshot.docs.map((snapshot) => snapshot.data() as Reminder)),
   };
 }
 
 function resolveAuditAction(entity: SyncEntity, operation: 'created' | 'updated' | 'deleted'): string {
-  const singular = entity === 'accounts' ? 'account' : entity === 'transactions' ? 'transaction' : 'goal';
+  const singular = entity === 'accounts'
+    ? 'account'
+    : entity === 'transactions'
+      ? 'transaction'
+      : entity === 'goals'
+        ? 'goal'
+        : 'reminder';
   return `${singular}.${operation}`;
 }
 

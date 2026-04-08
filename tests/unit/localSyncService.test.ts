@@ -89,7 +89,7 @@ describe('pullFromCloud', () => {
     const fakeResult = {
       since: null,
       serverTime: '2026-04-06T00:00:00.000Z',
-      entities: { goals: [], accounts: [], transactions: [], subscriptions: [] },
+      entities: { goals: [], accounts: [], transactions: [], reminders: [], subscriptions: [] },
     };
     apiRequestMock.mockResolvedValueOnce(fakeResult);
 
@@ -113,7 +113,7 @@ describe('pullFromCloud', () => {
     apiRequestMock.mockResolvedValueOnce({
       since: '2026-01-01T00:00:00.000Z',
       serverTime: '2026-04-06T00:00:00.000Z',
-      entities: { goals: [], accounts: [], transactions: [], subscriptions: [] },
+      entities: { goals: [], accounts: [], transactions: [], reminders: [], subscriptions: [] },
     });
 
     await pullFromCloud('2026-01-01T00:00:00.000Z');
@@ -137,6 +137,7 @@ describe('hydrateGoalsFromCloud', () => {
       goals,
       accounts: [],
       transactions: [],
+      reminders: [],
       subscriptions: [],
     },
   });

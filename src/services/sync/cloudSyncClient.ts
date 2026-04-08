@@ -6,7 +6,7 @@ import {
   type SyncEntityIdMap,
 } from '../firestoreWorkspaceStore';
 
-export type SyncEntity = 'accounts' | 'transactions' | 'goals';
+export type SyncEntity = 'accounts' | 'transactions' | 'goals' | 'reminders';
 
 type SyncPayload = object;
 
@@ -62,6 +62,7 @@ export async function pullSyncEntities<TPayload extends SyncPayload>(
       accounts: buildPullItems(entities.accounts as unknown as Array<TPayload & { id: string }>),
       transactions: buildPullItems(entities.transactions as unknown as Array<TPayload & { id: string }>),
       goals: buildPullItems(entities.goals as unknown as Array<TPayload & { id: string }>),
+      reminders: buildPullItems(entities.reminders as unknown as Array<TPayload & { id: string }>),
     },
   };
 }

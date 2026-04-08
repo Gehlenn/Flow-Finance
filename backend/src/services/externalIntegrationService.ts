@@ -15,6 +15,27 @@ import {
 import { hasProcessedExternalEvent, markExternalEventProcessed } from './externalIdempotencyStore';
 import { AppError } from '../middleware/errorHandler';
 
+function buildReminderSyncPayload(
+  event: ReceivableReminderCreatedEvent | ReceivableReminderUpdatedEvent,
+) {
+  return {
+    id: event.payload.externalReceivableId,
+    title: event.payload.serviceDescription || event.payload.description,
+    date: event.payload.dueDate,
+    type: 'Negócio',
+    amount: event.payload.outstandingAmount,
+    completed: false,
+    priority: 'media',
+    source: event.sourceSystem,
+    external_event_id: event.externalEventId,
+    external_customer_id: event.payload.externalCustomerId,
+    external_receivable_id: event.payload.externalReceivableId,
+    service_description: event.payload.serviceDescription,
+    notes: event.payload.notes,
+    reason: event.payload.reason,
+  };
+}
+
 function toIntegrationUserId(sourceSystem: string): string {
   return `integration:${sourceSystem}`;
 }
@@ -112,6 +133,36 @@ async function persistReminderEvent(
     | ReceivableReminderClearedEvent,
 ): Promise<void> {
   const integrationUserId = toIntegrationUserId(event.sourceSystem);
+
+  if (event.eventType === 'receivable_reminder_created' || event.eventType === 'receivable_reminder_updated') {
+    await pushSyncItems(
+      event.workspaceId,
+      'reminders',
+      [{
+        id: event.payload.externalReceivableId,
+        updatedAt: event.occurredAt,
+        payload: buildReminderSyncPayload(event),
+      }],
+      {
+        userId: integrationUserId,
+        workspaceId: event.workspaceId,
+      },
+    );
+  } else {
+    await pushSyncItems(
+      event.workspaceId,
+      'reminders',
+      [{
+        id: event.payload.externalReceivableId,
+        updatedAt: event.occurredAt,
+        deleted: true,
+      }],
+      {
+        userId: integrationUserId,
+        workspaceId: event.workspaceId,
+      },
+    );
+  }
 
   await appendDomainEvent({
     workspaceId: event.workspaceId,

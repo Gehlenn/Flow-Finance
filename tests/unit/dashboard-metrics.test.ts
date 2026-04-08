@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { calculateDashboardMetrics } from '../../components/Dashboard';
+import {
+  buildDashboardClinicReminderSummary,
+  buildDashboardFocusNote,
+  calculateDashboardMetrics,
+} from '../../components/Dashboard';
 import { Account } from '../../models/Account';
 import { Category, ReminderType, TransactionType, type Reminder, type Transaction } from '../../types';
 
@@ -93,5 +97,72 @@ describe('dashboard metrics', () => {
     expect(metrics.projectedRevenueMonth).toBe(300);
     expect(metrics.confirmedRevenueMonth).toBe(1000);
     expect(metrics.activeAlerts).toBe(2);
+  });
+
+  it('prioritizes pending projected revenue in the focus note', () => {
+    const note = buildDashboardFocusNote({
+      currentBalance: 1750,
+      inflowMonth: 500,
+      outflowMonth: 200,
+      projectedRevenueMonth: 1200,
+      confirmedRevenueMonth: 700,
+      activeAlerts: 0,
+    });
+
+    expect(note.title).toBe('Receita prevista ainda nao realizada');
+    expect(note.description).toContain('R$ 500,00');
+  });
+
+  it('falls back to alert review when there is no pending projected revenue', () => {
+    const note = buildDashboardFocusNote({
+      currentBalance: 1750,
+      inflowMonth: 1000,
+      outflowMonth: 800,
+      projectedRevenueMonth: 700,
+      confirmedRevenueMonth: 700,
+      activeAlerts: 2,
+    });
+
+    expect(note.title).toBe('Alertas pedem revisao');
+  });
+
+  it('summarizes clinic pending reminders from integration metadata', () => {
+    const referenceDate = new Date('2026-04-07T10:00:00.000Z');
+
+    const reminders = [
+      {
+        id: 'clinic-1',
+        title: 'Cobranca consulta',
+        date: '2026-04-10T09:00:00.000Z',
+        type: ReminderType.NEGOCIO,
+        amount: 320,
+        completed: false,
+        priority: 'media',
+        source: 'clinic-automation',
+      },
+      {
+        id: 'clinic-2',
+        title: 'Cobranca retorno',
+        date: '2026-04-11T09:00:00.000Z',
+        type: ReminderType.NEGOCIO,
+        amount: 180,
+        completed: false,
+        priority: 'media',
+        external_receivable_id: 'recv-2',
+      },
+      {
+        id: 'non-clinic',
+        title: 'Lembrete comum',
+        date: '2026-04-12T09:00:00.000Z',
+        type: ReminderType.NEGOCIO,
+        amount: 999,
+        completed: false,
+        priority: 'media',
+      },
+    ] as Reminder[];
+
+    const summary = buildDashboardClinicReminderSummary(reminders, referenceDate);
+    expect(summary.pendingCount).toBe(2);
+    expect(summary.pendingAmount).toBe(500);
   });
 });

@@ -73,7 +73,7 @@ describe('Settings workspace admin entry', () => {
     renderSettings('owner');
 
     await waitFor(() => {
-      expect(screen.getByText(/Open workspace admin/i)).toBeTruthy();
+      expect(screen.getByText(/Abrir admin do workspace/i)).toBeTruthy();
     });
   });
 
@@ -81,9 +81,21 @@ describe('Settings workspace admin entry', () => {
     renderSettings('viewer');
 
     await waitFor(() => {
-      expect(screen.getByText(/Plan:/i)).toBeTruthy();
+      expect(screen.getByText(/Plano:/i)).toBeTruthy();
     });
 
-    expect(screen.queryByText(/Open workspace admin/i)).toBeNull();
+    expect(screen.queryByText(/Abrir admin do workspace/i)).toBeNull();
+  });
+
+  it('renders PT-BR microcopy for key settings labels', async () => {
+    renderSettings('owner');
+
+    await waitFor(() => {
+      expect(screen.getByText(/Ajustes/i)).toBeTruthy();
+    });
+
+    expect(screen.getByText('Sair', { exact: false })).toBeTruthy();
+    expect(screen.getAllByText(/Suporte/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Tema/i)).toBeTruthy();
   });
 });

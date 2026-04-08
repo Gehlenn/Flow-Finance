@@ -61,13 +61,14 @@ export interface CloudSyncStoreFactoryOptions {
   firebaseAdapter?: FirebaseCloudSyncStoreAdapter;
 }
 
-const ENTITIES: SyncEntity[] = ['accounts', 'transactions', 'goals', 'subscriptions'];
+const ENTITIES: SyncEntity[] = ['accounts', 'transactions', 'goals', 'reminders', 'subscriptions'];
 
 function createEmptyEntities(): SyncEntityPayload {
   return {
     accounts: [],
     transactions: [],
     goals: [],
+    reminders: [],
     subscriptions: [],
   };
 }

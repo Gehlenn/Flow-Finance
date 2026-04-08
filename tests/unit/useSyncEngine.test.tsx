@@ -44,6 +44,7 @@ describe('useSyncEngine', () => {
         accounts: [{ id: 'acc-1', payload: { id: 'acc-1', name: 'Carteira', type: 'cash', balance: 0, currency: 'BRL', user_id: 'user-1', workspace_id: 'ws-1', tenant_id: 'tenant-1', created_at: '2026-04-01' } }],
         transactions: [{ id: 'tx-1', payload: { id: 'tx-1', amount: 20, description: 'Cafe', type: 'Despesa', category: 'Pessoal', workspace_id: 'ws-1', tenant_id: 'tenant-1', date: '2026-04-01' } }],
         goals: [{ id: 'goal-1', payload: { id: 'goal-1', title: 'Reserva', targetAmount: 100, currentAmount: 10, category: 'Investimento', workspace_id: 'ws-1', tenant_id: 'tenant-1' } }],
+        reminders: [{ id: 'rem-1', payload: { id: 'rem-1', title: 'Recebimento clinica', date: '2026-04-10', type: 'Negócio', completed: false, priority: 'media', amount: 180 } }],
       },
     });
   });
@@ -53,6 +54,9 @@ describe('useSyncEngine', () => {
   });
 
   it('carrega perfil do Firestore e entidades do Firestore workspace sync', async () => {
+    const onDisableCloudSync = vi.fn();
+    const onDisableBackendSync = vi.fn();
+
     const { result } = renderHook(() => useSyncEngine({
       userId: 'user-1',
       activeTenantId: 'tenant-1',
@@ -60,8 +64,8 @@ describe('useSyncEngine', () => {
       isE2EBootstrapActive: false,
       cloudSyncEnabled: true,
       backendSyncEnabled: false,
-      onDisableCloudSync: vi.fn(),
-      onDisableBackendSync: vi.fn(),
+      onDisableCloudSync,
+      onDisableBackendSync,
     }));
 
     await waitFor(() => {
@@ -73,10 +77,14 @@ describe('useSyncEngine', () => {
     expect(result.current.profile.theme).toBe('dark');
     expect(result.current.entities.accounts[0].id).toBe('acc-1');
     expect(result.current.entities.transactions[0].id).toBe('tx-1');
+    expect(result.current.entities.reminders[0].id).toBe('rem-1');
     expect(syncEngineMocks.mockPullSyncEntities).toHaveBeenCalledWith({ workspaceId: 'ws-1' });
   });
 
   it('sincroniza perfil e entidades pelo Firestore helpers', async () => {
+    const onDisableCloudSync = vi.fn();
+    const onDisableBackendSync = vi.fn();
+
     const { result } = renderHook(() => useSyncEngine({
       userId: 'user-1',
       activeTenantId: 'tenant-1',
@@ -84,8 +92,8 @@ describe('useSyncEngine', () => {
       isE2EBootstrapActive: false,
       cloudSyncEnabled: true,
       backendSyncEnabled: false,
-      onDisableCloudSync: vi.fn(),
-      onDisableBackendSync: vi.fn(),
+      onDisableCloudSync,
+      onDisableBackendSync,
     }));
 
     await waitFor(() => {
@@ -118,6 +126,9 @@ describe('useSyncEngine', () => {
       reconciledIds: [{ clientId: 'tmp_acc-1', serverId: 'acc-official-1' }],
     });
 
+    const onDisableCloudSync = vi.fn();
+    const onDisableBackendSync = vi.fn();
+
     const { result } = renderHook(() => useSyncEngine({
       userId: 'user-1',
       activeTenantId: 'tenant-1',
@@ -125,8 +136,8 @@ describe('useSyncEngine', () => {
       isE2EBootstrapActive: false,
       cloudSyncEnabled: true,
       backendSyncEnabled: false,
-      onDisableCloudSync: vi.fn(),
-      onDisableBackendSync: vi.fn(),
+      onDisableCloudSync,
+      onDisableBackendSync,
     }));
 
     await waitFor(() => {

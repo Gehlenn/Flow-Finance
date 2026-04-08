@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const SyncEntitySchema = z.enum(['accounts', 'transactions', 'goals', 'subscriptions']);
+const SyncEntitySchema = z.enum(['accounts', 'transactions', 'goals', 'reminders', 'subscriptions']);
 
 const SyncItemSchema = z.object({
   id: z.string().min(1),

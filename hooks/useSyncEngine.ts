@@ -25,6 +25,7 @@ export type SyncEntityState = {
   accounts: Account[];
   transactions: Transaction[];
   goals: Goal[];
+  reminders: Reminder[];
 };
 
 export type SyncEntityIdMap = Record<string, string>;
@@ -56,6 +57,7 @@ const DEFAULT_ENTITIES: SyncEntityState = {
   accounts: [],
   transactions: [],
   goals: [],
+  reminders: [],
 };
 
 function applyIdMapToCollection<TItem extends { id: string }>(
@@ -111,11 +113,13 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
           const syncedAccounts = extractSyncPayloads(syncData.entities.accounts) as unknown as Account[];
           const syncedTransactions = extractSyncPayloads(syncData.entities.transactions) as unknown as Transaction[];
           const syncedGoals = extractSyncPayloads(syncData.entities.goals) as unknown as Goal[];
+          const syncedReminders = extractSyncPayloads(syncData.entities.reminders) as unknown as Reminder[];
 
           const nextEntities = {
             accounts: syncedAccounts,
             transactions: syncedTransactions,
             goals: syncedGoals,
+            reminders: syncedReminders,
           };
 
           entityRef.current = nextEntities;
@@ -129,11 +133,13 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
           const syncedAccounts = extractSyncPayloads(syncData.entities.accounts) as unknown as Account[];
           const syncedTransactions = extractSyncPayloads(syncData.entities.transactions) as unknown as Transaction[];
           const syncedGoals = extractSyncPayloads(syncData.entities.goals) as unknown as Goal[];
+          const syncedReminders = extractSyncPayloads(syncData.entities.reminders) as unknown as Reminder[];
 
           const nextEntities = {
             accounts: syncedAccounts,
             transactions: syncedTransactions,
             goals: syncedGoals,
+            reminders: syncedReminders,
           };
 
           entityRef.current = nextEntities;
@@ -236,6 +242,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
           accounts: updates.accounts || entityRef.current.accounts,
           transactions: updates.transactions || entityRef.current.transactions,
           goals: updates.goals || entityRef.current.goals,
+          reminders: updates.reminders || entityRef.current.reminders,
         },
         idMaps: {},
       };
@@ -275,6 +282,16 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
         idMaps.goals = Object.fromEntries(result.reconciledIds.map((entry) => [entry.clientId, entry.serverId]));
       }
 
+      if (Array.isArray(updates.reminders)) {
+        const result = await replaceSyncEntityCollection(
+          'reminders',
+          updates.reminders,
+          previous?.reminders || entityRef.current.reminders,
+          { userId, tenantId: activeTenantId, workspaceId: activeWorkspaceId },
+        );
+        idMaps.reminders = Object.fromEntries(result.reconciledIds.map((entry) => [entry.clientId, entry.serverId]));
+      }
+
       const nextEntities = {
         accounts: Array.isArray(updates.accounts)
           ? applyIdMapToCollection(updates.accounts, idMaps.accounts)
@@ -285,6 +302,9 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
         goals: Array.isArray(updates.goals)
           ? applyIdMapToCollection(updates.goals, idMaps.goals)
           : entityRef.current.goals,
+        reminders: Array.isArray(updates.reminders)
+          ? applyIdMapToCollection(updates.reminders, idMaps.reminders)
+          : entityRef.current.reminders,
       };
 
       entityRef.current = nextEntities;

@@ -10,14 +10,14 @@
  *   3. Pull nuvem on-load → hidrata localStorage ao carregar workspace
  *
  * Entidades suportadas (espelho do SyncEntity do backend):
- *   goals | accounts | transactions | subscriptions
+ *   goals | accounts | transactions | reminders | subscriptions
  *
  * AI memory e task queue ficam apenas locais (são contexto efêmero).
  */
 
 import { API_ENDPOINTS, apiRequest } from '../config/api.config';
 
-export type LocalSyncEntity = 'goals' | 'accounts' | 'transactions' | 'subscriptions';
+export type LocalSyncEntity = 'goals' | 'accounts' | 'transactions' | 'reminders' | 'subscriptions';
 
 export interface SyncItem {
   id: string;
@@ -46,6 +46,7 @@ export interface SyncPullResult {
     goals: SyncItem[];
     accounts: SyncItem[];
     transactions: SyncItem[];
+    reminders: SyncItem[];
     subscriptions: SyncItem[];
   };
 }
