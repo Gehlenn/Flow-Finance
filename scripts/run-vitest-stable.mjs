@@ -77,13 +77,18 @@ function runVitestChunk(files, index, total) {
   console.log(`[vitest-stable] Running chunk ${index + 1}/${total} with ${files.length} files`);
 
   for (const file of files) {
+    // Isolated files use threads pool (single process, no fork doubling) with more memory
+    const isIsolated = isolatedTestFiles.has(file);
+    const pool = isIsolated ? 'threads' : 'forks';
+    const heap = isIsolated ? '4096' : '2048';
+
     const result = spawnSync(
       npxCommand,
-        ['vitest', 'run', file, '--pool=forks', '--maxWorkers=1', '--silent=true'],
+        ['vitest', 'run', file, `--pool=${pool}`, '--maxWorkers=1', '--silent=true'],
       {
         cwd: projectRoot,
         stdio: 'inherit',
-        env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=2048' },
+        env: { ...process.env, NODE_OPTIONS: `--max-old-space-size=${heap}` },
       }
     );
 
