@@ -31,6 +31,9 @@ jobs:
 
       - name: Run unit tests
         run: npm test
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+          VITEST_STABLE_CHUNKS: '16'
 
       - name: Run critical coverage
         run: npm run test:coverage:critical

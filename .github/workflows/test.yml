@@ -1,5 +1,9 @@
 name: Test Suite
 
+permissions:
+  contents: read
+  security-events: write
+
 on:
   push:
     branches: [ main, master, develop ]
@@ -54,16 +58,15 @@ jobs:
       run: |
         PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "CREATE DATABASE flowfinance_test;"
 
-    - name: Run unit tests
-      run: npm run test
+    - name: Run unit tests and generate coverage report
+      run: npm run test:ci
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/flowfinance_test
         REDIS_URL: redis://localhost:6379
         JWT_SECRET: test-jwt-secret-for-testing-only
         NODE_ENV: test
-
-    - name: Generate coverage report
-      run: npm run test:ci
+        NODE_OPTIONS: --max-old-space-size=8192
+        VITEST_STABLE_CHUNKS: '16'
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3

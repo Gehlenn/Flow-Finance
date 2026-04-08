@@ -1,5 +1,9 @@
 name: Build & Test
 
+permissions:
+  contents: read
+  security-events: write
+
 on:
   push:
     branches: [ main, master, develop ]
@@ -40,6 +44,9 @@ jobs:
 
     - name: Run tests
       run: npm run test:ci
+      env:
+        NODE_OPTIONS: --max-old-space-size=8192
+        VITEST_STABLE_CHUNKS: '16'
 
     - name: Run E2E tests
       run: npm run test:e2e
