@@ -10,12 +10,12 @@ const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 
 const ignoredDirs = new Set(['node_modules', 'coverage', 'dist', '.git', '.vercel']);
 const defaultExcludedPatterns = [
-  '/tests/e2e/',
+  'tests/e2e/',
   'integration',
-  '/tests/firestore/firestore.rules.emulator.test.ts',
-  '/tests/unit/api-storage-provider.test.ts',
-  '/tests/unit/backend-controllers.test.ts',
-  '/tests/unit/backend-oauth.test.ts',
+  'tests/firestore/firestore.rules.emulator.test.ts',
+  'tests/unit/api-storage-provider.test.ts',
+  'tests/unit/backend-controllers.test.ts',
+  'tests/unit/backend-oauth.test.ts',
 ];
 const isolatedTestFiles = new Set([
   'tests/unit/ai-control-panel-viewers.test.tsx',
