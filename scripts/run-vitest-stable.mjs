@@ -83,7 +83,7 @@ function runVitestChunk(files, index, total) {
       {
         cwd: projectRoot,
         stdio: 'inherit',
-        env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=3840' },
+        env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=2048' },
       }
     );
 

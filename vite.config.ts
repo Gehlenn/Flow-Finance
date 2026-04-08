@@ -57,6 +57,11 @@ export default defineConfig(({ mode }) => {
         globals: true,
         environment: 'jsdom',
         pool: 'forks',
+        server: {
+          deps: {
+            external: [/^firebase/, /^pino/],
+          },
+        },
         exclude: [
           '**/node_modules/**',
           '**/dist/**',
