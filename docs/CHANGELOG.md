@@ -31,6 +31,10 @@
 - `npm run test:coverage:critical`: aprovado (>= 98% no recorte critico)
 - Playwright Chromium direcionado: `1 passed`, `3 skipped`, `0 failed`
 
+#### Pos-merge: estabilidade da suite CI
+- `test:ci` consolidado para usar o runner estavel em chunks (`scripts/run-vitest-stable.mjs`) para reduzir risco de `JavaScript heap out of memory` em execucoes completas.
+- Mantido recorte sem E2E e sem integracao pesada no fluxo de CI para feedback mais previsivel.
+
 # [0.9.5] - 2026-04-07
 
 ### Patch de estabilidade E2E
