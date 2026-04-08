@@ -79,7 +79,7 @@ function runVitestChunk(files, index, total) {
   for (const file of files) {
     const result = spawnSync(
       npxCommand,
-        ['vitest', 'run', file, '--pool=threads', '--maxWorkers=1', '--silent=true'],
+        ['vitest', 'run', file, '--pool=forks', '--maxWorkers=1', '--silent=true'],
       {
         cwd: projectRoot,
         stdio: 'inherit',
