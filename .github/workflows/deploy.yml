@@ -84,6 +84,9 @@ jobs:
           railway|render|aws)
             echo "Deploy target: $DEPLOY_PLATFORM"
             ;;
+          none)
+            echo "DEPLOY_PLATFORM not configured. Skipping external deployment steps."
+            ;;
           *)
             echo "Invalid DEPLOY_PLATFORM: '$DEPLOY_PLATFORM'"
             echo "Configure repository variable DEPLOY_PLATFORM as one of: railway, render, aws"
@@ -156,9 +159,11 @@ jobs:
         fi
 
     - name: Setup Docker Buildx
+      if: ${{ steps.deploy-target.outputs.platform != 'none' }}
       uses: docker/setup-buildx-action@v3
 
     - name: Login to Container Registry
+      if: ${{ steps.deploy-target.outputs.platform != 'none' }}
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
@@ -166,6 +171,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Extract metadata for frontend
+      if: ${{ steps.deploy-target.outputs.platform != 'none' }}
       id: meta-frontend
       uses: docker/metadata-action@v5
       with:
@@ -177,6 +183,7 @@ jobs:
           type=raw,value=latest,enable={{is_default_branch}}
 
     - name: Build and push frontend Docker image
+      if: ${{ steps.deploy-target.outputs.platform != 'none' }}
       uses: docker/build-push-action@v5
       with:
         context: .
@@ -191,6 +198,7 @@ jobs:
           VITE_SENTRY_DSN=${{ secrets.SENTRY_DSN }}
 
     - name: Extract metadata for backend
+      if: ${{ steps.deploy-target.outputs.platform != 'none' }}
       id: meta-backend
       uses: docker/metadata-action@v5
       with:
@@ -202,6 +210,7 @@ jobs:
           type=raw,value=latest,enable={{is_default_branch}}
 
     - name: Build and push backend Docker image
+      if: ${{ steps.deploy-target.outputs.platform != 'none' }}
       uses: docker/build-push-action@v5
       with:
         context: ./backend
