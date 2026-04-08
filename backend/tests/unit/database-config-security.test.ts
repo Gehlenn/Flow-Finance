@@ -1,6 +1,29 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import { hasDatabaseConfig, resolveDatabaseSslConfig } from '../../src/config/database';
+
+const DATABASE_ENV_KEYS = ['DATABASE_URL', 'DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD'] as const;
+
+let originalEnv: Partial<Record<(typeof DATABASE_ENV_KEYS)[number], string | undefined>>;
+
+beforeEach(() => {
+  originalEnv = {};
+  for (const key of DATABASE_ENV_KEYS) {
+    originalEnv[key] = process.env[key];
+    delete process.env[key];
+  }
+});
+
+afterEach(() => {
+  for (const key of DATABASE_ENV_KEYS) {
+    const previous = originalEnv[key];
+    if (previous === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = previous;
+    }
+  }
+});
 
 describe('hasDatabaseConfig', () => {
   it('returns false when no explicit database environment is present', () => {
