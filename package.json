@@ -50,7 +50,7 @@
   "dependencies": {
     "@capacitor/android": "^8.2.0",
     "@capacitor/core": "^8.2.0",
-    "@google/genai": "^1.40.0",
+    "@google/genai": "^1.48.0",
     "@google/generative-ai": "^0.24.1",
     "@sentry/react": "^10.47.0",
     "@sentry/tracing": "^7.120.4",
