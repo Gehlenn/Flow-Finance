@@ -35,6 +35,9 @@ jobs:
       - name: Run critical coverage
         run: npm run test:coverage:critical
 
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
       - name: Run E2E tests
         run: npm run test:e2e
 
@@ -44,7 +47,7 @@ jobs:
       - name: Build backend
         run: |
           cd backend
-        npm ci
+          npm ci
           npm run build
 
       - name: Upload coverage reports
