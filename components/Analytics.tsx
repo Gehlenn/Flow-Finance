@@ -149,7 +149,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ transactions, hideValues }) => {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}} dy={10} />
                 <YAxis hide />
-                <Tooltip cursor={{fill: '#f8fafc'}} formatter={(v: number | undefined) => formatCurrency(v ?? 0)} />
+                <Tooltip cursor={{fill: '#f8fafc'}} formatter={(v) => formatCurrency(Number(v))} />
                 <Bar dataKey="value" radius={[12, 12, 12, 12]} barSize={60}>
                   {comparisonData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
                 </Bar>
@@ -187,7 +187,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ transactions, hideValues }) => {
                   <Pie data={categoryData} innerRadius={60} outerRadius={80} paddingAngle={8} dataKey="value" stroke="none">
                     {categoryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(v: number | undefined) => formatCurrency(v ?? 0)} contentStyle={{borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
+                  <Tooltip formatter={(v) => formatCurrency(Number(v))} contentStyle={{borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (

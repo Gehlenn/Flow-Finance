@@ -24,9 +24,13 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: |
+          package-lock.json
+          backend/package-lock.json
 
     - name: Install dependencies
-      run: npm install --no-audit --no-fund
+      run: npm ci
 
     - name: Install backend dependencies
       run: npm ci --prefix backend
@@ -36,9 +40,6 @@ jobs:
 
     - name: Run tests
       run: npm run test:ci
-
-    - name: Install Playwright browsers
-      run: npx playwright install --with-deps chromium
 
     - name: Run E2E tests
       run: npm run test:e2e
@@ -63,9 +64,13 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: |
+          package-lock.json
+          backend/package-lock.json
 
     - name: Install dependencies
-      run: npm install --no-audit --no-fund
+      run: npm ci
 
     - name: Build frontend
       run: npm run build
@@ -91,6 +96,10 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: |
+          package-lock.json
+          backend/package-lock.json
 
     - name: Change to backend directory
       run: cd backend

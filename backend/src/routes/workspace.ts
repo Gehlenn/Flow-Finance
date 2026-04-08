@@ -15,18 +15,16 @@ const router = Router();
 
 router.use(authMiddleware);
 
-function normalizeParam(param: string | string[] | undefined): string {
-  if (Array.isArray(param)) {
-    return param[0] ?? '';
+function normalizeParam(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) {
+    return value[0];
   }
 
-  return param ?? '';
+  return value;
 }
 
-function normalizeRole(role: unknown): 'owner' | 'admin' | 'member' | 'viewer' {
-  return role === 'owner' || role === 'admin' || role === 'member' || role === 'viewer'
-    ? role
-    : 'member';
+function normalizeRole(value: unknown): 'owner' | 'admin' | 'member' | 'viewer' {
+  return value === 'owner' || value === 'admin' || value === 'member' || value === 'viewer' ? value : 'member';
 }
 
 router.post('/', asyncHandler(async (req: Request, res: Response) => {
