@@ -87,7 +87,7 @@ test.describe('Billing Flow', () => {
     });
     await clickWithRetry(() => page.getByRole('button', { name: /Ajustes/i }));
 
-    const planCard = page.getByText(/Plan: Free/i);
+    const planCard = page.getByText(/Plano: Free/i);
     await expect(planCard).toBeVisible({ timeout: 10000 });
   });
 
@@ -102,10 +102,10 @@ test.describe('Billing Flow', () => {
     });
     await clickWithRetry(() => page.getByRole('button', { name: /Ajustes/i }));
 
-    const workspaceAdminButton = page.getByRole('button', { name: /Open workspace admin/i });
+    const workspaceAdminButton = page.getByRole('button', { name: /Abrir admin do workspace/i });
     await expect(workspaceAdminButton).toBeVisible({ timeout: 10000 });
     await clickWithRetry(() => workspaceAdminButton);
 
-    await expect(page.locator('body')).toContainText(/Billing and usage|Plan:/i);
+    await expect(page.locator('body')).toContainText(/Plano:|Faturamento e uso/i);
   });
 });
