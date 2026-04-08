@@ -20,6 +20,7 @@ const defaultExcludedPatterns = [
 ];
 const isolatedTestFiles = new Set([
   'tests/unit/ai-control-panel-viewers.test.tsx',
+  'tests/unit/useSyncEngine.test.tsx',
 ]);
 
 function collectTestFiles(dir) {
@@ -75,23 +76,25 @@ function splitIntoChunks(items, chunkCount) {
 function runVitestChunk(files, index, total) {
   console.log(`[vitest-stable] Running chunk ${index + 1}/${total} with ${files.length} files`);
 
-  const result = spawnSync(
-    npxCommand,
-    ['vitest', 'run', ...files, '--maxWorkers=1', '--silent=true'],
-    {
-      cwd: projectRoot,
-      stdio: 'inherit',
-      env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=8192' },
+  for (const file of files) {
+    const result = spawnSync(
+      npxCommand,
+        ['vitest', 'run', file, '--pool=threads', '--maxWorkers=1', '--silent=true'],
+      {
+        cwd: projectRoot,
+        stdio: 'inherit',
+        env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=8192' },
+      }
+    );
+
+    if (typeof result.status === 'number' && result.status !== 0) {
+      return result.status;
     }
-  );
 
-  if (typeof result.status === 'number' && result.status !== 0) {
-    return result.status;
-  }
-
-  if (typeof result.signal === 'string') {
-    console.error(`[vitest-stable] Chunk ${index + 1} exited with signal ${result.signal}`);
-    return 1;
+    if (typeof result.signal === 'string') {
+      console.error(`[vitest-stable] Test file ${file} exited with signal ${result.signal}`);
+      return 1;
+    }
   }
 
   return 0;
