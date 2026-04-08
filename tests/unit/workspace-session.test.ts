@@ -16,6 +16,7 @@ vi.mock('../../src/services/firestoreWorkspaceStore', () => ({
 import {
   clearActiveWorkspace,
   ensureActiveWorkspace,
+  getCurrentWorkspaceIdentity,
   setActiveWorkspaceId,
   WORKSPACE_CHANGED_EVENT,
 } from '../../src/services/workspaceSession';
@@ -76,5 +77,18 @@ describe('workspaceSession', () => {
     expect(listener).toHaveBeenCalledTimes(1);
 
     window.removeEventListener(WORKSPACE_CHANGED_EVENT, listener as EventListener);
+  });
+
+  it('falls back to E2E bootstrap identity when firebase auth is unavailable', () => {
+    localStorage.setItem('flow_e2e_auth', '1');
+    localStorage.setItem('flow_e2e_user_id', 'e2e-user-1');
+    localStorage.setItem('flow_e2e_user_email', 'e2e@flow.dev');
+    localStorage.setItem('flow_e2e_user_name', 'E2E QA');
+
+    expect(getCurrentWorkspaceIdentity()).toEqual({
+      userId: 'e2e-user-1',
+      email: 'e2e@flow.dev',
+      name: 'E2E QA',
+    });
   });
 });

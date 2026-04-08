@@ -1,4 +1,37 @@
-﻿# [0.9.5] - 2026-04-07
+﻿# [0.9.6] - 2026-04-07
+
+### Simplificacao de UI - Ciclo 1
+
+#### Navegacao principal simplificada
+- Barra de navegacao enxugada para 5 tabs de nucleo de produto em producao: Inicio, Transacoes, Fluxo, Consultor IA e Ajustes.
+- AI Lab disponivel somente em modo dev.
+- Open Finance, Analytics, Autopilot e Contas removidos da barra principal sem delete permanente no codigo.
+- `src/app/mainNavigation.ts`: `getMainNavigationItems(isDevMode)` centraliza o controle de exibicao.
+
+#### Dashboard com indicadores de decisao
+- `calculateDashboardMetrics` expoe: saldo atual, entradas do mes, saidas do mes, receitas previstas, receitas confirmadas e alertas ativos.
+- Teste unitario em `tests/unit/dashboard-metrics.test.ts` protege a logica de calculo.
+- Acoes rapidas de navegacao cobertas por `tests/unit/dashboard-quick-actions.test.tsx`.
+
+#### Assistente e Consultor IA com posicionamento consultivo
+- `src/app/assistantCopy.ts`: copy centralizada com tom consultivo e orientado a decisao.
+- Linguagem inflada removida dos cabecalhos e descricoes de IA.
+- Placeholder e onboarding alinhados com foco em caixa, entradas, saidas e risco.
+- `tests/unit/assistant-copy.test.ts` garante que o tom nao regride.
+
+#### Microcopy de fluxos secundarios
+- `src/app/secondaryFlowsCopy.ts`: copy de Metas, Importacao e Scanner centralizada.
+- Revisao antes de salvar destacada na importacao e no scanner.
+- `tests/unit/secondary-flows-copy.test.ts` cobre os contratos de copy.
+
+#### Validacoes executadas
+- `npm run build`: aprovado
+- `npm run lint`: aprovado
+- `npm test`: aprovado
+- `npm run test:coverage:critical`: aprovado (>= 98% no recorte critico)
+- Playwright Chromium direcionado: `1 passed`, `3 skipped`, `0 failed`
+
+# [0.9.5] - 2026-04-07
 
 ### Patch de estabilidade E2E
 

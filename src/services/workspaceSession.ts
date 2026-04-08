@@ -43,10 +43,32 @@ export type {
 
 export const WORKSPACE_CHANGED_EVENT = 'flow:workspace-changed';
 
+function getE2EBootstrapIdentity(): UserIdentity | undefined {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  const isE2EAuth = window.localStorage.getItem('flow_e2e_auth') === '1';
+  if (!isE2EAuth) {
+    return undefined;
+  }
+
+  const userId = window.localStorage.getItem('flow_e2e_user_id');
+  if (!userId) {
+    return undefined;
+  }
+
+  return {
+    userId,
+    email: window.localStorage.getItem('flow_e2e_user_email'),
+    name: window.localStorage.getItem('flow_e2e_user_name'),
+  };
+}
+
 export function getCurrentWorkspaceIdentity(): UserIdentity | undefined {
   const currentUser = auth.currentUser;
   if (!currentUser?.uid) {
-    return undefined;
+    return getE2EBootstrapIdentity();
   }
 
   return {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { auth, onAuthStateChanged } from '../services/firebase';
 import { addBreadcrumb, clearUser, setUser } from '../src/config/sentry';
-import { getStoredWorkspaceId } from '../src/config/api.config';
+import { getStoredWorkspaceId, setStoredWorkspaceId } from '../src/config/api.config';
 import { getE2EAuthBootstrap } from '../src/utils/e2eAuthBootstrap';
 import { bootstrapBackendSessionFromFirebase } from '../src/services/backendSession';
 import { clearEphemeralAccessToken, setEphemeralAccessToken } from '../src/services/authSessionStore';
@@ -32,9 +32,14 @@ export type ActiveWorkspaceState = {
 };
 
 export function useAuthAndWorkspace() {
-  const e2eBootstrap = typeof window === 'undefined'
-    ? null
-    : getE2EAuthBootstrap(window.location.search, window.localStorage, IS_DEV);
+  const e2eSearch = typeof window === 'undefined' ? '' : window.location.search;
+  const e2eBootstrap = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    return getE2EAuthBootstrap(window.location.search, window.localStorage, IS_DEV);
+  }, [e2eSearch]);
   const isE2EBootstrapActive = Boolean(e2eBootstrap);
 
   const [user, setCurrentUser] = useState<AuthenticatedUser>({
@@ -116,7 +121,7 @@ export function useAuthAndWorkspace() {
         role: null,
       });
 
-      if (workspaceId) {
+      if (workspaceId && !isE2EBootstrapActive) {
         void refreshWorkspace().catch((error) => {
           console.warn('[Workspace] Failed to refresh workspace context:', error);
         });
@@ -125,16 +130,26 @@ export function useAuthAndWorkspace() {
 
     window.addEventListener(WORKSPACE_CHANGED_EVENT, handleWorkspaceChanged as EventListener);
     return () => window.removeEventListener(WORKSPACE_CHANGED_EVENT, handleWorkspaceChanged as EventListener);
-  }, [refreshWorkspace]);
+  }, [isE2EBootstrapActive, refreshWorkspace]);
 
   useEffect(() => {
     if (isE2EBootstrapActive && e2eBootstrap) {
+      const e2eWorkspaceId = getStoredWorkspaceId() || `ws-e2e-${e2eBootstrap.userId}`;
       setCloudSyncEnabled(false);
       setBackendSyncEnabled(true);
       setCurrentUser({
         id: e2eBootstrap.userId,
         email: e2eBootstrap.userEmail,
         name: e2eBootstrap.userName,
+      });
+      setStoredWorkspaceId(e2eWorkspaceId);
+      setActiveWorkspace({
+        workspaceId: e2eWorkspaceId,
+        tenantId: 'tenant-e2e',
+        tenantName: 'Tenant E2E',
+        name: 'Workspace E2E',
+        plan: 'free',
+        role: 'owner',
       });
       setEphemeralAccessToken(e2eBootstrap.token);
       addBreadcrumb(`E2E auth bootstrap enabled for ${e2eBootstrap.userEmail}`, 'auth', 'info');

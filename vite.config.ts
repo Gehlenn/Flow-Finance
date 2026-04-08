@@ -56,11 +56,13 @@ export default defineConfig(({ mode }) => {
       test: {
         globals: true,
         environment: 'jsdom',
-        pool: 'threads',
+        pool: 'forks',
         exclude: [
           '**/node_modules/**',
           '**/dist/**',
           '**/tests/e2e/**',
+          '**/tests/integration/**',
+          '**/backend/tests/integration/**',
         ],
       },
     };

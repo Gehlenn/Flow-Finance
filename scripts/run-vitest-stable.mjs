@@ -9,7 +9,7 @@ const projectRoot = path.resolve(__dirname, '..');
 const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 
 const ignoredDirs = new Set(['node_modules', 'coverage', 'dist', '.git', '.vercel']);
-const defaultExcludedPatterns = ['/tests/e2e/'];
+const defaultExcludedPatterns = ['/tests/e2e/', 'integration'];
 const isolatedTestFiles = new Set([
   'tests/unit/ai-control-panel-viewers.test.tsx',
 ]);

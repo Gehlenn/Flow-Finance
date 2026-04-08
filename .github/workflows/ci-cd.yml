@@ -19,13 +19,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            backend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Install backend dependencies
         run: npm ci --prefix backend
@@ -38,6 +34,9 @@ jobs:
 
       - name: Run critical coverage
         run: npm run test:coverage:critical
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
         run: npm run test:e2e

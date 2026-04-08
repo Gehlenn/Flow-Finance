@@ -122,17 +122,10 @@ export function useNavigationTabs() {
               transactions={context.transactions}
               accounts={context.accounts}
               alerts={context.alerts}
+              reminders={context.reminders}
               hideValues={context.hideValues}
-              activeNotificationsCount={context.alerts.length}
-              onToggleHideValues={context.onToggleHideValues}
-              onNavigateToOpenFinance={() => context.onNavigateToTab('accounts')}
               onNavigateToInsights={() => context.onNavigateToTab('insights')}
-              onNavigateToCFO={() => context.onNavigateToTab('cfo')}
-              onNavigateToAutopilot={() => context.onNavigateToTab('autopilot')}
-              onNavigateToGoals={() => context.onNavigateToTab('goals')}
-              onNavigateToScanner={() => context.onNavigateToTab('scanner')}
-              onNavigateToImport={() => context.onNavigateToTab('import')}
-              onNavigateToOpenBanking={() => context.onNavigateToTab('openbanking')}
+              onNavigateToAccounts={() => context.onNavigateToTab('accounts')}
             />
           </Suspense>
         );

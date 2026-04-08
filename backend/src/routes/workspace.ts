@@ -15,6 +15,20 @@ const router = Router();
 
 router.use(authMiddleware);
 
+function normalizeParam(param: string | string[] | undefined): string {
+  if (Array.isArray(param)) {
+    return param[0] ?? '';
+  }
+
+  return param ?? '';
+}
+
+function normalizeRole(role: unknown): 'owner' | 'admin' | 'member' | 'viewer' {
+  return role === 'owner' || role === 'admin' || role === 'member' || role === 'viewer'
+    ? role
+    : 'member';
+}
+
 router.post('/', asyncHandler(async (req: Request, res: Response) => {
   const { name, tenantId } = req.body;
   if (!name || typeof name !== 'string') {
@@ -49,11 +63,17 @@ router.post(
   authz('workspace:members:add'),
   (req: Request, res: Response) => {
     const { userId, role } = req.body;
+    const workspaceId = normalizeParam(req.params.workspaceId);
+
     if (!userId || typeof userId !== 'string') {
       return res.status(400).json({ error: 'userId obrigatorio' });
     }
 
-    const membership = addUserToWorkspace(req.params.workspaceId, userId, role || 'member', req.userId!);
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'workspaceId obrigatorio' });
+    }
+
+    const membership = addUserToWorkspace(workspaceId, userId, normalizeRole(role), req.userId!);
     if (!membership) {
       return res.status(404).json({ error: 'Workspace nao encontrado' });
     }
@@ -63,12 +83,25 @@ router.post(
 );
 
 router.get('/:workspaceId/users', workspaceContextMiddleware, authz('workspace:members:read'), asyncHandler(async (req: Request, res: Response) => {
-  const users = await getWorkspaceUsersAsync(req.params.workspaceId);
+  const workspaceId = normalizeParam(req.params.workspaceId);
+  if (!workspaceId) {
+    res.status(400).json({ error: 'workspaceId obrigatorio' });
+    return;
+  }
+
+  const users = await getWorkspaceUsersAsync(workspaceId);
   res.json({ users });
 }));
 
 router.delete('/:workspaceId/users/:userId', workspaceContextMiddleware, authz('workspace:members:remove'), (req: Request, res: Response) => {
-  const removed = removeUserFromWorkspace(req.params.userId, req.params.workspaceId);
+  const workspaceId = normalizeParam(req.params.workspaceId);
+  const userId = normalizeParam(req.params.userId);
+
+  if (!workspaceId || !userId) {
+    return res.status(400).json({ error: 'workspaceId e userId obrigatorios' });
+  }
+
+  const removed = removeUserFromWorkspace(userId, workspaceId);
   if (!removed) {
     return res.status(404).json({ error: 'Membro nao encontrado' });
   }

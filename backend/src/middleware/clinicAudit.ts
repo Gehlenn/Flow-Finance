@@ -44,8 +44,8 @@ export function recordClinicAuditEvent(event: ClinicAuditEvent): void {
   auditMetrics.latencies.push(event.durationMs);
 
   // Manter histórico de latência limitado
-  if (auditMetrics.latencies.length > 5000) {
-    auditMetrics.latencies = auditMetrics.latencies.slice(-5000);
+  if (auditMetrics.latencies.length > 1000) {
+    auditMetrics.latencies = auditMetrics.latencies.slice(-1000);
   }
 
   // Logs estruturados para cada tipo crítico

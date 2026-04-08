@@ -12,6 +12,7 @@ import {
   Copy, CheckSquare, Square, Download, Sparkles, Clock,
   ArrowUpRight, ArrowDownRight, Info, ShieldAlert
 } from 'lucide-react';
+import { SECONDARY_FLOWS_COPY } from '../src/app/secondaryFlowsCopy';
 
 interface ImportTransactionsPageProps {
   transactions: Transaction[];
@@ -302,10 +303,10 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
         </div>
         <div>
           <h1 className="text-lg font-black text-slate-900 dark:text-white leading-none">
-            Importar Extrato
+            {SECONDARY_FLOWS_COPY.import.title}
           </h1>
           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-            OFX · CSV · PDF — com classificação por IA
+            {SECONDARY_FLOWS_COPY.import.subtitle}
           </p>
         </div>
       </div>
@@ -330,9 +331,9 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
             </div>
             <div className="text-center">
               <p className="font-black text-slate-800 dark:text-white text-sm">
-                Arraste o arquivo ou toque para selecionar
+                {SECONDARY_FLOWS_COPY.import.dropzoneTitle}
               </p>
-              <p className="text-[10px] text-slate-400 font-bold mt-1">OFX · QFX · CSV · TSV · PDF</p>
+              <p className="text-[10px] text-slate-400 font-bold mt-1">{SECONDARY_FLOWS_COPY.import.dropzoneFormats}</p>
             </div>
             <input
               ref={fileInputRef}
