@@ -48,6 +48,9 @@ jobs:
         NODE_OPTIONS: --max-old-space-size=8192
         VITEST_STABLE_CHUNKS: '16'
 
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps
+
     - name: Run E2E tests
       run: npm run test:e2e
 
