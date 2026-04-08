@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { processarReciboOCR } from '../../../src/services/importacao/ocrRecibo';
 
-const mockScanReceipt = vi.fn();
+const mockScanReceipt = vi.hoisted(() => vi.fn());
 
 vi.mock('../../../src/ai/receiptScanner', () => ({
   scanReceipt: mockScanReceipt,

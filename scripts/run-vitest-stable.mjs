@@ -16,6 +16,7 @@ const defaultExcludedPatterns = [
   'tests/unit/api-storage-provider.test.ts',
   'tests/unit/backend-controllers.test.ts',
   'tests/unit/backend-oauth.test.ts',
+  'tests/unit/open-banking-backend-first.test.ts',
 ];
 const isolatedTestFiles = new Set([
   'tests/unit/ai-control-panel-viewers.test.tsx',

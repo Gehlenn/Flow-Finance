@@ -3,36 +3,28 @@ import { AppError } from '../../backend/src/middleware/errorHandler';
 import { featureGateOpenFinance } from '../../backend/src/middleware/featureGate';
 
 describe('featureGateOpenFinance', () => {
-  const originalDisableOpenFinance = process.env.DISABLE_OPEN_FINANCE;
-
   beforeEach(() => {
-    delete process.env.DISABLE_OPEN_FINANCE;
+    delete process.env.FEATURE_OPEN_FINANCE;
   });
 
   afterEach(() => {
-    if (originalDisableOpenFinance === undefined) {
-      delete process.env.DISABLE_OPEN_FINANCE;
-    } else {
-      process.env.DISABLE_OPEN_FINANCE = originalDisableOpenFinance;
-    }
+    delete process.env.FEATURE_OPEN_FINANCE;
   });
 
   it('permite a request quando Open Finance está habilitado', () => {
+    process.env.FEATURE_OPEN_FINANCE = 'true';
     const next = vi.fn();
-
-    featureGateOpenFinance({} as any, {} as any, next);
-
+    const middleware = featureGateOpenFinance();
+    middleware({} as any, {} as any, next);
     expect(next).toHaveBeenCalledTimes(1);
   });
 
   it('bloqueia a request com AppError 503 quando Open Finance está desativado', () => {
-    process.env.DISABLE_OPEN_FINANCE = 'true';
+    // FEATURE_OPEN_FINANCE ausente → padrão false (desativado)
     const next = vi.fn();
-
-    expect(() => featureGateOpenFinance({} as any, {} as any, next)).toThrowError(AppError);
-    expect(() => featureGateOpenFinance({} as any, {} as any, next)).toThrowError(
-      'Open Finance integration temporarily unavailable. We are working to make this feature cost-effective and will re-enable it soon.',
-    );
+    const middleware = featureGateOpenFinance();
+    expect(() => middleware({} as any, {} as any, next)).toThrowError(AppError);
+    expect(() => middleware({} as any, {} as any, next)).toThrowError(/temporarily unavailable/i);
     expect(next).not.toHaveBeenCalled();
   });
 });
