@@ -5,7 +5,7 @@ export const ConnectBankSchema = z.object({
   userId: z.string().min(1, 'userId is required').optional(),
   itemId: z.string().min(1).optional(),
   connectorId: z.number().int().positive().optional(),
-  credentials: z.record(z.unknown()).optional(),
+  credentials: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const DisconnectBankSchema = z.object({
