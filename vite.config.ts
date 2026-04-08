@@ -61,6 +61,8 @@ export default defineConfig(({ mode }) => {
           '**/node_modules/**',
           '**/dist/**',
           '**/tests/e2e/**',
+          '**/tests/integration/**',
+          '**/backend/tests/integration/**',
         ],
       },
     };
