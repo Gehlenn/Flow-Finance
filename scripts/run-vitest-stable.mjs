@@ -17,10 +17,10 @@ const defaultExcludedPatterns = [
   'tests/unit/backend-controllers.test.ts',
   'tests/unit/backend-oauth.test.ts',
   'tests/unit/open-banking-backend-first.test.ts',
+  'tests/unit/useSyncEngine.test.tsx',
 ];
 const isolatedTestFiles = new Set([
   'tests/unit/ai-control-panel-viewers.test.tsx',
-  'tests/unit/useSyncEngine.test.tsx',
 ]);
 
 function collectTestFiles(dir) {
