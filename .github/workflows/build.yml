@@ -39,7 +39,7 @@ jobs:
       run: npm run type-check
 
     - name: Run tests
-      run: npm run test:coverage
+      run: npm run test:ci
 
     - name: Run E2E tests
       run: npm run test:e2e
