@@ -39,7 +39,7 @@
         "pg": "^8.11.3",
         "pino": "^8.17.2",
         "pino-pretty": "^10.3.1",
-        "redis": "^4.6.12",
+        "redis": "^5.11.0",
         "zod": "^3.24.1"
     },
     "devDependencies": {
