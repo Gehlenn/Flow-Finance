@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { skipIf, skipIfMobile } from './helpers/skipHelpers';
+import { skipIfMobile } from './helpers/skipHelpers';
+import { gotoAuthedApp } from './helpers/appBootstrap';
 import { clickWithRetry } from './helpers/resilientActions';
 
 test.describe('Billing Flow', () => {
@@ -78,34 +79,31 @@ test.describe('Billing Flow', () => {
   test('should render billing overview and support upgrade fallback', async ({ page }, testInfo) => {
     await skipIfMobile(testInfo);
 
-    await page.goto('/?e2eAuth=1&userId=billing-user&userEmail=billing%40flow.dev&userName=Billing%20QA&token=billing-token');
+    await gotoAuthedApp(page, {
+      userId: 'billing-user',
+      userEmail: 'billing@flow.dev',
+      userName: 'Billing QA',
+      token: 'billing-token',
+    });
     await clickWithRetry(() => page.getByRole('button', { name: /Ajustes/i }));
 
     const planCard = page.getByText(/Plan: Free/i);
-    if (!(await planCard.count())) {
-      await skipIf(true, {
-        reason: 'Billing overview não ficou disponível nesta execução local.',
-        category: 'fixture-dependent',
-      });
-    }
-
-    await expect(planCard).toBeVisible();
+    await expect(planCard).toBeVisible({ timeout: 10000 });
   });
 
   test('should open Stripe portal redirect when available', async ({ page }, testInfo) => {
     await skipIfMobile(testInfo);
 
-    await page.goto('/?e2eAuth=1&userId=billing-user&userEmail=billing%40flow.dev&userName=Billing%20QA&token=billing-token');
+    await gotoAuthedApp(page, {
+      userId: 'billing-user',
+      userEmail: 'billing@flow.dev',
+      userName: 'Billing QA',
+      token: 'billing-token',
+    });
     await clickWithRetry(() => page.getByRole('button', { name: /Ajustes/i }));
 
     const workspaceAdminButton = page.getByRole('button', { name: /Open workspace admin/i });
-    if (!(await workspaceAdminButton.count())) {
-      await skipIf(true, {
-        reason: 'Workspace admin/billing management indisponível nesta execução local.',
-        category: 'fixture-dependent',
-      });
-    }
-
+    await expect(workspaceAdminButton).toBeVisible({ timeout: 10000 });
     await clickWithRetry(() => workspaceAdminButton);
 
     await expect(page.locator('body')).toContainText(/Billing and usage|Plan:/i);
