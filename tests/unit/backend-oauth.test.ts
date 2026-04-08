@@ -44,6 +44,8 @@ function createMockResponse() {
   return {
     json: vi.fn(),
     status: vi.fn().mockReturnThis(),
+    cookie: vi.fn().mockReturnThis(),
+    clearCookie: vi.fn().mockReturnThis(),
   };
 }
 
