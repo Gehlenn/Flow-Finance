@@ -29,6 +29,7 @@ export class ClinicAIEnrichmentQueue {
   private readonly maxRetries: number = 3;
   private readonly processingIntervalMs: number = 5000; // 5 segundos
   private processingInterval: NodeJS.Timeout | null = null;
+  private isProcessing = false;
 
   constructor(logger: Logger) {
     this.logger = logger;
@@ -75,27 +76,52 @@ export class ClinicAIEnrichmentQueue {
    * Executa de forma assíncrona sem bloquear.
    */
   private startProcessing(): void {
+    // Dispara um ciclo imediato para evitar atraso inicial de 5s no primeiro item.
+    this.runProcessingCycle();
+
     this.processingInterval = setInterval(() => {
-      this.processNextTask().catch((error) => {
+      this.runProcessingCycle();
+    }, this.processingIntervalMs);
+  }
+
+  private runProcessingCycle(): void {
+    if (this.isProcessing) {
+      return;
+    }
+
+    this.isProcessing = true;
+    this.processAvailableTasks()
+      .catch((error) => {
         this.logger.error(
           { error },
           'Error processing clinic AI enrichment queue',
         );
+      })
+      .finally(() => {
+        this.isProcessing = false;
       });
-    }, this.processingIntervalMs);
+  }
+
+  private async processAvailableTasks(): Promise<void> {
+    while (this.queue.length > 0) {
+      const shouldContinue = await this.processNextTask();
+      if (!shouldContinue) {
+        break;
+      }
+    }
+
+    if (this.queue.length === 0 && this.processingInterval) {
+      clearInterval(this.processingInterval);
+      this.processingInterval = null;
+    }
   }
 
   /**
    * Processar próxima tarefa na fila.
    */
-  private async processNextTask(): Promise<void> {
+  private async processNextTask(): Promise<boolean> {
     if (this.queue.length === 0) {
-      // Parar processamento se fila está vazia
-      if (this.processingInterval) {
-        clearInterval(this.processingInterval);
-        this.processingInterval = null;
-      }
-      return;
+      return false;
     }
 
     const task = this.queue[0];
@@ -108,6 +134,8 @@ export class ClinicAIEnrichmentQueue {
         { taskId: task.id, externalEventId: task.externalEventId },
         'ClinicAI enrichment completed',
       );
+
+      return true;
     } catch (error) {
       task.retriesRemaining--;
 
@@ -120,7 +148,8 @@ export class ClinicAIEnrichmentQueue {
           },
           'ClinicAI enrichment failed, retrying',
         );
-        // Deixar na fila para próxima tentativa
+        // Deixar na fila para próxima tentativa em um ciclo futuro.
+        return false;
       } else {
         this.queue.shift(); // Remove após exaurir retries
 
@@ -147,6 +176,8 @@ export class ClinicAIEnrichmentQueue {
             },
           },
         });
+
+        return true;
       }
     }
   }
