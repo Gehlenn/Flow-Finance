@@ -1,4 +1,4 @@
-import { readdirSync, statSync } from 'node:fs';
+﻿import { readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -81,7 +81,7 @@ function runVitestChunk(files, index, total) {
     {
       cwd: projectRoot,
       stdio: 'inherit',
-      env: process.env,
+      env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=4096' },
     }
   );
 
@@ -121,3 +121,4 @@ for (let index = 0; index < chunks.length; index += 1) {
 }
 
 console.log(`[vitest-stable] Completed ${allTestFiles.length} test files across ${chunks.length} chunk(s).`);
+
