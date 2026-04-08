@@ -5,6 +5,28 @@ import { clickWithRetry } from './helpers/resilientActions';
 
 test.describe('Edição de Categoria - TransactionList', () => {
   test('Usuário edita categoria de uma transação e recebe feedback visual', async ({ page }) => {
+    await page.addInitScript(() => {
+      const prefixes = [
+        'flow_searchQuery:',
+        'flow_showFilters:',
+        'flow_categoryFilter:',
+        'flow_dateStart:',
+        'flow_dateEnd:',
+        'flow_sortConfig:',
+      ];
+
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < window.localStorage.length; i += 1) {
+        const key = window.localStorage.key(i);
+        if (!key) continue;
+        if (prefixes.some((prefix) => key.startsWith(prefix))) {
+          keysToRemove.push(key);
+        }
+      }
+
+      keysToRemove.forEach((key) => window.localStorage.removeItem(key));
+    });
+
     await gotoAuthedApp(page, {
       userId: 'tx-user',
       userEmail: 'tx@flow.dev',
@@ -12,29 +34,20 @@ test.describe('Edição de Categoria - TransactionList', () => {
       token: 'tx-token',
     });
 
-    const historyButton = page.getByRole('button', { name: /Historico/i });
-    if (!(await historyButton.count())) {
-      await skipIf(true, {
-        reason: 'Shell autenticado não expôs o histórico nesta execução.',
-        category: 'fixture-dependent',
-      });
-    }
+    const historyButton = page.getByRole('button', { name: /Historico|Transacoes/i }).first();
+    await expect(historyButton).toBeVisible({ timeout: 10000 });
 
     await clickWithRetry(() => historyButton);
 
     // Espera o histórico carregar
     await expect(page.getByText('Histórico')).toBeVisible();
 
-    // Seleciona uma transação de teste (ajuste o texto conforme seed)
-    const txDesc = 'Restaurante';
-    if (!(await page.getByText(txDesc).count())) {
+    // Garante ao menos uma transação disponível para edição
+    const transactionTitles = page.locator('h4.font-bold');
+    if ((await transactionTitles.count()) === 0) {
+      const txDesc = 'Restaurante';
       const addButton = page.getByRole('button', { name: /Adicionar lançamento/i });
-      if (!(await addButton.count())) {
-        await skipIf(true, {
-          reason: 'CTA de criação manual não ficou disponível nesta execução local.',
-          category: 'fixture-dependent',
-        });
-      }
+      await expect(addButton).toBeVisible({ timeout: 10000 });
 
       await clickWithRetry(() => addButton);
       await clickWithRetry(() => page.getByRole('button', { name: /Lançamento Manual/i }));
@@ -45,8 +58,19 @@ test.describe('Edição de Categoria - TransactionList', () => {
 
       await clickWithRetry(() => historyButton);
       await expect(page.getByText('Histórico')).toBeVisible();
+      await page.waitForTimeout(2000);
     }
-    await clickWithRetry(() => page.getByText(txDesc));
+
+    const firstTransactionTitle = page.locator('h4.font-bold').first();
+    if (!(await firstTransactionTitle.count())) {
+      await skipIf(true, {
+        reason: 'Nenhuma transação ficou disponível no histórico mesmo após criação manual.',
+        category: 'fixture-dependent',
+      });
+    }
+
+    await expect(firstTransactionTitle).toBeVisible({ timeout: 10000 });
+    await clickWithRetry(() => firstTransactionTitle);
 
     // Abre modal de detalhes e clica em Editar
     await clickWithRetry(() => page.getByRole('button', { name: 'Editar' }));

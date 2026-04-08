@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { skipIfNoAuthShell, skipIfDesktop } from './helpers/skipHelpers';
+import { skipIfNoAuthShell } from './helpers/skipHelpers';
 import { gotoAuthedApp } from './helpers/appBootstrap';
 import { clickWithRetry } from './helpers/resilientActions';
 
@@ -45,8 +45,8 @@ test.describe('Dashboard', () => {
     await expect(page.locator('body')).toBeVisible();
   });
 
-  test('should keep shell usable on mobile', async ({ page }, testInfo) => {
-    await skipIfDesktop(testInfo);
+  test('should keep shell usable on compact viewport', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await skipIfNoAuthShell(page);
 
     const count = await visibleNavCount(page);

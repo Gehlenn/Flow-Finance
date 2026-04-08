@@ -18,12 +18,8 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "moduleResolution": "node",
-    "ignoreDeprecations": "6.0",
-    "allowSyntheticDefaultImports": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    }
+    "ignoreDeprecations": "5.0",
+    "allowSyntheticDefaultImports": true
   },
   "include": ["src/**/*", "shared/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
