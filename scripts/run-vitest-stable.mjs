@@ -81,7 +81,7 @@ function runVitestChunk(files, index, total) {
     {
       cwd: projectRoot,
       stdio: 'inherit',
-      env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=4096' },
+      env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=8192' },
     }
   );
 
@@ -109,7 +109,7 @@ const isolatedChunks = allTestFiles
   .map((file) => [file]);
 const remainingFiles = allTestFiles.filter((file) => !isolatedTestFiles.has(file));
 
-const chunkCount = Number(process.env.VITEST_STABLE_CHUNKS || '4');
+const chunkCount = Number(process.env.VITEST_STABLE_CHUNKS || '7');
 const regularChunks = splitIntoChunks(remainingFiles, Math.max(1, chunkCount));
 const chunks = [...regularChunks, ...isolatedChunks];
 
