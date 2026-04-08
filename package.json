@@ -50,9 +50,9 @@
   "dependencies": {
     "@capacitor/android": "^8.2.0",
     "@capacitor/core": "^8.2.0",
-    "@google/genai": "1.40.0",
+    "@google/genai": "^1.40.0",
     "@google/generative-ai": "^0.24.1",
-    "@sentry/react": "^10.42.0",
+    "@sentry/react": "^10.47.0",
     "@sentry/tracing": "^7.120.4",
     "decimal.js": "^10.4.3",
     "firebase": "^12.9.0",
@@ -73,24 +73,22 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/express": "^5.0.6",
-    "@types/node": "^22.14.0",
+    "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/supertest": "^7.2.0",
-    "@vitejs/plugin-react": "^5.0.0",
+    "@vitejs/plugin-react": "^6.0.1",
     "@vitest/coverage-v8": "^4.0.18",
     "autoprefixer": "^10.4.27",
     "cordova-res": "^0.15.4",
     "express": "^5.2.1",
     "firebase-tools": "^15.12.0",
-    "jsdom": "^28.1.0",
+    "jsdom": "^29.0.1",
     "postcss": "^8.5.8",
     "supertest": "^7.2.2",
     "tailwindcss": "^3.4.1",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.7",
     "vitest": "^4.0.18"
   }
 }
-
-

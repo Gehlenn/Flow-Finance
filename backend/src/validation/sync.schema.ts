@@ -7,7 +7,7 @@ const SyncItemSchema = z.object({
   clientId: z.string().min(1).optional(),
   updatedAt: z.string().min(1),
   deleted: z.boolean().optional(),
-  payload: z.record(z.unknown()).optional(),
+  payload: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const SyncPushSchema = z.object({
