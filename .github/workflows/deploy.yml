@@ -36,6 +36,9 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Install backend dependencies
+      run: npm ci --prefix backend
+
     - name: Install Playwright browsers for health checks
       run: npx playwright install --with-deps chromium webkit
 
