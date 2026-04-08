@@ -3,8 +3,10 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { hasDatabaseConfig, resolveDatabaseSslConfig } from '../../src/config/database';
 
 const DATABASE_ENV_KEYS = ['DATABASE_URL', 'DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD'] as const;
+const DATABASE_SSL_ENV_KEYS = ['DB_SSL_ENABLED', 'DB_SSL_REJECT_UNAUTHORIZED', 'DB_SSL_CA', 'NODE_ENV'] as const;
 
 let originalEnv: Partial<Record<(typeof DATABASE_ENV_KEYS)[number], string | undefined>>;
+let originalSslEnv: Partial<Record<(typeof DATABASE_SSL_ENV_KEYS)[number], string | undefined>>;
 
 beforeEach(() => {
   originalEnv = {};
@@ -12,11 +14,26 @@ beforeEach(() => {
     originalEnv[key] = process.env[key];
     delete process.env[key];
   }
+
+  originalSslEnv = {};
+  for (const key of DATABASE_SSL_ENV_KEYS) {
+    originalSslEnv[key] = process.env[key];
+    delete process.env[key];
+  }
 });
 
 afterEach(() => {
   for (const key of DATABASE_ENV_KEYS) {
     const previous = originalEnv[key];
+    if (previous === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = previous;
+    }
+  }
+
+  for (const key of DATABASE_SSL_ENV_KEYS) {
+    const previous = originalSslEnv[key];
     if (previous === undefined) {
       delete process.env[key];
     } else {
