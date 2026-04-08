@@ -97,5 +97,8 @@ describe('Settings workspace admin entry', () => {
     expect(screen.getByText('Sair', { exact: false })).toBeTruthy();
     expect(screen.getAllByText(/Suporte/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Tema/i)).toBeTruthy();
+    expect(screen.getAllByText(/Admin do workspace/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Conectar Google/i)).toBeTruthy();
+    expect(screen.getByText(/Conectar Apple/i)).toBeTruthy();
   });
 });

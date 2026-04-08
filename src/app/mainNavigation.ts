@@ -12,7 +12,7 @@ const MAIN_NAV_ITEMS: MainNavigationItem[] = [
   { tab: 'flow', label: 'Fluxo' },
   { tab: 'cfo', label: 'Consultor IA' },
   { tab: 'settings', label: 'Ajustes' },
-  { tab: 'aicontrol', label: 'AI Lab', requiresDevMode: true },
+  { tab: 'aicontrol', label: 'Lab IA', requiresDevMode: true },
 ];
 
 export function getMainNavigationItems(isDevMode: boolean): MainNavigationItem[] {

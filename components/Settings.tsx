@@ -192,7 +192,7 @@ const Settings: React.FC<SettingsProps> = ({
             <User size={36} />
           </div>
           <div className="flex-1">
-            <h3 className="font-black text-slate-800 dark:text-white text-xl tracking-tight leading-none mb-1">{userName || 'Flow User'}</h3>
+            <h3 className="font-black text-slate-800 dark:text-white text-xl tracking-tight leading-none mb-1">{userName || 'Usuario Flow'}</h3>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{userEmail}</p>
             <button onClick={() => setShowNameModal(true)} className="flex items-center gap-1.5 mt-2 text-[9px] font-black text-indigo-500 uppercase tracking-widest hover:text-indigo-600 transition-colors">
               <Edit2 size={12} /> Editar nome
@@ -204,7 +204,7 @@ const Settings: React.FC<SettingsProps> = ({
           <div className="flex items-center justify-between px-1">
             <h4 className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-widest">Resumo do workspace</h4>
             <span className={`text-[9px] font-black uppercase tracking-widest ${currentPlan === 'pro' ? 'text-emerald-500' : 'text-indigo-500'}`}>
-              {currentPlan.toUpperCase()} · {activeWorkspaceRole || activeWorkspace?.role || 'member'}
+              {currentPlan.toUpperCase()} · {activeWorkspaceRole || activeWorkspace?.role || 'membro'}
             </span>
           </div>
 
@@ -230,8 +230,8 @@ const Settings: React.FC<SettingsProps> = ({
             ) : (
               <>
                 <p className="text-sm font-black text-slate-800 dark:text-white">Plano: {planName}</p>
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-widest">Tenant: {activeTenantName || activeWorkspace?.tenantName || 'Active tenant'}</p>
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-widest">Workspace: {activeWorkspaceName || activeWorkspace?.name || 'Active workspace'}</p>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-widest">Tenant: {activeTenantName || activeWorkspace?.tenantName || 'Tenant ativo'}</p>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-widest">Workspace: {activeWorkspaceName || activeWorkspace?.name || 'Workspace ativo'}</p>
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-widest">Papel: {activeWorkspaceRole || activeWorkspace?.role || 'membro'}</p>
                 <p className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-widest">Mes atual: {monthlyUsageSummary}</p>
               </>
@@ -244,7 +244,7 @@ const Settings: React.FC<SettingsProps> = ({
               <div className="flex items-center gap-3">
                 <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-400" />
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">Workspace Admin</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">Admin do workspace</p>
                   <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Gerencie plano, membros e auditoria do workspace.</p>
                 </div>
               </div>
@@ -279,7 +279,7 @@ const Settings: React.FC<SettingsProps> = ({
               className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl flex flex-col items-center gap-2 border-2 border-transparent hover:border-indigo-500/20 transition-all active:scale-95 group disabled:opacity-50"
             >
               <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase">Link Google</span>
+              <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase">Conectar Google</span>
             </button>
             <button
               onClick={() => void handleLinkAccount(appleProvider)}
@@ -287,7 +287,7 @@ const Settings: React.FC<SettingsProps> = ({
               className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl flex flex-col items-center gap-2 border-2 border-transparent hover:border-indigo-500/20 transition-all active:scale-95 group disabled:opacity-50"
             >
               <svg className="w-5 h-5 fill-current text-slate-700 dark:text-white group-hover:scale-110 transition-transform" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 21.8-88.5 21.8-11.4 0-51.1-20.8-82.9-20.1-41.9.3-81.2 26.1-102.3 65.1-41.1 75.9-10.3 188.7 30.2 247.3 20.1 28.5 44 54.8 75.1 53.9 29.9-1 41.3-19.1 77.6-19.1 36.3 0 46.7 19.1 78.2 18.5 31.9-.5 52.8-23.5 72.8-52.1 23-33.1 32.5-65.1 33-66.7-.6-.2-64.1-24.6-64.4-97.3zM281.3 83.1c31.4-38.1 25.1-73.3 23.5-83.1-27.1 1.1-59.3 18.6-77.9 40.2-16.1 18.5-30.5 52.2-25.7 82.9 30.8 2.4 59.4-11.2 80.1-30z"/></svg>
-              <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase">Link Apple</span>
+              <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase">Conectar Apple</span>
             </button>
           </div>
           <p className="text-[8px] text-center font-bold text-slate-400 uppercase tracking-widest px-2">Vincule um provedor para entrar mais rapido na proxima sessao.</p>

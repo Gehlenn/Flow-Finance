@@ -25,6 +25,7 @@ describe('main navigation focus', () => {
     const items = getMainNavigationItems(true);
 
     expect(items[items.length - 1]?.tab).toBe('aicontrol');
+    expect(items[items.length - 1]?.label).toBe('Lab IA');
   });
 
   it('never exposes openbanking as a main nav item in any mode', () => {
