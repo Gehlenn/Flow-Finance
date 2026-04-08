@@ -174,7 +174,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
               <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
               <YAxis tickFormatter={formatAxisValue} stroke="#64748b" fontSize={12} />
               <Tooltip
-                formatter={(value: number) => [formatTooltipValue(value), 'Saldo']}
+                formatter={(value) => [formatTooltipValue(Number(value)), 'Saldo']}
                 labelStyle={{ color: '#374151' }}
                 contentStyle={{
                   backgroundColor: 'white',
@@ -216,7 +216,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
               <XAxis type="number" tickFormatter={formatAxisValue} stroke="#64748b" fontSize={12} />
               <YAxis dataKey="category" type="category" width={80} stroke="#64748b" fontSize={12} />
               <Tooltip
-                formatter={(value: number) => [formatTooltipValue(value), 'Total']}
+                formatter={(value) => [formatTooltipValue(Number(value)), 'Total']}
                 labelStyle={{ color: '#374151' }}
                 contentStyle={{
                   backgroundColor: 'white',
@@ -262,7 +262,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value: number) => [formatTooltipValue(value), '']}
+                formatter={(value) => [formatTooltipValue(Number(value)), '']}
                 contentStyle={{
                   backgroundColor: 'white',
                   border: '1px solid #e2e8f0',
@@ -305,7 +305,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
               />
               <YAxis tickFormatter={formatAxisValue} stroke="#64748b" fontSize={12} />
               <Tooltip
-                formatter={(value: number) => [formatTooltipValue(value), 'Saldo Projetado']}
+                formatter={(value) => [formatTooltipValue(Number(value)), 'Saldo Projetado']}
                 labelFormatter={(label) => `Dia ${label}`}
                 contentStyle={{
                   backgroundColor: 'white',
@@ -345,8 +345,8 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
               <XAxis dataKey="label" stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
               <YAxis tickFormatter={formatAxisValue} stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
               <Tooltip
-                formatter={(value: number, name: string) => [
-                  formatTooltipValue(value),
+                formatter={(value, name) => [
+                  formatTooltipValue(Number(value)),
                   name === 'receitas' ? 'Receitas' : name === 'despesas' ? 'Despesas' : 'Saldo',
                 ]}
                 contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}

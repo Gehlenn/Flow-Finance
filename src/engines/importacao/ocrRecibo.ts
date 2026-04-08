@@ -38,10 +38,8 @@ function isValidBase64ImageDataUri(value: string): boolean {
       decoded[6] === 0x1a &&
       decoded[7] === 0x0a;
     const isJpeg = decoded[0] === 0xff && decoded[1] === 0xd8 && decoded[decoded.length - 2] === 0xff && decoded[decoded.length - 1] === 0xd9;
-    const isGif =
-      decoded.length >= 6 &&
-      decoded.subarray(0, 6).toString('ascii') &&
-      (decoded.subarray(0, 6).toString('ascii') === 'GIF87a' || decoded.subarray(0, 6).toString('ascii') === 'GIF89a');
+    const gifHeader = decoded.subarray(0, 6).toString('ascii');
+    const isGif = decoded.length >= 6 && (gifHeader === 'GIF87a' || gifHeader === 'GIF89a');
 
     return isPng || isJpeg || isGif;
   } catch {
