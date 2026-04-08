@@ -25,6 +25,7 @@ describe('useFinancialState', () => {
         accounts: [{ id: 'acc-1', name: 'Carteira', type: 'cash', balance: 10, currency: 'BRL', user_id: 'user-1', workspace_id: 'ws-1', tenant_id: 'tenant-1', created_at: '2026-04-01T00:00:00.000Z' }],
         transactions: [{ id: 'tx-1', amount: 25, description: 'Cafe', type: 'Despesa', category: 'Pessoal', date: '2026-04-01T00:00:00.000Z', user_id: 'user-1', workspace_id: 'ws-1', tenant_id: 'tenant-1' }],
         goals: [{ id: 'goal-1', title: 'Reserva', targetAmount: 1000, currentAmount: 100, category: 'Investimento', deadline: '2026-12-31', user_id: 'user-1', workspace_id: 'ws-1', tenant_id: 'tenant-1' }],
+        reminders: [],
       },
       profile: {
         name: 'Flow User',
@@ -38,6 +39,7 @@ describe('useFinancialState', () => {
           accounts: updates.accounts ?? syncEngine.entities.accounts,
           transactions: updates.transactions ?? syncEngine.entities.transactions,
           goals: updates.goals ?? syncEngine.entities.goals,
+          reminders: updates.reminders ?? syncEngine.entities.reminders,
         },
         idMaps: {},
       })),
@@ -55,7 +57,8 @@ describe('useFinancialState', () => {
     expect(result.current.accounts).toBe(syncEngine.entities.accounts);
     expect(result.current.transactions).toBe(syncEngine.entities.transactions);
     expect(result.current.goals).toBe(syncEngine.entities.goals);
-    expect(result.current.reminders).toBe(syncEngine.profile.reminders);
+    // reminders are merged from profile + entities (dedup), so reference changes
+    expect(result.current.reminders).toStrictEqual(syncEngine.profile.reminders);
     expect(result.current.alerts).toBe(syncEngine.profile.alerts);
   });
 
@@ -65,6 +68,7 @@ describe('useFinancialState', () => {
         accounts: updates.accounts ?? [],
         transactions: updates.transactions ?? [],
         goals: updates.goals ?? [],
+        reminders: updates.reminders ?? [],
       },
       idMaps: {},
     }));
@@ -74,6 +78,7 @@ describe('useFinancialState', () => {
         accounts: [],
         transactions: [],
         goals: [],
+        reminders: [],
       },
       profile: {
         name: 'Flow User',
