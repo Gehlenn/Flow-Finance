@@ -29,7 +29,7 @@ export async function extrairDePDF(options: PDFExtratoOptions): Promise<PDFExtra
       erros.push('Nenhum texto detectado no PDF.');
     } else {
       // Extração simplificada: busca linhas com valor e descrição
-      const linhas = texto.split('\n').map(l => l.trim()).filter(Boolean);
+      const linhas = texto.split('\n').map((l: string) => l.trim()).filter(Boolean);
       for (const linha of linhas) {
         const valorMatch = linha.match(/(R\$|\b)[ ]?([0-9]+[\.,][0-9]{2})/);
         const valor = valorMatch ? parseFloat(valorMatch[2].replace(',', '.')) : undefined;
