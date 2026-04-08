@@ -91,6 +91,13 @@ npm run test:e2e
 - **Storage:** Firebase Storage (recibos)
 - **Monitoring:** Sentry (error tracking)
 
+### CI/CD Operational Notes
+
+- Build and Test Docker stage is opt-in via repository variable `ENABLE_DOCKER_BUILD=true`.
+- Deploy pipeline target is controlled by repository variable `DEPLOY_PLATFORM` with valid values: `railway`, `render`, `aws`.
+- If `DEPLOY_PLATFORM` is not configured, deploy workflow safely skips external deployment steps.
+- Detailed runbook: `docs/CI_DOCKER_OPTIN_OPERATION.md`.
+
 ### AI CFO - SeguranÃ§a Operacional
 - Endpoint: `POST /api/ai/cfo` via backend proxy seguro.
 - ProteÃ§Ãµes ativas: autenticaÃ§Ã£o JWT, contexto de workspace, rate limit por usuÃ¡rio e quota de uso (`aiQueries`).
