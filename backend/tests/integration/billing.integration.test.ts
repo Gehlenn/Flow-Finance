@@ -1,4 +1,4 @@
-import request from 'supertest';
+﻿import request from 'supertest';
 import app from '../../src/index';
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
 
@@ -11,7 +11,8 @@ describe('Billing API', () => {
     const ownerUserId = 'owner-billing';
     const created = await request(app)
       .post('/api/tenant')
-      .send({ name: 'Workspace Billing', ownerUserId });
+      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .send({ name: 'Workspace Billing' });
 
     const res = await request(app)
       .post('/api/billing/subscription')
@@ -29,7 +30,8 @@ describe('Billing API', () => {
     const ownerUserId = 'owner-export';
     const created = await request(app)
       .post('/api/tenant')
-      .send({ name: 'Workspace Export', ownerUserId });
+      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .send({ name: 'Workspace Export' });
 
     const res = await request(app)
       .get('/api/billing/export')
@@ -40,3 +42,7 @@ describe('Billing API', () => {
     expect(res.body.url).toContain(created.body.workspaceId);
   });
 });
+
+
+
+

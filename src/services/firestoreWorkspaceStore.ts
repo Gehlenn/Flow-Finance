@@ -724,9 +724,9 @@ function stampEntityContext<T extends { id: string } & Record<string, unknown>>(
 ): T {
   return {
     ...entity,
-    user_id: typeof entity.user_id === 'string' ? entity.user_id : context.userId,
-    tenant_id: typeof entity.tenant_id === 'string' ? entity.tenant_id : context.tenantId,
-    workspace_id: typeof entity.workspace_id === 'string' ? entity.workspace_id : context.workspaceId,
+    user_id: context.userId,
+    tenant_id: context.tenantId,
+    workspace_id: context.workspaceId,
     updated_at: typeof entity.updated_at === 'string' ? entity.updated_at : nowIso(),
     created_at: typeof entity.created_at === 'string' ? entity.created_at : nowIso(),
   };

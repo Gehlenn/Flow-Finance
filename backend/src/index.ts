@@ -6,7 +6,7 @@ import 'dotenv/config';
 import logger from './config/logger';
 import { initGemini } from './config/gemini';
 import { initOpenAI } from './config/openai';
-import { initSentry, sentryRequestHandler, sentryErrorHandler, addBreadcrumb } from './config/sentry';
+import { initSentry, isSentryConfigured, sentryRequestHandler, sentryErrorHandler, addBreadcrumb } from './config/sentry';
 import { errorHandler } from './middleware/errorHandler';
 import { validateJsonMiddleware } from './middleware/jsonValidation';
 import { apiLimiter } from './middleware/rateLimit';
@@ -166,10 +166,11 @@ interface HealthCheckResult {
 }
 
 // Health check with dependency verification
-app.get('/health', async (_req: Request, res: Response) => {
+app.get('/health', async (req: Request, res: Response) => {
   const checks: Record<string, HealthCheckResult> = {
     server: { status: 'healthy' },
   };
+  const requestContext = getRequestContext(req);
 
   // Check database
   if (hasDatabaseConfig()) {
@@ -230,6 +231,12 @@ app.get('/health', async (_req: Request, res: Response) => {
         required: false,
       };
 
+  checks.observability = {
+    status: 'healthy',
+    configured: isSentryConfigured(),
+    required: false,
+  };
+
   const isHealthy = Object.values(checks).every((check) => {
     if (check.required === false || check.configured === false) {
       return true;
@@ -240,6 +247,8 @@ app.get('/health', async (_req: Request, res: Response) => {
 
   res.status(isHealthy ? 200 : 503).json({
     status: isHealthy ? 'ok' : 'degraded',
+    requestId: requestContext.requestId,
+    routeScope: requestContext.routeScope,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     version: process.env.APP_VERSION || '0.6.3',
@@ -248,19 +257,28 @@ app.get('/health', async (_req: Request, res: Response) => {
 });
 
 // API version
-app.get('/api/version', (_req: Request, res: Response) => {
+app.get('/api/version', (req: Request, res: Response) => {
+  const requestContext = getRequestContext(req);
   res.json({
     version: process.env.APP_VERSION || '0.6.3',
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    requestId: requestContext.requestId,
+    routeScope: requestContext.routeScope,
   });
 });
 
 // API health check (stable endpoint for probes)
-app.get('/api/health', (_req: Request, res: Response) => {
+app.get('/api/health', (req: Request, res: Response) => {
+  const requestContext = getRequestContext(req);
   res.json({
     status: 'ok',
     service: 'flow-finance-api',
     version: process.env.APP_VERSION || '0.6.3',
+    requestId: requestContext.requestId,
+    routeScope: requestContext.routeScope,
+    observability: {
+      sentryConfigured: isSentryConfigured(),
+    },
   });
 });
 

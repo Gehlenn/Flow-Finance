@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('eventEngine remote persistence', () => {
   beforeEach(async () => {
@@ -26,8 +26,9 @@ describe('eventEngine remote persistence', () => {
 
     expect(engine.getFinancialEvents()[0].id).toBe(event.id);
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/api/finance/events'),
+      'http://localhost:3001/api/finance/events',
       expect.objectContaining({ method: 'POST' }),
     );
   });
 });
+

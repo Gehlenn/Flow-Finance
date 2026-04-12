@@ -1,4 +1,4 @@
-import request from 'supertest';
+﻿import request from 'supertest';
 import type { Express } from 'express';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -74,7 +74,8 @@ describe('sync conflict policy', () => {
 
     const workspace = await request(app)
       .post('/api/tenant')
-      .send({ name: 'Conflict Workspace', ownerUserId });
+      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .send({ name: 'Conflict Workspace' });
 
     await request(app)
       .post('/api/sync/push')
@@ -108,3 +109,4 @@ describe('sync conflict policy', () => {
     expect(pull.body.entities.transactions[0].payload.amount).toBe(150);
   });
 });
+

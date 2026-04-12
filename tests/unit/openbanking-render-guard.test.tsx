@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react';
+﻿import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { useNavigationTabs, type NavigationRenderContext } from '../../hooks/useNavigationTabs';
 
@@ -45,12 +45,12 @@ const baseContext: NavigationRenderContext = {
   onDeleteAlert: vi.fn(),
 };
 
-describe('guard de render do openbanking', () => {
-  it('renderActiveTab retorna null para openbanking quando isDev e false', () => {
+describe('guard de render da rota openbanking desativada', () => {
+  it('ignora openbanking e retorna null quando setActiveTab recebe valor legacy', () => {
     const { result } = renderHook(() => useNavigationTabs());
 
     act(() => {
-      result.current.setActiveTab('openbanking');
+      result.current.setActiveTab('openbanking' as any);
     });
 
     const output = result.current.renderActiveTab({ ...baseContext, isDev: false });
@@ -58,16 +58,16 @@ describe('guard de render do openbanking', () => {
     expect(output).toBeNull();
   });
 
-  it('renderActiveTab retorna elemento para openbanking quando isDev e true', () => {
+  it('mantem openbanking desativado mesmo em modo dev', () => {
     const { result } = renderHook(() => useNavigationTabs());
 
     act(() => {
-      result.current.setActiveTab('openbanking');
+      result.current.setActiveTab('openbanking' as any);
     });
 
     const output = result.current.renderActiveTab({ ...baseContext, isDev: true });
 
-    expect(output).not.toBeNull();
+    expect(output).toBeNull();
   });
 
   it('aicontrol tambem retorna null quando isDev e false', () => {
@@ -112,3 +112,5 @@ describe('guard de render do openbanking', () => {
     expect(child?.props?.workspacePlan).toBe('pro');
   });
 });
+
+

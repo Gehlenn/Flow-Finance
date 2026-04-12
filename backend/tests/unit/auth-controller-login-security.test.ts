@@ -31,11 +31,18 @@ describe('authController login security hardening', () => {
     expect(isInsecureLocalLoginAllowed()).toBe(false);
   });
 
-  it('allows insecure local login explicitly via AUTH_ALLOW_INSECURE_LOCAL_LOGIN=true', () => {
+  it('keeps insecure local login blocked by default in development until explicitly enabled', () => {
+    process.env.NODE_ENV = 'development';
+    delete process.env.AUTH_ALLOW_INSECURE_LOCAL_LOGIN;
+
+    expect(isInsecureLocalLoginAllowed()).toBe(false);
+  });
+
+  it('keeps insecure local login blocked in production even with explicit override', () => {
     process.env.NODE_ENV = 'production';
     process.env.AUTH_ALLOW_INSECURE_LOCAL_LOGIN = 'true';
 
-    expect(isInsecureLocalLoginAllowed()).toBe(true);
+    expect(isInsecureLocalLoginAllowed()).toBe(false);
   });
 
   it('returns AppError 503 when insecure local login is disabled', async () => {
@@ -472,18 +479,18 @@ describe('authController login security hardening', () => {
   });
 
   describe('Environment-specific behavior', () => {
-    it('allows insecure login in development environment by default', () => {
+    it('keeps insecure login blocked in development by default', () => {
       process.env.NODE_ENV = 'development';
       delete process.env.AUTH_ALLOW_INSECURE_LOCAL_LOGIN;
 
-      expect(isInsecureLocalLoginAllowed()).toBe(true);
+      expect(isInsecureLocalLoginAllowed()).toBe(false);
     });
 
-    it('allows insecure login in test environment by default', () => {
+    it('keeps insecure login blocked in test by default', () => {
       process.env.NODE_ENV = 'test';
       delete process.env.AUTH_ALLOW_INSECURE_LOCAL_LOGIN;
 
-      expect(isInsecureLocalLoginAllowed()).toBe(true);
+      expect(isInsecureLocalLoginAllowed()).toBe(false);
     });
 
     it('disables insecure login in production by default', () => {
@@ -500,14 +507,21 @@ describe('authController login security hardening', () => {
       expect(isInsecureLocalLoginAllowed()).toBe(false);
     });
 
-    it('respects explicit override even in production', () => {
+    it('keeps insecure login blocked in production even with explicit override', () => {
       process.env.NODE_ENV = 'production';
+      process.env.AUTH_ALLOW_INSECURE_LOCAL_LOGIN = 'true';
+
+      expect(isInsecureLocalLoginAllowed()).toBe(false);
+    });
+
+    it('allows insecure login only with explicit override in test runtime', () => {
+      process.env.NODE_ENV = 'test';
       process.env.AUTH_ALLOW_INSECURE_LOCAL_LOGIN = 'true';
 
       expect(isInsecureLocalLoginAllowed()).toBe(true);
     });
 
-    it('respects explicit false override even in development', () => {
+    it('respects explicit false override in development', () => {
       process.env.NODE_ENV = 'development';
       process.env.AUTH_ALLOW_INSECURE_LOCAL_LOGIN = 'false';
 

@@ -2,6 +2,23 @@ import express from 'express';
 import request from 'supertest';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+vi.mock('../../src/middleware/authz', () => ({
+  authz: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
+  requireFeature: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
+}));
+
+vi.mock('../../src/middleware/rateLimit', () => ({
+  aiLimiterByUser: (_req: unknown, _res: unknown, next: () => void) => next(),
+}));
+
+vi.mock('../../src/middleware/quota', () => ({
+  quotaMiddleware: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
+}));
+
+vi.mock('../../src/middleware/aiSecurity', () => ({
+  aiInputSecurityMiddleware: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
+}));
+
 vi.mock('../../src/services/admin/workspaceStore', async () => {
   const actual = await vi.importActual<typeof import('../../src/services/admin/workspaceStore')>('../../src/services/admin/workspaceStore');
 

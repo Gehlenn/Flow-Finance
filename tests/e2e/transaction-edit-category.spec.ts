@@ -89,6 +89,8 @@ test.describe('Edição de Categoria - TransactionList', () => {
 
     // Fecha o toast manualmente
     await clickWithRetry(() => page.getByRole('button', { name: 'Fechar aviso de categoria salva' }));
-    await expect(page.getByRole('status')).not.toBeVisible();
+    const categoryToast = page.getByRole('status');
+    await expect(categoryToast).toHaveClass(/opacity-0/);
+    await expect(categoryToast).toHaveClass(/pointer-events-none/);
   });
 });

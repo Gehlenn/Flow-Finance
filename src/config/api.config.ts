@@ -1,24 +1,24 @@
-import { getEphemeralAccessToken } from '../services/authSessionStore';
+﻿import { getEphemeralAccessToken } from '../services/authSessionStore';
 import { reportError } from './sentry';
 
 /**
- * API CONFIGURATION — Backend Proxy Setup
+ * API CONFIGURATION - Backend Proxy Setup
  *
  * CRITICAL: Gemini API Key must NEVER be exposed in client-side code.
  * This configuration defines backend proxy endpoints for all API calls.
  *
  * Flow:
- *   Client → Backend Proxy → Gemini API
- *                    ↓
+ *   Client -> Backend Proxy -> Gemini API
+ *                    |
  *          Rate limiting + Auth verification
  */
 
-// ─── Environment Detection ────────────────────────────────────────────────────
+// Environment Detection
 
 export const IS_DEVELOPMENT = import.meta.env.MODE === 'development';
 export const IS_PRODUCTION = !IS_DEVELOPMENT;
 
-// ─── Backend API Endpoints (Update with your actual backend domain) ──────────
+// Backend API Endpoints (Update with your actual backend domain)
 
 export const BACKEND_BASE_URL = (() => {
   const configuredUrl =
@@ -49,7 +49,6 @@ export const API_ENDPOINTS = {
   // Gemini AI proxy endpoints
   AI: {
     INTERPRET: `${BACKEND_BASE_URL}/api/ai/interpret`,
-    ANALYZE: `${BACKEND_BASE_URL}/api/ai/analyze`,
     CLASSIFY_TRANSACTIONS: `${BACKEND_BASE_URL}/api/ai/classify-transactions`,
     SCAN_RECEIPT: `${BACKEND_BASE_URL}/api/ai/scan-receipt`,
     GENERATE_INSIGHTS: `${BACKEND_BASE_URL}/api/ai/insights`,
@@ -81,11 +80,10 @@ export const API_ENDPOINTS = {
     ROOT: `${BACKEND_BASE_URL}/api/workspace`,
   },
 
-  // User data endpoints
-  USER: {
-    PROFILE: `${BACKEND_BASE_URL}/api/user/profile`,
-    PREFERENCES: `${BACKEND_BASE_URL}/api/user/preferences`,
-    SYNC_DATA: `${BACKEND_BASE_URL}/api/user/sync`,
+
+  FINANCE: {
+    EVENTS: `${BACKEND_BASE_URL}/api/finance/events`,
+    METRICS: `${BACKEND_BASE_URL}/api/finance/metrics`,
   },
 
   // SaaS endpoints
@@ -105,7 +103,7 @@ export const API_ENDPOINTS = {
   },
 };
 
-// ─── Request Configuration ────────────────────────────────────────────────────
+// Request Configuration
 
 export const API_CONFIG = {
   TIMEOUT: 30000, // 30 seconds
@@ -177,7 +175,7 @@ export function setStoredWorkspaceId(workspaceId: string | null): void {
   window.localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, workspaceId);
 }
 
-// ─── Security Headers ────────────────────────────────────────────────────────
+// Security Headers
 
 export function getAuthHeaders(options?: {
   workspaceId?: string | null;
@@ -209,7 +207,7 @@ function getPlatform(): string {
   return 'web';
 }
 
-// ─── API Request Wrapper ─────────────────────────────────────────────────────
+// API Request Wrapper
 
 export async function apiRequest<T>(
   endpoint: string,
@@ -292,7 +290,7 @@ export async function apiRequest<T>(
 }
 
 // add CFO example to documentation
-// ─── Usage Example (for documentation) ──────────────────────────────────────
+// Usage Example (for documentation)
 
 /**
  * Example: Replace direct Gemini call with backend proxy
@@ -310,3 +308,12 @@ export async function apiRequest<T>(
  *   }
  * );
  */
+
+
+
+
+
+
+
+
+

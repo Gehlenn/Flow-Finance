@@ -1,9 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const appendDomainEventMock = vi.fn();
-const recordAuditEventMock = vi.fn();
-const getWorkspaceAsyncMock = vi.fn();
-const pushSyncItemsMock = vi.fn();
+const {
+  appendDomainEventMock,
+  recordAuditEventMock,
+  getWorkspaceAsyncMock,
+  pushSyncItemsMock,
+} = vi.hoisted(() => ({
+  appendDomainEventMock: vi.fn(),
+  recordAuditEventMock: vi.fn(),
+  getWorkspaceAsyncMock: vi.fn(),
+  pushSyncItemsMock: vi.fn(),
+}));
 
 vi.mock('../../backend/src/services/finance/eventStore', () => ({
   appendDomainEvent: appendDomainEventMock,

@@ -1,4 +1,4 @@
-export function isApiDocsEnabled(nodeEnv = process.env.NODE_ENV || 'development'): boolean {
+﻿export function isApiDocsEnabled(nodeEnv = process.env.NODE_ENV || 'development'): boolean {
   return nodeEnv !== 'production';
 }
 
@@ -727,6 +727,7 @@ export function buildOpenApiSpec(): OpenApiSpec {
         post: {
           tags: ['Tenant'],
           summary: 'Create tenant/workspace root',
+          security: [{ BearerAuth: [] }],
           responses: { '201': { description: 'Tenant created' } },
         },
       },
@@ -734,6 +735,7 @@ export function buildOpenApiSpec(): OpenApiSpec {
         post: {
           tags: ['Tenant'],
           summary: 'Select active tenant/workspace context',
+          security: [{ BearerAuth: [] }],
           responses: { '200': { description: 'Active tenant selected' } },
         },
       },
@@ -1358,3 +1360,5 @@ export function renderSwaggerHtml(specUrl = '/api/openapi.json'): string {
   </body>
 </html>`;
 }
+
+

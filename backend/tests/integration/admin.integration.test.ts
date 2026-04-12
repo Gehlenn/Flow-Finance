@@ -1,4 +1,4 @@
-import request from 'supertest';
+﻿import request from 'supertest';
 import type { Express } from 'express';
 import { beforeAll, vi } from 'vitest';
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
@@ -84,7 +84,8 @@ describe('Admin API', () => {
   async function createProWorkspace(ownerUserId: string) {
     const created = await request(app)
       .post('/api/tenant')
-      .send({ name: 'Workspace Admin', ownerUserId });
+      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .send({ name: 'Workspace Admin' });
 
     await request(app)
       .post('/api/billing/subscription')
@@ -95,7 +96,7 @@ describe('Admin API', () => {
     return created.body.workspaceId as string;
   }
 
-  it('GET /api/admin/users deve listar usuários do workspace', async () => {
+  it('GET /api/admin/users deve listar usuÃ¡rios do workspace', async () => {
     const ownerUserId = 'owner-admin-users';
     const workspaceId = await createProWorkspace(ownerUserId);
 
@@ -211,3 +212,6 @@ describe('Admin API', () => {
     expect(res.status).toBe(403);
   });
 });
+
+
+

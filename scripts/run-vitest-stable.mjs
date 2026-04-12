@@ -20,6 +20,7 @@ const defaultExcludedPatterns = [
 ];
 const isolatedTestFiles = new Set([
   'tests/unit/ai-control-panel-viewers.test.tsx',
+  'tests/unit/useSyncEngine.test.tsx',
 ]);
 
 function collectTestFiles(dir) {

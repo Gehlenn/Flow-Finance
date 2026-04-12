@@ -1,4 +1,4 @@
-import request from 'supertest';
+﻿import request from 'supertest';
 import app from '../../src/index';
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
 
@@ -11,7 +11,8 @@ describe('Workspace authorization outside SaaS routes', () => {
     const ownerUserId = 'owner-finance-authz';
     const created = await request(app)
       .post('/api/tenant')
-      .send({ name: 'Finance Workspace', ownerUserId });
+      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .send({ name: 'Finance Workspace' });
 
     const missingWorkspace = await request(app)
       .post('/api/finance/metrics')
@@ -43,7 +44,8 @@ describe('Workspace authorization outside SaaS routes', () => {
     const ownerUserId = 'owner-sync-authz';
     const created = await request(app)
       .post('/api/tenant')
-      .send({ name: 'Sync Workspace', ownerUserId });
+      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .send({ name: 'Sync Workspace' });
 
     const missingWorkspace = await request(app)
       .get('/api/sync/health')
@@ -59,3 +61,7 @@ describe('Workspace authorization outside SaaS routes', () => {
     expect(withWorkspace.status).toBe(200);
   });
 });
+
+
+
+

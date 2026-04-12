@@ -1,4 +1,4 @@
-import request from 'supertest';
+﻿import request from 'supertest';
 import type { Express } from 'express';
 import { beforeAll, vi } from 'vitest';
 import { resetSaasStoreForTests } from '../../src/utils/saasStore';
@@ -85,7 +85,8 @@ describe('SaaS API workspace scope', () => {
     const ownerUserId = 'owner-saas-plans';
     const created = await request(app)
       .post('/api/tenant')
-      .send({ name: 'Workspace Plans', ownerUserId });
+      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .send({ name: 'Workspace Plans' });
 
     const res = await request(app)
       .get('/api/saas/plans')
@@ -108,7 +109,8 @@ describe('SaaS API workspace scope', () => {
     const ownerUserId = 'owner-saas-upgrade';
     const created = await request(app)
       .post('/api/tenant')
-      .send({ name: 'Workspace Upgrade', ownerUserId });
+      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .send({ name: 'Workspace Upgrade' });
 
     const upgrade = await request(app)
       .post('/api/saas/plan')
@@ -155,7 +157,8 @@ describe('SaaS API workspace scope', () => {
     const ownerUserId = 'owner-saas-metering';
     const created = await request(app)
       .post('/api/tenant')
-      .send({ name: 'Workspace Metering', ownerUserId });
+      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .send({ name: 'Workspace Metering' });
 
     const res = await request(app)
       .get('/api/saas/metering?from=2026-01-01T00:00:00.000Z&to=2026-12-31T23:59:59.999Z')
@@ -171,3 +174,8 @@ describe('SaaS API workspace scope', () => {
     expect(Array.isArray(res.body.events)).toBe(true);
   }, 15000);
 });
+
+
+
+
+

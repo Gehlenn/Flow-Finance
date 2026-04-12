@@ -18,15 +18,14 @@ import {
 
 export function isInsecureLocalLoginAllowed(): boolean {
   const override = String(process.env.AUTH_ALLOW_INSECURE_LOCAL_LOGIN || '').trim().toLowerCase();
-  if (override === 'true') {
-    return true;
-  }
-  if (override === 'false') {
+  const nodeEnv = String(process.env.NODE_ENV || 'development').trim().toLowerCase();
+  const isNonProductionRuntime = nodeEnv === 'development' || nodeEnv === 'test';
+
+  if (override !== 'true') {
     return false;
   }
 
-  const nodeEnv = String(process.env.NODE_ENV || 'development').trim().toLowerCase();
-  return nodeEnv === 'development' || nodeEnv === 'test';
+  return isNonProductionRuntime;
 }
 
 // Extend Express Request interface

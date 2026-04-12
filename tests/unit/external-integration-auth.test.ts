@@ -66,7 +66,7 @@ describe('externalIntegrationAuth', () => {
   it('validates HMAC when configured', () => {
     process.env.FLOW_EXTERNAL_INTEGRATION_HMAC_SECRETS = 'secret_1';
 
-    const timestamp = new Date().toISOString();
+    const timestamp = String(Math.floor(Date.now() / 1000));
     const rawBody = JSON.stringify({ hello: 'world' });
     const signedPayload = `${timestamp}.${rawBody}`;
     const digest = crypto.createHmac('sha256', 'secret_1').update(signedPayload).digest('hex');
@@ -93,7 +93,7 @@ describe('externalIntegrationAuth', () => {
 
     const req = buildReq({
       key: 'int_key_1',
-      timestamp: new Date().toISOString(),
+      timestamp: String(Math.floor(Date.now() / 1000)),
       rawBody: JSON.stringify({ hello: 'world' }),
       signature: 'sha256=invalid',
     });

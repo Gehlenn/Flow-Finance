@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FINANCIAL EVENT ENGINE
  *
  * Event bus reativo para o Flow Finance.
@@ -6,11 +6,11 @@
  *
  * Fluxo:
  *   emitFinancialEvent(event)
- *       ↓
+ *       ->
  *   subscribers notificados
- *       ↓
- *   listeners disparam análises (autopilot, insights, risks)
- *       ↓
+ *       ->
+ *   listeners disparam analises (autopilot, insights, risks)
+ *       ->
  *   eventos armazenados em localStorage
  */
 
@@ -24,7 +24,7 @@ import { generateMonthlyReport } from '../finance/reportEngine';
 import { API_ENDPOINTS, getAuthHeaders, getStoredWorkspaceId } from '../config/api.config';
 
 
-// ─── PART 5 — Storage ─────────────────────────────────────────────────────────
+// PART 5 - Storage
 
 const MAX_EVENTS  = 200;
 const eventCacheByWorkspace = new Map<string, FinancialEvent[]>();
@@ -42,7 +42,7 @@ function getWorkspaceEventCache(): FinancialEvent[] {
 }
 
 function buildEventEndpoint(): string {
-  return API_ENDPOINTS.USER.PROFILE.replace('/user/profile', '/finance/events');
+  return API_ENDPOINTS.FINANCE.EVENTS;
 }
 
 async function persistEventRemotely(event: FinancialEvent): Promise<void> {
@@ -113,13 +113,13 @@ export async function refreshFinancialEvents(limit = MAX_EVENTS): Promise<Financ
   }
 }
 
-// ─── PART 2 — In-memory subscriber registry ───────────────────────────────────
+// PART 2 - In-memory subscriber registry
 
 type EventCallback = (event: FinancialEvent) => void;
 
 const subscribers: EventCallback[] = [];
 
-// ─── PART 2 — Core bus functions ─────────────────────────────────────────────
+// PART 2 - Core bus functions
 
 /** Emite um evento, persiste e notifica todos os subscribers. */
 export function emitFinancialEvent(
@@ -140,7 +140,7 @@ export function emitFinancialEvent(
   return full;
 }
 
-/** Registra um callback para todos os eventos. Retorna função de cancelamento. */
+/** Registra um callback para todos os eventos. Retorna funcao de cancelamento. */
 export function subscribeToFinancialEvents(callback: EventCallback): () => void {
   subscribers.push(callback);
   return () => {
@@ -149,7 +149,7 @@ export function subscribeToFinancialEvents(callback: EventCallback): () => void 
   };
 }
 
-/** Registra um callback apenas para um tipo específico de evento. */
+/** Registra um callback apenas para um tipo especÃ­fico de evento. */
 export function subscribeToEvent(
   type: FinancialEventType,
   callback: EventCallback
@@ -173,7 +173,7 @@ export function clearFinancialEvents(): void {
   eventCacheByWorkspace.set(getActiveWsId(), []);
 }
 
-// ─── PART 3 — Typed event helpers ────────────────────────────────────────────
+// PART 3 - Typed event helpers
 
 export const FinancialEventEmitter = {
   transactionCreated(payload: unknown) {
@@ -202,16 +202,16 @@ export const FinancialEventEmitter = {
   },
 };
 
-// ─── PART 4 — Reactive listener pipeline ─────────────────────────────────────
+// PART 4 - Reactive listener pipeline
 
 /**
  * Inicializa o pipeline de listeners reativos.
- * Deve ser chamado uma vez na inicialização do app.
+ * Deve ser chamado uma vez na inicializacao do app.
  *
  * transaction_created
- *   → runFinancialAutopilot  (lazy import para evitar circular)
- *   → generateFinancialInsights
- *   → detectFinancialRisks
+ *   â†’ runFinancialAutopilot  (lazy import para evitar circular)
+ *   â†’ generateFinancialInsights
+ *   â†’ detectFinancialRisks
  */
 export function initEventListeners(
   getState: () => {
@@ -224,7 +224,7 @@ export function initEventListeners(
   }
 ): () => void {
   const unsubscribe = subscribeToFinancialEvents(async (event) => {
-    // Só reage a eventos de transação ou goal
+    // SÃ³ reage a eventos de transaÃ§Ã£o ou goal
     if (
       event.type !== 'transaction_created' &&
       event.type !== 'goal_created' &&
@@ -236,7 +236,7 @@ export function initEventListeners(
     const { transactions, accounts, userId, onAutopilotActions, onInsights, onRisks } = getState();
 
     try {
-      // PART 6 — Run AI Orchestrator on relevant events
+      // PART 6 â€” Run AI Orchestrator on relevant events
       const { runAIOrchestrator } = await import('../ai/aiOrchestrator');
       const orchestratorResult = await runAIOrchestrator(userId, accounts, transactions);
 
@@ -272,3 +272,13 @@ export function initEventListeners(
 
   return unsubscribe;
 }
+
+
+
+
+
+
+
+
+
+

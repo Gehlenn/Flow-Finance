@@ -4,6 +4,8 @@ import { Request, Response, NextFunction } from 'express';
 
 // ─── SENTRY CONFIGURATION ──────────────────────────────────────────────────────
 
+export const isSentryConfigured = (): boolean => Boolean(String(process.env.SENTRY_DSN || '').trim());
+
 /**
  * Initialize Sentry for Node.js backend error tracking and performance monitoring
  * This should be called early in the application lifecycle (before Express app setup)
@@ -13,7 +15,6 @@ export const initSentry = () => {
   const dsn = process.env.SENTRY_DSN;
 
   if (!dsn) {
-    console.warn('Sentry DSN not found. Backend error tracking disabled.');
     return;
   }
 

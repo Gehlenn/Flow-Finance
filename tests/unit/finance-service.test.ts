@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+﻿import { describe, expect, it, vi } from 'vitest';
 import { Category, TransactionType } from '../../types';
 import { Account } from '../../models/Account';
 import {
@@ -10,6 +10,9 @@ import {
   deleteAccount,
   deleteGoal,
   FinanceServiceContext,
+  updateAccount,
+  updateGoal,
+  updateTransaction,
 } from '../../src/app/financeService';
 
 function createContext(overrides?: Partial<FinanceServiceContext>): FinanceServiceContext {
@@ -220,5 +223,107 @@ describe('financeService', () => {
   it('bloqueia delete de meta que nao existe no contexto atual', async () => {
     const context = createContext();
     await expect(deleteGoal('goal-missing', context)).rejects.toThrow(/not found in active context/i);
+  });
+
+  it('rejeita update de transacao fora do contexto ativo', async () => {
+    const context = createContext({
+      collections: {
+        accounts: [],
+        transactions: [{
+          id: 'tx-1',
+          user_id: 'other-user',
+          workspace_id: 'workspace-1',
+          amount: 15,
+          description: 'Cafe',
+          type: TransactionType.DESPESA,
+          category: Category.PESSOAL,
+          date: '2026-04-01T12:00:00.000Z',
+        }],
+        goals: [],
+        reminders: [],
+        alerts: [],
+      },
+    });
+
+    await expect(updateTransaction({
+      id: 'tx-1',
+      user_id: 'other-user',
+      workspace_id: 'workspace-1',
+      amount: 20,
+      description: 'Cafe atualizado',
+      type: TransactionType.DESPESA,
+      category: Category.PESSOAL,
+      date: '2026-04-01T12:00:00.000Z',
+    }, context)).rejects.toThrow(/active user context/i);
+  });
+
+  it('forca o escopo ativo ao atualizar conta', async () => {
+    const account: Account = {
+      id: 'acc-1',
+      user_id: 'user-1',
+      tenant_id: 'tenant-1',
+      workspace_id: 'workspace-1',
+      name: 'Conta principal',
+      type: 'bank',
+      balance: 100,
+      currency: 'BRL',
+      created_at: '2026-04-01T12:00:00.000Z',
+    };
+
+    const syncEntities = vi.fn().mockImplementation(async (updates) => ({
+      entities: {
+        accounts: updates.accounts || [],
+        transactions: updates.transactions || [],
+        goals: updates.goals || [],
+      },
+      idMaps: {},
+    }));
+
+    const context = createContext({
+      collections: {
+        accounts: [account, { ...account, id: 'acc-2', name: 'Reserva' }],
+        transactions: [],
+        goals: [],
+        reminders: [],
+        alerts: [],
+      },
+      syncEntities,
+    });
+
+    await updateAccount({
+      ...account,
+      user_id: 'other-user',
+      tenant_id: 'tenant-x',
+      workspace_id: 'workspace-x',
+      balance: 150,
+    }, context);
+
+    expect(syncEntities).toHaveBeenCalledWith(
+      {
+        accounts: [
+          expect.objectContaining({
+            id: 'acc-1',
+            user_id: 'user-1',
+            tenant_id: 'tenant-1',
+            workspace_id: 'workspace-1',
+            balance: 150,
+          }),
+          expect.any(Object),
+        ],
+      },
+      { accounts: context.collections.accounts },
+    );
+  });
+
+  it('rejeita update de meta inexistente no contexto atual', async () => {
+    const context = createContext();
+
+    await expect(updateGoal({
+      id: 'goal-missing',
+      title: 'Meta ausente',
+      category: Category.INVESTIMENTO,
+      targetAmount: 1000,
+      currentAmount: 100,
+    }, context)).rejects.toThrow(/not found in active context/i);
   });
 });

@@ -22,6 +22,7 @@ interface LoginProps {
 type AuthView = 'login' | 'signup' | 'recover' | 'success';
 
 const IS_DEV = import.meta.env.DEV;
+const ALLOW_INSECURE_LOCAL_LOGIN = import.meta.env.VITE_AUTH_ALLOW_INSECURE_LOCAL_LOGIN === 'true';
 
 const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
   const [view, setView] = useState<AuthView>('login');
@@ -75,7 +76,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
     e.preventDefault();
     if (!email || !password) return;
     if (!isFirebaseConfigured) {
-      if (IS_DEV && onDevelopmentLogin) {
+      if (IS_DEV && ALLOW_INSECURE_LOCAL_LOGIN && onDevelopmentLogin) {
         setIsLoading(true);
         setError(null);
         try {

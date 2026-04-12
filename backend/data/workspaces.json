@@ -1,0 +1,50 @@
+{
+  "tenants": [
+    {
+      "tenantId": "7321c51e-0ca9-4bbe-bac0-a8f2183026d5",
+      "name": "Empresa Teste",
+      "plan": "free",
+      "createdAt": "2026-04-12T20:52:15.786Z",
+      "updatedAt": "2026-04-12T20:52:15.786Z"
+    }
+  ],
+  "workspaces": [
+    {
+      "workspaceId": "1e0adb50-83f0-4005-8aff-c4d5a69008a1",
+      "tenantId": "7321c51e-0ca9-4bbe-bac0-a8f2183026d5",
+      "name": "Empresa Teste",
+      "isDefault": true,
+      "createdAt": "2026-04-12T20:52:15.786Z",
+      "updatedAt": "2026-04-12T20:52:15.786Z",
+      "plan": "free",
+      "status": "active",
+      "entitlements": {
+        "features": [
+          "advancedInsights"
+        ],
+        "limits": {
+          "transactionsPerMonth": 500,
+          "aiQueriesPerMonth": 100,
+          "bankConnections": 1
+        }
+      }
+    }
+  ],
+  "workspaceUsers": [
+    {
+      "userId": "owner-1",
+      "workspaceId": "1e0adb50-83f0-4005-8aff-c4d5a69008a1",
+      "tenantId": "7321c51e-0ca9-4bbe-bac0-a8f2183026d5",
+      "role": "owner",
+      "joinedAt": "2026-04-12T20:52:15.786Z",
+      "status": "active"
+    }
+  ],
+  "userPreferences": [
+    {
+      "userId": "owner-1",
+      "lastSelectedWorkspaceId": "1e0adb50-83f0-4005-8aff-c4d5a69008a1",
+      "updatedAt": "2026-04-12T20:52:15.789Z"
+    }
+  ]
+}

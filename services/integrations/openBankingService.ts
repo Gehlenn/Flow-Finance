@@ -49,11 +49,20 @@ function hasBackendBanking(): boolean {
 }
 
 function isLocalBankingFallbackEnabled(): boolean {
+  const configured = String(import.meta.env.VITE_ENABLE_LOCAL_BANKING_FALLBACK || '').toLowerCase();
+  if (configured === 'true') {
+    return true;
+  }
+
+  if (configured === 'false') {
+    return false;
+  }
+
   if (import.meta.env.MODE === 'test') {
     return true;
   }
 
-  return String(import.meta.env.VITE_ENABLE_LOCAL_BANKING_FALLBACK || '').toLowerCase() === 'true';
+  return false;
 }
 
 function isProductionRuntime(): boolean {

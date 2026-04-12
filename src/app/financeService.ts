@@ -51,6 +51,18 @@ function assertScopedEntityOwnership(
   }
 }
 
+function forceScopedEntityContext<T extends { id: string; user_id?: string; tenant_id?: string; workspace_id?: string }>(
+  entity: T,
+  context: Pick<FinanceServiceContext, 'userId' | 'tenantId' | 'workspaceId'>,
+): T {
+  return {
+    ...entity,
+    user_id: context.userId,
+    tenant_id: context.tenantId || undefined,
+    workspace_id: context.workspaceId || undefined,
+  };
+}
+
 function defaultCreateId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return `tmp_${crypto.randomUUID()}`;
@@ -140,8 +152,16 @@ export async function updateTransaction(
   updatedTransaction: Transaction,
   context: FinanceServiceContext,
 ): Promise<Transaction[]> {
+  const currentTransaction = context.collections.transactions.find((transaction) => transaction.id === updatedTransaction.id);
+  if (!currentTransaction) {
+    throw new Error('Transaction not found in active context');
+  }
+
+  assertScopedEntityOwnership(currentTransaction, context, 'Transaction');
+  const normalizedTransaction = forceScopedEntityContext(updatedTransaction, context);
+
   const nextTransactions = context.collections.transactions.map((transaction) =>
-    transaction.id === updatedTransaction.id ? updatedTransaction : transaction,
+    transaction.id === normalizedTransaction.id ? normalizedTransaction : transaction,
   );
 
   const syncResult = await context.syncEntities(
@@ -210,8 +230,16 @@ export async function updateAccount(
   updatedAccount: Account,
   context: FinanceServiceContext,
 ): Promise<Account[]> {
+  const currentAccount = context.collections.accounts.find((account) => account.id === updatedAccount.id);
+  if (!currentAccount) {
+    throw new Error('Account not found in active context');
+  }
+
+  assertScopedEntityOwnership(currentAccount, context, 'Account');
+  const normalizedAccount = forceScopedEntityContext(updatedAccount, context);
+
   const nextAccounts = context.collections.accounts.map((account) =>
-    account.id === updatedAccount.id ? updatedAccount : account,
+    account.id === normalizedAccount.id ? normalizedAccount : account,
   );
 
   const syncResult = await context.syncEntities(
@@ -282,8 +310,14 @@ export async function updateGoal(
   updatedGoal: Goal,
   context: FinanceServiceContext,
 ): Promise<Goal[]> {
+  const currentGoal = context.collections.goals.find((goal) => goal.id === updatedGoal.id);
+  if (!currentGoal) {
+    throw new Error('Goal not found in active context');
+  }
+
+  assertScopedEntityOwnership(currentGoal, context, 'Goal');
   const normalizedGoal: Goal = {
-    ...updatedGoal,
+    ...forceScopedEntityContext(updatedGoal, context),
     currentAmount: Math.min(Math.max(updatedGoal.currentAmount, 0), updatedGoal.targetAmount),
   };
 

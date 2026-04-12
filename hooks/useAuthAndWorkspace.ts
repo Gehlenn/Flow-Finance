@@ -18,6 +18,7 @@ import {
 import { hydrateGoalsFromCloud } from '../src/services/localSyncService';
 
 const IS_DEV = import.meta.env.DEV;
+const ALLOW_INSECURE_LOCAL_LOGIN = import.meta.env.VITE_AUTH_ALLOW_INSECURE_LOCAL_LOGIN === 'true';
 const INITIAL_LOADING_TIMEOUT_MS = 4000;
 
 export type AuthenticatedUser = {
@@ -237,7 +238,7 @@ export function useAuthAndWorkspace() {
               email: firebaseUser.email,
               name: firebaseUser.displayName,
               isDevelopment: IS_DEV,
-              allowLegacyDevelopmentFallback: IS_DEV,
+              allowLegacyDevelopmentFallback: ALLOW_INSECURE_LOCAL_LOGIN,
             }))
             .then((payload) => {
               if (!payload?.token) {

@@ -5,6 +5,9 @@ describe('openBankingService backend-first mode', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.unstubAllEnvs();
+    vi.stubEnv('MODE', 'test');
+    vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '');
+    vi.stubEnv('VITE_ENABLE_LOCAL_BANKING_FALLBACK', 'false');
   });
 
   it('does not return local connections when backend banking is disabled and fallback is off', async () => {

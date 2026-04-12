@@ -1,4 +1,4 @@
-import request from 'supertest';
+﻿import request from 'supertest';
 import type { Express } from 'express';
 import { beforeAll, vi } from 'vitest';
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
@@ -88,11 +88,13 @@ describe('Workspace storage isolation', () => {
 
     const firstWorkspace = await request(app)
       .post('/api/tenant')
-      .send({ name: 'Workspace One', ownerUserId });
+      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .send({ name: 'Workspace One' });
 
     const secondWorkspace = await request(app)
       .post('/api/tenant')
-      .send({ name: 'Workspace Two', ownerUserId });
+      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .send({ name: 'Workspace Two' });
 
     await request(app)
       .post('/api/sync/push')
@@ -145,11 +147,13 @@ describe('Workspace storage isolation', () => {
 
     const firstWorkspace = await request(app)
       .post('/api/tenant')
-      .send({ name: 'Usage Workspace One', ownerUserId });
+      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .send({ name: 'Usage Workspace One' });
 
     const secondWorkspace = await request(app)
       .post('/api/tenant')
-      .send({ name: 'Usage Workspace Two', ownerUserId });
+      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .send({ name: 'Usage Workspace Two' });
 
     const firstUpdate = await request(app)
       .put('/api/saas/usage')
@@ -200,3 +204,9 @@ describe('Workspace storage isolation', () => {
     expect(secondRead.body.workspaceId).toBe(secondWorkspace.body.workspaceId);
   }, 15000);
 });
+
+
+
+
+
+

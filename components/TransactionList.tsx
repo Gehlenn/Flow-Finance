@@ -17,6 +17,7 @@ import {
 interface TransactionListProps {
   activeWorkspaceId?: string | null;
   activeWorkspaceName?: string | null;
+  userId?: string | null;
   transactions: Transaction[];
   hideValues: boolean;
   canEdit?: boolean;
@@ -160,7 +161,7 @@ const readStoredSortConfig = (key: string): { key: SortKey; direction: SortDirec
   return { key: 'date', direction: 'desc' };
 };
 
-const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, activeWorkspaceName, transactions, hideValues, canEdit = true, onDelete, onDeleteMultiple, onUpdate }) => {
+const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, activeWorkspaceName, userId, transactions, hideValues, canEdit = true, onDelete, onDeleteMultiple, onUpdate }) => {
   const storageKeys = useMemo(() => ({
     searchQuery: getWorkspaceScopedStorageKey('flow_searchQuery', activeWorkspaceId),
     showFilters: getWorkspaceScopedStorageKey('flow_showFilters', activeWorkspaceId),
@@ -235,28 +236,24 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
           firstCatBtnRef.current?.focus();
         }, 100);
         if (editingTransaction.merchant) {
-          const userId = localStorage.getItem('flow_userId') || 'local';
-          const cat = await detectMerchantCategory(userId, editingTransaction.merchant);
+          const resolvedUserId = userId || 'local';
+          const cat = await detectMerchantCategory(resolvedUserId, editingTransaction.merchant);
           if (cat && active) setSuggestedCategory(cat as Category);
         }
       }
     }
     fetchSuggestion();
     return () => { active = false; };
-  }, [editingTransaction]);
+  }, [editingTransaction, userId]);
 
   const handleSaveCategory = async () => {
     if (!editingTransaction || !editCategoryValue) return;
     setSavingCategory(true);
     try {
-      // Atualiza transação local
       const updated = { ...editingTransaction, category: editCategoryValue };
       onUpdate(updated);
-      // IA: aprende merchant x categoria se merchant existir
       if (updated.merchant) {
-        // userId: tentar pegar do localStorage ou usar 'local' (ajustar conforme arquitetura)
-        const userId = localStorage.getItem('flow_userId') || 'local';
-        await saveMerchantCategoryLearning(userId, updated.merchant, editCategoryValue);
+        await saveMerchantCategoryLearning(userId || 'local', updated.merchant, editCategoryValue);
       }
       setShowCategorySaved(true);
       setEditingTransaction(null);

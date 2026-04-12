@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useCallback, useState } from 'react';
+﻿import React, { Suspense, lazy, useCallback, useState } from 'react';
 import { Loader2, Activity } from 'lucide-react';
 import { Account } from '../models/Account';
 import { Alert, Goal, Reminder, Transaction } from '../types';
@@ -35,7 +35,6 @@ const AutopilotPage = lazyWithRetry(() => import('../pages/Autopilot'));
 const GoalsPage = lazyWithRetry(() => import('../pages/Goals'));
 const ReceiptScannerPage = lazyWithRetry(() => import('../pages/ReceiptScanner'));
 const ImportTransactionsPage = lazyWithRetry(() => import('../pages/ImportTransactions'));
-const OpenBankingPage = lazyWithRetry(() => import('../pages/OpenBanking'));
 const AIControlPanel = lazyWithRetry(() => import('../pages/AIControlPanel'));
 
 export type Tab =
@@ -53,7 +52,6 @@ export type Tab =
   | 'goals'
   | 'scanner'
   | 'import'
-  | 'openbanking'
   | 'aicontrol'
   | 'analytics'
   | 'performance';
@@ -120,7 +118,6 @@ export function useNavigationTabs() {
             <Dashboard
               userName={context.userName}
               userEmail={context.userEmail}
-              userId={context.userId}
               activeWorkspaceName={context.activeWorkspaceName}
               activeWorkspacePlan={context.activeWorkspacePlan}
               transactions={context.transactions}
@@ -199,6 +196,7 @@ export function useNavigationTabs() {
             <TransactionList
               activeWorkspaceId={context.activeWorkspaceId}
               activeWorkspaceName={context.activeWorkspaceName}
+              userId={context.userId}
               transactions={context.transactions}
               hideValues={context.hideValues}
               canEdit={context.activeWorkspaceRole !== 'viewer'}
@@ -277,19 +275,6 @@ export function useNavigationTabs() {
             />
           </Suspense>
         );
-      case 'openbanking':
-        return context.isDev ? (
-          <Suspense fallback={<LoadingFallback />}>
-            <OpenBankingPage
-              userId={context.userId ?? 'local'}
-              transactions={context.transactions}
-              accounts={context.accounts}
-              hideValues={context.hideValues}
-              onNewTransactions={context.onAddTransactions}
-              onUpdateAccount={context.onUpdateAccount}
-            />
-          </Suspense>
-        ) : null;
       case 'aicontrol':
         return context.isDev ? (
           <Suspense fallback={<LoadingFallback />}>
@@ -304,7 +289,6 @@ export function useNavigationTabs() {
         return context.userId ? (
           <Suspense fallback={<LoadingFallback />}>
             <AccountsPage
-              userId={context.userId}
               hideValues={context.hideValues}
               activeWorkspaceName={context.activeWorkspaceName}
               activeWorkspaceRole={context.activeWorkspaceRole}
@@ -336,7 +320,6 @@ export function useNavigationTabs() {
         return (
           <Suspense fallback={<LoadingFallback />}>
             <WorkspaceAdminPage
-              userId={context.userId}
               activeWorkspaceId={context.activeWorkspaceId}
               activeWorkspaceName={context.activeWorkspaceName}
               activeTenantName={context.activeTenantName}
@@ -349,7 +332,6 @@ export function useNavigationTabs() {
         return (
           <Suspense fallback={<LoadingFallback />}>
             <WorkspaceAuditPage
-              userId={context.userId}
               activeWorkspaceId={context.activeWorkspaceId}
               activeWorkspaceName={context.activeWorkspaceName}
               activeTenantName={context.activeTenantName}
@@ -385,3 +367,7 @@ export function useNavigationTabs() {
     renderActiveTab,
   };
 }
+
+
+
+
