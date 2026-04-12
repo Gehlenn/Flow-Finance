@@ -2,14 +2,53 @@
 import React, { useState, useMemo } from 'react';
 import { Reminder, ReminderType, Alert, Transaction, TransactionType, Category, Goal } from '../types';
 import { 
-  Calendar, Clock, Trash2, Plus, X, 
+  Calendar, Clock, Trash2, Edit2, X, 
   BrainCircuit, Bell, Target, HeartPulse, UserCircle, 
   Briefcase, GraduationCap, TrendingUp, Wallet, Check,
   ChevronDown, ChevronUp, AlertTriangle, Sparkles, Loader2
 } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
+import { apiRequest, API_ENDPOINTS } from '../src/config/api.config';
 import { calculateAlertProgress } from '../src/engines/finance/analyticsEngine';
 import { ASSISTANT_COPY } from '../src/app/assistantCopy';
+import { canAccessFeature } from '../src/app/monetizationPlan';
+
+export type ReminderOperationalState = 'active' | 'overdue' | 'completed' | 'canceled';
+
+const startOfDay = (date: Date): number => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+
+const getReminderMetadataStatus = (reminder: Reminder): string | null => {
+  const metadata = reminder as unknown as Record<string, unknown>;
+  if (typeof metadata.status !== 'string') {
+    return null;
+  }
+
+  return metadata.status.toLowerCase();
+};
+
+export const classifyReminderOperationalState = (
+  reminder: Reminder,
+  referenceDate: Date = new Date(),
+): ReminderOperationalState => {
+  const metadataStatus = getReminderMetadataStatus(reminder);
+  if (metadataStatus === 'canceled' || metadataStatus === 'cancelled' || metadataStatus === 'cleared') {
+    return 'canceled';
+  }
+
+  if (reminder.completed) {
+    return 'completed';
+  }
+
+  if (new Date(reminder.date).getTime() < startOfDay(referenceDate)) {
+    return 'overdue';
+  }
+
+  return 'active';
+};
+
+export const isFinancialReminder = (reminder: Reminder): boolean => {
+  const metadata = reminder as unknown as Record<string, unknown>;
+  return Boolean((reminder.amount && reminder.amount > 0) || metadata.kind === 'financial');
+};
 
 interface AssistantProps {
   reminders: Reminder[];
@@ -25,12 +64,14 @@ interface AssistantProps {
   onSaveGoal: (goal: Omit<Goal, 'id'>) => void;
   onDeleteGoal: (id: string) => void;
   onUpdateGoal: (updated: Goal) => void;
+  workspacePlan?: 'free' | 'pro';
   hideValues: boolean;
 }
 
 const Assistant: React.FC<AssistantProps> = ({ 
   reminders, alerts, goals, transactions, onDeleteReminder, onAddReminder, 
-  onUpdateReminder, onSaveAlert, onDeleteAlert, onSaveGoal, onDeleteGoal, hideValues
+  onUpdateReminder, onSaveAlert, onDeleteAlert, onSaveGoal, onDeleteGoal, onToggleComplete, hideValues,
+  workspacePlan = 'free',
 }) => {
   const [isAddingReminder, setIsAddingReminder] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
@@ -47,12 +88,15 @@ const Assistant: React.FC<AssistantProps> = ({
   const [isGeneratingAlerts, setIsGeneratingAlerts] = useState(false);
   const [smartAlerts, setSmartAlerts] = useState<Array<{category: string, threshold: number, reason: string}>>([]);
   const [showSmartAlertsModal, setShowSmartAlertsModal] = useState(false);
+  const [smartAlertsUpgradeOnly, setSmartAlertsUpgradeOnly] = useState(false);
 
   // Bulk Delete State
   const [selectedReminders, setSelectedReminders] = useState<string[]>([]);
+  const [showInactiveReminders, setShowInactiveReminders] = useState(false);
   
   // Filter State
   const [reminderFilter, setReminderFilter] = useState<'all' | 'pessoal' | 'trabalho' | 'negocio' | 'investimento' | 'saude' | 'alta' | 'media' | 'baixa'>('all');
+  const smartAlertsEnabled = canAccessFeature(workspacePlan, 'smartAlertSuggestions');
 
   const formatVal = (amt: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amt);
@@ -79,9 +123,10 @@ const Assistant: React.FC<AssistantProps> = ({
     }
   };
 
-  const filteredReminders = useMemo(() => {
+  const filteredActiveReminders = useMemo(() => {
     return reminders.filter(r => {
-      if (r.completed) return false;
+      const reminderState = classifyReminderOperationalState(r);
+      if (reminderState === 'completed' || reminderState === 'canceled') return false;
       if (reminderFilter === 'all') return true;
       if (['alta', 'media', 'baixa'].includes(reminderFilter)) {
         return r.priority === reminderFilter;
@@ -90,8 +135,69 @@ const Assistant: React.FC<AssistantProps> = ({
     });
   }, [reminders, reminderFilter]);
 
+  const inactiveReminders = useMemo(
+    () => reminders.filter((reminder) => {
+      const reminderState = classifyReminderOperationalState(reminder);
+      return reminderState === 'completed' || reminderState === 'canceled';
+    }),
+    [reminders],
+  );
+
+  const reminderSummary = useMemo(
+    () => filteredActiveReminders.reduce(
+      (summary, reminder) => {
+        const state = classifyReminderOperationalState(reminder);
+        if (state === 'overdue') {
+          summary.overdue += 1;
+        }
+        if (isFinancialReminder(reminder)) {
+          summary.financial += 1;
+        } else {
+          summary.operational += 1;
+        }
+        return summary;
+      },
+      { overdue: 0, financial: 0, operational: 0 },
+    ),
+    [filteredActiveReminders],
+  );
+
+  const openReminderEditor = (reminder: Reminder) => {
+    setEditingReminder(reminder);
+    setNewReminder({
+      title: reminder.title,
+      type: reminder.type,
+      priority: reminder.priority,
+    });
+
+    const parsedDate = new Date(reminder.date);
+    if (!Number.isNaN(parsedDate.getTime())) {
+      setSelectedDate(parsedDate.toISOString().slice(0, 10));
+      const hour = String(parsedDate.getHours()).padStart(2, '0');
+      const minute = String(parsedDate.getMinutes()).padStart(2, '0');
+      setSelectedTime(`${hour}:${minute}`);
+    }
+
+    setIsAddingReminder(true);
+  };
+
+  const closeReminderModal = () => {
+    setIsAddingReminder(false);
+    setEditingReminder(null);
+    setNewReminder({ title: '', type: ReminderType.PESSOAL, priority: 'media' });
+  };
+
   const generateSmartAlerts = async () => {
+    if (!smartAlertsEnabled) {
+      setSmartAlertsUpgradeOnly(true);
+      setShowSmartAlertsModal(true);
+      setIsGeneratingAlerts(false);
+      setSmartAlerts([]);
+      return;
+    }
+
     setIsGeneratingAlerts(true);
+    setSmartAlertsUpgradeOnly(false);
     setShowSmartAlertsModal(true);
     setSmartAlerts([]);
 
@@ -103,42 +209,53 @@ const Assistant: React.FC<AssistantProps> = ({
         description: t.description
       }));
 
-      const ai = new GoogleGenAI({apiKey: process.env.API_KEY});
-      const prompt = `
-        Analise estas transações financeiras e sugira 3 alertas de limites de gastos (orçamentos) inteligentes.
-        Foque em categorias onde parece haver gastos excessivos ou frequentes.
-        Retorne APENAS um JSON array neste formato, sem markdown:
-        [{"category": "Categoria", "threshold": 1000, "reason": "Explicação curta"}]
-        
-        Transações: ${JSON.stringify(recentTransactions)}
-      `;
+      const response = await apiRequest<{ insights?: Array<{category: string; threshold: number; reason: string}> } | Array<{category: string; threshold: number; reason: string}>>(
+        API_ENDPOINTS.AI.GENERATE_INSIGHTS,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            transactions: recentTransactions,
+            type: 'daily',
+          }),
+        },
+      );
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: { responseMimeType: "application/json" }
-      });
-
-      const suggestions = JSON.parse(response.text || '[]');
+      const suggestions = Array.isArray(response)
+        ? response
+        : ((response as any).insights ?? []);
       setSmartAlerts(suggestions);
     } catch (error) {
       console.error("Erro ao gerar alertas inteligentes:", error);
-      setSmartAlerts([]); // Handle error gracefully
+      setSmartAlerts([]);
     } finally {
       setIsGeneratingAlerts(false);
     }
   };
 
   const handleSaveReminder = () => {
-    if (!newReminder.title?.trim() && !editingReminder?.title?.trim()) return;
+    const reminderTitle = (newReminder.title ?? editingReminder?.title ?? '').trim();
+    if (!reminderTitle) return;
+
     const combinedDate = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
+
     if (editingReminder) {
-      onUpdateReminder({ ...editingReminder, date: combinedDate });
+      onUpdateReminder({
+        ...editingReminder,
+        title: reminderTitle,
+        date: combinedDate,
+        type: (newReminder.type ?? editingReminder.type) as ReminderType,
+        priority: (newReminder.priority ?? editingReminder.priority) as Reminder['priority'],
+      });
     } else {
-      onAddReminder({ ...newReminder, date: combinedDate });
+      onAddReminder({
+        ...newReminder,
+        title: reminderTitle,
+        date: combinedDate,
+      });
     }
     setIsAddingReminder(false);
     setEditingReminder(null);
+    setNewReminder({ title: '', type: ReminderType.PESSOAL, priority: 'media' });
   };
 
   const handleSaveGoal = () => {
@@ -193,7 +310,11 @@ const Assistant: React.FC<AssistantProps> = ({
 
       <div className="grid grid-cols-3 gap-3 px-1">
         <button 
-          onClick={() => setIsAddingReminder(true)} 
+          onClick={() => {
+            setEditingReminder(null);
+            setNewReminder({ title: '', type: ReminderType.PESSOAL, priority: 'media' });
+            setIsAddingReminder(true);
+          }} 
           className="flex flex-col items-center justify-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-[1.8rem] border border-slate-100 dark:border-slate-700 shadow-sm transition-all hover:scale-105 active:scale-95 group"
         >
           <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all">
@@ -226,10 +347,10 @@ const Assistant: React.FC<AssistantProps> = ({
       <div className="px-1">
         <button 
           onClick={generateSmartAlerts}
-          className="w-full p-4 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[1.8rem] flex items-center justify-center gap-3 shadow-lg shadow-indigo-500/20 active:scale-95 transition-all group"
+          className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[1.8rem] flex items-center justify-center gap-3 active:scale-95 transition-all group"
         >
-          <Sparkles size={18} className="text-white animate-pulse" />
-          <span className="text-[9px] font-black text-white uppercase tracking-widest">{ASSISTANT_COPY.smartAlertsCta}</span>
+          <Sparkles size={16} className="text-indigo-500" />
+          <span className="text-[9px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">{ASSISTANT_COPY.smartAlertsCta}</span>
         </button>
       </div>
 
@@ -274,42 +395,111 @@ const Assistant: React.FC<AssistantProps> = ({
                 )}
               </div>
             </div>
+
+            <div className="flex flex-col gap-1.5 px-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">Tipo:</span>
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[7px] font-black uppercase tracking-widest text-emerald-700">Financeiro {reminderSummary.financial}</span>
+                <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[7px] font-black uppercase tracking-widest text-indigo-700">Operacional {reminderSummary.operational}</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">Estado:</span>
+                <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[7px] font-black uppercase tracking-widest text-rose-700 inline-flex items-center gap-1">
+                  <AlertTriangle size={8} className="shrink-0" /> Vencido {reminderSummary.overdue}
+                </span>
+              </div>
+            </div>
             
-            {filteredReminders.length > 0 ? (
-              filteredReminders.map(r => (
-                <div 
-                  key={r.id} 
-                  className={`bg-white dark:bg-slate-800 p-5 rounded-[2.2rem] border transition-all duration-300 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-bottom-2 group ${selectedReminders.includes(r.id) ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-100 dark:border-slate-700'}`}
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <button 
-                      onClick={() => toggleSelectReminder(r.id)}
-                      className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${selectedReminders.includes(r.id) ? 'bg-indigo-500 text-white' : 'bg-slate-50 dark:bg-slate-900/50 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-                    >
-                      {selectedReminders.includes(r.id) ? <Check size={18} /> : getReminderIcon(r.type)}
-                    </button>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-black text-sm text-slate-800 dark:text-white tracking-tight">{r.title}</h4>
-                        {r.priority && (
-                          <div className={`w-2 h-2 rounded-full ${getPriorityColor(r.priority)}`} title={`Prioridade: ${r.priority}`} />
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-[9px] font-black uppercase text-indigo-400 tracking-widest">
-                          {new Date(r.date).toLocaleDateString('pt-BR')} • {new Date(r.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                        <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                        <p className="text-[8px] font-bold text-slate-400 uppercase">{r.type}</p>
-                      </div>
+            {filteredActiveReminders.length > 0 ? (
+              filteredActiveReminders.map(r => {
+                const reminderState = classifyReminderOperationalState(r);
+                const reminderTone = reminderState === 'overdue'
+                  ? 'border-rose-200 bg-rose-50/60 dark:bg-rose-900/20'
+                  : selectedReminders.includes(r.id)
+                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                    : 'border-slate-100 dark:border-slate-700';
+
+                return (
+                  <div 
+                    key={r.id} 
+                    className={`bg-white dark:bg-slate-800 p-5 rounded-[2.2rem] border transition-all duration-300 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-bottom-2 group ${reminderTone}`}
+                  >
+                    <div className="flex items-center gap-4 flex-1">
+                      <button 
+                        onClick={() => toggleSelectReminder(r.id)}
+                        className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${selectedReminders.includes(r.id) ? 'bg-indigo-500 text-white' : reminderState === 'overdue' ? 'bg-rose-100 text-rose-600' : 'bg-slate-50 dark:bg-slate-900/50 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                        aria-label="Selecionar lembrete"
+                      >
+                        {selectedReminders.includes(r.id) ? <Check size={18} /> : getReminderIcon(r.type)}
+                      </button>
+                      <button className="flex-1 text-left" onClick={() => openReminderEditor(r)} aria-label={`Editar lembrete ${r.title}`}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-black text-sm text-slate-800 dark:text-white tracking-tight">{r.title}</h4>
+                          <span className={`rounded-full border px-2 py-0.5 text-[7px] font-black uppercase tracking-widest ${isFinancialReminder(r) ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-indigo-200 bg-indigo-50 text-indigo-700'}`}>
+                            {isFinancialReminder(r) ? 'Financeiro' : 'Operacional'}
+                          </span>
+                          <span className={`rounded-full border px-2 py-0.5 text-[7px] font-black uppercase tracking-widest inline-flex items-center gap-1 ${reminderState === 'overdue' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
+                            {reminderState === 'overdue' && <AlertTriangle size={8} className="shrink-0" />}
+                            {reminderState === 'overdue' ? 'Vencido' : 'Ativo'}
+                          </span>
+                          {r.priority && (
+                            <div className={`w-2 h-2 rounded-full ${getPriorityColor(r.priority)}`} title={`Prioridade: ${r.priority}`} />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <p className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 tracking-widest">
+                            {new Date(r.date).toLocaleDateString('pt-BR')} • {new Date(r.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                          <p className="text-[8px] font-bold text-slate-400 uppercase">{r.type}</p>
+                        </div>
+                      </button>
+                    </div>
+                    <div className="ml-2 flex items-center gap-1">
+                      <button onClick={() => onToggleComplete(r.id)} className="p-2 text-slate-300 hover:text-emerald-600 transition-colors" aria-label={`Concluir lembrete ${r.title}`}>
+                        <Check size={16} />
+                      </button>
+                      <button onClick={() => openReminderEditor(r)} className="p-2 text-slate-300 hover:text-indigo-600 transition-colors" aria-label={`Abrir edicao do lembrete ${r.title}`}>
+                        <Edit2 size={15} />
+                      </button>
+                      <button onClick={() => onDeleteReminder(r.id)} className="p-2 text-slate-200 hover:text-rose-500 transition-colors" aria-label={`Excluir lembrete ${r.title}`}><Trash2 size={16} /></button>
                     </div>
                   </div>
-                  <button onClick={() => onDeleteReminder(r.id)} className="p-2 text-slate-200 hover:text-rose-500 transition-colors"><Trash2 size={16} /></button>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="text-center py-8 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[2rem]">
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Nenhum evento encontrado</p>
+              </div>
+            )}
+
+            {inactiveReminders.length > 0 && (
+              <div className="space-y-3 pt-1">
+                <button
+                  onClick={() => setShowInactiveReminders((current) => !current)}
+                  className="w-full flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left dark:border-slate-700 dark:bg-slate-900/40"
+                >
+                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Concluidos e cancelados ({inactiveReminders.length})</span>
+                  {showInactiveReminders ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
+                </button>
+
+                {showInactiveReminders && inactiveReminders.map((reminder) => {
+                  const reminderState = classifyReminderOperationalState(reminder);
+
+                  return (
+                    <div key={reminder.id} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/30">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-tight text-slate-500">{reminder.title}</p>
+                        <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">
+                          {new Date(reminder.date).toLocaleDateString('pt-BR')} • {reminderState === 'canceled' ? 'Cancelado' : 'Concluido'}
+                        </p>
+                      </div>
+                      <button onClick={() => onDeleteReminder(reminder.id)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors" aria-label={`Excluir lembrete inativo ${reminder.title}`}>
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -416,7 +606,7 @@ const Assistant: React.FC<AssistantProps> = ({
           {reminders.length === 0 && goals.length === 0 && alerts.length === 0 && (
             <div className="py-24 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[3rem]">
                <BrainCircuit size={40} className="mx-auto text-slate-200 mb-4" />
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Seu assistente está pronto.</p>
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Painel de apoio pronto para sua rotina.</p>
             </div>
           )}
         </div>
@@ -428,7 +618,7 @@ const Assistant: React.FC<AssistantProps> = ({
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-md"><Sparkles size={16} /></div>
-                <h3 className="text-base font-black text-slate-800 dark:text-white uppercase tracking-tight">Alertas Inteligentes</h3>
+                <h3 className="text-base font-black text-slate-800 dark:text-white uppercase tracking-tight">Sugestoes de limite</h3>
               </div>
               <button onClick={() => setShowSmartAlertsModal(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full"><X size={20} /></button>
             </div>
@@ -436,12 +626,24 @@ const Assistant: React.FC<AssistantProps> = ({
             {isGeneratingAlerts ? (
               <div className="py-20 flex flex-col items-center gap-4 text-center">
                 <Loader2 size={40} className="animate-spin text-indigo-600" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 animate-pulse">Analisando padrões de consumo...</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 animate-pulse">Lendo dados para sugestoes...</p>
+              </div>
+            ) : smartAlertsUpgradeOnly ? (
+              <div className="space-y-4">
+                <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+                  O Free continua com criacao manual de alertas. No Pro, voce recebe sugestoes prontas com base no seu padrao de caixa.
+                </p>
+                <div className="space-y-2 rounded-2xl border border-indigo-100 bg-indigo-50/80 p-4 dark:border-indigo-500/20 dark:bg-indigo-500/10">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-indigo-600">No Pro voce destrava</p>
+                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Sugestoes inteligentes por categoria.</p>
+                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Recomendacoes de teto com justificativa objetiva.</p>
+                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Mais rapidez para ajustar limites sem tentativa e erro.</p>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                  A IA identificou os seguintes padrões e sugere estes limites para otimizar seu fluxo de caixa:
+                  Com os dados atuais, estas sugestoes podem ajudar no controle de caixa. Revise antes de aplicar.
                 </p>
                 {smartAlerts.length > 0 ? (
                   smartAlerts.map((alert, idx) => (
@@ -462,7 +664,7 @@ const Assistant: React.FC<AssistantProps> = ({
                           }}
                           className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/20"
                         >
-                          Ativar
+                          Aplicar
                         </button>
                       </div>
                       <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
@@ -486,8 +688,8 @@ const Assistant: React.FC<AssistantProps> = ({
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-[3rem] p-8 shadow-2xl">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-base font-black text-slate-800 dark:text-white uppercase tracking-tight">Novo Evento</h3>
-              <button onClick={() => setIsAddingReminder(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full"><X size={20} /></button>
+              <h3 className="text-base font-black text-slate-800 dark:text-white uppercase tracking-tight">{editingReminder ? 'Editar Evento' : 'Novo Evento'}</h3>
+              <button onClick={closeReminderModal} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full"><X size={20} /></button>
             </div>
             <div className="space-y-5">
               <div className="space-y-2">
@@ -536,7 +738,7 @@ const Assistant: React.FC<AssistantProps> = ({
                   <input type="time" value={selectedTime} onChange={e => setSelectedTime(e.target.value)} className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl text-[10px] font-bold dark:text-white border-none" />
                 </div>
               </div>
-              <button onClick={handleSaveReminder} className="w-full py-5 bg-indigo-600 text-white rounded-[1.8rem] font-black text-[10px] uppercase shadow-xl hover:bg-indigo-700 active:scale-95 transition-all">Criar Evento</button>
+              <button onClick={handleSaveReminder} className="w-full py-5 bg-indigo-600 text-white rounded-[1.8rem] font-black text-[10px] uppercase shadow-xl hover:bg-indigo-700 active:scale-95 transition-all">{editingReminder ? 'Salvar Edicao' : 'Criar Evento'}</button>
             </div>
           </div>
         </div>

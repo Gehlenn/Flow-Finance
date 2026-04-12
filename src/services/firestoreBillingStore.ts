@@ -8,7 +8,7 @@
   query,
   setDoc,
 } from 'firebase/firestore';
-import { db } from '../../services/firebase';
+import { db, isFirebaseConfigured } from '../../services/firebase';
 import type { BillingHookPayload, PlanName, ResourceKind } from '../saas/types';
 import { writeAuditLogEvent } from './firestoreWorkspaceStore';
 
@@ -39,6 +39,8 @@ const DEFAULT_USAGE: WorkspaceUsageSnapshot = {
   aiQueries: 0,
   bankConnections: 0,
 };
+
+const FIREBASE_BILLING_CONFIG_ERROR = new Error('Workspace billing requires Firebase configuration.');
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -75,6 +77,10 @@ export function getCurrentMonthKey(at = new Date()): string {
 }
 
 export async function readWorkspaceUsage(workspaceId: string): Promise<Record<string, WorkspaceUsageSnapshot>> {
+  if (!isFirebaseConfigured) {
+    return {};
+  }
+
   const snapshot = await getDoc(usageDocRef(workspaceId));
   if (!snapshot.exists()) {
     return {};
@@ -95,6 +101,10 @@ export async function writeWorkspaceUsage(
   workspaceId: string,
   usage: Record<string, WorkspaceUsageSnapshot>,
 ): Promise<void> {
+  if (!isFirebaseConfigured) {
+    return;
+  }
+
   await setDoc(usageDocRef(workspaceId), {
     workspaceId,
     usage,
@@ -128,6 +138,17 @@ export async function getWorkspaceBillingState(
   workspaceId: string,
   tenantId: string,
 ): Promise<WorkspaceBillingState> {
+  if (!isFirebaseConfigured) {
+    return {
+      workspaceId,
+      tenantId,
+      plan: 'free',
+      status: 'active',
+      updatedAt: nowIso(),
+      updatedByUserId: 'system',
+    };
+  }
+
   const stateSnapshot = await getDoc(billingStateDocRef(workspaceId));
   if (stateSnapshot.exists()) {
     return stateSnapshot.data() as WorkspaceBillingState;
@@ -153,6 +174,10 @@ export async function recordWorkspaceBillingHook(input: {
   workspaceId: string;
   payload: BillingHookPayload;
 }): Promise<WorkspaceBillingHookDocument> {
+  if (!isFirebaseConfigured) {
+    throw FIREBASE_BILLING_CONFIG_ERROR;
+  }
+
   const eventRef = doc(billingHooksCollection(input.workspaceId));
   const event: WorkspaceBillingHookDocument = {
     id: eventRef.id,
@@ -186,6 +211,10 @@ export async function updateWorkspacePlan(input: {
   userId: string;
   plan: PlanName;
 }): Promise<WorkspaceBillingState> {
+  if (!isFirebaseConfigured) {
+    throw FIREBASE_BILLING_CONFIG_ERROR;
+  }
+
   const nextState: WorkspaceBillingState = {
     workspaceId: input.workspaceId,
     tenantId: input.tenantId,
@@ -237,6 +266,10 @@ export async function listWorkspaceBillingHooks(input: {
   workspaceId: string;
   maxItems?: number;
 }): Promise<WorkspaceBillingHookDocument[]> {
+  if (!isFirebaseConfigured) {
+    return [];
+  }
+
   const snapshot = await getDocs(query(
     billingHooksCollection(input.workspaceId),
     orderBy('createdAt', 'desc'),

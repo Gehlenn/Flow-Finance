@@ -14,6 +14,18 @@ interface BackendSessionPayload {
   token?: string;
   accessToken?: string;
   refreshToken?: string;
+  user?: {
+    userId?: string;
+    email?: string;
+    name?: string;
+  };
+}
+
+interface PasswordSessionBootstrapInput {
+  email: string;
+  password: string;
+  userId?: string | null;
+  name?: string | null;
 }
 
 async function parseJsonSafely(response: Response): Promise<Record<string, unknown>> {
@@ -22,6 +34,41 @@ async function parseJsonSafely(response: Response): Promise<Record<string, unkno
   } catch {
     return {};
   }
+}
+
+export function deriveDevelopmentUserId(email: string): string {
+  const normalized = email.trim().toLowerCase();
+  const safeSlug = normalized
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48);
+
+  return safeSlug ? `local-${safeSlug}` : 'local-user';
+}
+
+export async function bootstrapBackendSessionWithPasswordLogin(
+  input: PasswordSessionBootstrapInput,
+): Promise<BackendSessionPayload> {
+  const fallbackResponse = await fetch(API_ENDPOINTS.AUTH.LOGIN, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: input.email,
+      password: input.password,
+      userId: input.userId,
+      name: input.name,
+    }),
+  });
+
+  if (!fallbackResponse.ok) {
+    const errorPayload = await parseJsonSafely(fallbackResponse);
+    throw new Error(String(errorPayload.message || 'Failed to bootstrap backend session'));
+  }
+
+  const payload = await fallbackResponse.json() as BackendSessionPayload;
+  setEphemeralAccessToken(payload.accessToken || payload.token || null);
+  return payload;
 }
 
 export async function bootstrapBackendSessionFromFirebase(
@@ -45,24 +92,10 @@ export async function bootstrapBackendSessionFromFirebase(
     throw new Error(String(errorPayload.message || 'Failed to exchange Firebase session'));
   }
 
-  const fallbackResponse = await fetch(API_ENDPOINTS.AUTH.LOGIN, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email: input.email,
-      password: 'firebase-session',
-      userId: input.userId,
-      name: input.name,
-    }),
+  return bootstrapBackendSessionWithPasswordLogin({
+    email: input.email || '',
+    password: 'firebase-session',
+    userId: input.userId,
+    name: input.name,
   });
-
-  if (!fallbackResponse.ok) {
-    const errorPayload = await parseJsonSafely(fallbackResponse);
-    throw new Error(String(errorPayload.message || 'Failed to bootstrap backend session'));
-  }
-
-  const payload = await fallbackResponse.json() as BackendSessionPayload;
-  setEphemeralAccessToken(payload.accessToken || payload.token || null);
-  return payload;
 }

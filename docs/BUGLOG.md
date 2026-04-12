@@ -21,6 +21,18 @@
 
 ## CHECKPOINT DE TRANSICAO v0.6.0
 
+## CHECKPOINT DE TRANSICAO v0.9.6.1v
+
+### B016 | Regressao na suite global de cobertura | Flaky/contratos de teste desatualizados | Corrigir suites falhas e estabilizar setup | 0.9.6.1v (pendente)
+- Escopo: `npm run test:coverage`
+- Evidencia: `Test Files 9 failed`
+- Status: BLOQUEADO
+
+### B017 | Gate de release bloqueado por regressao global apesar de cobertura critica >98% | Divergencia entre suite critica e suite global | Unificar baseline de testes para gate unico de release | 0.9.6.1v (pendente)
+- Cobertura critica validada: `99.72% statements`, `98.89% branches`
+- Regras Firestore validadas: `8/8`
+- Status: BLOQUEADO
+
 ## CHECKPOINT DE TRANSICAO v0.9.1v
 
 ### ðŸ”´ B013 - Runtime console health com "Maximum update depth exceeded"

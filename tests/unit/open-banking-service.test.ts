@@ -177,8 +177,10 @@ describe('openBankingService (local mock mode)', () => {
     const result = await syncTransactions(conn.id, [], 'user1', (txs) => received.push(...txs));
 
     expect(result.transactions_imported).toBe(2); // 2 mocked raw txs
-    expect(received).toHaveLength(2);
-  });
+    expect(received).toHaveLength(2);    expect(received[0]).toMatchObject({
+      source: 'integration',
+    });
+    expect(received[0].external_reference).toBeTruthy();  });
 
   it('syncTransactions skips duplicates (same date + amount + description)', async () => {
     const conn = await connectBank('nubank', 'user1');

@@ -3,6 +3,8 @@ import { Loader2, Activity } from 'lucide-react';
 import { Account } from '../models/Account';
 import { Alert, Goal, Reminder, Transaction } from '../types';
 import type { WorkspaceRole } from '../src/services/workspaceSession';
+import { canAccessFeature } from '../src/app/monetizationPlan';
+import UpgradePromptCard from '../components/UpgradePromptCard';
 
 const lazyWithRetry = (importFn: () => Promise<any>) => {
   return lazy(() =>
@@ -64,6 +66,7 @@ export interface NavigationRenderContext {
   activeTenantId?: string | null;
   activeTenantName?: string | null;
   activeWorkspaceName: string | null;
+  activeWorkspacePlan: 'free' | 'pro';
   activeWorkspaceRole?: WorkspaceRole | null;
   hideValues: boolean;
   theme: 'light' | 'dark';
@@ -119,6 +122,7 @@ export function useNavigationTabs() {
               userEmail={context.userEmail}
               userId={context.userId}
               activeWorkspaceName={context.activeWorkspaceName}
+              activeWorkspacePlan={context.activeWorkspacePlan}
               transactions={context.transactions}
               accounts={context.accounts}
               alerts={context.alerts}
@@ -126,6 +130,8 @@ export function useNavigationTabs() {
               hideValues={context.hideValues}
               onNavigateToInsights={() => context.onNavigateToTab('insights')}
               onNavigateToAccounts={() => context.onNavigateToTab('accounts')}
+              onNavigateToHistory={() => context.onNavigateToTab('history')}
+              onNavigateToFlow={() => context.onNavigateToTab('flow')}
             />
           </Suspense>
         );
@@ -137,6 +143,7 @@ export function useNavigationTabs() {
               alerts={context.alerts}
               goals={context.goals}
               transactions={context.transactions}
+              workspacePlan={context.activeWorkspacePlan}
               hideValues={context.hideValues}
               onToggleComplete={context.onToggleReminder}
               onDeleteReminder={context.onDeleteReminder}
@@ -151,6 +158,20 @@ export function useNavigationTabs() {
           </Suspense>
         );
       case 'analytics':
+        if (!canAccessFeature(context.activeWorkspacePlan, 'advancedReports')) {
+          return (
+            <UpgradePromptCard
+              title="Relatorios completos do caixa"
+              description="O Free continua com leitura principal no dashboard. No Pro, voce abre uma camada analitica mais profunda."
+              bullets={[
+                'comparativos historicos mais completos',
+                'projecoes e tendencia de caixa com mais profundidade',
+                'visualizacoes avancadas para decisao operacional',
+              ]}
+            />
+          );
+        }
+
         return (
           <Suspense fallback={<LoadingFallback />}>
             <AdvancedAnalytics
@@ -194,6 +215,7 @@ export function useNavigationTabs() {
               transactions={context.transactions}
               accounts={context.accounts}
               userId={context.userId ?? 'local'}
+              workspacePlan={context.activeWorkspacePlan}
               hideValues={context.hideValues}
             />
           </Suspense>
@@ -205,6 +227,7 @@ export function useNavigationTabs() {
               transactions={context.transactions}
               accounts={context.accounts}
               userId={context.userId ?? 'local'}
+              workspacePlan={context.activeWorkspacePlan}
               hideValues={context.hideValues}
             />
           </Suspense>
@@ -216,6 +239,7 @@ export function useNavigationTabs() {
               activeWorkspaceName={context.activeWorkspaceName}
               transactions={context.transactions}
               userId={context.userId ?? 'local'}
+              workspacePlan={context.activeWorkspacePlan}
               hideValues={context.hideValues}
             />
           </Suspense>

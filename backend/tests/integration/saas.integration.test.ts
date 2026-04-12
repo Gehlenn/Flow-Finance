@@ -96,6 +96,12 @@ describe('SaaS API workspace scope', () => {
     expect(res.body.scope).toBe('workspace');
     expect(res.body.workspaceId).toBe(created.body.workspaceId);
     expect(res.body.currentPlan).toBe('free');
+    expect(res.body.mockBillingEnabled).toBe(true);
+    expect(res.body.manualPlanChangeAllowed).toBe(true);
+    expect(res.body.billingProvider).toBe('mock');
+    expect(res.body.stripeConfigured).toBe(false);
+    expect(res.body.stripePortalEnabled).toBe(false);
+    expect(res.body.hasBillingCustomer).toBe(false);
   });
 
   it('POST /api/saas/plan upgrades the workspace plan and PUT /api/saas/usage persists workspace usage', async () => {

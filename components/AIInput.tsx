@@ -3,9 +3,16 @@ import { GeminiService } from '../services/geminiService';
 import { Transaction, TransactionType, Category, Reminder, ReminderData, ReminderType, TransactionData } from '../types';
 import { Account, ACCOUNT_TYPE_LABELS } from '../models/Account';
 import { interpretText, interpretImage } from '../src/ai/aiInterpreter';
+import {
+  normalizeFromAIText,
+  normalizeFromAIImage,
+  normalizeManual,
+  draftToTransaction,
+} from '../src/domain/intakeNormalizer';
+import { TransactionDraft, getUncertainFields } from '../src/domain/transactionDraft';
 import { 
   X, Mic, Send, Sparkles, Loader2, Check, 
-  ImageIcon, Briefcase, TrendingUp,
+  ImageIcon, Briefcase, TrendingUp, AlertTriangle,
   ChevronLeft, ChevronRight, Lightbulb, Wallet, ShoppingBag, GraduationCap
 } from 'lucide-react';
 
@@ -49,11 +56,16 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
   const [isListening, setIsListening] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [intakeWarning, setIntakeWarning] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [clickedTipIndex, setClickedTipIndex] = useState<number | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | undefined>(
     accounts.length > 0 ? accounts[0].id : undefined
   );
+
+  // ── Draft review state ────────────────────────────────────────────────────
+  // Quando confiança for média/baixa, o draft fica aqui para revisão antes de salvar.
+  const [pendingDraft, setPendingDraft] = useState<TransactionDraft | null>(null);
 
   // Estados para modo Manual
   const [manualData, setManualData] = useState({
@@ -103,31 +115,52 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
   };
 
   const ensureHasGeneratedItems = (count: number, kind: 'transaction' | 'reminder') => {
-    if (count > 0) {
-      return;
-    }
-
-    if (kind === 'transaction') {
-      throw new Error('Nenhuma transação foi gerada pela IA');
-    }
-
+    if (count > 0) return;
+    if (kind === 'transaction') throw new Error('Nenhuma transação foi gerada pela IA');
     throw new Error('Nenhum lembrete foi gerado pela IA');
+  };
+
+  const pickSingleTransaction = (items: TransactionData[], origin: 'text' | 'image') => {
+    ensureHasGeneratedItems(items.length, 'transaction');
+    if (items.length > 1) {
+      console.warn(`[AIInput] ${origin} retornou ${items.length} transações; fluxo single-draft usando apenas a primeira.`);
+      setIntakeWarning('A IA detectou múltiplas transações. Neste fluxo, apenas a primeira será usada e você deve revisar antes de salvar.');
+    }
+    return items[0];
   };
 
   const handleSuccess = () => {
     setIsLoading(false);
+    setIntakeWarning(null);
     setIsSuccess(true);
     setTimeout(() => {
       onClose();
     }, 1500);
   };
 
+  // Persiste um draft aprovado (caminho único de save)
+  const commitDraft = (draft: TransactionDraft) => {
+    onAddTransactions([draftToTransaction(draft) as Partial<Transaction>]);
+    setPendingDraft(null);
+    handleSuccess();
+  };
+
+  // Decide se exibe revisão ou salva diretamente
+  const routeDraft = (draft: TransactionDraft, forceReview = false) => {
+    if (draft.confidenceLevel === 'high' && !forceReview) {
+      commitDraft(draft);
+    } else {
+      setIsLoading(false);
+      setPendingDraft(draft);
+    }
+  };
+
   const handleAIProcess = async () => {
     if (!inputText.trim()) return;
     setIsLoading(true);
     setError(null);
+    setIntakeWarning(null);
     try {
-      // Camada 1: AI Interpreter (enriquece com memória + loga debug)
       const output = await interpretText(
         inputText,
         userId,
@@ -136,14 +169,15 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
 
       if (output.intent === 'transaction') {
         const txData = output.data as TransactionData[];
-        ensureHasGeneratedItems(txData.length, 'transaction');
-        const withAccount = txData.map((t) => ({
-          ...t,
-          account_id: selectedAccountId,
-          source: 'ai_text' as const,
-          confidence_score: output.confidence,
-        }));
-        onAddTransactions(withAccount);
+        const hasAmbiguousBatch = txData.length > 1;
+        const selectedTransaction = pickSingleTransaction(txData, 'text');
+        const draft = normalizeFromAIText({
+          data: selectedTransaction,
+          confidence: output.confidence,
+          rawInput: inputText,
+          accountId: selectedAccountId,
+        });
+        routeDraft(draft, hasAmbiguousBatch);
       } else if (output.intent === 'reminder') {
         const reminderData = output.data as ReminderData[];
         ensureHasGeneratedItems(reminderData.length, 'reminder');
@@ -155,10 +189,10 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
           priority: REMINDER_PRIORITY_MAP[item.priority?.toLowerCase?.() ?? ''] || 'media',
         }));
         onAddReminders(reminders);
+        handleSuccess();
       } else {
         throw new Error('intent desconhecido');
       }
-      handleSuccess();
     } catch (err: unknown) {
       console.error('AIInput error', err);
       setError("Não consegui entender. Tente ser mais específico ou use o modo manual.");
@@ -168,19 +202,25 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setIntakeWarning(null);
     const val = parseFloat(manualData.amount);
     if (!manualData.description || isNaN(val)) {
       setError("Preencha a descrição e um valor válido.");
       return;
     }
-    onAddTransactions([{
+    const draft = normalizeManual({
       description: manualData.description,
       amount: val,
       type: manualData.type,
       category: manualData.category,
-      date: new Date().toISOString(),
-      account_id: selectedAccountId,
-      source: 'manual',
+      accountId: selectedAccountId,
+      recurring: manualData.recurring,
+      recurrenceType: manualData.recurring ? manualData.recurrence_type : undefined,
+      recurrenceInterval: manualData.recurring ? manualData.recurrence_interval : undefined,
+    });
+    // Manual sempre alta confiança — salva direto
+    onAddTransactions([{
+      ...draftToTransaction(draft) as Partial<Transaction>,
       recurring: manualData.recurring,
       recurrence_type: manualData.recurring ? manualData.recurrence_type : undefined,
       recurrence_interval: manualData.recurring ? manualData.recurrence_interval : undefined,
@@ -193,11 +233,11 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
     if (!file) return;
     setIsLoading(true);
     setError(null);
+    setIntakeWarning(null);
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64 = (reader.result as string).split(',')[1];
       try {
-        // Camada 1: AI Interpreter (image path)
         const output = await interpretImage(
           base64,
           file.type,
@@ -206,15 +246,15 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
           (b, m, t) => gemini.current.parseFinancialImage(b, m, t)
         );
         const txData = output.data as TransactionData[];
-        ensureHasGeneratedItems(txData.length, 'transaction');
-        const withAccount = txData.map((t) => ({
-          ...t,
-          account_id: selectedAccountId,
-          source: 'ai_image' as const,
-          confidence_score: output.confidence,
-        }));
-        onAddTransactions(withAccount);
-        handleSuccess();
+        const hasAmbiguousBatch = txData.length > 1;
+        const selectedTransaction = pickSingleTransaction(txData, 'image');
+        const draft = normalizeFromAIImage({
+          data: selectedTransaction,
+          confidence: output.confidence,
+          mimeType: file.type,
+          accountId: selectedAccountId,
+        });
+        routeDraft(draft, hasAmbiguousBatch);
       } catch (err) {
         setError("Erro ao ler imagem. Tente uma foto mais nítida.");
         setIsLoading(false);
@@ -222,6 +262,115 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
     };
     reader.readAsDataURL(file);
   };
+
+  // ── Draft Review Panel ────────────────────────────────────────────────────
+  if (pendingDraft) {
+    const uncertainFields = getUncertainFields(pendingDraft.fieldConfidences ?? {});
+    const isUncertain = (field: string) => uncertainFields.includes(field as keyof typeof pendingDraft.fieldConfidences);
+
+    return (
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 transition-all">
+        <div className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={16} className="text-amber-500" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">
+                {pendingDraft.confidenceLevel === 'low' ? 'Revisão obrigatória' : 'Confirme os campos'}
+              </span>
+            </div>
+            <button onClick={() => setPendingDraft(null)} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="p-6 flex flex-col gap-4">
+            {intakeWarning && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-[10px] font-bold text-amber-600 dark:text-amber-300">
+                {intakeWarning}
+              </div>
+            )}
+            <p className="text-[10px] text-slate-400 font-medium">
+              {pendingDraft.confidenceLevel === 'low'
+                ? 'A IA não conseguiu extrair alguns dados com certeza. Campos destacados precisam de confirmação.'
+                : 'Verifique os campos destacados antes de salvar.'}
+            </p>
+
+            {/* Descrição */}
+            <div className={`rounded-2xl p-3 border ${isUncertain('description') ? 'border-amber-300 bg-amber-50 dark:bg-amber-500/10' : 'border-slate-100 dark:border-slate-800'}`}>
+              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">
+                Descrição {isUncertain('description') && <span className="text-amber-500 ml-1">⚠</span>}
+              </label>
+              <input
+                className="w-full text-sm bg-transparent text-slate-800 dark:text-white outline-none"
+                value={pendingDraft.description}
+                onChange={e => setPendingDraft(d => d ? { ...d, description: e.target.value } : null)}
+              />
+            </div>
+
+            {/* Valor */}
+            <div className={`rounded-2xl p-3 border ${isUncertain('amount') ? 'border-amber-300 bg-amber-50 dark:bg-amber-500/10' : 'border-slate-100 dark:border-slate-800'}`}>
+              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">
+                Valor {isUncertain('amount') && <span className="text-amber-500 ml-1">⚠</span>}
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                className="w-full text-sm bg-transparent text-slate-800 dark:text-white outline-none"
+                value={pendingDraft.amount}
+                onChange={e => setPendingDraft(d => d ? { ...d, amount: parseFloat(e.target.value) || 0 } : null)}
+              />
+            </div>
+
+            {/* Tipo */}
+            <div className="flex gap-2">
+              {[TransactionType.DESPESA, TransactionType.RECEITA].map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setPendingDraft(d => d ? { ...d, type: t } : null)}
+                  className={`flex-1 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${pendingDraft.type === t ? 'bg-indigo-600 text-white' : 'bg-slate-50 dark:bg-slate-800 text-slate-400'}`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            {/* Categoria */}
+            <div className={`rounded-2xl p-3 border ${isUncertain('category') ? 'border-amber-300 bg-amber-50 dark:bg-amber-500/10' : 'border-slate-100 dark:border-slate-800'}`}>
+              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">
+                Categoria {isUncertain('category') && <span className="text-amber-500 ml-1">⚠</span>}
+              </label>
+              <select
+                className="w-full text-sm bg-transparent text-slate-800 dark:text-white outline-none"
+                value={pendingDraft.category ?? ''}
+                onChange={e => setPendingDraft(d => d ? { ...d, category: e.target.value as Category } : null)}
+              >
+                {Object.values(Category).map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+
+            <div className="flex gap-3 mt-2">
+              <button
+                type="button"
+                onClick={() => setPendingDraft(null)}
+                className="flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-slate-50 dark:bg-slate-800 text-slate-400 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => commitDraft(pendingDraft)}
+                className="flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white shadow-md transition-all"
+              >
+                Confirmar e Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 transition-all">
@@ -247,6 +396,11 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
         </div>
 
         <div className="p-8 flex-1">
+          {intakeWarning && (
+            <div role="status" className="mb-4 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/30 rounded-2xl text-amber-600 dark:text-amber-300 text-[10px] font-bold flex items-center gap-2">
+              <AlertTriangle size={14} className="shrink-0" /> {intakeWarning}
+            </div>
+          )}
           {error && (
             <div role="alert" className="mb-4 p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-2xl text-rose-500 text-[10px] font-bold flex items-center gap-2">
                <X size={14} className="shrink-0" /> {error}

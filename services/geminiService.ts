@@ -10,7 +10,7 @@
 
 import { InterpretResponse } from '../types';
 
-import { Transaction, Reminder } from "../types";
+import { Transaction, Reminder, TransactionData, TransactionType, Category } from "../types";
 import { API_ENDPOINTS, apiRequest } from "../src/config/api.config";
 
 type DailyInsightsApiResponse = { insights?: any[] } | any[];
@@ -47,9 +47,9 @@ export class GeminiService {
    * Parse financial document images (receipts, invoices, etc.)
    * Backend handles image analysis via Gemini
    */
-  async parseFinancialImage(base64: string, mimeType: string, text?: string): Promise<any[]> {
+  async parseFinancialImage(base64: string, mimeType: string, text?: string): Promise<TransactionData[]> {
     try {
-      return await apiRequest(
+      const response = await apiRequest<Record<string, unknown> | TransactionData[]>(
         API_ENDPOINTS.AI.SCAN_RECEIPT,
         {
           method: 'POST',
@@ -60,6 +60,23 @@ export class GeminiService {
           }),
         }
       );
+
+      if (Array.isArray(response)) {
+        return response;
+      }
+
+      const normalized: TransactionData = {
+        amount: typeof response.amount === 'number' ? response.amount : 0,
+        description: typeof response.description === 'string' ? response.description : 'Recibo escaneado',
+        category: Object.values(Category).includes(response.category as Category)
+          ? (response.category as Category)
+          : Category.PESSOAL,
+        type: response.type === TransactionType.RECEITA
+          ? TransactionType.RECEITA
+          : TransactionType.DESPESA,
+      };
+
+      return [normalized];
     } catch (error) {
       console.error('[AIService] parseFinancialImage failed:', error);
       return [];

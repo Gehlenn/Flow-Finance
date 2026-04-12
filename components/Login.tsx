@@ -16,11 +16,14 @@ import {
 
 interface LoginProps {
   onLogin: (email: string) => void;
+  onDevelopmentLogin?: (credentials: { email: string; password: string }) => Promise<void>;
 }
 
 type AuthView = 'login' | 'signup' | 'recover' | 'success';
 
-const Login: React.FC<LoginProps> = ({ onLogin }) => {
+const IS_DEV = import.meta.env.DEV;
+
+const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
   const [view, setView] = useState<AuthView>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -72,6 +75,23 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     e.preventDefault();
     if (!email || !password) return;
     if (!isFirebaseConfigured) {
+      if (IS_DEV && onDevelopmentLogin) {
+        setIsLoading(true);
+        setError(null);
+        try {
+          await onDevelopmentLogin({ email, password });
+          onLogin(email);
+          return;
+        } catch (err: any) {
+          setIsLoading(false);
+          setError({
+            code: err?.code || 'auth/local-login-failed',
+            message: String(err?.message || 'Falha ao autenticar no backend local.'),
+          });
+          return;
+        }
+      }
+
       setError({ code: 'auth/configuration-not-found', message: getFirebaseErrorMessage('auth/configuration-not-found') });
       return;
     }

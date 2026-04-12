@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { auth, onAuthStateChanged } from '../services/firebase';
+import { auth, isFirebaseConfigured, onAuthStateChanged } from '../services/firebase';
 import { addBreadcrumb, clearUser, setUser } from '../src/config/sentry';
 import { getStoredWorkspaceId, setStoredWorkspaceId } from '../src/config/api.config';
 import { getE2EAuthBootstrap } from '../src/utils/e2eAuthBootstrap';
-import { bootstrapBackendSessionFromFirebase } from '../src/services/backendSession';
+import {
+  bootstrapBackendSessionFromFirebase,
+  bootstrapBackendSessionWithPasswordLogin,
+  deriveDevelopmentUserId,
+} from '../src/services/backendSession';
 import { clearEphemeralAccessToken, setEphemeralAccessToken } from '../src/services/authSessionStore';
 import {
   clearActiveWorkspace,
@@ -60,6 +64,17 @@ export function useAuthAndWorkspace() {
   });
   const userRef = useRef(user);
 
+  const resetAuthenticatedState = useCallback(() => {
+    setCurrentUser({ id: null, email: null, name: null });
+    clearEphemeralAccessToken();
+    clearActiveWorkspace();
+    setBackendSyncEnabled(false);
+    setCloudSyncEnabled(true);
+    setActiveWorkspace({ workspaceId: null, tenantId: null, tenantName: null, name: null, plan: null, role: null });
+    clearUser();
+    addBreadcrumb('User logged out', 'auth', 'info');
+  }, []);
+
   useEffect(() => {
     userRef.current = user;
   }, [user]);
@@ -99,9 +114,50 @@ export function useAuthAndWorkspace() {
     setCurrentUser((current) => ({ ...current, email }));
   }, []);
 
+  const handleDevelopmentLogin = useCallback(async (credentials: {
+    email: string;
+    password: string;
+    name?: string | null;
+  }) => {
+    const userId = deriveDevelopmentUserId(credentials.email);
+    const payload = await bootstrapBackendSessionWithPasswordLogin({
+      email: credentials.email,
+      password: credentials.password,
+      userId,
+      name: credentials.name ?? null,
+    });
+    setEphemeralAccessToken(payload.accessToken || payload.token || null);
+
+    const resolvedUserId = payload.user?.userId || userId;
+    const resolvedEmail = payload.user?.email || credentials.email;
+    const resolvedName = payload.user?.name || credentials.name || null;
+
+    setCloudSyncEnabled(false);
+    setBackendSyncEnabled(true);
+    setCurrentUser({
+      id: resolvedUserId,
+      email: resolvedEmail,
+      name: resolvedName,
+    });
+    setUser({
+      id: resolvedUserId,
+      email: resolvedEmail || undefined,
+    });
+    addBreadcrumb(`Development login enabled for ${resolvedEmail}`, 'auth', 'info');
+
+    await hydrateWorkspace({
+      id: resolvedUserId,
+      email: resolvedEmail,
+      name: resolvedName,
+    });
+  }, [hydrateWorkspace]);
+
   const handleLogout = useCallback(async () => {
     await auth.signOut();
-  }, []);
+    if (!isFirebaseConfigured || !auth.currentUser) {
+      resetAuthenticatedState();
+    }
+  }, [resetAuthenticatedState]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -207,19 +263,13 @@ export function useAuthAndWorkspace() {
           setIsInitialLoading(false);
         }
       } else {
-        setCurrentUser({ id: null, email: null, name: null });
-        clearEphemeralAccessToken();
-        clearActiveWorkspace();
-        setBackendSyncEnabled(false);
-        setActiveWorkspace({ workspaceId: null, tenantId: null, tenantName: null, name: null, plan: null, role: null });
-        clearUser();
-        addBreadcrumb('User logged out', 'auth', 'info');
+        resetAuthenticatedState();
         setIsInitialLoading(false);
       }
     });
 
     return () => unsubscribe();
-  }, [e2eBootstrap, hydrateWorkspace, isE2EBootstrapActive]);
+  }, [e2eBootstrap, hydrateWorkspace, isE2EBootstrapActive, resetAuthenticatedState]);
 
   useEffect(() => {
     if (!isInitialLoading || isE2EBootstrapActive || typeof window === 'undefined') {
@@ -246,6 +296,7 @@ export function useAuthAndWorkspace() {
     activeWorkspace,
     refreshWorkspace,
     handleLogin,
+    handleDevelopmentLogin,
     handleLogout,
     setUserName,
     setCloudSyncEnabled,

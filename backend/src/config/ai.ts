@@ -5,7 +5,7 @@ import * as gemini from './gemini';
 
 /**
  * AI Provider Wrapper with automatic fallback
- * Tries OpenAI first, falls back to Gemini if OpenAI fails
+ * Tries Gemini first, falls back to OpenAI when Gemini is unavailable
  */
 
 export async function generateContent(
@@ -23,32 +23,32 @@ export async function generateContent(
     throw new Error(error);
   }
 
-  // Try OpenAI first if available
-  if (hasOpenAI) {
+  // Try Gemini first if available
+  if (hasGemini) {
     try {
-      logger.info({ model: env.OPENAI_MODEL }, 'Attempting OpenAI request');
-      return await openai.generateContent(prompt, options);
+      logger.info({ model: env.GEMINI_MODEL }, 'Attempting Gemini request');
+      return await gemini.generateContent(prompt, options);
     } catch (error: any) {
       logger.error({
-        provider: 'OpenAI',
+        provider: 'Gemini',
         error: error?.message || String(error),
         status: error?.status,
-        hasGemini,
-      }, 'OpenAI failed');
-      
-      // If quota exceeded (429) or model unavailable (404), try Gemini fallback
-      if (hasGemini && (error.status === 429 || error.status === 404)) {
-        logger.warn({ error: error.message, status: error.status }, 'OpenAI failed with recoverable error, falling back to Gemini');
+        hasOpenAI,
+      }, 'Gemini failed');
+
+      // If quota exceeded (429) or model unavailable (404), try OpenAI fallback
+      if (hasOpenAI && (error.status === 429 || error.status === 404)) {
+        logger.warn({ error: error.message, status: error.status }, 'Gemini failed with recoverable error, falling back to OpenAI');
         try {
-          logger.info({ model: env.GEMINI_MODEL }, 'Attempting Gemini fallback');
-          return await gemini.generateContent(prompt, options);
-        } catch (geminiError: any) {
+          logger.info({ model: env.OPENAI_MODEL }, 'Attempting OpenAI fallback');
+          return await openai.generateContent(prompt, options);
+        } catch (openAiError: any) {
           logger.error({
-            provider: 'Gemini',
-            error: geminiError?.message || String(geminiError),
-            originalOpenAIError: error?.message,
-          }, 'Gemini fallback also failed');
-          throw geminiError;
+            provider: 'OpenAI',
+            error: openAiError?.message || String(openAiError),
+            originalGeminiError: error?.message,
+          }, 'OpenAI fallback also failed');
+          throw openAiError;
         }
       }
       // For other errors, throw immediately
@@ -56,16 +56,16 @@ export async function generateContent(
     }
   }
 
-  // Use Gemini as primary if OpenAI not configured
-  if (hasGemini) {
+  // Use OpenAI as primary if Gemini is not configured
+  if (hasOpenAI) {
     try {
-      logger.info({ model: env.GEMINI_MODEL }, 'Using Gemini as primary AI provider');
-      return await gemini.generateContent(prompt, options);
+      logger.info({ model: env.OPENAI_MODEL }, 'Using OpenAI as primary AI provider');
+      return await openai.generateContent(prompt, options);
     } catch (error: any) {
       logger.error({
-        provider: 'Gemini',
+        provider: 'OpenAI',
         error: error?.message || String(error),
-      }, 'Gemini primary request failed');
+      }, 'OpenAI primary request failed');
       throw error;
     }
   }

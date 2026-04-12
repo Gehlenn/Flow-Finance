@@ -42,5 +42,8 @@ test.describe('Billing Flow', () => {
 
     await expect(page.getByRole('heading', { name: /Workspace Admin/i })).toBeVisible({ timeout: 10000 });
     await expect(page.locator('body')).toContainText(/Workspace Admin|Billing and usage|Read-only workspace role/i);
+    await expect(page.locator('body')).toContainText(
+      /Start Pro checkout|Open billing portal|Set Pro|Billing actions are unavailable/i,
+    );
   });
 });

@@ -10,7 +10,7 @@ const MAIN_NAV_ITEMS: MainNavigationItem[] = [
   { tab: 'dashboard', label: 'Inicio' },
   { tab: 'history', label: 'Transacoes' },
   { tab: 'flow', label: 'Fluxo' },
-  { tab: 'cfo', label: 'Consultor IA' },
+  { tab: 'cfo', label: 'Apoio IA' },
   { tab: 'settings', label: 'Ajustes' },
   { tab: 'aicontrol', label: 'Lab IA', requiresDevMode: true },
 ];

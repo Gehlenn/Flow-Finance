@@ -1,4 +1,30 @@
-﻿# [0.9.6] - 2026-04-07
+# [0.9.6.1v] - 2026-04-12
+
+### Transicao de versao iniciada (status: bloqueado)
+
+#### Auditoria sistemica
+- `npm run lint`: aprovado
+- `npm run security:scan-secrets`: aprovado (sem segredos suspeitos)
+- `npm audit --omit=dev`: aprovado (0 vulnerabilidades)
+- `npm run health:io`: aprovado
+- `npm run health:runtime`: aprovado
+- `npm run health:runtime:mobile`: aprovado
+
+#### QA e cobertura
+- `npm run test:coverage:critical`: aprovado
+	- Statements: `99.72%`
+	- Branches: `98.89%`
+	- Functions: `100%`
+	- Lines: `100%`
+- `node scripts/run-firestore-rules.mjs`: aprovado (`8/8`)
+- `npm run test:coverage`: bloqueado por regressao na suite global (`9` arquivos de teste com falha)
+
+#### Resultado de release
+- Status final: `BLOQUEADO`
+- Motivo: regressao na suite global impede fechamento da transicao com garantia de qualidade integral.
+- Acoes imediatas: corrigir falhas da suite global e reexecutar protocolo completo.
+
+# [0.9.6] - 2026-04-07
 
 ### Simplificacao de UI - Ciclo 1
 
@@ -30,6 +56,26 @@
 - `npm test`: aprovado
 - `npm run test:coverage:critical`: aprovado (>= 98% no recorte critico)
 - Playwright Chromium direcionado: `1 passed`, `3 skipped`, `0 failed`
+
+#### Reconciliacao documental (2026-04-11)
+- Eixo importacao/OCR/categorizacao consolidado como nucleo tecnico fechado no codigo.
+- Mantida ressalva de risco residual operacional para monitoramento em ambiente real (confianca OCR e casos ambiguos), sem backlog estrutural de codigo nesse eixo.
+
+#### Hardening operacional de startup e workspace (2026-04-11)
+- `components/Settings.tsx` regravado em UTF-8 limpo para eliminar falha real de carregamento de modulo no Vite.
+- `src/services/firestoreWorkspaceStore.ts` e `src/services/firestoreBillingStore.ts` passaram a degradar com fallback seguro quando Firebase nao esta configurado, evitando quebra de boot em execucoes frontend-only.
+- Matriz E2E focada (`auth`, `dashboard`, `billing`) executada em Chromium, Firefox, WebKit, Mobile Chrome e Mobile Safari: `36 passed`, `4 skipped`, `0 failed`.
+- `src/runtime/apiGuard.ts` e `src/runtime/versionGuard.ts` passaram a tratar `404` sem backend explicito como skip benigno em ambiente frontend-only.
+- `backend/src/services/saas/billingService.ts` agora expõe capacidades reais de billing no catalogo SaaS (`stripeConfigured`, `stripePortalEnabled`, `billingProvider`, `manualPlanChangeAllowed`).
+- `src/saas/billingClient.ts` e `pages/WorkspaceAdmin.tsx` passaram a ligar o admin a checkout/portal Stripe quando o provider real estiver disponivel, preservando fallback mock em ambiente local.
+- `docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md` passou a registrar a prova operacional completa de `checkout -> webhook -> plano pro -> billingCustomerId -> portal`.
+- `components/Login.tsx`, `hooks/useAuthAndWorkspace.ts` e `src/services/backendSession.ts` agora destravam login local em `development` quando Firebase nao estiver configurado, preservando o fluxo seguro de producao e a trilha visual do admin.
+- `tests/unit/login.test.tsx` e `tests/unit/useAuthAndWorkspace.test.tsx` cobrem o fallback de login local e o logout sem dependencia do observer do Firebase.
+- Atualizacao 2026-04-12: o residual principal passou de auth/UI local para observabilidade minima e paridade de ambiente.
+- `src/config/sentry.ts` deixou de emitir warning ruidoso quando o DSN nao estiver configurado e passou a expor status configurado explicitamente.
+- `src/config/api.config.ts` agora promove `requestId`, `routeScope` e `statusCode` de erros de API para a camada de observabilidade do frontend em falhas 5xx/rede.
+- `tests/unit/observability-client.test.ts` cobre telemetria de `ApiRequestError` e bootstrap silencioso do Sentry sem DSN.
+- Residual pos-hardening concentrado em auth/UI Firebase local e hardening final de ambiente, nao mais em evidencia operacional do billing real nem em ruído de probes frontend-only.
 
 #### Pos-merge: estabilidade da suite CI
 - `test:ci` consolidado para usar o runner estavel em chunks (`scripts/run-vitest-stable.mjs`) para reduzir risco de `JavaScript heap out of memory` em execucoes completas.
@@ -80,11 +126,11 @@
 
 # [0.9.1v] - 2026-04-02
 
-### TransiÃ§Ã£o de VersÃ£o â€” Auditoria SistÃªmica + QA de Fluxos CrÃ­ticos
+### Transição de Versão — Auditoria Sistêmica + QA de Fluxos Críticos
 
-#### âœ… Auditoria TÃ©cnica
-- RevisÃ£o de arquitetura, seguranÃ§a e escalabilidade SaaS executada para Web e Mobile.
-- PriorizaÃ§Ã£o de riscos em: sanitizaÃ§Ã£o de entradas, robustez de segredo JWT, quotas de IA, sincronizaÃ§Ã£o e duplicaÃ§Ã£o de lÃ³gica de categorizaÃ§Ã£o.
+#### ✅ Auditoria Técnica
+- Revisão de arquitetura, segurança e escalabilidade SaaS executada para Web e Mobile.
+- Priorização de riscos em: sanitização de entradas, robustez de segredo JWT, quotas de IA, sincronização e duplicação de lógica de categorização.
 
 #### Testes e Cobertura
 - `npm run lint`: aprovado
@@ -96,74 +142,74 @@
 	- Lines: `100%`
 - `npm run test:e2e`: aprovado (`28 passed`, `57 skipped`)
 
-#### ðŸ“š DocumentaÃ§Ã£o
-- README atualizado com status de transiÃ§Ã£o 0.9.1v e baseline de validaÃ§Ãµes.
+#### 📚 Documentação
+- README atualizado com status de transição 0.9.1v e baseline de validações.
 - ROADMAP atualizado com checkpoint 0.9.1v e backlog imediato de hardening.
-- GDD atualizado com adendo de regras e fluxos crÃ­ticos da transiÃ§Ã£o.
-- BUGLOG atualizado com incidentes E2E e rastreabilidade por versÃ£o.
+- GDD atualizado com adendo de regras e fluxos críticos da transição.
+- BUGLOG atualizado com incidentes E2E e rastreabilidade por versão.
 - Conflitos de merge em documentacao principal resolvidos (README, CHANGELOG, ROADMAP, GDD e BUGLOG).
 
-# v0.8.0 â€” 25/03/2026
+# v0.8.0 — 25/03/2026
 - Scanner aceita imagem e PDF
 - Tratamento de erro Gemini aprimorado
 - Open Banking removido da UI
 - Monitor de performance ocultado
 - Dashboard.tsx reestruturado
-- Auditoria tÃ©cnica: ver AUDIT_REPORT_v0.8.0.md
+- Auditoria técnica: ver AUDIT_REPORT_v0.8.0.md
 
-# ðŸ“ CHANGELOG - Flow Finance
+# 📝 CHANGELOG - Flow Finance
 
 # [0.7.2] - 2026-03-17
 
-### Autopilot â€” Metas AutomÃ¡ticas
+### Autopilot — Metas Automáticas
 
-#### ðŸš€ Novidade
-- Engine do Autopilot agora gera metas automÃ¡ticas de corte, economia e reserva de emergÃªncia.
-- Metas sugeridas com valor, categoria e aÃ§Ã£o clara para o usuÃ¡rio.
+#### 🚀 Novidade
+- Engine do Autopilot agora gera metas automáticas de corte, economia e reserva de emergência.
+- Metas sugeridas com valor, categoria e ação clara para o usuário.
 
-#### ðŸ§ª Testes e Cobertura
-- Teste unitÃ¡rio dedicado: `ai-autopilot-goal-suggestion.test.ts` â€” passou
-- Cobertura crÃ­tica mantida (>98%)
+#### 🧪 Testes e Cobertura
+- Teste unitário dedicado: `ai-autopilot-goal-suggestion.test.ts` — passou
+- Cobertura crítica mantida (>98%)
 
-#### ðŸ“š DocumentaÃ§Ã£o
+#### 📚 Documentação
 - README, ROADMAP e CHANGELOG atualizados para refletir a nova funcionalidade
 
 # [0.7.1] - 2026-03-17
 
-### Autopilot â€” SugestÃ£o de Corte AutomÃ¡tico
+### Autopilot — Sugestão de Corte Automático
 
-#### ðŸš€ Novidade
-- Engine do Autopilot agora sugere corte automÃ¡tico em categorias com overspending, indicando valor sugerido para equilibrar orÃ§amento.
-- Mensagem clara e aÃ§Ã£o de "Criar Meta de Corte" para facilitar ajuste financeiro.
+#### 🚀 Novidade
+- Engine do Autopilot agora sugere corte automático em categorias com overspending, indicando valor sugerido para equilibrar orçamento.
+- Mensagem clara e ação de "Criar Meta de Corte" para facilitar ajuste financeiro.
 
-#### ðŸ§ª Testes e Cobertura
-- Teste unitÃ¡rio dedicado: `ai-autopilot-cut-suggestion.test.ts` â€” passou
-- Cobertura crÃ­tica mantida (>98%)
+#### 🧪 Testes e Cobertura
+- Teste unitário dedicado: `ai-autopilot-cut-suggestion.test.ts` — passou
+- Cobertura crítica mantida (>98%)
 
-#### ðŸ“š DocumentaÃ§Ã£o
+#### 📚 Documentação
 - README, ROADMAP e CHANGELOG atualizados para refletir a nova funcionalidade
 
 # [0.7.0] - 2026-03-17
 
-### Sprint 3 â€” Autopilot Evolutivo: RecomendaÃ§Ãµes Ativas e Overspending
+### Sprint 3 — Autopilot Evolutivo: Recomendações Ativas e Overspending
 
-#### ðŸš€ EvoluÃ§Ã£o do Autopilot
-- Engine ampliada para detecÃ§Ã£o de overspending em tempo real por categoria (alerta imediato)
-- SugestÃ£o de corte automÃ¡tico e base para metas inteligentes (em progresso)
-- Feedback explicativo e contexto personalizado para recomendaÃ§Ãµes (em progresso)
+#### 🚀 Evolução do Autopilot
+- Engine ampliada para detecção de overspending em tempo real por categoria (alerta imediato)
+- Sugestão de corte automático e base para metas inteligentes (em progresso)
+- Feedback explicativo e contexto personalizado para recomendações (em progresso)
 
-#### ðŸ§ª Testes e Cobertura
-- Teste unitÃ¡rio dedicado para overspending por categoria (`ai-autopilot-overspending.test.ts`)
-- Cobertura crÃ­tica validada (>98%)
+#### 🧪 Testes e Cobertura
+- Teste unitário dedicado para overspending por categoria (`ai-autopilot-overspending.test.ts`)
+- Cobertura crítica validada (>98%)
 
-#### ðŸ“š DocumentaÃ§Ã£o
+#### 📚 Documentação
 - README, ROADMAP e CHANGELOG atualizados para v0.7.x
 
 ## [0.6.8] - 2026-03-17
 
-### Sprint 2 â€” Hardening de Entrega e Confiabilidade de Fluxo
+### Sprint 2 — Hardening de Entrega e Confiabilidade de Fluxo
 
-#### âœ… CI/CD: deploy com fail-fast e preflight operacional
+#### ✅ CI/CD: deploy com fail-fast e preflight operacional
 - workflow de deploy endurecido em `.github/workflows/deploy.yml` com:
 	- resolucao explicita de `DEPLOY_PLATFORM`
 	- falha antecipada para alvo invalido
@@ -171,32 +217,32 @@
 	- preflight summary com contexto operacional (sem exposicao de segredo)
 	- notificacoes Slack tolerantes a webhook ausente (skip seguro)
 
-#### âœ… Open Banking E2E: menor intermitencia no fluxo Pluggy
+#### ✅ Open Banking E2E: menor intermitencia no fluxo Pluggy
 - `tests/e2e/open-banking-pluggy.spec.ts` estabilizado para lidar com dois estados de UI:
 	- jornada vazia (`Conectar Banco`)
 	- jornada com conexoes existentes (`Adicionar banco`)
 - comportamento agora evita falso-negativo por estado visual nao deterministico e preserva validacao backend de `connect-token`
 
-#### âœ… Produto: feedback explicito do usuario para sinais de IA
+#### ✅ Produto: feedback explicito do usuario para sinais de IA
 - `src/app/productFinancialIntelligence.ts` ganhou `signalFeedbackTargets`
 - `components/Dashboard.tsx` ganhou acoes `util` / `nao util` nos sinais priorizados
 - feedback grava aprendizado via `recordMemoryFeedback` para recorrencia, picos e dominancia de categoria
 
-#### âœ… Observabilidade no frontend: requestId propagado em erros de integracao
+#### ✅ Observabilidade no frontend: requestId propagado em erros de integracao
 - `src/config/api.config.ts` passou a emitir `ApiRequestError` com `statusCode`, `requestId`, `routeScope` e `details`
 - `services/integrations/openBankingService.ts` passa a anexar `requestId` nas mensagens de erro Pluggy quando presente
 
-#### ðŸ§ª Validacoes executadas
+#### 🧪 Validacoes executadas
 - `npx vitest run tests/unit/dashboard-financial-intelligence.test.ts tests/unit/open-banking-service-extended.test.ts tests/unit/ai-memory-engine.test.ts`: verde (74/74)
 - `npm run lint`: verde
 - `npx playwright test tests/e2e/open-banking-pluggy.spec.ts --project=chromium --workers=1 --reporter=line`: skip controlado (sem falha)
 
 ## [0.6.7] - 2026-03-17
 
-### Sprint 2 â€” Produto + Memoria + Contratos Backend
+### Sprint 2 — Produto + Memoria + Contratos Backend
 
-#### âœ… Produto: sinais de inteligencia internalizados no Dashboard
-- `src/app/productFinancialIntelligence.ts` agora expÃµe sinais priorizados de produto:
+#### ✅ Produto: sinais de inteligencia internalizados no Dashboard
+- `src/app/productFinancialIntelligence.ts` agora expõe sinais priorizados de produto:
 	- `dominantCategorySharePercent`
 	- `weeklySpikeCount`
 	- `forecastDirection` (`improving|declining|stable`)
@@ -204,16 +250,16 @@
 - `components/Dashboard.tsx` passou a renderizar bloco `Sinais priorizados` e badge de picos semanais no widget de Inteligencia Financeira
 - `tests/unit/dashboard-financial-intelligence.test.ts` expandido para cobrir novos campos
 
-#### âœ… Memoria: feedback explicito + decaimento contextual
+#### ✅ Memoria: feedback explicito + decaimento contextual
 - `src/ai/memory/AIMemoryEngine.ts` ganhou API de feedback explicito:
 	- `recordMemoryFeedback(userId, type, key, feedback, context?)`
 - metadados de memoria reforcados com:
 	- `contextDecayMultiplier`
 	- `feedbackCount`, `lastFeedback`, `lastFeedbackContext`, `lastFeedbackAt`
-- `src/ai/memory/AIMemoryStore.ts` aplica decaimento ponderado por `contextDecayMultiplier` e expÃµe `runDecayCycle()` para validacao deterministica
+- `src/ai/memory/AIMemoryStore.ts` aplica decaimento ponderado por `contextDecayMultiplier` e expõe `runDecayCycle()` para validacao deterministica
 - `tests/unit/ai-memory-engine.test.ts` expandido para feedback e decaimento contextual
 
-#### âœ… Backend: contrato e observabilidade de erro endurecidos
+#### ✅ Backend: contrato e observabilidade de erro endurecidos
 - novo middleware `backend/src/middleware/requestContext.ts` injeta `requestId` (com propagacao de `x-request-id`) e `routeScope`
 - `backend/src/index.ts` inclui contexto de requisicao em logs e resposta 404
 - `backend/src/middleware/auth.ts` retorna `requestId` e `routeScope` em erros de autenticacao
@@ -221,41 +267,41 @@
 - `backend/src/types/index.ts` (`ErrorResponse`) atualizado com campos opcionais de contexto
 - `tests/unit/backend-error-handler.test.ts` validado para o novo contrato
 
-#### ðŸ§ª Validacoes executadas
+#### 🧪 Validacoes executadas
 - `npm run lint`: verde
 - `npm test`: verde (604/604)
 - `npm run test:coverage:critical`: verde (`99.76%` statements / `98.3%` branches)
 
 ## [0.6.6] - 2026-03-17
 
-### Sprint 2 â€” Bloco 4 Concluido: Cobertura de Integracao
+### Sprint 2 — Bloco 4 Concluido: Cobertura de Integracao
 
-#### âœ… Cobertura ampliada do Advanced Context Builder
+#### ✅ Cobertura ampliada do Advanced Context Builder
 - `tests/unit/advanced-context-builder.test.ts` expandido com cenarios de integracao para:
 	- confianca minima de previsao com baixa amostragem de transacoes
 	- dominancia por categoria com validacao de percentual dominante
 	- consistencia progressiva de forecast em 7/30/90 dias
 
-#### âœ… Viewers internos do painel de IA validados
+#### ✅ Viewers internos do painel de IA validados
 - Nova suite `tests/unit/ai-control-panel-viewers.test.tsx` cobrindo:
 	- gate de renderizacao via `VITE_AI_DEBUG_PANEL`
 	- renderizacao integrada de `AI Memory`, `Detected Patterns`, `Money Map`, `AI Task Queue` e `AI Insights`
 	- presenca de sinais de memoria, fila de tarefas e campos de previsao no fluxo real do orquestrador
 
-#### ðŸ§ª Validacoes executadas
+#### 🧪 Validacoes executadas
 - `npx vitest run tests/unit/advanced-context-builder.test.ts tests/unit/ai-control-panel-viewers.test.tsx`: verde (6/6)
 - `npm run lint`: verde
 - `npm test`: verde (601/601)
 - `npm run test:coverage:critical`: verde (`99.76%` statements / `98.3%` branches)
 
-### Sprint 2 â€” Bloco 5 Concluido: Open Finance em Standby Estrategico
+### Sprint 2 — Bloco 5 Concluido: Open Finance em Standby Estrategico
 
-#### âœ… Standby economico formalizado sem perda de capacidade tecnica
+#### ✅ Standby economico formalizado sem perda de capacidade tecnica
 - gate de runtime mantido em `/api/banking` com `DISABLE_OPEN_FINANCE=true`
 - stack de Open Finance (Pluggy) e billing (Stripe) preservada para reativacao futura
 - decisao de nao priorizacao mantida enquanto custo operacional seguir inviavel
 
-#### âœ… Evidencias de preservacao
+#### ✅ Evidencias de preservacao
 - middleware `featureGateOpenFinance` ativo no backend
 - rotas, controladores e testes de Open Finance permanecem versionados e validos
 - documentacao de operacao/go-live mantida para retomada quando houver viabilidade
@@ -264,26 +310,26 @@
 
 ## [0.6.5] - 2026-03-16
 
-### Sprint 2 â€” D5/D6/D7: Financial Intelligence UI, Backend Metrics, E2E Auth Fixture
+### Sprint 2 — D5/D6/D7: Financial Intelligence UI, Backend Metrics, E2E Auth Fixture
 
-#### âœ¨ D5 â€” Widget de Inteligencia Financeira no Dashboard
+#### ✨ D5 — Widget de Inteligencia Financeira no Dashboard
 - Importados `buildFinancialTimeline`, `detectBalanceTrend`, `detectTimelineAnomalies` (engine D3) e `classifyFinancialProfile` (engine D4) no Dashboard
 - 4 novos `useMemo` hooks: `financialTimeline`, `balanceTrend`, `timelineAnomalies`, `financialProfile`
 - Novo widget "Inteligencia Financeira": badge de tendencia de saldo (Crescendo / Queda / Estavel), perfil financeiro do usuario com barra de confianca colorida, insights acionaveis do classificador D4, alerta de anomalias detectadas na timeline
 
-#### ðŸ”Œ D6 â€” Endpoint Backend `POST /api/finance/metrics`
-- `backend/src/controllers/financeController.ts`: logica de computacao pura auto-contida â€” timeline por dia, regressao linear para tendencia, deteccao de picos (2x mediana), classificador de perfil (Saver/Spender/Balanced/RiskTaker/Undefined)
+#### 🔌 D6 — Endpoint Backend `POST /api/finance/metrics`
+- `backend/src/controllers/financeController.ts`: logica de computacao pura auto-contida — timeline por dia, regressao linear para tendencia, deteccao de picos (2x mediana), classificador de perfil (Saver/Spender/Balanced/RiskTaker/Undefined)
 - `backend/src/routes/finance.ts`: rota protegida com `authMiddleware`
 - `backend/src/index.ts`: montado em `/api/finance`; validacao de input: deve ser array, limite 2000 items
 
-#### ðŸ›¡ï¸ D7 â€” Fixture E2E Pluggy Auth Estavel (fix B010-E2E)
+#### 🛡️ D7 — Fixture E2E Pluggy Auth Estavel (fix B010-E2E)
 - `tests/e2e/fixtures/auth.ts`: funcao `getFixtureAuthToken` usa email fixo via `E2E_PLUGGY_USER_EMAIL` env var (configuravel por ambiente), eliminando email dinamico por-teste que causava skip intermitente
 - `tests/e2e/open-banking-pluggy.spec.ts`: removida funcao local `createBackendAuthToken`; substituida pelo import do fixture
 
-#### ðŸ§ª Testes
+#### 🧪 Testes
 - `tests/unit/finance-controller.test.ts`: 10 testes cobrindo validacao de input, profiles, timeline, trends, anomalias, topCategories e sanitizacao de dados invalidos
 
-#### âœ… Validacoes executadas
+#### ✅ Validacoes executadas
 - `npm run lint`: verde
 - `npm test`: 387/387 verde
 - `npm run test:coverage:critical`: `99.76%` statements / `98.3%` branches
@@ -293,38 +339,38 @@
 
 ## [0.5.2v] - 2026-03-14
 
-### ðŸ”„ Protocolo de Transicao (Iniciado)
+### 🔄 Protocolo de Transicao (Iniciado)
 **Status:** Em execucao controlada
 
-#### âœ… Entregas tecnicas consolidadas nesta transicao
+#### ✅ Entregas tecnicas consolidadas nesta transicao
 - Hardening de servicos SaaS com `AppError` padronizado para limites, permissoes e features
 - Validadores dedicados para transacao e metas (`transactionValidator`, `goalValidator`)
 - Repository dedicado para assinaturas com injecao no container de aplicacao
 - Observabilidade no `aiOrchestrator` com metricas de chamada, erro e latencia
 - Ajuste do E2E Pluggy para evitar falso-negativo quando backend local estiver indisponivel
 
-#### âœ… Sprint 1 concluida (A003-A006)
+#### ✅ Sprint 1 concluida (A003-A006)
 - `SubscriptionRepository` com `update()` explicito e uso em `SubscriptionService.updateSubscription`
 - `resolveSaaSContext` com memoizacao TTL e deduplicacao de chamadas concorrentes
 - `errorHandler` do backend com sanitizacao de `details` e redaction de campos sensiveis
 - Logger com redaction automatica de chaves sensiveis, metadados (`correlationId`, `scope`) e sink estruturado integrado ao Sentry com fallback em console
 - Novos testes: `logger.test.ts` e `backend-error-handler.test.ts`
 
-#### âœ… Sprint 2 consolidada (readiness + D1/D2 funcionais)
-- Nova suÃ­te `financial-intelligence-readiness.test.ts` validando: Context Builder, Pattern Detector, Timeline, Profile Classifier, Cashflow Prediction e Money Map
-- ConsistÃªncia entre engines e `aiOrchestrator` validada com cenÃ¡rios integrados
+#### ✅ Sprint 2 consolidada (readiness + D1/D2 funcionais)
+- Nova suíte `financial-intelligence-readiness.test.ts` validando: Context Builder, Pattern Detector, Timeline, Profile Classifier, Cashflow Prediction e Money Map
+- Consistência entre engines e `aiOrchestrator` validada com cenários integrados
 - `advancedContextBuilder` enriquecido com qualidade de dados, confianca e resumo financeiro recente
 - `financialPatternDetector` evoluido com insights e score de confianca para recorrencia e picos semanais
 - Testes de fronteira ampliados para evitar falso positivo em picos semanais e recorrencia insuficiente
 - Estado atual de testes elevado para `352/352` verdes
 
-#### âœ… Validacoes executadas
+#### ✅ Validacoes executadas
 - `npm run lint`: verde
 - `npm test`: verde
 - `npm run test:coverage:critical`: verde (`99.76%` statements / `98.3%` branches)
 - `npx playwright test tests/e2e/open-banking-pluggy.spec.ts --project=chromium --workers=1 --reporter=line`: verde/skip controlado conforme disponibilidade do backend local
 
-#### ðŸ§¾ Regra de versionamento aplicada
+#### 🧾 Regra de versionamento aplicada
 - Label documental de transicao atualizada para `0.5.2v`
 - Ciclo tecnico de pacotes permanece em `0.6.x` para preservar compatibilidade de build e distribuicao
 
@@ -332,47 +378,47 @@
 
 ## [0.6.3] - 2026-03-14
 
-### ðŸ—ï¸ Arquitetura Evoluida â€” Event Listeners, Cache e Observabilidade
+### 🏗️ Arquitetura Evoluida — Event Listeners, Cache e Observabilidade
 
-#### ðŸ”’ Hardening tecnico consolidado na trilha 0.6.3
+#### 🔒 Hardening tecnico consolidado na trilha 0.6.3
 - `AppError` padronizado para permissoes, limites de plano e recursos indisponiveis
 - Validadores de entrada para transacoes e metas integrados aos servicos de aplicacao
 - `SubscriptionRepository` introduzido para reduzir acoplamento direto com storage
 - `aiOrchestrator` fortalecido com metricas de chamada, erro e latencia
 - Teste E2E do Pluggy ajustado para skip controlado quando a API local nao estiver disponivel
 
-#### âœ¨ Event-Driven Listeners (`src/events/listeners/`)
-- `autopilotListener` â€” dispara analise do `FinancialAutopilot` em eventos financeiros
-- `aiQueueListener` â€” encaminha transacoes e eventos criticos para `AITaskQueue`
-- `forecastListener` â€” reprocessa previsoes de cashflow ao detectar transacao criada
-- `auditListener` â€” registra todos os eventos financeiros em `auditLogService`
-- `cacheInvalidationListener` â€” invalida cache financeiro ao detectar mutacoes
-- `registerListeners` â€” ponto central de bootstrap dos listeners
+#### ✨ Event-Driven Listeners (`src/events/listeners/`)
+- `autopilotListener` — dispara analise do `FinancialAutopilot` em eventos financeiros
+- `aiQueueListener` — encaminha transacoes e eventos criticos para `AITaskQueue`
+- `forecastListener` — reprocessa previsoes de cashflow ao detectar transacao criada
+- `auditListener` — registra todos os eventos financeiros em `auditLogService`
+- `cacheInvalidationListener` — invalida cache financeiro ao detectar mutacoes
+- `registerListeners` — ponto central de bootstrap dos listeners
 
-#### âš¡ Camada de Cache Financeiro (`src/cache/financialCache.ts`)
+#### ⚡ Camada de Cache Financeiro (`src/cache/financialCache.ts`)
 - Cache Map-based com TTL configuravel por entrada
 - Invalidacao por prefixo (ex: `cache.invalidateByPrefix('cashflow:')`)
 - API: `get`, `set`, `invalidate`, `invalidateByPrefix`, `clear`, `size`
 - Integracao com `cacheInvalidationListener` para invalidacao reativa
 
-#### ðŸ”­ AI Observabilidade avancada (`src/observability/aiMetrics.ts`)
+#### 🔭 AI Observabilidade avancada (`src/observability/aiMetrics.ts`)
 - Buffer circular com limite de 200 registros por tipo de metrica
 - Tipos suportados: `ai_call`, `ai_error`, `ai_latency`, `cache_hit`, `cache_miss`, `event_processed`
 - API: `recordAIMetric`, `getAIMetrics`, `getAIMetricsSummary`, `clearAIMetrics`
 - Componente `MetricsViewer` integrado ao `AIControlPanel` para visualizacao em tempo real
 
-#### ðŸ› ï¸ Polimento e Bootstrap
+#### 🛠️ Polimento e Bootstrap
 - Log estruturado de versao no bootstrap frontend e backend
 - Endpoints `GET /api/health` e `GET /api/version` verificados e ativados
 - Nomenclaturas padronizadas (cashflow vs cashflowPrediction)
 
-#### âœ… Checklist tecnico
+#### ✅ Checklist tecnico
 - `npm run lint`: verde
 - `npm test`: verde
-- `npm run test:coverage:critical`: verde (â‰¥ 98%)
+- `npm run test:coverage:critical`: verde (≥ 98%)
 - Pacotes tecnicos sincronizados em `0.6.3`
 
-#### ðŸ§¾ Relacao com a transicao documental
+#### 🧾 Relacao com a transicao documental
 - Release label externa/documental: `0.5.2v`
 - Release tecnica interna de build/distribuicao: `0.6.3`
 
@@ -380,27 +426,27 @@
 
 ## [0.5.1v] - 2026-03-13
 
-### ðŸ”„ Protocolo de TransiÃ§Ã£o (Open Finance)
+### 🔄 Protocolo de Transição (Open Finance)
 **Status:** Iniciado e validado tecnicamente
 
-#### âœ¨ Open Finance Firebase-first
+#### ✨ Open Finance Firebase-first
 - Persistencia Open Finance consolidada em Firebase (`OPEN_FINANCE_STORE_DRIVER=firebase`)
 - Webhook Pluggy validado com comportamento esperado `401/401/202`
 - Prova de persistencia apos restart aprovada em ambiente local
 
-#### ðŸ›¡ï¸ Hardening de configuracao
+#### 🛡️ Hardening de configuracao
 - Removida tolerancia ao valor invalido de provider (`luggy`)
 - Fallback seguro para `mock` com warning de configuracao
 - Teste unitario dedicado para evitar regressao
 
-#### âœ… Checklist tecnico do protocolo
+#### ✅ Checklist tecnico do protocolo
 - `cd backend && npm run build`: verde
 - `npm run lint`: verde
 - `npm test`: verde (`263/263`)
 - `npm run test:coverage:critical`: verde (`100/98.9/100/100`)
 - `npm run test:e2e`: verde com backend ativo (`33 passed`, `32 skipped`)
 
-#### ðŸ§¾ Observacao de versionamento
+#### 🧾 Observacao de versionamento
 - Label de transicao: `0.5.1v` (documental)
 - SemVer tecnico do pacote permanece no ciclo `0.6.x` para nao quebrar compatibilidade de build/distribuicao.
 
@@ -408,66 +454,66 @@
 
 ## [0.6.2] - 2026-03-11
 
-### ðŸ” Auditoria Geral & Hardening v0.6.2
+### 🔍 Auditoria Geral & Hardening v0.6.2
 **Status:** Post-audit hardening v0.6.1
 
-#### âœ… Achados de Auditoria
+#### ✅ Achados de Auditoria
 - **Arquitetura**: 9.2/10 - Clean layers bem implementadas
-- **SeguranÃ§a**: 9.0/10 - JWT, CORS, rate-limit, Zod validation robusta
-- **Performance**: 7.8/10 - Bundle OK (~305KB), AI latÃªncia 1-3s
+- **Segurança**: 9.0/10 - JWT, CORS, rate-limit, Zod validation robusta
+- **Performance**: 7.8/10 - Bundle OK (~305KB), AI latência 1-3s
 - **Testes**: 5.2/10 - Cobertura 46.35% (meta 98% bloqueador para v0.6.3)
 
-#### ðŸ”§ CorreÃ§Ãµes RÃ¡pidas
-- âœ… Adicionado `z.number().max(999999999)` em TransactionSchema
-- âœ… Corrigido typo em description (v0.6.1v â†’ v0.6.2)
-- âœ… Logging CORS melhorado para debug produÃ§Ã£o
+#### 🔧 Correções Rápidas
+- ✅ Adicionado `z.number().max(999999999)` em TransactionSchema
+- ✅ Corrigido typo em description (v0.6.1v → v0.6.2)
+- ✅ Logging CORS melhorado para debug produção
 
-#### ðŸ“‹ Vulnerabilidades Identificadas (para v0.6.3+)
-1. ðŸ”´ Cobertura testes <20%: openBankingService, aiMemory, AIMemoryEngine
-2. ðŸŸ  JWT em localStorage (XSS risk) â†’ HttpOnly cookies recomendado
-3. ðŸŸ  Sem cache categorias IA â†’ IndexedDB + Redis
-4. ðŸŸ¡ Recurring detection inflexÃ­vel â†’ Fuzzy matching
-5. ðŸŸ¡ Sem GC aiMemory â†’ Auto-gc >1000 items
+#### 📋 Vulnerabilidades Identificadas (para v0.6.3+)
+1. 🔴 Cobertura testes <20%: openBankingService, aiMemory, AIMemoryEngine
+2. 🟠 JWT em localStorage (XSS risk) → HttpOnly cookies recomendado
+3. 🟠 Sem cache categorias IA → IndexedDB + Redis
+4. 🟡 Recurring detection inflexível → Fuzzy matching
+5. 🟡 Sem GC aiMemory → Auto-gc >1000 items
 
-#### ðŸ§ª Testes
-- âœ… 193/193 testes passando
-- âš ï¸ Cobertura 46.35% vs meta 98% **BLOQUEADOR v0.6.3**
+#### 🧪 Testes
+- ✅ 193/193 testes passando
+- ⚠️ Cobertura 46.35% vs meta 98% **BLOQUEADOR v0.6.3**
 
-#### ðŸ“š DocumentaÃ§Ã£o
+#### 📚 Documentação
 - Gerado: `AUDITORIA_THOROUGH_2026-03-11.md` (51 findings)
-- Roadmap: FASE 1 (testes), FASE 2 (seguranÃ§a), FASE 3 (otimizaÃ§Ã£o)
+- Roadmap: FASE 1 (testes), FASE 2 (segurança), FASE 3 (otimização)
 
 ---
 
 ## [0.6.1] - 2026-03-10
 
-### ðŸ”„ TransiÃ§Ã£o 0.6.1v
+### 🔄 Transição 0.6.1v
 
 ## [0.6.9] - 2026-03-17
 
-### Encerramento da Fase v0.6.x â€” InteligÃªncia Financeira
+### Encerramento da Fase v0.6.x — Inteligência Financeira
 
-#### âœ… Entregas consolidadas
-- Widget de InteligÃªncia Financeira no Dashboard: tendÃªncia, perfil, confianÃ§a, insights, anomalias, categoria dominante
-- Endpoint backend `/api/finance/metrics` com timeline, tendÃªncia, anomalias e perfil financeiro (proteÃ§Ã£o, validaÃ§Ã£o e integraÃ§Ã£o mobile)
-- Fixture E2E Pluggy autenticada e estÃ¡vel, reduzindo skips e intermitÃªncia
-- Feedback explÃ­cito de sinais de IA integrado ao produto e memÃ³ria
+#### ✅ Entregas consolidadas
+- Widget de Inteligência Financeira no Dashboard: tendência, perfil, confiança, insights, anomalias, categoria dominante
+- Endpoint backend `/api/finance/metrics` com timeline, tendência, anomalias e perfil financeiro (proteção, validação e integração mobile)
+- Fixture E2E Pluggy autenticada e estável, reduzindo skips e intermitência
+- Feedback explícito de sinais de IA integrado ao produto e memória
 - Observabilidade ampliada: requestId propagado, erros com contexto, logs estruturados
 
-#### ðŸ§ª ValidaÃ§Ãµes executadas
+#### 🧪 Validações executadas
 - `npm run lint`: verde
 - `npm test`: verde (606/606)
 - `npm run test:coverage:critical`: verde (`99.76%` statements / `98.3%` branches)
 - `npx playwright test tests/e2e/open-banking-pluggy.spec.ts --project=chromium --workers=1 --reporter=line`: skip controlado (sem falha)
 
-#### ðŸ“ TransiÃ§Ã£o para v0.7.x
+#### 📝 Transição para v0.7.x
 - Todos os objetivos da fase v0.6.x foram cumpridos e validados
-- PrÃ³xima fase: AutomaÃ§Ã£o Financeira (Autopilot evolutivo, Smart Budget, Smart Goals, OrquestraÃ§Ã£o automÃ¡tica)
+- Próxima fase: Automação Financeira (Autopilot evolutivo, Smart Budget, Smart Goals, Orquestração automática)
 
 ---
-- âœ… Todos os hover states e transforms presentes
+- ✅ Todos os hover states e transforms presentes
 
-#### ðŸ“¦ **AlteraÃ§Ãµes de DependÃªncias**
+#### 📦 **Alterações de Dependências**
 ```diff
 - "tailwindcss": "^4.2.1"
 + "tailwindcss": "^3.4.19"
@@ -478,264 +524,264 @@
 
 ## [0.4.0] - 2026-03-09
 
-### ðŸš€ **RELEASE HIGHLIGHTS**  
-**Status:** Production-Ready âœ…  
+### 🚀 **RELEASE HIGHLIGHTS**  
+**Status:** Production-Ready ✅  
 **Cobertura de Testes:** 98%+  
-**Bugs CrÃ­ticos Resolvidos:** 5/5  
+**Bugs Críticos Resolvidos:** 5/5  
 
-Esta versÃ£o marca a transiÃ§Ã£o completa para produÃ§Ã£o com IA GPT-4, autenticaÃ§Ã£o Firebase real e correÃ§Ãµes crÃ­ticas de infraestrutura.
+Esta versão marca a transição completa para produção com IA GPT-4, autenticação Firebase real e correções críticas de infraestrutura.
 
 ---
 
-### âœ¨ **Novas Funcionalidades**
+### ✨ **Novas Funcionalidades**
 
-#### ðŸ¤– CFO Virtual com GPT-4
-- **Assistente Financeiro Conversacional:** IntegraÃ§Ã£o completa com OpenAI GPT-4
+#### 🤖 Apoio Financeiro IA com GPT-4
+- **Assistente Financeiro Conversacional:** Integração completa com OpenAI GPT-4
 - **Backend Proxy Seguro:** Chave de API nunca exposta no cliente
-- **Contexto Financeiro:** Consultas baseadas em saldo, transaÃ§Ãµes e perfil
-- **Intents Inteligentes:** `spending_advice`, `budget_question`, `risk_question`, `savings_question`, `investment_question`
-- **Linguagem Consultiva:** Respostas sempre em portuguÃªs brasileiro com disclaimers apropriados
+- **Contexto Financeiro:** Consultas baseadas em saldo, transações e perfil
+- **Intents Inteligentes:** `spending_advice`, `cash_position`, `risk_question`, `savings_question`, `receivables_question`
+- **Linguagem Consultiva:** Respostas sempre em português brasileiro com disclaimers apropriados
 
-#### ðŸ” AutenticaÃ§Ã£o & SeguranÃ§a
+#### 🔐 Autenticação & Segurança
 - **Firebase Auth Production:** Google OAuth e Email/Senha funcionais
-- **Modo Demo Removido:** 100% autenticaÃ§Ã£o real em produÃ§Ã£o
+- **Modo Demo Removido:** 100% autenticação real em produção
 - **JWT Stateless:** Backend com tokens JWT seguros
-- **Rate Limiting:** ProteÃ§Ã£o contra abuso de API de IA
+- **Rate Limiting:** Proteção contra abuso de API de IA
 
-#### ðŸ“Š Pipeline de AnÃ¡lise Financeira
-- **AI Orchestrator v0.3:** CoordenaÃ§Ã£o centralizada de anÃ¡lises
-- **Health Score DinÃ¢mico:** PontuaÃ§Ã£o 0-100 com labels (`crÃ­tico`, `atenÃ§Ã£o`, `estÃ¡vel`, `saudÃ¡vel`, `excelente`)
-- **Perfil Financeiro:** ClassificaÃ§Ã£o automÃ¡tica do usuÃ¡rio (`Conservador`, `Equilibrado`, `Gastador`, `Investidor`)
+#### 📊 Pipeline de Análise Financeira
+- **AI Orchestrator v0.3:** Coordenação centralizada de análises
+- **Health Score Dinâmico:** Pontuação 0-100 com labels (`crítico`, `atenção`, `estável`, `saudável`, `excelente`)
+- **Perfil Financeiro:** Classificação automática do usuário (`Conservador`, `Equilibrado`, `Gastador`, `Investidor`)
 - **Insights Contextuais:** Alerts, recommendations e pattern detection
 
 ---
 
-### ðŸ”§ **CorreÃ§Ãµes (Bugfixes)**
+### 🔧 **Correções (Bugfixes)**
 
-#### Backend/API (CrÃ­ticos)
-- **[BUG-040-001]** `500 Internal Error` no endpoint `/api/ai/cfo` â†’ Corrigida API OpenAI (`chat.completions.create`)
-- **[BUG-040-002]** `env.OPENAI_MODEL undefined` â†’ VariÃ¡veis adicionadas em `env.ts`
-- **[BUG-040-003]** Conflito TypeScript em `storage.ts` (getSignedUrl) â†’ Renomeado import 
-- **[BUG-040-004]** ParÃ¢metros nÃ£o usados em `database.ts` â†’ Removidos
-- **[BUG-040-005]** Schema nÃ£o usado em `aiController.ts` â†’ DeclaraÃ§Ã£o removida
+#### Backend/API (Críticos)
+- **[BUG-040-001]** `500 Internal Error` no endpoint `/api/ai/cfo` → Corrigida API OpenAI (`chat.completions.create`)
+- **[BUG-040-002]** `env.OPENAI_MODEL undefined` → Variáveis adicionadas em `env.ts`
+- **[BUG-040-003]** Conflito TypeScript em `storage.ts` (getSignedUrl) → Renomeado import 
+- **[BUG-040-004]** Parâmetros não usados em `database.ts` → Removidos
+- **[BUG-040-005]** Schema não usado em `aiController.ts` → Declaração removida
 
 #### Frontend/Runtime
-- **[BUG-030-001]** `process is not defined` â†’ Migrado para `import.meta.env`
-- **[BUG-030-002]** `detectSalary is not defined` â†’ Imports adicionados no Dashboard
-- **[BUG-030-003]** White screen Vercel â†’ Ordem de rotas corrigida
+- **[BUG-030-001]** `process is not defined` → Migrado para `import.meta.env`
+- **[BUG-030-002]** `detectSalary is not defined` → Imports adicionados no Dashboard
+- **[BUG-030-003]** White screen Vercel → Ordem de rotas corrigida
 
 ---
 
-### ðŸ—ï¸ **Melhorias de Arquitetura**
+### 🏗️ **Melhorias de Arquitetura**
 
 #### Infraestrutura
-- **Vercel Deployment Ready:** ConfiguraÃ§Ã£o SPA otimizada
+- **Vercel Deployment Ready:** Configuração SPA otimizada
 - **Docker Compose:** Setup completo para dev/staging
 - **PostgreSQL Support:** Schema e migrations prontos (opcional)
-- **Redis Caching:** Preparado para rate limiting avanÃ§ado
+- **Redis Caching:** Preparado para rate limiting avançado
 
 #### Code Quality
-- **TypeScript Strict Mode:** Zero erros de compilaÃ§Ã£o
-- **ESLint + Prettier:** FormataÃ§Ã£o consistente
-- **Clean Architecture:** SeparaÃ§Ã£o de camadas respeitada
+- **TypeScript Strict Mode:** Zero erros de compilação
+- **ESLint + Prettier:** Formatação consistente
+- **Clean Architecture:** Separação de camadas respeitada
 - **SOLID Principles:** Single responsibility, Open/Closed, etc.
 
 #### Testing
-- **Suite de Testes UnitÃ¡rios:** CÃ¡lculos financeiros, validaÃ§Ãµes, controllers
-- **Testes de IntegraÃ§Ã£o:** Backend API endpoints
-- **Coverage:** 98%+ (alvo obrigatÃ³rio)
+- **Suite de Testes Unitários:** Cálculos financeiros, validações, controllers
+- **Testes de Integração:** Backend API endpoints
+- **Coverage:** 98%+ (alvo obrigatório)
 - **Vitest + Testing Library:** Stack moderna
 
 ---
 
-### ðŸ“¦ **DependÃªncias Atualizadas**
+### 📦 **Dependências Atualizadas**
 
 #### Principais
-- `openai@4.x` â†’ IntegraÃ§Ã£o GPT-4
-- `firebase@10.x` â†’ Auth + Firestore SDK
-- `vite@6.4.x` â†’ Build otimizado
-- `typescript@5.3.x` â†’ Type safety aprimorado
+- `openai@4.x` → Integração GPT-4
+- `firebase@10.x` → Auth + Firestore SDK
+- `vite@6.4.x` → Build otimizado
+- `typescript@5.3.x` → Type safety aprimorado
 
 ---
 
-### ðŸ“š **DocumentaÃ§Ã£o**
+### 📚 **Documentação**
 
 #### Novos Arquivos
-- `BUGLOG.md` â†’ Registro completo de bugs com formato estruturado
-- `COMECE_AQUI.md` â†’ Guia rÃ¡pido de 30min para setup
-- `SETUP_GUIDE.md` â†’ Manual completo em inglÃªs
-- `SETUP_GUIA_PT.md` â†’ Manual completo em portuguÃªs
-- `VERCEL_QUICK_START.md` â†’ Deploy rÃ¡pido na Vercel
-- `DATABASE_DECISION.md` â†’ AnÃ¡lise arquitetural de banco de dados
-- `.env.local.example` â†’ Template completo de variÃ¡veis
+- `BUGLOG.md` → Registro completo de bugs com formato estruturado
+- `COMECE_AQUI.md` → Guia rápido de 30min para setup
+- `SETUP_GUIDE.md` → Manual completo em inglês
+- `SETUP_GUIA_PT.md` → Manual completo em português
+- `VERCEL_QUICK_START.md` → Deploy rápido na Vercel
+- `DATABASE_DECISION.md` → Análise arquitetural de banco de dados
+- `.env.local.example` → Template completo de variáveis
 
 #### Atualizados
-- `README.md` â†’ Stack v0.4.0, instruÃ§Ãµes atualizadas
-- `ROADMAP.md` â†’ PrÃ³ximos passos com v0.5.0 e alÃ©m
-- `GDD.md` â†’ MecÃ¢nicas financeiras documentadas
-- `ARCHITECTURE.md` â†’ Diagrama atualizado com GPT-4
+- `README.md` → Stack v0.4.0, instruções atualizadas
+- `ROADMAP.md` → Próximos passos com v0.5.0 e além
+- `GDD.md` → Mecânicas financeiras documentadas
+- `ARCHITECTURE.md` → Diagrama atualizado com GPT-4
 
 ---
 
-### ðŸ”„ **Breaking Changes**
+### 🔄 **Breaking Changes**
 
-âš ï¸ **Modo Demo Removido**  
-- Removidas todas referÃªncias a contas demo
-- Login agora requer autenticaÃ§Ã£o real (Google ou Email)
-- Dados demo nÃ£o serÃ£o mais criados automaticamente
+⚠️ **Modo Demo Removido**  
+- Removidas todas referências a contas demo
+- Login agora requer autenticação real (Google ou Email)
+- Dados demo não serão mais criados automaticamente
 
-âš ï¸ **API Backend ObrigatÃ³ria**  
+⚠️ **API Backend Obrigatória**  
 - Funcionalidades de IA agora requerem backend ativo
-- VariÃ¡vel `VITE_API_PROD_URL` obrigatÃ³ria em produÃ§Ã£o
+- Variável `VITE_API_PROD_URL` obrigatória em produção
 - `OPENAI_API_KEY` deve estar configurada no backend
 
 ---
 
-### ðŸ“ˆ **MÃ©tricas de Qualidade**
+### 📈 **Métricas de Qualidade**
 
 - **Code Coverage:** 98.2%
 - **Build Time:** ~45s (frontend) / ~30s (backend)
 - **Bundle Size:** 700KB gzipped
 - **Lighthouse Score:** 95+ (Performance, Accessibility, Best Practices, SEO)
-- **Zero RegressÃµes:** Todos os testes anteriores passando
+- **Zero Regressões:** Todos os testes anteriores passando
 
 ---
 
-### ðŸŽ¯ **PrÃ³ximos Passos (v0.5.0)**
+### 🎯 **Próximos Passos (v0.5.0)**
 
-- [ ] Suporte a mÃºltiplas moedas com conversÃ£o automÃ¡tica
-- [ ] NotificaÃ§Ãµes push via PWA
-- [ ] ExportaÃ§Ã£o de relatÃ³rios em PDF
-- [ ] IntegraÃ§Ã£o real com Open Banking
-- [ ] Machine Learning para previsÃ£o de gastos
+- [ ] Suporte a múltiplas moedas com conversão automática
+- [ ] Notificações push via PWA
+- [ ] Exportação de relatórios em PDF
+- [ ] Integração real com Open Banking
+- [ ] Machine Learning para previsão de gastos
 
 ---
 
 ## [0.3.1] - 2026-03-08
 
-### âœ¨ Advanced AI & Financial Integrity Modules
+### ✨ Advanced AI & Financial Integrity Modules
 
-#### ðŸ¤– AI Engine Enhancements
-- **AI Orchestrator Engine** - Pipeline centralizado para coordenaÃ§Ã£o de IA
-- **Financial Intelligence Graph** - Grafo de relaÃ§Ãµes financeiras com nodes e edges
-- **AI Financial Simulator** - SimulaÃ§Ã£o de cenÃ¡rios financeiros (gastos extras, economia mensal)
-- **AI Category Learning** - Aprendizado automÃ¡tico de categorias por merchant
-- **Financial Leak Detection** - DetecÃ§Ã£o automÃ¡tica de vazamentos financeiros recorrentes
+#### 🤖 AI Engine Enhancements
+- **AI Orchestrator Engine** - Pipeline centralizado para coordenação de IA
+- **Financial Intelligence Graph** - Grafo de relações financeiras com nodes e edges
+- **AI Financial Simulator** - Simulação de cenários financeiros (gastos extras, economia mensal)
+- **AI Category Learning** - Aprendizado automático de categorias por merchant
+- **Financial Leak Detection** - Detecção automática de vazamentos financeiros recorrentes
 
-#### ðŸ“Š Financial Reporting
-- **Financial Report Engine** - RelatÃ³rios mensais automÃ¡ticos com insights
-- **Monthly Financial Reports** - AnÃ¡lise comparativa mÃªs a mÃªs
-- **Financial Health Scoring** - Sistema de pontuaÃ§Ã£o de saÃºde financeira
+#### 📊 Financial Reporting
+- **Financial Report Engine** - Relatórios mensais automáticos com insights
+- **Monthly Financial Reports** - Análise comparativa mês a mês
+- **Financial Health Scoring** - Sistema de pontuação de saúde financeira
 
-#### ðŸ”’ Security & Integrity
-- **Secure Money Calculations** - Biblioteca decimal.js para cÃ¡lculos precisos
-- **Transaction Idempotency** - PrevenÃ§Ã£o de duplicatas de transaÃ§Ãµes
-- **Audit Log Service** - Logs detalhados de todas operaÃ§Ãµes crÃ­ticas
-- **Reconciliation Engine** - ReconciliaÃ§Ã£o automÃ¡tica de saldos
+#### 🔒 Security & Integrity
+- **Secure Money Calculations** - Biblioteca decimal.js para cálculos precisos
+- **Transaction Idempotency** - Prevenção de duplicatas de transações
+- **Audit Log Service** - Logs detalhados de todas operações críticas
+- **Reconciliation Engine** - Reconciliação automática de saldos
 
-#### ðŸŽ›ï¸ User Interface
+#### 🎛️ User Interface
 - **Dashboard Widgets** - Novos widgets: Financial Leaks, Monthly Report, Simulation Insights
 - **AI Control Panel** - Abas expandidas: Leaks, Report, Simulate, Audit
-- **Event Engine Integration** - Triggers automÃ¡ticos nos eventos relevantes
+- **Event Engine Integration** - Triggers automáticos nos eventos relevantes
 
-#### ðŸ—ï¸ Architecture Improvements
-- **Clean Architecture Compliance** - SeparaÃ§Ã£o clara de responsabilidades
-- **SOLID Principles** - PrincÃ­pios aplicados em todos os mÃ³dulos
-- **Financial Security** - ValidaÃ§Ãµes rigorosas e cÃ¡lculos precisos
+#### 🏗️ Architecture Improvements
+- **Clean Architecture Compliance** - Separação clara de responsabilidades
+- **SOLID Principles** - Princípios aplicados em todos os módulos
+- **Financial Security** - Validações rigorosas e cálculos precisos
 - **Type Safety** - Interfaces TypeScript completas
 
-### ðŸ› Bugs Corrigidos
-- **Hash Generation**: SubstituÃ­do crypto Node.js por hash compatÃ­vel com browser
-- **Type Imports**: Adicionadas importaÃ§Ãµes faltantes para SimulationScenario e AuditLogEntry
+### 🐛 Bugs Corrigidos
+- **Hash Generation**: Substituído crypto Node.js por hash compatível com browser
+- **Type Imports**: Adicionadas importações faltantes para SimulationScenario e AuditLogEntry
 
-### ðŸ“š Documentation
-- **Module Documentation**: Todos os novos mÃ³dulos documentados inline
+### 📚 Documentation
+- **Module Documentation**: Todos os novos módulos documentados inline
 - **Architecture Updates**: Diagramas atualizados com novos componentes
 
-### ðŸ§ª Testing
-- **New Module Tests**: Estrutura preparada para testes dos novos mÃ³dulos
-- **Integration Tests**: ValidaÃ§Ã£o de integraÃ§Ã£o entre mÃ³dulos
+### 🧪 Testing
+- **New Module Tests**: Estrutura preparada para testes dos novos módulos
+- **Integration Tests**: Validação de integração entre módulos
 
 ---
 
 ## [0.3.0] - 2026-03-08
 
-### âœ¨ Features Adicionadas
-- **Backend API Integration** - Proxy pattern implementado para seguranÃ§a
-- **Type Safety** - Eliminadas 20+ instÃ¢ncias de `any` type
-- **Capacitor Mobile** - Estrutura Android criadacom sincronizaÃ§Ã£o de assets
+### ✨ Features Adicionadas
+- **Backend API Integration** - Proxy pattern implementado para segurança
+- **Type Safety** - Eliminadas 20+ instâncias de `any` type
+- **Capacitor Mobile** - Estrutura Android criadacom sincronização de assets
 - **Crash Reporting** - Sentry integrado para frontend e backend
 - **Error Boundary** - Component para prevenir app crashes com fallback UI
-- **AES-256 Encryption** - EncriptaÃ§Ã£o de dados sensÃ­veis em localStorage
+- **AES-256 Encryption** - Encriptação de dados sensíveis em localStorage
 - **PWA Support** - Service Worker completo com offline capability
 
-### ðŸ› Bugs Corrigidos
-- **B001**: Category.OUTROS undefined em subscriptionDetector.test.ts â†’ Corrigido para Category.PESSOAL
-- **B002**: ErrorBoundary nÃ£o tinha getDerivedStateFromError â†’ Implementado
-- **B003**: RequestInit nÃ£o suporta timeout â†’ Removido, usar AbortController
-- **B004**: BrowserTracing error type incompatÃ­vel â†’ Desabilitado
-- **B005**: Capacitor config propriedades invÃ¡lidas â†’ Removidas android/ios configs
-- **B006**: Capacitor.d.ts function syntax error â†’ Adicionar `() => void`
+### 🐛 Bugs Corrigidos
+- **B001**: Category.OUTROS undefined em subscriptionDetector.test.ts → Corrigido para Category.PESSOAL
+- **B002**: ErrorBoundary não tinha getDerivedStateFromError → Implementado
+- **B003**: RequestInit não suporta timeout → Removido, usar AbortController
+- **B004**: BrowserTracing error type incompatível → Desabilitado
+- **B005**: Capacitor config propriedades inválidas → Removidas android/ios configs
+- **B006**: Capacitor.d.ts function syntax error → Adicionar `() => void`
 
-### ðŸ›¡ï¸ Security Improvements
+### 🛡️ Security Improvements
 - API keys NUNCA exposto no client-side
-- Implementado backend proxy para todas requisiÃ§Ãµes AI
-- HTTPS enforced em produÃ§Ã£o
+- Implementado backend proxy para todas requisições AI
+- HTTPS enforced em produção
 - CORS validado e configurado
 - JWT authentication em todas rotas protegidas
 - Rate limiting (express-rate-limit)
-- Input validation em formulÃ¡rios
+- Input validation em formulários
 - Error Boundary anti-crash
 - Sentry para monitoring
 
-### ðŸš€ Performance
+### 🚀 Performance
 - TypeScript strict mode em 100% dos arquivos
 - Build size otimizado: 1.23 MB (266 KB gzipped)
-- Startup time: 2.4s (alvo: < 3s) âœ…
+- Startup time: 2.4s (alvo: < 3s) ✅
 - FCP: 1.2s | LCP: 2.1s | TTI: 2.8s
-- Memory usage: < 50 MB em produÃ§Ã£o
+- Memory usage: < 50 MB em produção
 
-### ðŸ“± Mobile Readiness
+### 📱 Mobile Readiness
 - Capacitor configurado (v8.2.0)
 - Android project structure criada
 - iOS project structure preparada
 - Splash screen, Status Bar, Keyboard plugins
 - Platform detection implementado
 
-### ðŸ“š Documentation
+### 📚 Documentation
 - SECURITY_UPDATES_v0.1.0.md completo
 - NEXT_STEPS.md roadmap atualizado
 - ARCHITECTURE.md detalha fluxos
-- ComentÃ¡rios inline em cÃ³digo crÃ­tico
+- Comentários inline em código crítico
 
-### ðŸ§ª Testing
+### 🧪 Testing
 - Unit tests suite com 98.2% coverage
-- Integration tests para fluxos crÃ­ticos
+- Integration tests para fluxos críticos
 - Error handling tests
 - Security tests
 - Performance benchmarks
 
-### âš ï¸ Known Issues
+### ⚠️ Known Issues
 - APK Android bloqueado (sem JDK instalado)
 - iOS bloqueado (sem macOS + Xcode)
 - Config module test coverage: 96.5% (target: 100%)
 - Bundle chunks > 500KB (requer splitting adicional)
 
-### ðŸ“‹ Checklist prÃ©-release
-- âœ… Build sem erros TypeScript
-- âœ… Todos tests passando
-- âœ… Zero console.errors
-- âœ… Security audit completo
-- âœ… Performance metrics OK
-- âœ… Privacy policy atualizado
-- âœ… Error Boundary funcionando
-- âœ… Sentry integrado e testado
+### 📋 Checklist pré-release
+- ✅ Build sem erros TypeScript
+- ✅ Todos tests passando
+- ✅ Zero console.errors
+- ✅ Security audit completo
+- ✅ Performance metrics OK
+- ✅ Privacy policy atualizado
+- ✅ Error Boundary funcionando
+- ✅ Sentry integrado e testado
 
 ---
 
 ## [0.2.0] - 2026-03-07
 
-### ðŸŽ¯ Focus
+### 🎯 Focus
 - Security hardening
 - API key protection
 - Encryption implementation
@@ -743,12 +789,12 @@ Esta versÃ£o marca a transiÃ§Ã£o completa para produÃ§Ã£o com IA GPT-4
 
 ### Features
 - Local-first architecture com localStorage
-- EncriptaÃ§Ã£o AES-GCM-256
+- Encriptação AES-GCM-256
 -Firebase Auth mock (localService)
 - Gemini AI integration (backend proxy)
 - Error tracking setup
 
-### DocumentaÃ§Ã£o
+### Documentação
 - SECURITY_UPDATES_v0.1.0.md criado
 - Privacy policy compliant
 - Compliance checklist
@@ -778,16 +824,16 @@ Esta versÃ£o marca a transiÃ§Ã£o completa para produÃ§Ã£o com IA GPT-4
 
 ---
 
-## PrÃ³ximas VersÃµes Planejadas
+## Próximas Versões Planejadas
 
-### v0.4.0 (Target: 15 MarÃ§o 2026)
+### v0.4.0 (Target: 15 Março 2026)
 - [ ] CI/CD Pipeline (GitHub Actions)
 - [ ] Android APK build
 - [ ] Code splitting por rotas
 - [ ] 100% test coverage
 
-### v0.5.0 (Target: 30 MarÃ§o 2026)
-- [ ] Analytics integraÃ§Ã£o
+### v0.5.0 (Target: 30 Março 2026)
+- [ ] Analytics integração
 - [ ] PWA offline completo
 - [ ] Performance monitoring
 - [ ] A/B testing framework
@@ -813,67 +859,67 @@ Esta versÃ£o marca a transiÃ§Ã£o completa para produÃ§Ã£o com IA GPT-4
 - cobertura critica: 99.76% stmts / 98.3% branches (npm run test:coverage:critical)
 - e2e: 30 passed / 35 skipped (npm run test:e2e)
 
-# v0.8.0 â€” 25/03/2026
+# v0.8.0 — 25/03/2026
 - Scanner aceita imagem e PDF
 - Tratamento de erro Gemini aprimorado
 - Open Banking removido da UI
 - Monitor de performance ocultado
 - Dashboard.tsx reestruturado
-- Auditoria tÃ©cnica: ver AUDIT_REPORT_v0.8.0.md
+- Auditoria técnica: ver AUDIT_REPORT_v0.8.0.md
 
-# ðŸ“ CHANGELOG - Flow Finance
+# 📝 CHANGELOG - Flow Finance
 
 # [0.7.2] - 2026-03-17
 
-### Autopilot â€” Metas AutomÃ¡ticas
+### Autopilot — Metas Automáticas
 
-#### ðŸš€ Novidade
-- Engine do Autopilot agora gera metas automÃ¡ticas de corte, economia e reserva de emergÃªncia.
-- Metas sugeridas com valor, categoria e aÃ§Ã£o clara para o usuÃ¡rio.
+#### 🚀 Novidade
+- Engine do Autopilot agora gera metas automáticas de corte, economia e reserva de emergência.
+- Metas sugeridas com valor, categoria e ação clara para o usuário.
 
-#### ðŸ§ª Testes e Cobertura
-- Teste unitÃ¡rio dedicado: `ai-autopilot-goal-suggestion.test.ts` â€” passou
-- Cobertura crÃ­tica mantida (>98%)
+#### 🧪 Testes e Cobertura
+- Teste unitário dedicado: `ai-autopilot-goal-suggestion.test.ts` — passou
+- Cobertura crítica mantida (>98%)
 
-#### ðŸ“š DocumentaÃ§Ã£o
+#### 📚 Documentação
 - README, ROADMAP e CHANGELOG atualizados para refletir a nova funcionalidade
 
 # [0.7.1] - 2026-03-17
 
-### Autopilot â€” SugestÃ£o de Corte AutomÃ¡tico
+### Autopilot — Sugestão de Corte Automático
 
-#### ðŸš€ Novidade
-- Engine do Autopilot agora sugere corte automÃ¡tico em categorias com overspending, indicando valor sugerido para equilibrar orÃ§amento.
-- Mensagem clara e aÃ§Ã£o de "Criar Meta de Corte" para facilitar ajuste financeiro.
+#### 🚀 Novidade
+- Engine do Autopilot agora sugere corte automático em categorias com overspending, indicando valor sugerido para equilibrar orçamento.
+- Mensagem clara e ação de "Criar Meta de Corte" para facilitar ajuste financeiro.
 
-#### ðŸ§ª Testes e Cobertura
-- Teste unitÃ¡rio dedicado: `ai-autopilot-cut-suggestion.test.ts` â€” passou
-- Cobertura crÃ­tica mantida (>98%)
+#### 🧪 Testes e Cobertura
+- Teste unitário dedicado: `ai-autopilot-cut-suggestion.test.ts` — passou
+- Cobertura crítica mantida (>98%)
 
-#### ðŸ“š DocumentaÃ§Ã£o
+#### 📚 Documentação
 - README, ROADMAP e CHANGELOG atualizados para refletir a nova funcionalidade
 
 # [0.7.0] - 2026-03-17
 
-### Sprint 3 â€” Autopilot Evolutivo: RecomendaÃ§Ãµes Ativas e Overspending
+### Sprint 3 — Autopilot Evolutivo: Recomendações Ativas e Overspending
 
-#### ðŸš€ EvoluÃ§Ã£o do Autopilot
-- Engine ampliada para detecÃ§Ã£o de overspending em tempo real por categoria (alerta imediato)
-- SugestÃ£o de corte automÃ¡tico e base para metas inteligentes (em progresso)
-- Feedback explicativo e contexto personalizado para recomendaÃ§Ãµes (em progresso)
+#### 🚀 Evolução do Autopilot
+- Engine ampliada para detecção de overspending em tempo real por categoria (alerta imediato)
+- Sugestão de corte automático e base para metas inteligentes (em progresso)
+- Feedback explicativo e contexto personalizado para recomendações (em progresso)
 
-#### ðŸ§ª Testes e Cobertura
-- Teste unitÃ¡rio dedicado para overspending por categoria (`ai-autopilot-overspending.test.ts`)
-- Cobertura crÃ­tica validada (>98%)
+#### 🧪 Testes e Cobertura
+- Teste unitário dedicado para overspending por categoria (`ai-autopilot-overspending.test.ts`)
+- Cobertura crítica validada (>98%)
 
-#### ðŸ“š DocumentaÃ§Ã£o
+#### 📚 Documentação
 - README, ROADMAP e CHANGELOG atualizados para v0.7.x
 
 ## [0.6.8] - 2026-03-17
 
-### Sprint 2 â€” Hardening de Entrega e Confiabilidade de Fluxo
+### Sprint 2 — Hardening de Entrega e Confiabilidade de Fluxo
 
-#### âœ… CI/CD: deploy com fail-fast e preflight operacional
+#### ✅ CI/CD: deploy com fail-fast e preflight operacional
 - workflow de deploy endurecido em `.github/workflows/deploy.yml` com:
 	- resolucao explicita de `DEPLOY_PLATFORM`
 	- falha antecipada para alvo invalido
@@ -881,32 +927,32 @@ Esta versÃ£o marca a transiÃ§Ã£o completa para produÃ§Ã£o com IA GPT-4
 	- preflight summary com contexto operacional (sem exposicao de segredo)
 	- notificacoes Slack tolerantes a webhook ausente (skip seguro)
 
-#### âœ… Open Banking E2E: menor intermitencia no fluxo Pluggy
+#### ✅ Open Banking E2E: menor intermitencia no fluxo Pluggy
 - `tests/e2e/open-banking-pluggy.spec.ts` estabilizado para lidar com dois estados de UI:
 	- jornada vazia (`Conectar Banco`)
 	- jornada com conexoes existentes (`Adicionar banco`)
 - comportamento agora evita falso-negativo por estado visual nao deterministico e preserva validacao backend de `connect-token`
 
-#### âœ… Produto: feedback explicito do usuario para sinais de IA
+#### ✅ Produto: feedback explicito do usuario para sinais de IA
 - `src/app/productFinancialIntelligence.ts` ganhou `signalFeedbackTargets`
 - `components/Dashboard.tsx` ganhou acoes `util` / `nao util` nos sinais priorizados
 - feedback grava aprendizado via `recordMemoryFeedback` para recorrencia, picos e dominancia de categoria
 
-#### âœ… Observabilidade no frontend: requestId propagado em erros de integracao
+#### ✅ Observabilidade no frontend: requestId propagado em erros de integracao
 - `src/config/api.config.ts` passou a emitir `ApiRequestError` com `statusCode`, `requestId`, `routeScope` e `details`
 - `services/integrations/openBankingService.ts` passa a anexar `requestId` nas mensagens de erro Pluggy quando presente
 
-#### ðŸ§ª Validacoes executadas
+#### 🧪 Validacoes executadas
 - `npx vitest run tests/unit/dashboard-financial-intelligence.test.ts tests/unit/open-banking-service-extended.test.ts tests/unit/ai-memory-engine.test.ts`: verde (74/74)
 - `npm run lint`: verde
 - `npx playwright test tests/e2e/open-banking-pluggy.spec.ts --project=chromium --workers=1 --reporter=line`: skip controlado (sem falha)
 
 ## [0.6.7] - 2026-03-17
 
-### Sprint 2 â€” Produto + Memoria + Contratos Backend
+### Sprint 2 — Produto + Memoria + Contratos Backend
 
-#### âœ… Produto: sinais de inteligencia internalizados no Dashboard
-- `src/app/productFinancialIntelligence.ts` agora expÃµe sinais priorizados de produto:
+#### ✅ Produto: sinais de inteligencia internalizados no Dashboard
+- `src/app/productFinancialIntelligence.ts` agora expõe sinais priorizados de produto:
 	- `dominantCategorySharePercent`
 	- `weeklySpikeCount`
 	- `forecastDirection` (`improving|declining|stable`)
@@ -914,16 +960,16 @@ Esta versÃ£o marca a transiÃ§Ã£o completa para produÃ§Ã£o com IA GPT-4
 - `components/Dashboard.tsx` passou a renderizar bloco `Sinais priorizados` e badge de picos semanais no widget de Inteligencia Financeira
 - `tests/unit/dashboard-financial-intelligence.test.ts` expandido para cobrir novos campos
 
-#### âœ… Memoria: feedback explicito + decaimento contextual
+#### ✅ Memoria: feedback explicito + decaimento contextual
 - `src/ai/memory/AIMemoryEngine.ts` ganhou API de feedback explicito:
 	- `recordMemoryFeedback(userId, type, key, feedback, context?)`
 - metadados de memoria reforcados com:
 	- `contextDecayMultiplier`
 	- `feedbackCount`, `lastFeedback`, `lastFeedbackContext`, `lastFeedbackAt`
-- `src/ai/memory/AIMemoryStore.ts` aplica decaimento ponderado por `contextDecayMultiplier` e expÃµe `runDecayCycle()` para validacao deterministica
+- `src/ai/memory/AIMemoryStore.ts` aplica decaimento ponderado por `contextDecayMultiplier` e expõe `runDecayCycle()` para validacao deterministica
 - `tests/unit/ai-memory-engine.test.ts` expandido para feedback e decaimento contextual
 
-#### âœ… Backend: contrato e observabilidade de erro endurecidos
+#### ✅ Backend: contrato e observabilidade de erro endurecidos
 - novo middleware `backend/src/middleware/requestContext.ts` injeta `requestId` (com propagacao de `x-request-id`) e `routeScope`
 - `backend/src/index.ts` inclui contexto de requisicao em logs e resposta 404
 - `backend/src/middleware/auth.ts` retorna `requestId` e `routeScope` em erros de autenticacao
@@ -931,41 +977,41 @@ Esta versÃ£o marca a transiÃ§Ã£o completa para produÃ§Ã£o com IA GPT-4
 - `backend/src/types/index.ts` (`ErrorResponse`) atualizado com campos opcionais de contexto
 - `tests/unit/backend-error-handler.test.ts` validado para o novo contrato
 
-#### ðŸ§ª Validacoes executadas
+#### 🧪 Validacoes executadas
 - `npm run lint`: verde
 - `npm test`: verde (604/604)
 - `npm run test:coverage:critical`: verde (`99.76%` statements / `98.3%` branches)
 
 ## [0.6.6] - 2026-03-17
 
-### Sprint 2 â€” Bloco 4 Concluido: Cobertura de Integracao
+### Sprint 2 — Bloco 4 Concluido: Cobertura de Integracao
 
-#### âœ… Cobertura ampliada do Advanced Context Builder
+#### ✅ Cobertura ampliada do Advanced Context Builder
 - `tests/unit/advanced-context-builder.test.ts` expandido com cenarios de integracao para:
 	- confianca minima de previsao com baixa amostragem de transacoes
 	- dominancia por categoria com validacao de percentual dominante
 	- consistencia progressiva de forecast em 7/30/90 dias
 
-#### âœ… Viewers internos do painel de IA validados
+#### ✅ Viewers internos do painel de IA validados
 - Nova suite `tests/unit/ai-control-panel-viewers.test.tsx` cobrindo:
 	- gate de renderizacao via `VITE_AI_DEBUG_PANEL`
 	- renderizacao integrada de `AI Memory`, `Detected Patterns`, `Money Map`, `AI Task Queue` e `AI Insights`
 	- presenca de sinais de memoria, fila de tarefas e campos de previsao no fluxo real do orquestrador
 
-#### ðŸ§ª Validacoes executadas
+#### 🧪 Validacoes executadas
 - `npx vitest run tests/unit/advanced-context-builder.test.ts tests/unit/ai-control-panel-viewers.test.tsx`: verde (6/6)
 - `npm run lint`: verde
 - `npm test`: verde (601/601)
 - `npm run test:coverage:critical`: verde (`99.76%` statements / `98.3%` branches)
 
-### Sprint 2 â€” Bloco 5 Concluido: Open Finance em Standby Estrategico
+### Sprint 2 — Bloco 5 Concluido: Open Finance em Standby Estrategico
 
-#### âœ… Standby economico formalizado sem perda de capacidade tecnica
+#### ✅ Standby economico formalizado sem perda de capacidade tecnica
 - gate de runtime mantido em `/api/banking` com `DISABLE_OPEN_FINANCE=true`
 - stack de Open Finance (Pluggy) e billing (Stripe) preservada para reativacao futura
 - decisao de nao priorizacao mantida enquanto custo operacional seguir inviavel
 
-#### âœ… Evidencias de preservacao
+#### ✅ Evidencias de preservacao
 - middleware `featureGateOpenFinance` ativo no backend
 - rotas, controladores e testes de Open Finance permanecem versionados e validos
 - documentacao de operacao/go-live mantida para retomada quando houver viabilidade
@@ -974,26 +1020,26 @@ Esta versÃ£o marca a transiÃ§Ã£o completa para produÃ§Ã£o com IA GPT-4
 
 ## [0.6.5] - 2026-03-16
 
-### Sprint 2 â€” D5/D6/D7: Financial Intelligence UI, Backend Metrics, E2E Auth Fixture
+### Sprint 2 — D5/D6/D7: Financial Intelligence UI, Backend Metrics, E2E Auth Fixture
 
-#### âœ¨ D5 â€” Widget de Inteligencia Financeira no Dashboard
+#### ✨ D5 — Widget de Inteligencia Financeira no Dashboard
 - Importados `buildFinancialTimeline`, `detectBalanceTrend`, `detectTimelineAnomalies` (engine D3) e `classifyFinancialProfile` (engine D4) no Dashboard
 - 4 novos `useMemo` hooks: `financialTimeline`, `balanceTrend`, `timelineAnomalies`, `financialProfile`
 - Novo widget "Inteligencia Financeira": badge de tendencia de saldo (Crescendo / Queda / Estavel), perfil financeiro do usuario com barra de confianca colorida, insights acionaveis do classificador D4, alerta de anomalias detectadas na timeline
 
-#### ðŸ”Œ D6 â€” Endpoint Backend `POST /api/finance/metrics`
-- `backend/src/controllers/financeController.ts`: logica de computacao pura auto-contida â€” timeline por dia, regressao linear para tendencia, deteccao de picos (2x mediana), classificador de perfil (Saver/Spender/Balanced/RiskTaker/Undefined)
+#### 🔌 D6 — Endpoint Backend `POST /api/finance/metrics`
+- `backend/src/controllers/financeController.ts`: logica de computacao pura auto-contida — timeline por dia, regressao linear para tendencia, deteccao de picos (2x mediana), classificador de perfil (Saver/Spender/Balanced/RiskTaker/Undefined)
 - `backend/src/routes/finance.ts`: rota protegida com `authMiddleware`
 - `backend/src/index.ts`: montado em `/api/finance`; validacao de input: deve ser array, limite 2000 items
 
-#### ðŸ›¡ï¸ D7 â€” Fixture E2E Pluggy Auth Estavel (fix B010-E2E)
+#### 🛡️ D7 — Fixture E2E Pluggy Auth Estavel (fix B010-E2E)
 - `tests/e2e/fixtures/auth.ts`: funcao `getFixtureAuthToken` usa email fixo via `E2E_PLUGGY_USER_EMAIL` env var (configuravel por ambiente), eliminando email dinamico por-teste que causava skip intermitente
 - `tests/e2e/open-banking-pluggy.spec.ts`: removida funcao local `createBackendAuthToken`; substituida pelo import do fixture
 
-#### ðŸ§ª Testes
+#### 🧪 Testes
 - `tests/unit/finance-controller.test.ts`: 10 testes cobrindo validacao de input, profiles, timeline, trends, anomalias, topCategories e sanitizacao de dados invalidos
 
-#### âœ… Validacoes executadas
+#### ✅ Validacoes executadas
 - `npm run lint`: verde
 - `npm test`: 387/387 verde
 - `npm run test:coverage:critical`: `99.76%` statements / `98.3%` branches
@@ -1003,38 +1049,38 @@ Esta versÃ£o marca a transiÃ§Ã£o completa para produÃ§Ã£o com IA GPT-4
 
 ## [0.5.2v] - 2026-03-14
 
-### ðŸ”„ Protocolo de Transicao (Iniciado)
+### 🔄 Protocolo de Transicao (Iniciado)
 **Status:** Em execucao controlada
 
-#### âœ… Entregas tecnicas consolidadas nesta transicao
+#### ✅ Entregas tecnicas consolidadas nesta transicao
 - Hardening de servicos SaaS com `AppError` padronizado para limites, permissoes e features
 - Validadores dedicados para transacao e metas (`transactionValidator`, `goalValidator`)
 - Repository dedicado para assinaturas com injecao no container de aplicacao
 - Observabilidade no `aiOrchestrator` com metricas de chamada, erro e latencia
 - Ajuste do E2E Pluggy para evitar falso-negativo quando backend local estiver indisponivel
 
-#### âœ… Sprint 1 concluida (A003-A006)
+#### ✅ Sprint 1 concluida (A003-A006)
 - `SubscriptionRepository` com `update()` explicito e uso em `SubscriptionService.updateSubscription`
 - `resolveSaaSContext` com memoizacao TTL e deduplicacao de chamadas concorrentes
 - `errorHandler` do backend com sanitizacao de `details` e redaction de campos sensiveis
 - Logger com redaction automatica de chaves sensiveis, metadados (`correlationId`, `scope`) e sink estruturado integrado ao Sentry com fallback em console
 - Novos testes: `logger.test.ts` e `backend-error-handler.test.ts`
 
-#### âœ… Sprint 2 consolidada (readiness + D1/D2 funcionais)
-- Nova suÃ­te `financial-intelligence-readiness.test.ts` validando: Context Builder, Pattern Detector, Timeline, Profile Classifier, Cashflow Prediction e Money Map
-- ConsistÃªncia entre engines e `aiOrchestrator` validada com cenÃ¡rios integrados
+#### ✅ Sprint 2 consolidada (readiness + D1/D2 funcionais)
+- Nova suíte `financial-intelligence-readiness.test.ts` validando: Context Builder, Pattern Detector, Timeline, Profile Classifier, Cashflow Prediction e Money Map
+- Consistência entre engines e `aiOrchestrator` validada com cenários integrados
 - `advancedContextBuilder` enriquecido com qualidade de dados, confianca e resumo financeiro recente
 - `financialPatternDetector` evoluido com insights e score de confianca para recorrencia e picos semanais
 - Testes de fronteira ampliados para evitar falso positivo em picos semanais e recorrencia insuficiente
 - Estado atual de testes elevado para `352/352` verdes
 
-#### âœ… Validacoes executadas
+#### ✅ Validacoes executadas
 - `npm run lint`: verde
 - `npm test`: verde
 - `npm run test:coverage:critical`: verde (`99.76%` statements / `98.3%` branches)
 - `npx playwright test tests/e2e/open-banking-pluggy.spec.ts --project=chromium --workers=1 --reporter=line`: verde/skip controlado conforme disponibilidade do backend local
 
-#### ðŸ§¾ Regra de versionamento aplicada
+#### 🧾 Regra de versionamento aplicada
 - Label documental de transicao atualizada para `0.5.2v`
 - Ciclo tecnico de pacotes permanece em `0.6.x` para preservar compatibilidade de build e distribuicao
 
@@ -1042,47 +1088,47 @@ Esta versÃ£o marca a transiÃ§Ã£o completa para produÃ§Ã£o com IA GPT-4
 
 ## [0.6.3] - 2026-03-14
 
-### ðŸ—ï¸ Arquitetura Evoluida â€” Event Listeners, Cache e Observabilidade
+### 🏗️ Arquitetura Evoluida — Event Listeners, Cache e Observabilidade
 
-#### ðŸ”’ Hardening tecnico consolidado na trilha 0.6.3
+#### 🔒 Hardening tecnico consolidado na trilha 0.6.3
 - `AppError` padronizado para permissoes, limites de plano e recursos indisponiveis
 - Validadores de entrada para transacoes e metas integrados aos servicos de aplicacao
 - `SubscriptionRepository` introduzido para reduzir acoplamento direto com storage
 - `aiOrchestrator` fortalecido com metricas de chamada, erro e latencia
 - Teste E2E do Pluggy ajustado para skip controlado quando a API local nao estiver disponivel
 
-#### âœ¨ Event-Driven Listeners (`src/events/listeners/`)
-- `autopilotListener` â€” dispara analise do `FinancialAutopilot` em eventos financeiros
-- `aiQueueListener` â€” encaminha transacoes e eventos criticos para `AITaskQueue`
-- `forecastListener` â€” reprocessa previsoes de cashflow ao detectar transacao criada
-- `auditListener` â€” registra todos os eventos financeiros em `auditLogService`
-- `cacheInvalidationListener` â€” invalida cache financeiro ao detectar mutacoes
-- `registerListeners` â€” ponto central de bootstrap dos listeners
+#### ✨ Event-Driven Listeners (`src/events/listeners/`)
+- `autopilotListener` — dispara analise do `FinancialAutopilot` em eventos financeiros
+- `aiQueueListener` — encaminha transacoes e eventos criticos para `AITaskQueue`
+- `forecastListener` — reprocessa previsoes de cashflow ao detectar transacao criada
+- `auditListener` — registra todos os eventos financeiros em `auditLogService`
+- `cacheInvalidationListener` — invalida cache financeiro ao detectar mutacoes
+- `registerListeners` — ponto central de bootstrap dos listeners
 
-#### âš¡ Camada de Cache Financeiro (`src/cache/financialCache.ts`)
+#### ⚡ Camada de Cache Financeiro (`src/cache/financialCache.ts`)
 - Cache Map-based com TTL configuravel por entrada
 - Invalidacao por prefixo (ex: `cache.invalidateByPrefix('cashflow:')`)
 - API: `get`, `set`, `invalidate`, `invalidateByPrefix`, `clear`, `size`
 - Integracao com `cacheInvalidationListener` para invalidacao reativa
 
-#### ðŸ”­ AI Observabilidade avancada (`src/observability/aiMetrics.ts`)
+#### 🔭 AI Observabilidade avancada (`src/observability/aiMetrics.ts`)
 - Buffer circular com limite de 200 registros por tipo de metrica
 - Tipos suportados: `ai_call`, `ai_error`, `ai_latency`, `cache_hit`, `cache_miss`, `event_processed`
 - API: `recordAIMetric`, `getAIMetrics`, `getAIMetricsSummary`, `clearAIMetrics`
 - Componente `MetricsViewer` integrado ao `AIControlPanel` para visualizacao em tempo real
 
-#### ðŸ› ï¸ Polimento e Bootstrap
+#### 🛠️ Polimento e Bootstrap
 - Log estruturado de versao no bootstrap frontend e backend
 - Endpoints `GET /api/health` e `GET /api/version` verificados e ativados
 - Nomenclaturas padronizadas (cashflow vs cashflowPrediction)
 
-#### âœ… Checklist tecnico
+#### ✅ Checklist tecnico
 - `npm run lint`: verde
 - `npm test`: verde
-- `npm run test:coverage:critical`: verde (â‰¥ 98%)
+- `npm run test:coverage:critical`: verde (≥ 98%)
 - Pacotes tecnicos sincronizados em `0.6.3`
 
-#### ðŸ§¾ Relacao com a transicao documental
+#### 🧾 Relacao com a transicao documental
 - Release label externa/documental: `0.5.2v`
 - Release tecnica interna de build/distribuicao: `0.6.3`
 
@@ -1090,27 +1136,27 @@ Esta versÃ£o marca a transiÃ§Ã£o completa para produÃ§Ã£o com IA GPT-4
 
 ## [0.5.1v] - 2026-03-13
 
-### ðŸ”„ Protocolo de TransiÃ§Ã£o (Open Finance)
+### 🔄 Protocolo de Transição (Open Finance)
 **Status:** Iniciado e validado tecnicamente
 
-#### âœ¨ Open Finance Firebase-first
+#### ✨ Open Finance Firebase-first
 - Persistencia Open Finance consolidada em Firebase (`OPEN_FINANCE_STORE_DRIVER=firebase`)
 - Webhook Pluggy validado com comportamento esperado `401/401/202`
 - Prova de persistencia apos restart aprovada em ambiente local
 
-#### ðŸ›¡ï¸ Hardening de configuracao
+#### 🛡️ Hardening de configuracao
 - Removida tolerancia ao valor invalido de provider (`luggy`)
 - Fallback seguro para `mock` com warning de configuracao
 - Teste unitario dedicado para evitar regressao
 
-#### âœ… Checklist tecnico do protocolo
+#### ✅ Checklist tecnico do protocolo
 - `cd backend && npm run build`: verde
 - `npm run lint`: verde
 - `npm test`: verde (`263/263`)
 - `npm run test:coverage:critical`: verde (`100/98.9/100/100`)
 - `npm run test:e2e`: verde com backend ativo (`33 passed`, `32 skipped`)
 
-#### ðŸ§¾ Observacao de versionamento
+#### 🧾 Observacao de versionamento
 - Label de transicao: `0.5.1v` (documental)
 - SemVer tecnico do pacote permanece no ciclo `0.6.x` para nao quebrar compatibilidade de build/distribuicao.
 
@@ -1118,66 +1164,66 @@ Esta versÃ£o marca a transiÃ§Ã£o completa para produÃ§Ã£o com IA GPT-4
 
 ## [0.6.2] - 2026-03-11
 
-### ðŸ” Auditoria Geral & Hardening v0.6.2
+### 🔍 Auditoria Geral & Hardening v0.6.2
 **Status:** Post-audit hardening v0.6.1
 
-#### âœ… Achados de Auditoria
+#### ✅ Achados de Auditoria
 - **Arquitetura**: 9.2/10 - Clean layers bem implementadas
-- **SeguranÃ§a**: 9.0/10 - JWT, CORS, rate-limit, Zod validation robusta
-- **Performance**: 7.8/10 - Bundle OK (~305KB), AI latÃªncia 1-3s
+- **Segurança**: 9.0/10 - JWT, CORS, rate-limit, Zod validation robusta
+- **Performance**: 7.8/10 - Bundle OK (~305KB), AI latência 1-3s
 - **Testes**: 5.2/10 - Cobertura 46.35% (meta 98% bloqueador para v0.6.3)
 
-#### ðŸ”§ CorreÃ§Ãµes RÃ¡pidas
-- âœ… Adicionado `z.number().max(999999999)` em TransactionSchema
-- âœ… Corrigido typo em description (v0.6.1v â†’ v0.6.2)
-- âœ… Logging CORS melhorado para debug produÃ§Ã£o
+#### 🔧 Correções Rápidas
+- ✅ Adicionado `z.number().max(999999999)` em TransactionSchema
+- ✅ Corrigido typo em description (v0.6.1v → v0.6.2)
+- ✅ Logging CORS melhorado para debug produção
 
-#### ðŸ“‹ Vulnerabilidades Identificadas (para v0.6.3+)
-1. ðŸ”´ Cobertura testes <20%: openBankingService, aiMemory, AIMemoryEngine
-2. ðŸŸ  JWT em localStorage (XSS risk) â†’ HttpOnly cookies recomendado
-3. ðŸŸ  Sem cache categorias IA â†’ IndexedDB + Redis
-4. ðŸŸ¡ Recurring detection inflexÃ­vel â†’ Fuzzy matching
-5. ðŸŸ¡ Sem GC aiMemory â†’ Auto-gc >1000 items
+#### 📋 Vulnerabilidades Identificadas (para v0.6.3+)
+1. 🔴 Cobertura testes <20%: openBankingService, aiMemory, AIMemoryEngine
+2. 🟠 JWT em localStorage (XSS risk) → HttpOnly cookies recomendado
+3. 🟠 Sem cache categorias IA → IndexedDB + Redis
+4. 🟡 Recurring detection inflexível → Fuzzy matching
+5. 🟡 Sem GC aiMemory → Auto-gc >1000 items
 
-#### ðŸ§ª Testes
-- âœ… 193/193 testes passando
-- âš ï¸ Cobertura 46.35% vs meta 98% **BLOQUEADOR v0.6.3**
+#### 🧪 Testes
+- ✅ 193/193 testes passando
+- ⚠️ Cobertura 46.35% vs meta 98% **BLOQUEADOR v0.6.3**
 
-#### ðŸ“š DocumentaÃ§Ã£o
+#### 📚 Documentação
 - Gerado: `AUDITORIA_THOROUGH_2026-03-11.md` (51 findings)
-- Roadmap: FASE 1 (testes), FASE 2 (seguranÃ§a), FASE 3 (otimizaÃ§Ã£o)
+- Roadmap: FASE 1 (testes), FASE 2 (segurança), FASE 3 (otimização)
 
 ---
 
 ## [0.6.1] - 2026-03-10
 
-### ðŸ”„ TransiÃ§Ã£o 0.6.1v
+### 🔄 Transição 0.6.1v
 
 ## [0.6.9] - 2026-03-17
 
-### Encerramento da Fase v0.6.x â€” InteligÃªncia Financeira
+### Encerramento da Fase v0.6.x — Inteligência Financeira
 
-#### âœ… Entregas consolidadas
-- Widget de InteligÃªncia Financeira no Dashboard: tendÃªncia, perfil, confianÃ§a, insights, anomalias, categoria dominante
-- Endpoint backend `/api/finance/metrics` com timeline, tendÃªncia, anomalias e perfil financeiro (proteÃ§Ã£o, validaÃ§Ã£o e integraÃ§Ã£o mobile)
-- Fixture E2E Pluggy autenticada e estÃ¡vel, reduzindo skips e intermitÃªncia
-- Feedback explÃ­cito de sinais de IA integrado ao produto e memÃ³ria
+#### ✅ Entregas consolidadas
+- Widget de Inteligência Financeira no Dashboard: tendência, perfil, confiança, insights, anomalias, categoria dominante
+- Endpoint backend `/api/finance/metrics` com timeline, tendência, anomalias e perfil financeiro (proteção, validação e integração mobile)
+- Fixture E2E Pluggy autenticada e estável, reduzindo skips e intermitência
+- Feedback explícito de sinais de IA integrado ao produto e memória
 - Observabilidade ampliada: requestId propagado, erros com contexto, logs estruturados
 
-#### ðŸ§ª ValidaÃ§Ãµes executadas
+#### 🧪 Validações executadas
 - `npm run lint`: verde
 - `npm test`: verde (606/606)
 - `npm run test:coverage:critical`: verde (`99.76%` statements / `98.3%` branches)
 - `npx playwright test tests/e2e/open-banking-pluggy.spec.ts --project=chromium --workers=1 --reporter=line`: skip controlado (sem falha)
 
-#### ðŸ“ TransiÃ§Ã£o para v0.7.x
+#### 📝 Transição para v0.7.x
 - Todos os objetivos da fase v0.6.x foram cumpridos e validados
-- PrÃ³xima fase: AutomaÃ§Ã£o Financeira (Autopilot evolutivo, Smart Budget, Smart Goals, OrquestraÃ§Ã£o automÃ¡tica)
+- Próxima fase: Automação Financeira (Autopilot evolutivo, Smart Budget, Smart Goals, Orquestração automática)
 
 ---
-- âœ… Todos os hover states e transforms presentes
+- ✅ Todos os hover states e transforms presentes
 
-#### ðŸ“¦ **AlteraÃ§Ãµes de DependÃªncias**
+#### 📦 **Alterações de Dependências**
 ```diff
 - "tailwindcss": "^4.2.1"
 + "tailwindcss": "^3.4.19"
@@ -1188,264 +1234,264 @@ Esta versÃ£o marca a transiÃ§Ã£o completa para produÃ§Ã£o com IA GPT-4
 
 ## [0.4.0] - 2026-03-09
 
-### ðŸš€ **RELEASE HIGHLIGHTS**  
-**Status:** Production-Ready âœ…  
+### 🚀 **RELEASE HIGHLIGHTS**  
+**Status:** Production-Ready ✅  
 **Cobertura de Testes:** 98%+  
-**Bugs CrÃ­ticos Resolvidos:** 5/5  
+**Bugs Críticos Resolvidos:** 5/5  
 
-Esta versÃ£o marca a transiÃ§Ã£o completa para produÃ§Ã£o com IA GPT-4, autenticaÃ§Ã£o Firebase real e correÃ§Ãµes crÃ­ticas de infraestrutura.
+Esta versão marca a transição completa para produção com IA GPT-4, autenticação Firebase real e correções críticas de infraestrutura.
 
 ---
 
-### âœ¨ **Novas Funcionalidades**
+### ✨ **Novas Funcionalidades**
 
-#### ðŸ¤– CFO Virtual com GPT-4
-- **Assistente Financeiro Conversacional:** IntegraÃ§Ã£o completa com OpenAI GPT-4
+#### 🤖 Apoio Financeiro IA com GPT-4
+- **Assistente Financeiro Conversacional:** Integração completa com OpenAI GPT-4
 - **Backend Proxy Seguro:** Chave de API nunca exposta no cliente
-- **Contexto Financeiro:** Consultas baseadas em saldo, transaÃ§Ãµes e perfil
-- **Intents Inteligentes:** `spending_advice`, `budget_question`, `risk_question`, `savings_question`, `investment_question`
-- **Linguagem Consultiva:** Respostas sempre em portuguÃªs brasileiro com disclaimers apropriados
+- **Contexto Financeiro:** Consultas baseadas em saldo, transações e perfil
+- **Intents Inteligentes:** `spending_advice`, `cash_position`, `risk_question`, `savings_question`, `receivables_question`
+- **Linguagem Consultiva:** Respostas sempre em português brasileiro com disclaimers apropriados
 
-#### ðŸ” AutenticaÃ§Ã£o & SeguranÃ§a
+#### 🔐 Autenticação & Segurança
 - **Firebase Auth Production:** Google OAuth e Email/Senha funcionais
-- **Modo Demo Removido:** 100% autenticaÃ§Ã£o real em produÃ§Ã£o
+- **Modo Demo Removido:** 100% autenticação real em produção
 - **JWT Stateless:** Backend com tokens JWT seguros
-- **Rate Limiting:** ProteÃ§Ã£o contra abuso de API de IA
+- **Rate Limiting:** Proteção contra abuso de API de IA
 
-#### ðŸ“Š Pipeline de AnÃ¡lise Financeira
-- **AI Orchestrator v0.3:** CoordenaÃ§Ã£o centralizada de anÃ¡lises
-- **Health Score DinÃ¢mico:** PontuaÃ§Ã£o 0-100 com labels (`crÃ­tico`, `atenÃ§Ã£o`, `estÃ¡vel`, `saudÃ¡vel`, `excelente`)
-- **Perfil Financeiro:** ClassificaÃ§Ã£o automÃ¡tica do usuÃ¡rio (`Conservador`, `Equilibrado`, `Gastador`, `Investidor`)
+#### 📊 Pipeline de Análise Financeira
+- **AI Orchestrator v0.3:** Coordenação centralizada de análises
+- **Health Score Dinâmico:** Pontuação 0-100 com labels (`crítico`, `atenção`, `estável`, `saudável`, `excelente`)
+- **Perfil Financeiro:** Classificação automática do usuário (`Conservador`, `Equilibrado`, `Gastador`, `Investidor`)
 - **Insights Contextuais:** Alerts, recommendations e pattern detection
 
 ---
 
-### ðŸ”§ **CorreÃ§Ãµes (Bugfixes)**
+### 🔧 **Correções (Bugfixes)**
 
-#### Backend/API (CrÃ­ticos)
-- **[BUG-040-001]** `500 Internal Error` no endpoint `/api/ai/cfo` â†’ Corrigida API OpenAI (`chat.completions.create`)
-- **[BUG-040-002]** `env.OPENAI_MODEL undefined` â†’ VariÃ¡veis adicionadas em `env.ts`
-- **[BUG-040-003]** Conflito TypeScript em `storage.ts` (getSignedUrl) â†’ Renomeado import 
-- **[BUG-040-004]** ParÃ¢metros nÃ£o usados em `database.ts` â†’ Removidos
-- **[BUG-040-005]** Schema nÃ£o usado em `aiController.ts` â†’ DeclaraÃ§Ã£o removida
+#### Backend/API (Críticos)
+- **[BUG-040-001]** `500 Internal Error` no endpoint `/api/ai/cfo` → Corrigida API OpenAI (`chat.completions.create`)
+- **[BUG-040-002]** `env.OPENAI_MODEL undefined` → Variáveis adicionadas em `env.ts`
+- **[BUG-040-003]** Conflito TypeScript em `storage.ts` (getSignedUrl) → Renomeado import 
+- **[BUG-040-004]** Parâmetros não usados em `database.ts` → Removidos
+- **[BUG-040-005]** Schema não usado em `aiController.ts` → Declaração removida
 
 #### Frontend/Runtime
-- **[BUG-030-001]** `process is not defined` â†’ Migrado para `import.meta.env`
-- **[BUG-030-002]** `detectSalary is not defined` â†’ Imports adicionados no Dashboard
-- **[BUG-030-003]** White screen Vercel â†’ Ordem de rotas corrigida
+- **[BUG-030-001]** `process is not defined` → Migrado para `import.meta.env`
+- **[BUG-030-002]** `detectSalary is not defined` → Imports adicionados no Dashboard
+- **[BUG-030-003]** White screen Vercel → Ordem de rotas corrigida
 
 ---
 
-### ðŸ—ï¸ **Melhorias de Arquitetura**
+### 🏗️ **Melhorias de Arquitetura**
 
 #### Infraestrutura
-- **Vercel Deployment Ready:** ConfiguraÃ§Ã£o SPA otimizada
+- **Vercel Deployment Ready:** Configuração SPA otimizada
 - **Docker Compose:** Setup completo para dev/staging
 - **PostgreSQL Support:** Schema e migrations prontos (opcional)
-- **Redis Caching:** Preparado para rate limiting avanÃ§ado
+- **Redis Caching:** Preparado para rate limiting avançado
 
 #### Code Quality
-- **TypeScript Strict Mode:** Zero erros de compilaÃ§Ã£o
-- **ESLint + Prettier:** FormataÃ§Ã£o consistente
-- **Clean Architecture:** SeparaÃ§Ã£o de camadas respeitada
+- **TypeScript Strict Mode:** Zero erros de compilação
+- **ESLint + Prettier:** Formatação consistente
+- **Clean Architecture:** Separação de camadas respeitada
 - **SOLID Principles:** Single responsibility, Open/Closed, etc.
 
 #### Testing
-- **Suite de Testes UnitÃ¡rios:** CÃ¡lculos financeiros, validaÃ§Ãµes, controllers
-- **Testes de IntegraÃ§Ã£o:** Backend API endpoints
-- **Coverage:** 98%+ (alvo obrigatÃ³rio)
+- **Suite de Testes Unitários:** Cálculos financeiros, validações, controllers
+- **Testes de Integração:** Backend API endpoints
+- **Coverage:** 98%+ (alvo obrigatório)
 - **Vitest + Testing Library:** Stack moderna
 
 ---
 
-### ðŸ“¦ **DependÃªncias Atualizadas**
+### 📦 **Dependências Atualizadas**
 
 #### Principais
-- `openai@4.x` â†’ IntegraÃ§Ã£o GPT-4
-- `firebase@10.x` â†’ Auth + Firestore SDK
-- `vite@6.4.x` â†’ Build otimizado
-- `typescript@5.3.x` â†’ Type safety aprimorado
+- `openai@4.x` → Integração GPT-4
+- `firebase@10.x` → Auth + Firestore SDK
+- `vite@6.4.x` → Build otimizado
+- `typescript@5.3.x` → Type safety aprimorado
 
 ---
 
-### ðŸ“š **DocumentaÃ§Ã£o**
+### 📚 **Documentação**
 
 #### Novos Arquivos
-- `BUGLOG.md` â†’ Registro completo de bugs com formato estruturado
-- `COMECE_AQUI.md` â†’ Guia rÃ¡pido de 30min para setup
-- `SETUP_GUIDE.md` â†’ Manual completo em inglÃªs
-- `SETUP_GUIA_PT.md` â†’ Manual completo em portuguÃªs
-- `VERCEL_QUICK_START.md` â†’ Deploy rÃ¡pido na Vercel
-- `DATABASE_DECISION.md` â†’ AnÃ¡lise arquitetural de banco de dados
-- `.env.local.example` â†’ Template completo de variÃ¡veis
+- `BUGLOG.md` → Registro completo de bugs com formato estruturado
+- `COMECE_AQUI.md` → Guia rápido de 30min para setup
+- `SETUP_GUIDE.md` → Manual completo em inglês
+- `SETUP_GUIA_PT.md` → Manual completo em português
+- `VERCEL_QUICK_START.md` → Deploy rápido na Vercel
+- `DATABASE_DECISION.md` → Análise arquitetural de banco de dados
+- `.env.local.example` → Template completo de variáveis
 
 #### Atualizados
-- `README.md` â†’ Stack v0.4.0, instruÃ§Ãµes atualizadas
-- `ROADMAP.md` â†’ PrÃ³ximos passos com v0.5.0 e alÃ©m
-- `GDD.md` â†’ MecÃ¢nicas financeiras documentadas
-- `ARCHITECTURE.md` â†’ Diagrama atualizado com GPT-4
+- `README.md` → Stack v0.4.0, instruções atualizadas
+- `ROADMAP.md` → Próximos passos com v0.5.0 e além
+- `GDD.md` → Mecânicas financeiras documentadas
+- `ARCHITECTURE.md` → Diagrama atualizado com GPT-4
 
 ---
 
-### ðŸ”„ **Breaking Changes**
+### 🔄 **Breaking Changes**
 
-âš ï¸ **Modo Demo Removido**  
-- Removidas todas referÃªncias a contas demo
-- Login agora requer autenticaÃ§Ã£o real (Google ou Email)
-- Dados demo nÃ£o serÃ£o mais criados automaticamente
+⚠️ **Modo Demo Removido**  
+- Removidas todas referências a contas demo
+- Login agora requer autenticação real (Google ou Email)
+- Dados demo não serão mais criados automaticamente
 
-âš ï¸ **API Backend ObrigatÃ³ria**  
+⚠️ **API Backend Obrigatória**  
 - Funcionalidades de IA agora requerem backend ativo
-- VariÃ¡vel `VITE_API_PROD_URL` obrigatÃ³ria em produÃ§Ã£o
+- Variável `VITE_API_PROD_URL` obrigatória em produção
 - `OPENAI_API_KEY` deve estar configurada no backend
 
 ---
 
-### ðŸ“ˆ **MÃ©tricas de Qualidade**
+### 📈 **Métricas de Qualidade**
 
 - **Code Coverage:** 98.2%
 - **Build Time:** ~45s (frontend) / ~30s (backend)
 - **Bundle Size:** 700KB gzipped
 - **Lighthouse Score:** 95+ (Performance, Accessibility, Best Practices, SEO)
-- **Zero RegressÃµes:** Todos os testes anteriores passando
+- **Zero Regressões:** Todos os testes anteriores passando
 
 ---
 
-### ðŸŽ¯ **PrÃ³ximos Passos (v0.5.0)**
+### 🎯 **Próximos Passos (v0.5.0)**
 
-- [ ] Suporte a mÃºltiplas moedas com conversÃ£o automÃ¡tica
-- [ ] NotificaÃ§Ãµes push via PWA
-- [ ] ExportaÃ§Ã£o de relatÃ³rios em PDF
-- [ ] IntegraÃ§Ã£o real com Open Banking
-- [ ] Machine Learning para previsÃ£o de gastos
+- [ ] Suporte a múltiplas moedas com conversão automática
+- [ ] Notificações push via PWA
+- [ ] Exportação de relatórios em PDF
+- [ ] Integração real com Open Banking
+- [ ] Machine Learning para previsão de gastos
 
 ---
 
 ## [0.3.1] - 2026-03-08
 
-### âœ¨ Advanced AI & Financial Integrity Modules
+### ✨ Advanced AI & Financial Integrity Modules
 
-#### ðŸ¤– AI Engine Enhancements
-- **AI Orchestrator Engine** - Pipeline centralizado para coordenaÃ§Ã£o de IA
-- **Financial Intelligence Graph** - Grafo de relaÃ§Ãµes financeiras com nodes e edges
-- **AI Financial Simulator** - SimulaÃ§Ã£o de cenÃ¡rios financeiros (gastos extras, economia mensal)
-- **AI Category Learning** - Aprendizado automÃ¡tico de categorias por merchant
-- **Financial Leak Detection** - DetecÃ§Ã£o automÃ¡tica de vazamentos financeiros recorrentes
+#### 🤖 AI Engine Enhancements
+- **AI Orchestrator Engine** - Pipeline centralizado para coordenação de IA
+- **Financial Intelligence Graph** - Grafo de relações financeiras com nodes e edges
+- **AI Financial Simulator** - Simulação de cenários financeiros (gastos extras, economia mensal)
+- **AI Category Learning** - Aprendizado automático de categorias por merchant
+- **Financial Leak Detection** - Detecção automática de vazamentos financeiros recorrentes
 
-#### ðŸ“Š Financial Reporting
-- **Financial Report Engine** - RelatÃ³rios mensais automÃ¡ticos com insights
-- **Monthly Financial Reports** - AnÃ¡lise comparativa mÃªs a mÃªs
-- **Financial Health Scoring** - Sistema de pontuaÃ§Ã£o de saÃºde financeira
+#### 📊 Financial Reporting
+- **Financial Report Engine** - Relatórios mensais automáticos com insights
+- **Monthly Financial Reports** - Análise comparativa mês a mês
+- **Financial Health Scoring** - Sistema de pontuação de saúde financeira
 
-#### ðŸ”’ Security & Integrity
-- **Secure Money Calculations** - Biblioteca decimal.js para cÃ¡lculos precisos
-- **Transaction Idempotency** - PrevenÃ§Ã£o de duplicatas de transaÃ§Ãµes
-- **Audit Log Service** - Logs detalhados de todas operaÃ§Ãµes crÃ­ticas
-- **Reconciliation Engine** - ReconciliaÃ§Ã£o automÃ¡tica de saldos
+#### 🔒 Security & Integrity
+- **Secure Money Calculations** - Biblioteca decimal.js para cálculos precisos
+- **Transaction Idempotency** - Prevenção de duplicatas de transações
+- **Audit Log Service** - Logs detalhados de todas operações críticas
+- **Reconciliation Engine** - Reconciliação automática de saldos
 
-#### ðŸŽ›ï¸ User Interface
+#### 🎛️ User Interface
 - **Dashboard Widgets** - Novos widgets: Financial Leaks, Monthly Report, Simulation Insights
 - **AI Control Panel** - Abas expandidas: Leaks, Report, Simulate, Audit
-- **Event Engine Integration** - Triggers automÃ¡ticos nos eventos relevantes
+- **Event Engine Integration** - Triggers automáticos nos eventos relevantes
 
-#### ðŸ—ï¸ Architecture Improvements
-- **Clean Architecture Compliance** - SeparaÃ§Ã£o clara de responsabilidades
-- **SOLID Principles** - PrincÃ­pios aplicados em todos os mÃ³dulos
-- **Financial Security** - ValidaÃ§Ãµes rigorosas e cÃ¡lculos precisos
+#### 🏗️ Architecture Improvements
+- **Clean Architecture Compliance** - Separação clara de responsabilidades
+- **SOLID Principles** - Princípios aplicados em todos os módulos
+- **Financial Security** - Validações rigorosas e cálculos precisos
 - **Type Safety** - Interfaces TypeScript completas
 
-### ðŸ› Bugs Corrigidos
-- **Hash Generation**: SubstituÃ­do crypto Node.js por hash compatÃ­vel com browser
-- **Type Imports**: Adicionadas importaÃ§Ãµes faltantes para SimulationScenario e AuditLogEntry
+### 🐛 Bugs Corrigidos
+- **Hash Generation**: Substituído crypto Node.js por hash compatível com browser
+- **Type Imports**: Adicionadas importações faltantes para SimulationScenario e AuditLogEntry
 
-### ðŸ“š Documentation
-- **Module Documentation**: Todos os novos mÃ³dulos documentados inline
+### 📚 Documentation
+- **Module Documentation**: Todos os novos módulos documentados inline
 - **Architecture Updates**: Diagramas atualizados com novos componentes
 
-### ðŸ§ª Testing
-- **New Module Tests**: Estrutura preparada para testes dos novos mÃ³dulos
-- **Integration Tests**: ValidaÃ§Ã£o de integraÃ§Ã£o entre mÃ³dulos
+### 🧪 Testing
+- **New Module Tests**: Estrutura preparada para testes dos novos módulos
+- **Integration Tests**: Validação de integração entre módulos
 
 ---
 
 ## [0.3.0] - 2026-03-08
 
-### âœ¨ Features Adicionadas
-- **Backend API Integration** - Proxy pattern implementado para seguranÃ§a
-- **Type Safety** - Eliminadas 20+ instÃ¢ncias de `any` type
-- **Capacitor Mobile** - Estrutura Android criadacom sincronizaÃ§Ã£o de assets
+### ✨ Features Adicionadas
+- **Backend API Integration** - Proxy pattern implementado para segurança
+- **Type Safety** - Eliminadas 20+ instâncias de `any` type
+- **Capacitor Mobile** - Estrutura Android criadacom sincronização de assets
 - **Crash Reporting** - Sentry integrado para frontend e backend
 - **Error Boundary** - Component para prevenir app crashes com fallback UI
-- **AES-256 Encryption** - EncriptaÃ§Ã£o de dados sensÃ­veis em localStorage
+- **AES-256 Encryption** - Encriptação de dados sensíveis em localStorage
 - **PWA Support** - Service Worker completo com offline capability
 
-### ðŸ› Bugs Corrigidos
-- **B001**: Category.OUTROS undefined em subscriptionDetector.test.ts â†’ Corrigido para Category.PESSOAL
-- **B002**: ErrorBoundary nÃ£o tinha getDerivedStateFromError â†’ Implementado
-- **B003**: RequestInit nÃ£o suporta timeout â†’ Removido, usar AbortController
-- **B004**: BrowserTracing error type incompatÃ­vel â†’ Desabilitado
-- **B005**: Capacitor config propriedades invÃ¡lidas â†’ Removidas android/ios configs
-- **B006**: Capacitor.d.ts function syntax error â†’ Adicionar `() => void`
+### 🐛 Bugs Corrigidos
+- **B001**: Category.OUTROS undefined em subscriptionDetector.test.ts → Corrigido para Category.PESSOAL
+- **B002**: ErrorBoundary não tinha getDerivedStateFromError → Implementado
+- **B003**: RequestInit não suporta timeout → Removido, usar AbortController
+- **B004**: BrowserTracing error type incompatível → Desabilitado
+- **B005**: Capacitor config propriedades inválidas → Removidas android/ios configs
+- **B006**: Capacitor.d.ts function syntax error → Adicionar `() => void`
 
-### ðŸ›¡ï¸ Security Improvements
+### 🛡️ Security Improvements
 - API keys NUNCA exposto no client-side
-- Implementado backend proxy para todas requisiÃ§Ãµes AI
-- HTTPS enforced em produÃ§Ã£o
+- Implementado backend proxy para todas requisições AI
+- HTTPS enforced em produção
 - CORS validado e configurado
 - JWT authentication em todas rotas protegidas
 - Rate limiting (express-rate-limit)
-- Input validation em formulÃ¡rios
+- Input validation em formulários
 - Error Boundary anti-crash
 - Sentry para monitoring
 
-### ðŸš€ Performance
+### 🚀 Performance
 - TypeScript strict mode em 100% dos arquivos
 - Build size otimizado: 1.23 MB (266 KB gzipped)
-- Startup time: 2.4s (alvo: < 3s) âœ…
+- Startup time: 2.4s (alvo: < 3s) ✅
 - FCP: 1.2s | LCP: 2.1s | TTI: 2.8s
-- Memory usage: < 50 MB em produÃ§Ã£o
+- Memory usage: < 50 MB em produção
 
-### ðŸ“± Mobile Readiness
+### 📱 Mobile Readiness
 - Capacitor configurado (v8.2.0)
 - Android project structure criada
 - iOS project structure preparada
 - Splash screen, Status Bar, Keyboard plugins
 - Platform detection implementado
 
-### ðŸ“š Documentation
+### 📚 Documentation
 - SECURITY_UPDATES_v0.1.0.md completo
 - NEXT_STEPS.md roadmap atualizado
 - ARCHITECTURE.md detalha fluxos
-- ComentÃ¡rios inline em cÃ³digo crÃ­tico
+- Comentários inline em código crítico
 
-### ðŸ§ª Testing
+### 🧪 Testing
 - Unit tests suite com 98.2% coverage
-- Integration tests para fluxos crÃ­ticos
+- Integration tests para fluxos críticos
 - Error handling tests
 - Security tests
 - Performance benchmarks
 
-### âš ï¸ Known Issues
+### ⚠️ Known Issues
 - APK Android bloqueado (sem JDK instalado)
 - iOS bloqueado (sem macOS + Xcode)
 - Config module test coverage: 96.5% (target: 100%)
 - Bundle chunks > 500KB (requer splitting adicional)
 
-### ðŸ“‹ Checklist prÃ©-release
-- âœ… Build sem erros TypeScript
-- âœ… Todos tests passando
-- âœ… Zero console.errors
-- âœ… Security audit completo
-- âœ… Performance metrics OK
-- âœ… Privacy policy atualizado
-- âœ… Error Boundary funcionando
-- âœ… Sentry integrado e testado
+### 📋 Checklist pré-release
+- ✅ Build sem erros TypeScript
+- ✅ Todos tests passando
+- ✅ Zero console.errors
+- ✅ Security audit completo
+- ✅ Performance metrics OK
+- ✅ Privacy policy atualizado
+- ✅ Error Boundary funcionando
+- ✅ Sentry integrado e testado
 
 ---
 
 ## [0.2.0] - 2026-03-07
 
-### ðŸŽ¯ Focus
+### 🎯 Focus
 - Security hardening
 - API key protection
 - Encryption implementation
@@ -1453,12 +1499,12 @@ Esta versÃ£o marca a transiÃ§Ã£o completa para produÃ§Ã£o com IA GPT-4
 
 ### Features
 - Local-first architecture com localStorage
-- EncriptaÃ§Ã£o AES-GCM-256
+- Encriptação AES-GCM-256
 -Firebase Auth mock (localService)
 - Gemini AI integration (backend proxy)
 - Error tracking setup
 
-### DocumentaÃ§Ã£o
+### Documentação
 - SECURITY_UPDATES_v0.1.0.md criado
 - Privacy policy compliant
 - Compliance checklist
@@ -1488,16 +1534,16 @@ Esta versÃ£o marca a transiÃ§Ã£o completa para produÃ§Ã£o com IA GPT-4
 
 ---
 
-## PrÃ³ximas VersÃµes Planejadas
+## Próximas Versões Planejadas
 
-### v0.4.0 (Target: 15 MarÃ§o 2026)
+### v0.4.0 (Target: 15 Março 2026)
 - [ ] CI/CD Pipeline (GitHub Actions)
 - [ ] Android APK build
 - [ ] Code splitting por rotas
 - [ ] 100% test coverage
 
-### v0.5.0 (Target: 30 MarÃ§o 2026)
-- [ ] Analytics integraÃ§Ã£o
+### v0.5.0 (Target: 30 Março 2026)
+- [ ] Analytics integração
 - [ ] PWA offline completo
 - [ ] Performance monitoring
 - [ ] A/B testing framework
@@ -1525,10 +1571,11 @@ Esta versÃ£o marca a transiÃ§Ã£o completa para produÃ§Ã£o com IA GPT-4
 
 
 ## [0.9.1] - 2026-04-03
-### QA crÃ­tico e consistÃªncia de transiÃ§Ã£o
-- Corrigido include da suÃ­te crÃ­tica para `api-storage-provider.test.ts`.
-- Adicionado `tests/unit/v091-critical-flows.test.ts` com cenÃ¡rios reforÃ§ados de moeda, categorizaÃ§Ã£o e escopo de workspace.
-- Mantida exigÃªncia protocolar de cobertura crÃ­tica >= 98%.
+### QA crítico e consistência de transição
+- Corrigido include da suíte crítica para `api-storage-provider.test.ts`.
+- Adicionado `tests/unit/v091-critical-flows.test.ts` com cenários reforçados de moeda, categorização e escopo de workspace.
+- Mantida exigência protocolar de cobertura crítica >= 98%.
+
 
 
 

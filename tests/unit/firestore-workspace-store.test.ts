@@ -9,11 +9,15 @@ const firestoreWorkspaceStoreMocks = vi.hoisted(() => ({
   batchCommitMock: vi.fn().mockResolvedValue(undefined),
   generatedId: { value: 0 },
   startAfterMock: vi.fn(),
+  isFirebaseConfigured: { value: true },
 }));
 
 vi.mock('../../services/firebase', () => ({
   auth: { currentUser: { uid: 'user-1' } },
   db: {},
+  get isFirebaseConfigured() {
+    return firestoreWorkspaceStoreMocks.isFirebaseConfigured.value;
+  },
 }));
 
 vi.mock('firebase/firestore', () => ({
@@ -50,6 +54,7 @@ vi.mock('firebase/firestore', () => ({
 
 import {
   addWorkspaceMember,
+  createPersonalWorkspace,
   listWorkspaceAuditEvents,
   listWorkspaceMembers,
   listWorkspaceCollectionDocuments,
@@ -63,6 +68,7 @@ describe('firestoreWorkspaceStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     firestoreWorkspaceStoreMocks.generatedId.value = 0;
+    firestoreWorkspaceStoreMocks.isFirebaseConfigured.value = true;
   });
 
   it('merges workspace memberships with workspace documents', async () => {
@@ -293,6 +299,22 @@ describe('firestoreWorkspaceStore', () => {
         user_id: 'user-1',
       }),
       { merge: true },
+    );
+  });
+
+  it('falls back safely when Firebase workspace sync is not configured', async () => {
+    firestoreWorkspaceStoreMocks.isFirebaseConfigured.value = false;
+
+    await expect(listUserWorkspaceSummaries('user-1')).resolves.toEqual([]);
+    await expect(listWorkspaceMembers('ws-1')).resolves.toEqual([]);
+    await expect(listWorkspaceAuditEvents({ tenantId: 'tenant-1', workspaceId: 'ws-1' })).resolves.toEqual([]);
+    await expect(createPersonalWorkspace({ userId: 'user-1', name: 'Flow User', email: 'user@test.dev' })).resolves.toEqual(
+      expect.objectContaining({
+        workspaceId: 'local-user-1',
+        tenantId: 'local-tenant-user-1',
+        role: 'owner',
+        plan: 'free',
+      }),
     );
   });
 });

@@ -43,7 +43,7 @@ export async function skipIf(
  */
 export async function hasAuthenticatedShell(page: Page): Promise<boolean> {
   return (await page.getByRole('button', { 
-    name: /Consultor IA|Ajustes|Settings|Inicio|Transacoes|Fluxo|Historico/i 
+    name: /Apoio IA|Consultor IA|Ajustes|Settings|Inicio|Transacoes|Fluxo|Historico/i 
   }).count()) > 0;
 }
 

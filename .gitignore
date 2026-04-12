@@ -69,5 +69,8 @@ firebase-debug.log
 flow-finance-current.zip
 .gstack/
 
+# Obsidian vault for local notes only
+obsidian-vault/
+
 .vercel
 .env*.local

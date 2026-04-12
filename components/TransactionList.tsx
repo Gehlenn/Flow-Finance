@@ -27,6 +27,61 @@ interface TransactionListProps {
 
 type SortKey = 'date' | 'amount' | 'category' | 'description';
 type SortDirection = 'asc' | 'desc';
+export type TransactionFinancialState = 'confirmed' | 'pending' | 'overdue';
+
+const normalizeStateLabel = (state: unknown): TransactionFinancialState | null => {
+  if (typeof state !== 'string') {
+    return null;
+  }
+
+  const normalized = state.toLowerCase();
+  if (normalized === 'confirmed' || normalized === 'confirmado') {
+    return 'confirmed';
+  }
+  if (normalized === 'pending' || normalized === 'pendente') {
+    return 'pending';
+  }
+  if (normalized === 'overdue' || normalized === 'vencido') {
+    return 'overdue';
+  }
+
+  return null;
+};
+
+export const classifyTransactionFinancialState = (
+  transaction: Transaction,
+  referenceDate: Date = new Date(),
+): TransactionFinancialState => {
+  const metadata = transaction as unknown as Record<string, unknown>;
+  const explicitState = normalizeStateLabel(metadata.status);
+  if (explicitState) {
+    return explicitState;
+  }
+
+  const transactionDate = new Date(transaction.date).getTime();
+  const startOfToday = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate()).getTime();
+  const endOfToday = startOfToday + (24 * 60 * 60 * 1000) - 1;
+
+  if (transactionDate > endOfToday) {
+    return 'pending';
+  }
+
+  if (transaction.generated && transactionDate < startOfToday) {
+    return 'overdue';
+  }
+
+  return 'confirmed';
+};
+
+const formatFinancialStateLabel = (state: TransactionFinancialState): string => {
+  if (state === 'pending') {
+    return 'Pendente';
+  }
+  if (state === 'overdue') {
+    return 'Vencido';
+  }
+  return 'Confirmado';
+};
 
 // Static class maps for Tailwind static analysis - prevents CSS purging
 const TRANSACTION_LIST_CLASSES = {
@@ -38,10 +93,16 @@ const TRANSACTION_LIST_CLASSES = {
   categoryBadgeExpense: 'bg-rose-50 dark:bg-rose-500/10 text-rose-500',
   rowSelected: 'bg-indigo-50/50 dark:bg-indigo-500/10',
   rowUnselected: '',
+  rowOverdue: 'bg-rose-50/40 dark:bg-rose-900/10',
   checkboxSelected: 'text-indigo-600',
   checkboxUnselected: 'text-slate-200 dark:text-slate-700',
   amountIncome: 'text-emerald-600',
   amountExpense: 'text-rose-600',
+  typeIncomeBadge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  typeExpenseBadge: 'bg-rose-50 text-rose-700 border-rose-200',
+  stateConfirmed: 'bg-slate-100 text-slate-600 border-slate-200',
+  statePending: 'bg-amber-50 text-amber-700 border-amber-200',
+  stateOverdue: 'bg-rose-100 text-rose-700 border-rose-200',
   shareTypeActive: 'bg-indigo-600 text-white border-indigo-600 shadow-md',
   shareTypeInactive: 'bg-slate-50 dark:bg-slate-900 text-slate-400 border-transparent'
 };
@@ -259,6 +320,17 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
     return result;
   }, [transactions, activeWorkspaceId, searchQuery, categoryFilter, dateStart, dateEnd, sortConfig]);
 
+  const transactionStateSummary = useMemo(() => {
+    return filteredAndSorted.reduce(
+      (summary, transaction) => {
+        const state = classifyTransactionFinancialState(transaction);
+        summary[state] += 1;
+        return summary;
+      },
+      { confirmed: 0, pending: 0, overdue: 0 } as Record<TransactionFinancialState, number>,
+    );
+  }, [filteredAndSorted]);
+
   const handleSort = (key: SortKey) => {
     setSortConfig(current => ({
       key,
@@ -449,6 +521,19 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
         )}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 px-1">
+        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Leitura rapida:</span>
+        <span className={`rounded-full border px-3 py-1 text-[8px] font-black uppercase tracking-widest ${TRANSACTION_LIST_CLASSES.stateConfirmed}`}>
+          Confirmado {transactionStateSummary.confirmed}
+        </span>
+        <span className={`rounded-full border px-3 py-1 text-[8px] font-black uppercase tracking-widest ${TRANSACTION_LIST_CLASSES.statePending}`}>
+          Pendente {transactionStateSummary.pending}
+        </span>
+        <span className={`rounded-full border px-3 py-1 text-[8px] font-black uppercase tracking-widest ${TRANSACTION_LIST_CLASSES.stateOverdue}`}>
+          Vencido {transactionStateSummary.overdue}
+        </span>
+      </div>
+
       {/* Header de Ordenação e Seleção */}
       <div className="flex items-center gap-4 px-5 py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest">
         <button onClick={selectAll} className="shrink-0 hover:text-indigo-500 transition-colors">
@@ -469,11 +554,25 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden divide-y divide-slate-50 dark:divide-slate-700">
-        {filteredAndSorted.map(t => (
+        {filteredAndSorted.length === 0 && (
+          <div className="px-6 py-10 text-center">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nenhum lancamento encontrado</p>
+          </div>
+        )}
+
+        {filteredAndSorted.map(t => {
+          const transactionState = classifyTransactionFinancialState(t);
+          const transactionStateClass = transactionState === 'pending'
+            ? TRANSACTION_LIST_CLASSES.statePending
+            : transactionState === 'overdue'
+              ? TRANSACTION_LIST_CLASSES.stateOverdue
+              : TRANSACTION_LIST_CLASSES.stateConfirmed;
+
+          return (
           <div 
             key={t.id} 
             onClick={() => setViewingTransaction(t)}
-            className={`p-5 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-all cursor-pointer group ${selectedIds.has(t.id) ? TRANSACTION_LIST_CLASSES.rowSelected : TRANSACTION_LIST_CLASSES.rowUnselected}`}
+            className={`p-5 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-all cursor-pointer group ${selectedIds.has(t.id) ? TRANSACTION_LIST_CLASSES.rowSelected : transactionState === 'overdue' ? TRANSACTION_LIST_CLASSES.rowOverdue : TRANSACTION_LIST_CLASSES.rowUnselected}`}
           >
             <button 
               onClick={(e) => toggleSelect(t.id, e)}
@@ -487,6 +586,13 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="font-bold text-slate-800 dark:text-white text-sm tracking-tight truncate">{t.description}</h4>
+                <span className={`rounded-full border px-2 py-0.5 text-[7px] font-black uppercase tracking-widest ${t.type === TransactionType.RECEITA ? TRANSACTION_LIST_CLASSES.typeIncomeBadge : TRANSACTION_LIST_CLASSES.typeExpenseBadge}`}>
+                  {t.type}
+                </span>
+                <span className={`rounded-full border px-2 py-0.5 text-[7px] font-black uppercase tracking-widest inline-flex items-center gap-1 ${transactionStateClass}`}>
+                  {transactionState === 'overdue' && <AlertTriangle size={8} className="shrink-0" />}
+                  {formatFinancialStateLabel(transactionState)}
+                </span>
                 {t.generated && (
                   <span className="flex items-center gap-1 px-2 py-0.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-full text-[7px] font-black uppercase tracking-widest shrink-0">
                     <RefreshCw size={8} /> Recorrente
@@ -504,7 +610,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
               <span className={`text-sm font-black ${t.type === TransactionType.RECEITA ? TRANSACTION_LIST_CLASSES.amountIncome : TRANSACTION_LIST_CLASSES.amountExpense}`}>{hideValues ? '••••' : formatVal(t.amount)}</span>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Toast de Cópia */}

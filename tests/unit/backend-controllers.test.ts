@@ -100,7 +100,7 @@ describe('CFO Controller', () => {
     const req = createMockRequest({
       question: 'Posso investir?',
       context: 'saldo: 5000',
-      intent: 'investment_question',
+      intent: 'receivables_question',
     });
     const res = createMockResponse();
     const next = vi.fn();
@@ -322,3 +322,4 @@ describe('Input Sanitization', () => {
     expect(truncated.endsWith('...')).toBe(true);
   });
 });
+

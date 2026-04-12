@@ -5,7 +5,9 @@ import { describe, expect, it, vi } from 'vitest';
 import Dashboard from '../../components/Dashboard';
 
 describe('dashboard quick actions', () => {
-  it('exposes contextual access to insights and accounts', () => {
+  it('exposes contextual access to transactions, cash flow, insights and accounts', () => {
+    const onNavigateToHistory = vi.fn();
+    const onNavigateToFlow = vi.fn();
     const onNavigateToInsights = vi.fn();
     const onNavigateToAccounts = vi.fn();
 
@@ -18,14 +20,20 @@ describe('dashboard quick actions', () => {
         alerts={[]}
         reminders={[]}
         hideValues={false}
+        onNavigateToHistory={onNavigateToHistory}
+        onNavigateToFlow={onNavigateToFlow}
         onNavigateToInsights={onNavigateToInsights}
         onNavigateToAccounts={onNavigateToAccounts}
       />,
     );
 
+    fireEvent.click(screen.getByRole('button', { name: /ver transacoes/i }));
+    fireEvent.click(screen.getByRole('button', { name: /abrir fluxo de caixa/i }));
     fireEvent.click(screen.getByRole('button', { name: /ver insights/i }));
     fireEvent.click(screen.getByRole('button', { name: /gerenciar contas/i }));
 
+    expect(onNavigateToHistory).toHaveBeenCalledTimes(1);
+    expect(onNavigateToFlow).toHaveBeenCalledTimes(1);
     expect(onNavigateToInsights).toHaveBeenCalledTimes(1);
     expect(onNavigateToAccounts).toHaveBeenCalledTimes(1);
   });
@@ -43,11 +51,11 @@ describe('dashboard quick actions', () => {
       />,
     );
 
-    expect(screen.getByText(/Foco do periodo/i)).toBeTruthy();
-    expect(screen.getByText(/Caixa sob controle|Saidas acima das entradas|Alertas pedem revisao|Receita prevista ainda nao realizada/i)).toBeTruthy();
+    expect(screen.getByText(/O que pede atencao/i)).toBeTruthy();
+    expect(screen.getByText(/Caixa sob controle|Saidas acima das entradas|Alertas pedem revisao|Previstos ainda nao viraram caixa|Recebiveis vencidos pedem acao/i)).toBeTruthy();
   });
 
-  it('shows clinic pending reminder strip when metadata comes from integration', () => {
+  it('shows generic pending receivables strip without domain-specific language', () => {
     render(
       <Dashboard
         userName="Flow User"
@@ -71,6 +79,44 @@ describe('dashboard quick actions', () => {
       />,
     );
 
-    expect(screen.getByText(/Cobrancas da clinica pendentes/i)).toBeTruthy();
+    expect(screen.getByText(/Recebiveis pendentes no curto prazo/i)).toBeTruthy();
+    expect(screen.queryByText(/Cobrancas operacionais pendentes/i)).toBeNull();
+  });
+
+  it('keeps overdue and pending amounts visually separated on the dashboard', () => {
+    render(
+      <Dashboard
+        userName="Flow User"
+        activeWorkspaceName="Workspace 1"
+        transactions={[]}
+        accounts={[]}
+        alerts={[]}
+        reminders={[
+          {
+            id: 'pending-1',
+            title: 'Recebimento futuro',
+            date: '2099-04-10T09:00:00.000Z',
+            type: 'Negócio' as any,
+            amount: 200,
+            completed: false,
+            priority: 'media',
+          } as any,
+          {
+            id: 'overdue-1',
+            title: 'Recebimento vencido',
+            date: '2020-04-10T09:00:00.000Z',
+            type: 'Negócio' as any,
+            amount: 150,
+            completed: false,
+            priority: 'alta',
+          } as any,
+        ]}
+        hideValues={false}
+      />,
+    );
+
+    expect(screen.getAllByText(/Pendente/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Vencido/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Recebivel pendente nao aparece como dinheiro disponivel/i)).toBeTruthy();
   });
 });

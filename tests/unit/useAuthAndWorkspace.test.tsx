@@ -6,21 +6,28 @@ import { clearEphemeralAccessToken, getEphemeralAccessToken } from '../../src/se
 const authWorkspaceMocks = vi.hoisted(() => ({
   mockOnAuthStateChanged: vi.fn(),
   mockBootstrapBackendSessionFromFirebase: vi.fn(),
+  mockBootstrapBackendSessionWithPasswordLogin: vi.fn(),
   mockEnsureActiveWorkspace: vi.fn(),
   mockGetE2EAuthBootstrap: vi.fn(),
   mockSetUser: vi.fn(),
   mockClearUser: vi.fn(),
   mockAddBreadcrumb: vi.fn(),
   mockSignOut: vi.fn().mockResolvedValue(undefined),
+  isFirebaseConfigured: true,
 }));
 
 vi.mock('../../services/firebase', () => ({
   auth: { signOut: authWorkspaceMocks.mockSignOut },
   onAuthStateChanged: authWorkspaceMocks.mockOnAuthStateChanged,
+  get isFirebaseConfigured() {
+    return authWorkspaceMocks.isFirebaseConfigured;
+  },
 }));
 
 vi.mock('../../src/services/backendSession', () => ({
   bootstrapBackendSessionFromFirebase: authWorkspaceMocks.mockBootstrapBackendSessionFromFirebase,
+  bootstrapBackendSessionWithPasswordLogin: authWorkspaceMocks.mockBootstrapBackendSessionWithPasswordLogin,
+  deriveDevelopmentUserId: (email: string) => `local-${email.split('@')[0]}`,
 }));
 
 vi.mock('../../src/services/workspaceSession', () => ({
@@ -46,8 +53,17 @@ describe('useAuthAndWorkspace', () => {
     localStorage.clear();
     clearEphemeralAccessToken();
     vi.clearAllMocks();
+    authWorkspaceMocks.isFirebaseConfigured = true;
     authWorkspaceMocks.mockGetE2EAuthBootstrap.mockReturnValue(null);
     authWorkspaceMocks.mockBootstrapBackendSessionFromFirebase.mockResolvedValue({ token: 'jwt-token' });
+    authWorkspaceMocks.mockBootstrapBackendSessionWithPasswordLogin.mockResolvedValue({
+      token: 'jwt-local-token',
+      accessToken: 'jwt-local-token',
+      user: {
+        userId: 'local-user-1',
+        email: 'local@flow.dev',
+      },
+    });
     authWorkspaceMocks.mockEnsureActiveWorkspace.mockResolvedValue({
       workspaceId: 'ws_1',
       tenantId: 'tenant_1',
@@ -107,5 +123,50 @@ describe('useAuthAndWorkspace', () => {
     });
 
     expect(authWorkspaceMocks.mockSignOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('permite bootstrap de login local sem Firebase e hidrata o workspace ativo', async () => {
+    authWorkspaceMocks.isFirebaseConfigured = false;
+    const { result } = renderHook(() => useAuthAndWorkspace());
+
+    await act(async () => {
+      await result.current.handleDevelopmentLogin({
+        email: 'local@flow.dev',
+        password: '123456',
+      });
+    });
+
+    expect(result.current.isLoggedIn).toBe(true);
+    expect(result.current.cloudSyncEnabled).toBe(false);
+    expect(result.current.backendSyncEnabled).toBe(true);
+    expect(result.current.user.id).toBe('local-user-1');
+    expect(result.current.activeWorkspace.workspaceId).toBe('ws_1');
+    expect(getEphemeralAccessToken()).toBe('jwt-local-token');
+    expect(authWorkspaceMocks.mockBootstrapBackendSessionWithPasswordLogin).toHaveBeenCalledWith({
+      email: 'local@flow.dev',
+      password: '123456',
+      userId: 'local-local',
+      name: null,
+    });
+  });
+
+  it('limpa sessao local no logout quando Firebase nao esta configurado', async () => {
+    authWorkspaceMocks.isFirebaseConfigured = false;
+    const { result } = renderHook(() => useAuthAndWorkspace());
+
+    await act(async () => {
+      await result.current.handleDevelopmentLogin({
+        email: 'local@flow.dev',
+        password: '123456',
+      });
+    });
+
+    await act(async () => {
+      await result.current.handleLogout();
+    });
+
+    expect(result.current.isLoggedIn).toBe(false);
+    expect(result.current.activeWorkspace.workspaceId).toBeNull();
+    expect(getEphemeralAccessToken()).toBeNull();
   });
 });

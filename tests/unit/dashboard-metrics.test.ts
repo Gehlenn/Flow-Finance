@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildDashboardClinicReminderSummary,
   buildDashboardFocusNote,
+  buildDashboardReminderStateSummary,
   calculateDashboardMetrics,
 } from '../../components/Dashboard';
 import { Account } from '../../models/Account';
@@ -79,6 +79,15 @@ describe('dashboard metrics', () => {
         priority: 'media',
       },
       {
+        id: 'r-overdue',
+        title: 'Recebimento vencido',
+        date: '2026-04-01T09:00:00.000Z',
+        type: ReminderType.NEGOCIO,
+        amount: 90,
+        completed: false,
+        priority: 'alta',
+      },
+      {
         id: 'r3',
         title: 'Outro mês',
         date: '2026-05-01T09:00:00.000Z',
@@ -94,31 +103,37 @@ describe('dashboard metrics', () => {
     expect(metrics.currentBalance).toBe(1750);
     expect(metrics.inflowMonth).toBe(1000);
     expect(metrics.outflowMonth).toBe(200);
-    expect(metrics.projectedRevenueMonth).toBe(300);
+    expect(metrics.pendingRevenueMonth).toBe(300);
+    expect(metrics.overdueRevenueAmount).toBe(90);
+    expect(metrics.projectedRevenueMonth).toBe(390);
     expect(metrics.confirmedRevenueMonth).toBe(1000);
     expect(metrics.activeAlerts).toBe(2);
   });
 
-  it('prioritizes pending projected revenue in the focus note', () => {
+  it('prioritizes overdue revenue in the focus note', () => {
     const note = buildDashboardFocusNote({
       currentBalance: 1750,
       inflowMonth: 500,
       outflowMonth: 200,
       projectedRevenueMonth: 1200,
+      pendingRevenueMonth: 500,
+      overdueRevenueAmount: 320,
       confirmedRevenueMonth: 700,
       activeAlerts: 0,
     });
 
-    expect(note.title).toBe('Receita prevista ainda nao realizada');
-    expect(note.description).toContain('R$ 500,00');
+    expect(note.title).toBe('Recebiveis vencidos pedem acao');
+    expect(note.description).toContain('R$ 320,00');
   });
 
-  it('falls back to alert review when there is no pending projected revenue', () => {
+  it('falls back to alert review when there is no pending or overdue revenue', () => {
     const note = buildDashboardFocusNote({
       currentBalance: 1750,
       inflowMonth: 1000,
       outflowMonth: 800,
       projectedRevenueMonth: 700,
+      pendingRevenueMonth: 0,
+      overdueRevenueAmount: 0,
       confirmedRevenueMonth: 700,
       activeAlerts: 2,
     });
@@ -126,13 +141,13 @@ describe('dashboard metrics', () => {
     expect(note.title).toBe('Alertas pedem revisao');
   });
 
-  it('summarizes clinic pending reminders from integration metadata', () => {
+  it('keeps pending and overdue calculations domain-agnostic even with extra metadata', () => {
     const referenceDate = new Date('2026-04-07T10:00:00.000Z');
 
     const reminders = [
       {
-        id: 'clinic-1',
-        title: 'Cobranca consulta',
+        id: 'r-1',
+        title: 'Recebivel com metadado externo',
         date: '2026-04-10T09:00:00.000Z',
         type: ReminderType.NEGOCIO,
         amount: 320,
@@ -141,9 +156,9 @@ describe('dashboard metrics', () => {
         source: 'clinic-automation',
       },
       {
-        id: 'clinic-2',
-        title: 'Cobranca retorno',
-        date: '2026-04-11T09:00:00.000Z',
+        id: 'r-2',
+        title: 'Recebivel fora do prazo com id externo',
+        date: '2026-04-02T09:00:00.000Z',
         type: ReminderType.NEGOCIO,
         amount: 180,
         completed: false,
@@ -151,8 +166,8 @@ describe('dashboard metrics', () => {
         external_receivable_id: 'recv-2',
       },
       {
-        id: 'non-clinic',
-        title: 'Lembrete comum',
+        id: 'r-3',
+        title: 'Recebivel comum',
         date: '2026-04-12T09:00:00.000Z',
         type: ReminderType.NEGOCIO,
         amount: 999,
@@ -161,8 +176,53 @@ describe('dashboard metrics', () => {
       },
     ] as Reminder[];
 
-    const summary = buildDashboardClinicReminderSummary(reminders, referenceDate);
+    const summary = buildDashboardReminderStateSummary(reminders, referenceDate);
     expect(summary.pendingCount).toBe(2);
-    expect(summary.pendingAmount).toBe(500);
+    expect(summary.pendingAmount).toBe(1319);
+    expect(summary.overdueCount).toBe(1);
+    expect(summary.overdueAmount).toBe(180);
+  });
+
+  it('separates pending and overdue reminders for dashboard state reading', () => {
+    const referenceDate = new Date('2026-04-07T10:00:00.000Z');
+
+    const reminders: Reminder[] = [
+      {
+        id: 'pending-today',
+        title: 'Recebimento hoje',
+        date: '2026-04-07T12:00:00.000Z',
+        type: ReminderType.NEGOCIO,
+        amount: 200,
+        completed: false,
+        priority: 'alta',
+      },
+      {
+        id: 'pending-week',
+        title: 'Recebimento semana',
+        date: '2026-04-10T12:00:00.000Z',
+        type: ReminderType.NEGOCIO,
+        amount: 350,
+        completed: false,
+        priority: 'media',
+      },
+      {
+        id: 'overdue',
+        title: 'Recebimento vencido',
+        date: '2026-04-03T12:00:00.000Z',
+        type: ReminderType.NEGOCIO,
+        amount: 125,
+        completed: false,
+        priority: 'alta',
+      },
+    ];
+
+    const summary = buildDashboardReminderStateSummary(reminders, referenceDate);
+
+    expect(summary.pendingCount).toBe(2);
+    expect(summary.pendingAmount).toBe(550);
+    expect(summary.overdueCount).toBe(1);
+    expect(summary.overdueAmount).toBe(125);
+    expect(summary.dueTodayCount).toBe(1);
+    expect(summary.dueThisWeekCount).toBe(2);
   });
 });

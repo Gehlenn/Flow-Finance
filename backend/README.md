@@ -246,6 +246,80 @@ npm run lint
 
 ## API Endpoints
 
+### Business Integrations v1 (Fase 2)
+
+Endpoints estáveis para ingestão externa de dados leves:
+
+- `POST /api/integrations/transactions`
+- `POST /api/integrations/reminders`
+
+Headers suportados:
+
+- `x-integration-key` (obrigatório)
+- `x-integration-timestamp` (obrigatório quando HMAC está habilitado)
+- `x-integration-signature` (obrigatório quando HMAC está habilitado)
+- `Idempotency-Key` (opcional, até 128 chars; compatibilidade para retry)
+
+Idempotência principal do contrato:
+
+- `sourceSystem + externalRecordId`
+
+Variáveis mínimas no backend:
+
+```env
+FLOW_EXTERNAL_INTEGRATION_KEYS=key_live_ops
+FLOW_EXTERNAL_INTEGRATION_BINDINGS=key_live_ops|ws_123|erp_ops
+
+# opcionais para assinatura HMAC
+FLOW_EXTERNAL_INTEGRATION_HMAC_SECRETS=secret_v1
+FLOW_EXTERNAL_INTEGRATION_MAX_SKEW_SECONDS=300
+```
+
+Exemplo de payload de transação:
+
+```json
+{
+  "workspaceId": "ws_123",
+  "sourceSystem": "erp_ops",
+  "externalRecordId": "txn_2026_04_10_0001",
+  "type": "income",
+  "amount": 250.0,
+  "currency": "BRL",
+  "occurredAt": "2026-04-10T14:30:00-03:00",
+  "description": "Serviço confirmado e pago",
+  "status": "confirmed",
+  "category": "servicos"
+}
+```
+
+Exemplo de payload de lembrete:
+
+```json
+{
+  "workspaceId": "ws_123",
+  "sourceSystem": "erp_ops",
+  "externalRecordId": "rem_2026_04_10_0007",
+  "title": "Pagar fornecedor as 15h",
+  "remindAt": "2026-04-10T15:00:00-03:00",
+  "kind": "financial",
+  "status": "active",
+  "priority": "high"
+}
+```
+
+Respostas típicas do contrato:
+
+- Sucesso: `201` (created) ou `200` (updated/replayed)
+- Erro de validação: `400` com `{ ok: false, error: "validation_error", message: "..." }`
+- Erro de credencial: `401` com `{ ok: false, error: "unauthorized", message: "integration credentials are invalid" }`
+- Escopo inválido: `403` com `{ ok: false, error: "forbidden", message: "integration key is not scoped..." }`
+- Configuração ausente: `503` com `{ ok: false, error: "integration_unavailable", message: "..." }`
+
+Regra de materialização para evitar ambiguidade de caixa:
+
+- `receivable`/`payable` com `status=pending` ou `status=overdue` são persistidos como `reminders`.
+- Apenas registros confirmados entram como `transactions`.
+
 ### Authentication
 
 #### `POST /api/auth/login`
@@ -778,7 +852,7 @@ FRONTEND_URL=http://localhost:5173
 - Request schema enforcement:
   - `question`: required, max 1000 chars
   - `context`: optional, max 20000 chars
-  - `intent`: optional enum (`spending_advice`, `budget_question`, `risk_question`, `savings_question`, `investment_question`, `general_finance`)
+  - `intent`: optional enum (`spending_advice`, `cash_position`, `risk_question`, `savings_question`, `receivables_question`, `monthly_summary`)
 - Controller normalization applies safe defaults and rejects malformed payloads.
 
 ## Monitoring
@@ -823,3 +897,4 @@ npm run dev
 ```
 
 🎉 Happy coding!
+

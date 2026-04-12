@@ -230,7 +230,7 @@ describe('openBankingService - Extended Coverage', () => {
       category: 'Pessoal',
       description: 'Amazon.com',
       amount: 150,
-      source: 'import',
+      source: 'integration',
     });
   });
 
@@ -432,7 +432,13 @@ describe('openBankingService - Extended Coverage', () => {
     const result = await syncTransactions(conn.id, [], 'u1', (txs) => imported.push(...txs), 7);
 
     expect(result.transactions_imported).toBe(1);
-    expect(imported).toEqual([{ description: 'PIX recebido', amount: 120, source: 'import' }]);
+    expect(imported).toHaveLength(1);
+    expect(imported[0]).toMatchObject({
+      description: 'PIX recebido',
+      amount: 120,
+      source: 'integration',
+      type: 'Receita',
+    });
     expect(getConnection(conn.id)).toMatchObject({
       connection_status: 'connected',
       last_sync: '2026-03-12T01:00:00.000Z',
@@ -442,6 +448,143 @@ describe('openBankingService - Extended Coverage', () => {
       method: 'POST',
       body: JSON.stringify({ connectionId: conn.id, days: 7 }),
       retries: 0,
+    });
+  });
+
+  it('syncTransactions normaliza retorno do backend via draft com fallbacks de campo', async () => {
+    vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+
+    apiRequestMock.mockResolvedValueOnce({
+      id: 'conn_backend_draft_paths',
+      user_id: 'u1',
+      provider: 'pluggy',
+      bank_name: 'Banco Draft',
+      bank_logo: '',
+      bank_color: '#111111',
+      connection_status: 'connected',
+      external_account_id: 'ext-draft',
+      created_at: '2026-03-12T00:00:00.000Z',
+    });
+
+    const conn = await connectBank('nubank', 'u1');
+    const imported: any[] = [];
+
+    apiRequestMock.mockResolvedValueOnce({
+      connection_id: conn.id,
+      transactions_imported: 2,
+      balance_updated: true,
+      synced_at: '2026-03-12T01:00:00.000Z',
+      transactions: [
+        {
+          id: 'tx-exp-1',
+          description: 'Compra loja',
+          amount: -55,
+          type: 'expense',
+          category: 'CategoriaExterna',
+          merchant: 'Loja A',
+          account_id: 'acc-ext-1',
+          confidence_score: 0.77,
+        },
+        {
+          id: 'tx-inc-1',
+          amount: 120,
+          type: 'income',
+          merchant: 'Cliente B',
+        },
+      ],
+    });
+
+    await syncTransactions(conn.id, [], 'u1', (txs) => imported.push(...txs), 7);
+
+    expect(imported).toHaveLength(2);
+    expect(imported[0]).toMatchObject({
+      source: 'integration',
+      amount: 55,
+      type: 'Despesa',
+      category: 'CategoriaExterna',
+      merchant: 'Loja A',
+      account_id: 'acc-ext-1',
+      confidence_score: 0.77,
+      description: 'Compra loja',
+    });
+    expect(imported[1]).toMatchObject({
+      source: 'integration',
+      amount: 120,
+      type: 'Receita',
+      description: 'Cliente B',
+    });
+  });
+
+  it('syncTransactions ignora itens de backend com amount invalido', async () => {
+    vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+
+    apiRequestMock.mockResolvedValueOnce({
+      id: 'conn_backend_invalid_amount',
+      user_id: 'u1',
+      provider: 'pluggy',
+      bank_name: 'Banco Draft',
+      bank_logo: '',
+      bank_color: '#111111',
+      connection_status: 'connected',
+      external_account_id: 'ext-draft',
+      created_at: '2026-03-12T00:00:00.000Z',
+    });
+
+    const conn = await connectBank('nubank', 'u1');
+    const imported: any[] = [];
+
+    apiRequestMock.mockResolvedValueOnce({
+      connection_id: conn.id,
+      transactions_imported: 2,
+      balance_updated: true,
+      synced_at: '2026-03-12T01:00:00.000Z',
+      transactions: [
+        { id: 'tx-invalid', amount: Number.NaN, description: 'Invalida' },
+        { id: 'tx-valid', amount: 33, description: 'Valida' },
+      ],
+    });
+
+    await syncTransactions(conn.id, [], 'u1', (txs) => imported.push(...txs), 7);
+
+    expect(imported).toHaveLength(1);
+    expect(imported[0]).toMatchObject({ description: 'Valida', amount: 33 });
+  });
+
+  it('syncTransactions usa descricao padrao quando backend nao envia description nem merchant', async () => {
+    vi.stubEnv('VITE_ENABLE_TEST_BACKEND_BANKING', '1');
+
+    apiRequestMock.mockResolvedValueOnce({
+      id: 'conn_backend_default_desc',
+      user_id: 'u1',
+      provider: 'pluggy',
+      bank_name: 'Banco Draft',
+      bank_logo: '',
+      bank_color: '#111111',
+      connection_status: 'connected',
+      external_account_id: 'ext-draft',
+      created_at: '2026-03-12T00:00:00.000Z',
+    });
+
+    const conn = await connectBank('nubank', 'u1');
+    const imported: any[] = [];
+
+    apiRequestMock.mockResolvedValueOnce({
+      connection_id: conn.id,
+      transactions_imported: 1,
+      balance_updated: true,
+      synced_at: '2026-03-12T01:00:00.000Z',
+      transactions: [
+        { id: 'tx-no-desc', amount: -20 },
+      ],
+    });
+
+    await syncTransactions(conn.id, [], 'u1', (txs) => imported.push(...txs), 7);
+
+    expect(imported).toHaveLength(1);
+    expect(imported[0]).toMatchObject({
+      amount: 20,
+      type: 'Despesa',
+      description: 'Transacao bancaria sincronizada',
     });
   });
 
@@ -902,11 +1045,21 @@ describe('openBankingService - Extended Coverage', () => {
   });
 
   it('reloadConnections retorna local quando backend está desabilitado', async () => {
+    vi.stubEnv('VITE_ENABLE_LOCAL_BANKING_FALLBACK', 'true');
     const conn = await connectBank('nubank', 'u-local-only');
     const local = await reloadConnections('u-local-only');
 
     expect(local).toHaveLength(1);
     expect(local[0].id).toBe(conn.id);
+  });
+
+  it('reloadConnections retorna vazio quando backend está desabilitado e fallback local está desligado', async () => {
+    vi.stubEnv('MODE', 'production');
+    vi.stubEnv('VITE_ENABLE_LOCAL_BANKING_FALLBACK', '');
+
+    const result = await reloadConnections('u-local-off');
+
+    expect(result).toEqual([]);
   });
 
   it('reloadConnections remove conexoes mock em producao', async () => {

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Transaction } from '../types';
 import { Account } from '../models/Account';
 import {
-  AICFOResponse, CFOIntent,
+  CFOIntent,
   buildFinancialContext,
   analyzeFinancialQuestion,
   generateCFOResponse,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { buildProductFinancialIntelligence } from '../src/app/productFinancialIntelligence';
 import { AI_CFO_COPY } from '../src/app/assistantCopy';
+import { canAccessFeature } from '../src/app/monetizationPlan';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -23,36 +24,37 @@ interface AICFOProps {
   transactions: Transaction[];
   accounts: Account[];
   userId?: string;
+  workspacePlan?: 'free' | 'pro';
   hideValues: boolean;
 }
 
 // ─── Quick prompts ────────────────────────────────────────────────────────────
 
 const QUICK_PROMPTS: { label: string; question: string; icon: React.ReactNode }[] = [
-  { label: 'Posso gastar este mês?', question: 'Tenho espaço no meu orçamento para gastar mais este mês?', icon: <Wallet size={13} /> },
-  { label: 'Como economizar?',       question: 'Onde posso cortar gastos para economizar mais?',           icon: <PiggyBank size={13} /> },
-  { label: 'Risco nos próximos 30 dias?', question: 'Existe algum risco financeiro nos próximos 30 dias?', icon: <AlertTriangle size={13} /> },
-  { label: 'Cobrancas da clinica', question: 'Quais cobrancas da clinica vencem nesta semana e qual impacto no caixa?', icon: <HelpCircle size={13} /> },
-  { label: 'Vale investir agora?',   question: 'Com base no meu saldo atual, vale a pena investir agora?', icon: <TrendingUp size={13} /> },
-  { label: 'Resumo do mês',          question: 'Me dá um resumo da minha situação financeira este mês.',   icon: <Sparkles size={13} /> },
+  { label: 'Posso gastar esta semana?', question: 'Posso gastar esta semana?', icon: <Wallet size={13} /> },
+  { label: 'Qual meu risco nos proximos 7 dias?', question: 'Qual meu risco nos proximos 7 dias?', icon: <AlertTriangle size={13} /> },
+  { label: 'O que ainda falta entrar?', question: 'O que ainda falta entrar?', icon: <TrendingUp size={13} /> },
+  { label: 'O que vence em breve?', question: 'O que vence em breve?', icon: <HelpCircle size={13} /> },
+  { label: 'Resumo do mes', question: 'Resumo do mes', icon: <Sparkles size={13} /> },
+  { label: 'Onde posso cortar gastos?', question: 'Onde posso cortar gastos?', icon: <PiggyBank size={13} /> },
 ];
 
 // ─── Intent badge ─────────────────────────────────────────────────────────────
 
 const INTENT_LABEL: Record<CFOIntent, { label: string; color: string }> = {
-  spending_advice:     { label: 'Gasto',       color: 'bg-rose-100 dark:bg-rose-500/10 text-rose-600' },
-  budget_question:     { label: 'Orçamento',   color: 'bg-indigo-100 dark:bg-indigo-500/10 text-indigo-600' },
-  risk_question:       { label: 'Risco',       color: 'bg-amber-100 dark:bg-amber-500/10 text-amber-600' },
-  savings_question:    { label: 'Economia',    color: 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600' },
-  investment_question: { label: 'Investimento',color: 'bg-violet-100 dark:bg-violet-500/10 text-violet-600' },
-  general_finance:     { label: 'Geral',       color: 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' },
+  spending_advice:  { label: 'Gasto', color: 'bg-rose-100 dark:bg-rose-500/10 text-rose-600' },
+  cash_position: { label: 'Caixa', color: 'bg-indigo-100 dark:bg-indigo-500/10 text-indigo-600' },
+  risk_question:    { label: 'Risco', color: 'bg-amber-100 dark:bg-amber-500/10 text-amber-600' },
+  receivables_question:{ label: 'Recebiveis', color: 'bg-cyan-100 dark:bg-cyan-500/10 text-cyan-600' },
+  savings_question: { label: 'Economia', color: 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600' },
+  monthly_summary:  { label: 'Resumo', color: 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' },
 };
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
 interface Message {
   id: string;
-  role: 'user' | 'cfo';
+  role: 'user' | 'assistant';
   text: string;
   intent?: CFOIntent;
   timestamp: string;
@@ -74,7 +76,7 @@ const UserBubble: React.FC<{ msg: Message }> = ({ msg }) => (
   </div>
 );
 
-const CFOBubble: React.FC<{ msg: Message }> = ({ msg }) => {
+const AssistantBubble: React.FC<{ msg: Message }> = ({ msg }) => {
   const intentStyle = msg.intent ? INTENT_LABEL[msg.intent] : null;
   return (
     <div className="flex gap-3 animate-in slide-in-from-left-4 duration-300">
@@ -114,14 +116,17 @@ const TypingBubble: React.FC = () => (
           />
         ))}
       </div>
-      <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest ml-1">Analisando seus dados...</p>
+      <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest ml-1">Lendo dados do workspace...</p>
     </div>
   </div>
 );
 
 // ─── Welcome screen ───────────────────────────────────────────────────────────
 
-const WelcomeScreen: React.FC<{ onPrompt: (q: string) => void }> = ({ onPrompt }) => (
+const WelcomeScreen: React.FC<{
+  onPrompt: (q: string) => void;
+  prompts: { label: string; question: string; icon: React.ReactNode }[];
+}> = ({ onPrompt, prompts }) => (
   <div className="flex flex-col items-center gap-6 py-6 px-2 animate-in fade-in duration-500">
     <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-indigo-500/30">
       <BrainCircuit size={36} className="text-white" />
@@ -135,8 +140,8 @@ const WelcomeScreen: React.FC<{ onPrompt: (q: string) => void }> = ({ onPrompt }
     </div>
 
     <div className="w-full flex flex-col gap-2">
-      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-center mb-1">Sugestões rápidas</p>
-      {QUICK_PROMPTS.map(p => (
+      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-center mb-1">Perguntas rápidas para decisão</p>
+      {prompts.map(p => (
         <button
           key={p.question}
           onClick={() => onPrompt(p.question)}
@@ -162,30 +167,48 @@ const WelcomeScreen: React.FC<{ onPrompt: (q: string) => void }> = ({ onPrompt }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-const AICFO: React.FC<AICFOProps> = ({ transactions, accounts, userId = 'local', hideValues }) => {
+const AICFO: React.FC<AICFOProps> = ({
+  transactions,
+  accounts,
+  userId = 'local',
+  workspacePlan = 'free',
+  hideValues,
+}) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  const canUseRichAiContext = canAccessFeature(workspacePlan, 'aiRichConsultant');
+  const scopedTransactions = useMemo(
+    () => (canUseRichAiContext ? transactions : transactions.slice(0, 60)),
+    [canUseRichAiContext, transactions],
+  );
+  const quickPrompts = useMemo(
+    () => (canUseRichAiContext ? QUICK_PROMPTS : QUICK_PROMPTS.slice(0, 3)),
+    [canUseRichAiContext],
+  );
+
   // Pipeline de análise financeira (contexto para o CFO)
-  const pipeline = useMemo(() => runAIPipelineSync(transactions, userId), [transactions, userId]);
+  const pipeline = useMemo(() => runAIPipelineSync(scopedTransactions, userId), [scopedTransactions, userId]);
   const intelligence = useMemo(
-    () => buildProductFinancialIntelligence({ userId, accounts, transactions }),
-    [accounts, transactions, userId]
+    () => buildProductFinancialIntelligence({ userId, accounts, transactions: scopedTransactions }),
+    [accounts, scopedTransactions, userId]
   );
   const financialContext = useMemo(
     () => buildFinancialContext(
       accounts,
-      transactions,
+      scopedTransactions,
       pipeline.financial_state.cashflow_prediction,
       pipeline.insights,
       userId,
       intelligence,
     ),
-    [accounts, transactions, pipeline, userId, intelligence]
+    [accounts, scopedTransactions, pipeline, userId, intelligence]
   );
+
+  const hasStrongGrounding = accounts.length > 0 && transactions.length >= 3;
 
   // Auto-scroll
   useEffect(() => {
@@ -218,7 +241,7 @@ const AICFO: React.FC<AICFOProps> = ({ transactions, accounts, userId = 'local',
       const response = await generateCFOResponse(question, financialContext, intent);
       const cfoMsg: Message = {
         id: Math.random().toString(36).substr(2, 9),
-        role: 'cfo',
+        role: 'assistant',
         text: response.answer,
         intent,
         timestamp: response.timestamp,
@@ -227,7 +250,7 @@ const AICFO: React.FC<AICFOProps> = ({ transactions, accounts, userId = 'local',
     } catch {
       setMessages(prev => [...prev, {
         id: Math.random().toString(36).substr(2, 9),
-        role: 'cfo',
+        role: 'assistant',
         text: 'Com base nos seus dados, não consegui processar esta consulta agora. Tente novamente.',
         timestamp: new Date().toISOString(),
       }]);
@@ -288,12 +311,24 @@ const AICFO: React.FC<AICFOProps> = ({ transactions, accounts, userId = 'local',
         ))}
       </div>
 
+      {!canUseRichAiContext && (
+        <div className="mb-4 rounded-2xl border border-indigo-100 bg-indigo-50/80 p-3 dark:border-indigo-500/20 dark:bg-indigo-500/10">
+          <p className="text-[8px] font-black uppercase tracking-widest text-indigo-600">Modo Free</p>
+          <p className="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+            O apoio financeiro IA segue disponivel no Free com contexto essencial. No Pro, as respostas ganham mais profundidade historica e leitura de cenarios.
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2 mb-4 shrink-0">
         <span className="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-[8px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">
           Confiança {Math.round(intelligence.context.confidence.overall * 100)}%
         </span>
         <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
           Recorrências {intelligence.recurringCount}
+        </span>
+        <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${hasStrongGrounding ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'}`}>
+          {hasStrongGrounding ? 'Base ancorada' : 'Base incompleta'}
         </span>
         {intelligence.dominantCategoryLabel && (
           <span className="px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 text-[8px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-300">
@@ -305,11 +340,11 @@ const AICFO: React.FC<AICFOProps> = ({ transactions, accounts, userId = 'local',
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto flex flex-col gap-4 pb-2 min-h-0">
         {messages.length === 0
-          ? <WelcomeScreen onPrompt={sendMessage} />
+          ? <WelcomeScreen onPrompt={sendMessage} prompts={quickPrompts} />
           : messages.map(msg =>
               msg.role === 'user'
                 ? <UserBubble key={msg.id} msg={msg} />
-                : <CFOBubble key={msg.id} msg={msg} />
+                : <AssistantBubble key={msg.id} msg={msg} />
             )
         }
         {isLoading && <TypingBubble />}
@@ -343,7 +378,7 @@ const AICFO: React.FC<AICFOProps> = ({ transactions, accounts, userId = 'local',
       {/* Quick prompts inline (quando há mensagens) */}
       {messages.length > 0 && !isLoading && (
         <div className="shrink-0 mt-2 flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-          {QUICK_PROMPTS.map(p => (
+          {quickPrompts.map(p => (
             <button
               key={p.question}
               onClick={() => sendMessage(p.question)}

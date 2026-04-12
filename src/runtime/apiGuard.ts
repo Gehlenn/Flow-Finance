@@ -9,6 +9,7 @@ const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL ||
   import.meta.env.VITE_API_PROD_URL ||
   '';
+const HAS_EXPLICIT_API_BASE_URL = Boolean(API_BASE_URL);
 
 let apiOfflineMode = false;
 let lastHealthCheck = 0;
@@ -52,6 +53,14 @@ export async function checkAPIHealth(): Promise<GuardResult> {
         guard: 'api',
         status: 'ok',
         message: 'API online',
+        timestamp: now,
+      };
+    } else if (!HAS_EXPLICIT_API_BASE_URL && response.status === 404) {
+      apiOfflineMode = false;
+      return {
+        guard: 'api',
+        status: 'ok',
+        message: 'API health probe skipped (frontend-only environment)',
         timestamp: now,
       };
     } else {

@@ -11,6 +11,21 @@ export type StoredSyncItem = SyncItem & {
   serverUpdatedAt: string;
 };
 
+export type SyncConflictPolicy = 'client-updated-at-last-write-wins';
+
+export type SyncConflictReason =
+  | 'stale_client_update'
+  | 'same_timestamp_divergent_payload'
+  | 'invalid_updated_at';
+
+export type SyncConflict = {
+  id: string;
+  reason: SyncConflictReason;
+  incomingUpdatedAt: string;
+  existingUpdatedAt: string;
+  resolution: 'preserved_existing';
+};
+
 type SyncEntityPayload = Record<SyncEntity, StoredSyncItem[]>;
 
 type PushResult = {
@@ -18,6 +33,8 @@ type PushResult = {
   deleted: number;
   latestServerUpdatedAt: string;
   reconciledIds: Array<{ clientId: string; serverId: string }>;
+  conflictPolicy: SyncConflictPolicy;
+  conflicts: SyncConflict[];
 };
 
 type SyncOwnershipContext = {
@@ -83,12 +100,103 @@ function normalizeEntities(entities?: Partial<SyncEntityPayload>): SyncEntityPay
   return normalized;
 }
 
-function mergeEntityItems(existing: StoredSyncItem[], items: SyncItem[], now: string): { merged: StoredSyncItem[]; upserted: number; deleted: number } {
-  const byId = new Map(existing.map((item) => [item.id, item]));
+function parseUpdatedAt(value: string): number | null {
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function hasSameSyncContent(existing: StoredSyncItem, incoming: SyncItem): boolean {
+  return JSON.stringify({
+    clientId: existing.clientId ?? null,
+    updatedAt: existing.updatedAt,
+    deleted: Boolean(existing.deleted),
+    payload: existing.payload ?? null,
+  }) === JSON.stringify({
+    clientId: incoming.clientId ?? null,
+    updatedAt: incoming.updatedAt,
+    deleted: Boolean(incoming.deleted),
+    payload: incoming.payload ?? null,
+  });
+}
+
+function shouldApplyIncomingItem(
+  existing: StoredSyncItem | undefined,
+  incoming: SyncItem,
+): { apply: boolean; conflict?: SyncConflict } {
+  if (!existing) {
+    return { apply: true };
+  }
+
+  const existingUpdatedAt = parseUpdatedAt(existing.updatedAt);
+  const incomingUpdatedAt = parseUpdatedAt(incoming.updatedAt);
+
+  if (existingUpdatedAt === null || incomingUpdatedAt === null) {
+    return {
+      apply: false,
+      conflict: {
+        id: incoming.id,
+        reason: 'invalid_updated_at',
+        incomingUpdatedAt: incoming.updatedAt,
+        existingUpdatedAt: existing.updatedAt,
+        resolution: 'preserved_existing',
+      },
+    };
+  }
+
+  if (incomingUpdatedAt > existingUpdatedAt) {
+    return { apply: true };
+  }
+
+  if (incomingUpdatedAt < existingUpdatedAt) {
+    return {
+      apply: false,
+      conflict: {
+        id: incoming.id,
+        reason: 'stale_client_update',
+        incomingUpdatedAt: incoming.updatedAt,
+        existingUpdatedAt: existing.updatedAt,
+        resolution: 'preserved_existing',
+      },
+    };
+  }
+
+  if (hasSameSyncContent(existing, incoming)) {
+    return { apply: true };
+  }
+
+  return {
+    apply: false,
+    conflict: {
+      id: incoming.id,
+      reason: 'same_timestamp_divergent_payload',
+      incomingUpdatedAt: incoming.updatedAt,
+      existingUpdatedAt: existing.updatedAt,
+      resolution: 'preserved_existing',
+    },
+  };
+}
+
+function mergeEntityItems(
+  existing: StoredSyncItem[],
+  items: SyncItem[],
+  now: string,
+): { merged: StoredSyncItem[]; upserted: number; deleted: number; conflicts: SyncConflict[] } {
+  const byId = new Map(existing.map((item) => [item.id, item] as const));
   let upserted = 0;
   let deleted = 0;
+  const conflicts: SyncConflict[] = [];
 
   for (const item of items) {
+    const current = byId.get(item.id);
+    const decision = shouldApplyIncomingItem(current, item);
+
+    if (!decision.apply) {
+      if (decision.conflict) {
+        conflicts.push(decision.conflict);
+      }
+      continue;
+    }
+
     byId.set(item.id, {
       ...item,
       serverUpdatedAt: now,
@@ -105,6 +213,7 @@ function mergeEntityItems(existing: StoredSyncItem[], items: SyncItem[], now: st
     merged: Array.from(byId.values()).sort((a, b) => b.serverUpdatedAt.localeCompare(a.serverUpdatedAt)),
     upserted,
     deleted,
+    conflicts,
   };
 }
 
@@ -328,10 +437,20 @@ class InMemoryCloudSyncStore implements CloudSyncStore {
     const now = new Date().toISOString();
     let upserted = 0;
     let deleted = 0;
+    const conflicts: SyncConflict[] = [];
 
     for (const item of normalizedItems) {
       if (item.deleted) {
         assertDeleteOwnership(entityMap.get(item.id), ownership);
+      }
+
+      const current = entityMap.get(item.id);
+      const decision = shouldApplyIncomingItem(current, item);
+      if (!decision.apply) {
+        if (decision.conflict) {
+          conflicts.push(decision.conflict);
+        }
+        continue;
       }
 
       entityMap.set(item.id, {
@@ -346,7 +465,14 @@ class InMemoryCloudSyncStore implements CloudSyncStore {
       }
     }
 
-    return { upserted, deleted, latestServerUpdatedAt: now, reconciledIds };
+    return {
+      upserted,
+      deleted,
+      latestServerUpdatedAt: now,
+      reconciledIds,
+      conflictPolicy: 'client-updated-at-last-write-wins',
+      conflicts,
+    };
   }
 
   async pullItems(scopeId: string, since?: string): Promise<PullResult> {
@@ -394,6 +520,8 @@ class FirebaseCloudSyncStore implements CloudSyncStore {
       deleted: merged.deleted,
       latestServerUpdatedAt: now,
       reconciledIds,
+      conflictPolicy: 'client-updated-at-last-write-wins',
+      conflicts: merged.conflicts,
     };
   }
 

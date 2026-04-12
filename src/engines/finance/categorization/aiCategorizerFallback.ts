@@ -1,21 +1,6 @@
 import { learnMemory } from '../../../ai/aiMemory';
 import type { FinanceCategory } from './transactionCategorizer';
-
-const ALLOWED_CATEGORIES: FinanceCategory[] = [
-  'transporte',
-  'alimentacao',
-  'assinaturas',
-  'moradia',
-  'saude',
-  'combustivel',
-  'educacao',
-  'lazer',
-  'salario',
-  'compras',
-  'servicos',
-  'banco',
-  'outros',
-];
+import { normalizeToFinanceCategory } from '../../../services/ai/categorizationSchema';
 
 function normalize(text: string): string {
   return text
@@ -40,8 +25,7 @@ export async function aiCategorizeTransaction(
     ? await options.suggestCategory(tx)
     : null;
 
-  const normalized = normalize(String(suggested ?? ''));
-  return (ALLOWED_CATEGORIES.find((cat) => cat === normalized) ?? 'outros') as FinanceCategory;
+  return normalizeToFinanceCategory(String(suggested ?? '')) as FinanceCategory;
 }
 
 /**

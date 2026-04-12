@@ -134,6 +134,33 @@ describe('IO Health Check - AI proxy integration', () => {
     expect(result).toHaveLength(1);
     expect(result[0].title).toBe('Alerta');
   });
+
+  it('GeminiService should normalize scan-receipt object payload into single transaction array', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            amount: 89.9,
+            description: 'Padaria Central',
+            category: 'Pessoal',
+            type: 'Despesa',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+    );
+
+    const service = new GeminiService();
+    const parsed = await service.parseFinancialImage('base64', 'image/jpeg', 'contexto');
+
+    expect(Array.isArray(parsed)).toBe(true);
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0].amount).toBe(89.9);
+    expect(parsed[0].description).toBe('Padaria Central');
+    expect(parsed[0].category).toBe('Pessoal');
+    expect(parsed[0].type).toBe('Despesa');
+  });
 });
 
 describe('IO Health Check - Banking provider + orchestrator', () => {

@@ -91,4 +91,59 @@ describe('AIInput', () => {
 
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it('em modo single-draft usa conscientemente apenas a primeira transacao quando IA retorna varias e exige revisão', async () => {
+    interpretTextMock.mockResolvedValue({
+      intent: 'transaction',
+      data: [
+        {
+          amount: 120,
+          description: 'Primeira',
+          category: 'Pessoal',
+          type: 'Despesa',
+        },
+        {
+          amount: 300,
+          description: 'Segunda',
+          category: 'Negócio',
+          type: 'Receita',
+        },
+      ],
+      confidence: 0.95,
+    });
+
+    const onAddTransactions = vi.fn();
+
+    render(
+      <AIInput
+        onClose={vi.fn()}
+        onAddTransactions={onAddTransactions}
+        onAddReminders={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Diga ou escreva o que aconteceu...'), {
+      target: { value: 'gastei 120 no mercado e recebi 300 de cliente' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar Inteligente/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/A IA detectou múltiplas transações/i)).toBeTruthy();
+      expect(screen.getByRole('button', { name: /Confirmar e Salvar/i })).toBeTruthy();
+    });
+
+    expect(onAddTransactions).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar e Salvar/i }));
+
+    await waitFor(() => {
+      expect(onAddTransactions).toHaveBeenCalledTimes(1);
+    });
+
+    const payload = onAddTransactions.mock.calls[0][0] as Array<Record<string, unknown>>;
+    expect(payload).toHaveLength(1);
+    expect(payload[0].description).toBe('Primeira');
+    expect(payload[0].amount).toBe(120);
+  });
 });

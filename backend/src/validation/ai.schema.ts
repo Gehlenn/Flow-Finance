@@ -5,11 +5,11 @@ export const CFOSchema = z.object({
   context: z.string().max(20000, 'context must be <= 20000 chars').optional(),
   intent: z.enum([
     'spending_advice',
-    'budget_question',
+    'cash_position',
     'risk_question',
     'savings_question',
-    'investment_question',
-    'general_finance',
+    'monthly_summary',
+    'receivables_question',
   ]).optional(),
 });
 

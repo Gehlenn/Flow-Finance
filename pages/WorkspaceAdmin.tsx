@@ -21,6 +21,12 @@ import {
   type WorkspaceBillingHookDocument,
 } from '../src/services/firestoreBillingStore';
 import {
+  createWorkspaceCheckoutSession,
+  createWorkspacePortalSession,
+  getWorkspacePlanCatalog,
+  type WorkspacePlanCatalog,
+} from '../src/saas/billingClient';
+import {
   canManageWorkspaceBilling,
   canManageWorkspaceMembers,
   canViewWorkspaceAudit,
@@ -49,6 +55,7 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMemberDocument[]>([]);
   const [auditEvents, setAuditEvents] = useState<AuditLogDocument[]>([]);
   const [billingHooks, setBillingHooks] = useState<WorkspaceBillingHookDocument[]>([]);
+  const [billingCatalog, setBillingCatalog] = useState<WorkspacePlanCatalog | null>(null);
   const [currentPlan, setCurrentPlan] = useState<'free' | 'pro'>('free');
   const [monthlyUsageSummary, setMonthlyUsageSummary] = useState('0 transactions · 0 AI · 0 bank connections');
   const [loading, setLoading] = useState(true);
@@ -70,8 +77,12 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
   }, [activeTenantName, activeWorkspace?.tenantName]);
 
   const loadWorkspaceData = async (workspace: WorkspaceSummary) => {
-    const [billingOverview, members, audit, hooks] = await Promise.all([
+    const [billingOverview, planCatalog, members, audit, hooks] = await Promise.all([
       getWorkspaceBillingOverview({ tenantId: workspace.tenantId, workspaceId: workspace.workspaceId }),
+      getWorkspacePlanCatalog({
+        workspaceId: workspace.workspaceId,
+        currentPlan: workspace.plan,
+      }),
       canManageWorkspaceMembers(workspace.role) ? listWorkspaceMembers(workspace.workspaceId) : Promise.resolve([]),
       canViewWorkspaceAudit(workspace.role)
         ? listWorkspaceAuditEvents({ tenantId: workspace.tenantId, workspaceId: workspace.workspaceId, maxItems: 12 })
@@ -79,7 +90,8 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
       listWorkspaceBillingHooks({ workspaceId: workspace.workspaceId, maxItems: 12 }),
     ]);
 
-    setCurrentPlan(billingOverview.currentPlan);
+    setBillingCatalog(planCatalog);
+    setCurrentPlan(planCatalog.currentPlan || billingOverview.currentPlan);
     setMonthlyUsageSummary(
       `${billingOverview.currentMonthUsage.transactions} transactions · ` +
       `${billingOverview.currentMonthUsage.aiQueries} AI · ` +
@@ -156,6 +168,64 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
     } catch (planError) {
       console.error(planError);
       setError('Could not update the workspace plan.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const buildBillingReturnUrl = () => {
+    if (typeof window === 'undefined') {
+      return 'http://localhost:3000';
+    }
+
+    return window.location.href;
+  };
+
+  const redirectToBillingUrl = (url: string | null | undefined) => {
+    if (!url || typeof window === 'undefined') {
+      throw new Error('Billing redirect URL is missing.');
+    }
+
+    window.location.assign(url);
+  };
+
+  const handleStartCheckout = async () => {
+    if (!activeWorkspace || !canManageBilling) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      const session = await createWorkspaceCheckoutSession({
+        workspaceId: activeWorkspace.workspaceId,
+        returnUrl: buildBillingReturnUrl(),
+      });
+      redirectToBillingUrl(session.url);
+    } catch (billingError) {
+      console.error(billingError);
+      setError('Could not start Stripe checkout for this workspace.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleOpenBillingPortal = async () => {
+    if (!activeWorkspace || !canManageBilling) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      const session = await createWorkspacePortalSession({
+        workspaceId: activeWorkspace.workspaceId,
+        returnUrl: buildBillingReturnUrl(),
+      });
+      redirectToBillingUrl(session.url);
+    } catch (billingError) {
+      console.error(billingError);
+      setError('Could not open the Stripe billing portal right now.');
     } finally {
       setBusy(false);
     }
@@ -247,6 +317,11 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
     );
   }
 
+  const stripeConfigured = billingCatalog?.stripeConfigured === true;
+  const stripePortalEnabled = billingCatalog?.stripePortalEnabled === true;
+  const manualPlanChangeAllowed = billingCatalog?.manualPlanChangeAllowed === true;
+  const showMockPlanButtons = canManageBilling && manualPlanChangeAllowed && !stripeConfigured;
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-24">
       <div className="bg-gradient-to-r from-[#0f766e] to-[#0f766e]/80 p-6 rounded-[2rem] flex items-center justify-between shadow-lg shadow-emerald-900/10">
@@ -291,22 +366,60 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
                 <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
                   <p className="text-sm font-black text-slate-800 dark:text-white">Plan: {currentPlan.toUpperCase()}</p>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Current month: {monthlyUsageSummary}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    Billing mode: {billingCatalog?.billingProvider || 'mock'}
+                  </p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => void handlePlanChange('free')}
-                    disabled={!canManageBilling || busy || currentPlan === 'free'}
-                    className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-100 disabled:opacity-50"
-                  >
-                    Set Free
-                  </button>
-                  <button
-                    onClick={() => void handlePlanChange('pro')}
-                    disabled={!canManageBilling || busy || currentPlan === 'pro'}
-                    className="p-4 rounded-2xl bg-emerald-600 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
-                  >
-                    Set Pro
-                  </button>
+                <div className="space-y-3">
+                  {stripeConfigured ? (
+                    <div className="space-y-2">
+                      {currentPlan === 'pro' ? (
+                        <>
+                          <button
+                            onClick={() => void handleOpenBillingPortal()}
+                            disabled={!canManageBilling || busy || !stripePortalEnabled}
+                            className="w-full p-4 rounded-2xl bg-emerald-600 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
+                          >
+                            Open billing portal
+                          </button>
+                          {!stripePortalEnabled && (
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                              Portal will be available after the workspace is linked to a Stripe customer.
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => void handleStartCheckout()}
+                          disabled={!canManageBilling || busy}
+                          className="w-full p-4 rounded-2xl bg-emerald-600 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
+                        >
+                          Start Pro checkout
+                        </button>
+                      )}
+                    </div>
+                  ) : showMockPlanButtons ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => void handlePlanChange('free')}
+                        disabled={!canManageBilling || busy || currentPlan === 'free'}
+                        className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-100 disabled:opacity-50"
+                      >
+                        Set Free
+                      </button>
+                      <button
+                        onClick={() => void handlePlanChange('pro')}
+                        disabled={!canManageBilling || busy || currentPlan === 'pro'}
+                        className="p-4 rounded-2xl bg-emerald-600 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
+                      >
+                        Set Pro
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                      Billing actions are unavailable until either Stripe or mock billing is configured for this environment.
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="space-y-2">

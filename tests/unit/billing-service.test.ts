@@ -20,6 +20,8 @@ describe('billingService', () => {
   const originalNodeEnv = process.env.NODE_ENV;
   const originalMockBilling = process.env.ALLOW_MOCK_BILLING_UPDATES;
   const originalProPrice = process.env.SAAS_PRO_MONTHLY_PRICE_CENTS;
+  const originalStripeSecret = process.env.STRIPE_SECRET_KEY;
+  const originalStripePrice = process.env.STRIPE_PRICE_PRO_MONTHLY;
 
   beforeEach(() => {
     resetSaasStoreForTests();
@@ -47,6 +49,18 @@ describe('billingService', () => {
     } else {
       process.env.SAAS_PRO_MONTHLY_PRICE_CENTS = originalProPrice;
     }
+
+    if (originalStripeSecret === undefined) {
+      delete process.env.STRIPE_SECRET_KEY;
+    } else {
+      process.env.STRIPE_SECRET_KEY = originalStripeSecret;
+    }
+
+    if (originalStripePrice === undefined) {
+      delete process.env.STRIPE_PRICE_PRO_MONTHLY;
+    } else {
+      process.env.STRIPE_PRICE_PRO_MONTHLY = originalStripePrice;
+    }
   });
 
   it('retorna catalogo com plano atual e limites por plano', () => {
@@ -56,9 +70,26 @@ describe('billingService', () => {
 
     expect(catalog.currentPlan).toBe('free');
     expect(catalog.mockBillingEnabled).toBe(true);
+    expect(catalog.billingProvider).toBe('mock');
+    expect(catalog.manualPlanChangeAllowed).toBe(true);
+    expect(catalog.stripeConfigured).toBe(false);
+    expect(catalog.stripePortalEnabled).toBe(false);
+    expect(catalog.hasBillingCustomer).toBe(false);
     expect(catalog.plans).toHaveLength(2);
     expect(catalog.plans.find((plan) => plan.id === 'free')?.limits).toEqual(PLAN_LIMITS.free);
     expect(catalog.plans.find((plan) => plan.id === 'pro')?.limits).toEqual(PLAN_LIMITS.pro);
+  });
+
+  it('expõe stripe como provider quando a configuração real está disponível', () => {
+    process.env.STRIPE_SECRET_KEY = 'sk_test_flow';
+    process.env.STRIPE_PRICE_PRO_MONTHLY = 'price_flow_pro';
+
+    const catalog = getPlanCatalog('user-stripe');
+
+    expect(catalog.stripeConfigured).toBe(true);
+    expect(catalog.billingProvider).toBe('stripe');
+    expect(catalog.manualPlanChangeAllowed).toBe(true);
+    expect(catalog.stripePortalEnabled).toBe(false);
   });
 
   it('usa preco configurado via env para o plano pro', () => {

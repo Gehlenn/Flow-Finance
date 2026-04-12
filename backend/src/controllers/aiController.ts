@@ -26,11 +26,11 @@ import {
 const MAX_CFO_CONTEXT_CHARS = 20000;
 const ALLOWED_CFO_INTENTS = new Set([
   'spending_advice',
-  'budget_question',
+  'cash_position',
   'risk_question',
   'savings_question',
-  'investment_question',
-  'general_finance',
+  'monthly_summary',
+  'receivables_question',
 ]);
 
 export function normalizeCFORequestInput(payload: {
@@ -49,7 +49,7 @@ export function normalizeCFORequestInput(payload: {
     : rawContext;
 
   const rawIntent = typeof payload.intent === 'string' ? payload.intent : '';
-  const intent = ALLOWED_CFO_INTENTS.has(rawIntent) ? rawIntent : 'general_finance';
+  const intent = ALLOWED_CFO_INTENTS.has(rawIntent) ? rawIntent : 'monthly_summary';
 
   return { question, context, intent };
 }
@@ -306,25 +306,29 @@ export const cfoController = asyncHandler(async (req: Request, res: Response) =>
   logger.info({ intent, questionLength: sanitizedQuestion.length }, 'CFO request received');
 
   const SAFETY_PREAMBLE = `
-Você é o CFO Virtual do Flow Finance, um assistente financeiro pessoal.
+Você é o Assistente Financeiro do Flow Finance.
 
 REGRAS OBRIGATÓRIAS:
 1. Nunca faça garantias financeiras absolutas.
-2. Use sempre linguagem consultiva: "Com base nos seus dados...", "A análise sugere...", "Considerando seu histórico..."
+2. Responda como apoio consultivo prático de caixa de curto prazo, não como agente autônomo.
 3. Seja direto, objetivo e em português brasileiro.
-4. Respostas com no máximo 4 parágrafos curtos.
+4. Responda em 2 a 4 blocos curtos, com foco operacional.
 5. Quando houver risco, avise com clareza mas sem alarmismo.
 6. Nunca invente dados — use APENAS o contexto fornecido.
-7. Se não houver dados suficientes, diga isso claramente.
+7. Se não houver dados suficientes, diga isso de forma explícita e curta.
+8. Diferencie claramente: caixa confirmado, previsto, pendente e vencido.
+9. Recebível pendente NÃO é dinheiro disponível.
+10. Não proponha automação externa, integrações novas nem ações automáticas fora do produto.
+11. Não faça recomendação de investimento e não trate investimento como foco da resposta.
 `.trim();
 
   const intentGuide: Record<string, string> = {
-    spending_advice:     'O usuário quer saber se pode gastar. Analise o impacto no saldo projetado.',
-    budget_question:     'O usuário quer entender seu orçamento. Foque nos números do mês atual e projeções.',
-    risk_question:       'O usuário está preocupado com riscos. Destaque alertas e pontos de atenção.',
-    savings_question:    'O usuário quer economizar. Sugira cortes com base nas categorias dominantes.',
-    investment_question: 'O usuário quer investir. Avalie o saldo disponível antes de fazer sugestões.',
-    general_finance:     'Responda a pergunta financeira com base nos dados disponíveis.',
+    spending_advice:  'O usuário quer saber se pode gastar agora. Traga impacto no caixa confirmado e risco de curto prazo.',
+    cash_position: 'O usuário quer leitura de saldo e caixa disponível. Diferencie confirmado de previsto.',
+    risk_question:    'O usuário quer risco de curto prazo. Destaque sinais de atenção sem exagero.',
+    receivables_question:'O usuário quer leitura de recebíveis, pendências e vencidos. Separe claramente o que está apenas previsto/pendente do que está confirmado.',
+    savings_question: 'O usuário quer economia prática. Sugira cortes concretos e de curto prazo.',
+    monthly_summary:  'O usuário quer resumo do mês com foco em decisão operacional.',
   };
 
   const prompt = `

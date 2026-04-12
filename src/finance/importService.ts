@@ -7,12 +7,12 @@
  * REGRA: Nunca modifica transações existentes.
  */
 
-import { GoogleGenAI, Type } from '@google/genai';
-import { apiRequest, API_ENDPOINTS } from '../config/api.config';
 import { Transaction, TransactionType, Category } from '../../types';
+import { normalizeFromFileImport, draftToTransaction } from '../domain/intakeNormalizer';
 import { FinancialEventEmitter } from '../events/eventEngine';
 import { learnMemory } from '../ai/aiMemory';
-import { makeId } from '../../utils/helpers';
+import { parsePdfStatementText } from '../importers/pdfStatementImporter';
+import { classifyTransactionsWithAI } from '../services/ai/categorizationService';
 
 // ─── Import result model ──────────────────────────────────────────────────────
 
@@ -299,71 +299,30 @@ export function parseCSV(content: string): ImportedTransaction[] {
   return results;
 }
 
-// ─── PART 4 — PDF Parser via Gemini Vision ────────────────────────────────────
+// ─── PART 4 — PDF Parser local fallback ──────────────────────────────────────
 
-export async function parsePDF(base64: string): Promise<ImportedTransaction[]> {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
+export async function parsePDF(file: File): Promise<ImportedTransaction[]> {
+  try {
+    const text = await file.text();
+    const parsed = parsePdfStatementText(text);
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash',
-    contents: {
-      parts: [
-        {
-          inlineData: {
-            data: base64,
-            mimeType: 'application/pdf',
-          },
-        },
-        {
-          text: `Você é um extrator de transações financeiras de extratos bancários brasileiros.
-Analise este PDF e extraia TODAS as transações financeiras encontradas.
-
-Para cada transação, retorne:
-- date: data no formato ISO 8601 (YYYY-MM-DD), obrigatório
-- amount: valor absoluto em número decimal (ex: 47.90), obrigatório
-- description: descrição da transação (máx 80 chars), obrigatório
-- type: "Despesa" para débitos/saídas, "Receita" para créditos/entradas
-- merchant: nome do estabelecimento se disponível (máx 40 chars)
-
-Retorne apenas JSON array. Não inclua transações com valor zero.
-Se não encontrar transações, retorne [].`,
-        },
-      ],
-    },
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            date:        { type: Type.STRING },
-            amount:      { type: Type.NUMBER },
-            description: { type: Type.STRING },
-            type:        { type: Type.STRING },
-            merchant:    { type: Type.STRING },
-          },
-          required: ['date', 'amount', 'description'],
-        },
-      },
-    },
-  });
-
-  const raw: any[] = JSON.parse(response.text ?? '[]');
-
-  return raw
-    .filter(r => r.amount > 0)
-    .map(r => ({
-      raw_date:        parseDate(r.date),
-      raw_amount:      parseAmount(r.amount),
-      raw_description: r.description ?? 'Transação PDF',
-      raw_type:        r.type?.includes('Receita') ? TransactionType.RECEITA : TransactionType.DESPESA,
-      merchant:        r.merchant || undefined,
+    return parsed.map(row => ({
+      raw_date: parseDate(row.date),
+      raw_amount: parseAmount(row.amount),
+      raw_description: row.description,
+      raw_type: inferType(row.description, row.amount),
+      merchant: row.merchant || undefined,
       selected: true,
+      category: (Object.values(Category) as string[]).includes(row.category)
+        ? (row.category as Category)
+        : undefined,
     }));
+  } catch {
+    return [];
+  }
 }
 
-// ─── PART 6 — AI Classification ──────────────────────────────────────────────
+// ─── PART 6 — AI Classification via backend ─────────────────────────────────
 
 export async function classifyImportedTransactions(
   transactions: ImportedTransaction[],
@@ -371,104 +330,45 @@ export async function classifyImportedTransactions(
 ): Promise<ImportedTransaction[]> {
   if (transactions.length === 0) return transactions;
 
-  if (!process.env.GEMINI_API_KEY) {
-    return transactions.map((item) => ({
+  const input = transactions.map((t) => ({
+    description: t.raw_description,
+    amount: t.raw_amount,
+    date: t.raw_date,
+    type: t.raw_type,
+  }));
+
+  try {
+    const results = await classifyTransactionsWithAI(input);
+
+    return transactions.map((item, idx) => {
+      const r = results[idx];
+      const category = r?.category ?? Category.PESSOAL;
+
+      if (item.merchant && (r?.confidence ?? 0) > 0.7) {
+        const key = `merchant_${item.merchant.toLowerCase().replace(/\s+/g, '_').slice(0, 20)}`;
+        learnMemory(userId, key, category, r.confidence ?? 0.7).catch(e => {
+          console.error('importService learnMemory error:', e);
+        });
+      }
+
+      const normalizedType = r?.type ?? item.raw_type;
+
+      return {
+        ...item,
+        category,
+        merchant: item.merchant || undefined,
+        confidence: r?.confidence ?? 0.5,
+        type: normalizedType,
+      };
+    });
+  } catch {
+    return transactions.map(item => ({
       ...item,
       category: item.category ?? Category.PESSOAL,
       confidence: item.confidence ?? 0.3,
       type: item.type ?? item.raw_type,
     }));
   }
-
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
-
-  // Enviar em lotes de 30 para não estourar o contexto
-  const BATCH_SIZE = 30;
-  const classified: ImportedTransaction[] = [];
-
-  for (let i = 0; i < transactions.length; i += BATCH_SIZE) {
-    const batch = transactions.slice(i, i + BATCH_SIZE);
-
-    const input = batch.map((t, idx) => ({
-      id: idx,
-      description: t.raw_description,
-      amount: t.raw_amount,
-      merchant: t.merchant ?? null,
-      type: t.raw_type,
-    }));
-
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: {
-          parts: [{
-            text: `Classifique estas transações financeiras brasileiras.
-
-Para cada uma, determine:
-- id: mesmo id recebido (obrigatório)
-- category: uma de ["Pessoal", "Trabalho / Consultório", "Negócio", "Investimento"]
-  - "Pessoal": supermercado, lazer, restaurante, farmácia, contas de casa, delivery, vestuário
-  - "Trabalho / Consultório": aluguel sala, materiais profissionais, consultas, cursos
-  - "Negócio": marketing, fornecedores, lucro empresa, CNPJ
-  - "Investimento": ações, CDB, FII, aportes, corretora
-- merchant: nome limpo do estabelecimento (máx 30 chars) ou null
-- confidence: confiança de 0.0 a 1.0
-
-Transações:
-${JSON.stringify(input, null, 2)}`,
-          }],
-        },
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                id:         { type: Type.NUMBER },
-                category:   { type: Type.STRING },
-                merchant:   { type: Type.STRING },
-                confidence: { type: Type.NUMBER },
-              },
-              required: ['id', 'category'],
-            },
-          },
-        },
-      });
-
-      const results: any[] = JSON.parse(response.text ?? '[]');
-      const resultMap = new Map(results.map(r => [r.id, r]));
-
-      for (let j = 0; j < batch.length; j++) {
-        const r = resultMap.get(j);
-        const item = batch[j];
-        const category = (Object.values(Category) as string[]).includes(r?.category ?? '')
-          ? r.category as Category
-          : Category.PESSOAL;
-
-        classified.push({
-          ...item,
-          category,
-          merchant: r?.merchant || item.merchant || undefined,
-          confidence: r?.confidence ?? 0.5,
-          type: item.raw_type,
-        });
-
-        // PART 6 — Aprender mapeamento merchant→category na AI Memory
-        if (r?.merchant && r?.confidence > 0.7) {
-          const key = `merchant_${r.merchant.toLowerCase().replace(/\s+/g, '_').slice(0, 20)}`;
-          learnMemory(userId, key, category, r.confidence).catch(e => {
-            console.error('importService learnMemory error:', e);
-          });
-        }
-      }
-    } catch {
-      // Fallback: incluir sem classificação
-      batch.forEach(item => classified.push({ ...item, category: Category.PESSOAL, confidence: 0.3 }));
-    }
-  }
-
-  return classified;
 }
 
 // ─── Main import pipeline ─────────────────────────────────────────────────────
@@ -516,14 +416,8 @@ export async function runImportPipeline(
       transactions = parseCSV(content);
 
     } else if (format === 'pdf') {
-      onProgress?.('Lendo PDF com Gemini Vision…', 20);
-      const base64 = await new Promise<string>((res, rej) => {
-        const reader = new FileReader();
-        reader.onload = () => res((reader.result as string).split(',')[1]);
-        reader.onerror = () => rej(new Error('Falha ao ler PDF'));
-        reader.readAsDataURL(file);
-      });
-      transactions = await parsePDF(base64);
+      onProgress?.('Lendo PDF com parser local…', 20);
+      transactions = await parsePDF(file);
 
     } else {
       // Tentar como CSV por default
@@ -573,15 +467,22 @@ export function toTransactions(
 ): Partial<Transaction>[] {
   return items
     .filter(item => item.selected && !item.duplicate)
-    .map(item => ({
-      amount:          item.raw_amount,
-      type:            item.type ?? item.raw_type ?? TransactionType.DESPESA,
-      category:        item.category ?? Category.PESSOAL,
-      description:     item.raw_description,
-      date:            item.raw_date,
-      merchant:        item.merchant,
-      source:          'import' as const,
-      confidence_score: item.confidence,
-      account_id:      accountId,
-    }));
+    .map(item => {
+      const draft = normalizeFromFileImport({
+        amount: item.raw_amount,
+        date: item.raw_date,
+        description: item.raw_description,
+        merchant: item.merchant,
+        type: item.type ?? item.raw_type,
+        category: item.category,
+        confidence: item.confidence,
+        source: 'file',
+      });
+
+      const normalized = draftToTransaction(draft) as Partial<Transaction>;
+      return {
+        ...normalized,
+        account_id: accountId,
+      };
+    });
 }

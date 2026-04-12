@@ -97,8 +97,8 @@ export class AIServiceFactory {
    * Create orchestrator with configured providers
    */
   static createOrchestrator(providers: Map<string, IAIProvider>): AIOrchestrator {
-    const primaryProvider = (env.AI_PRIMARY_PROVIDER || 'openai') as AIProviderType;
-    const fallbackProvider = (env.AI_FALLBACK_PROVIDER || 'gemini') as AIProviderType;
+    const primaryProvider = (env.AI_PRIMARY_PROVIDER || 'gemini') as AIProviderType;
+    const fallbackProvider = (env.AI_FALLBACK_PROVIDER || 'openai') as AIProviderType;
 
     // Validate that primary provider is available
     if (!providers.has(primaryProvider)) {

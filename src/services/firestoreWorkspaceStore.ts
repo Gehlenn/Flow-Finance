@@ -14,7 +14,7 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { auth, db } from '../../services/firebase';
+import { auth, db, isFirebaseConfigured } from '../../services/firebase';
 import { Account } from '../../models/Account';
 import { Goal, Transaction, Alert, Reminder } from '../../types';
 
@@ -157,6 +157,7 @@ export type SyncEntityIdMap = Record<string, string>;
 
 const DEFAULT_WORKSPACE_NAME = 'Workspace Pessoal';
 const DEFAULT_TENANT_NAME = 'Tenant Pessoal';
+const FIREBASE_WORKSPACE_CONFIG_ERROR = new Error('Workspace sync requires Firebase configuration.');
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -213,7 +214,23 @@ function tenantMemberDocId(tenantId: string, userId: string): string {
   return `${tenantId}_${userId}`;
 }
 
+function createFallbackWorkspaceSummary(identity: UserIdentity, explicitName?: string): WorkspaceSummary {
+  return {
+    workspaceId: `local-${identity.userId}`,
+    tenantId: `local-tenant-${identity.userId}`,
+    name: buildWorkspaceName(identity, explicitName),
+    tenantName: buildTenantName(identity),
+    plan: 'free',
+    role: 'owner',
+    isDefault: true,
+  };
+}
+
 export async function writeAuditLogEvent(event: Omit<AuditLogDocument, 'id' | 'createdAt'>): Promise<void> {
+  if (!isFirebaseConfigured) {
+    return;
+  }
+
   const eventRef = doc(auditEventCollection(event.tenantId));
   await setDoc(eventRef, {
     id: eventRef.id,
@@ -225,6 +242,10 @@ export async function writeAuditLogEvent(event: Omit<AuditLogDocument, 'id' | 'c
 export async function listUserWorkspaceSummaries(userId?: string | null): Promise<WorkspaceSummary[]> {
   const resolvedUserId = userId || getCurrentUserId();
   if (!resolvedUserId) {
+    return [];
+  }
+
+  if (!isFirebaseConfigured) {
     return [];
   }
 
@@ -280,6 +301,10 @@ export async function listUserWorkspaceSummaries(userId?: string | null): Promis
 }
 
 export async function createPersonalWorkspace(identity: UserIdentity, explicitName?: string): Promise<WorkspaceSummary> {
+  if (!isFirebaseConfigured) {
+    return createFallbackWorkspaceSummary(identity, explicitName);
+  }
+
   const tenantRef = doc(tenantCollection());
   const workspaceRef = doc(workspaceCollection());
   const memberRef = doc(membershipCollection(), `${workspaceRef.id}_${identity.userId}`);
@@ -377,6 +402,10 @@ export async function ensureActiveWorkspaceForUser(identity: UserIdentity): Prom
 }
 
 export async function listWorkspaceMembers(workspaceId: string): Promise<WorkspaceMemberDocument[]> {
+  if (!isFirebaseConfigured) {
+    return [];
+  }
+
   const snapshot = await getDocs(query(
     membershipCollection(),
     where('workspaceId', '==', workspaceId),
@@ -395,6 +424,10 @@ export async function addWorkspaceMember(input: {
   role: WorkspaceRole;
   invitedByUserId: string;
 }): Promise<WorkspaceMemberDocument> {
+  if (!isFirebaseConfigured) {
+    throw FIREBASE_WORKSPACE_CONFIG_ERROR;
+  }
+
   const now = nowIso();
   const memberId = workspaceMemberDocId(input.workspaceId, input.userId);
   const memberRef = doc(membershipCollection(), memberId);
@@ -444,6 +477,10 @@ export async function removeWorkspaceMember(input: {
   userId: string;
   removedByUserId: string;
 }): Promise<void> {
+  if (!isFirebaseConfigured) {
+    throw FIREBASE_WORKSPACE_CONFIG_ERROR;
+  }
+
   const memberRef = doc(membershipCollection(), workspaceMemberDocId(input.workspaceId, input.userId));
   const tenantMemberRef = doc(tenantMemberCollection(), tenantMemberDocId(input.tenantId, input.userId));
 
@@ -500,6 +537,10 @@ export async function listWorkspaceAuditEventsPage(input: {
   resourceType?: string;
   after?: AuditLogCursor | null;
 }): Promise<{ events: AuditLogDocument[]; nextCursor: AuditLogCursor | null }> {
+  if (!isFirebaseConfigured) {
+    return { events: [], nextCursor: null };
+  }
+
   const constraints: QueryConstraint[] = [
     where('workspaceId', '==', input.workspaceId),
   ];
@@ -546,6 +587,10 @@ export async function listWorkspaceCollectionDocuments<T extends { id: string }>
   workspaceId: string,
   entity: Extract<WorkspaceScopedEntity, 'insights' | 'imports' | 'subscriptions'>,
 ): Promise<T[]> {
+  if (!isFirebaseConfigured) {
+    return [];
+  }
+
   const snapshot = await getDocs(query(
     workspaceEntityCollection(workspaceId, entity),
     orderBy('updated_at', 'desc'),
@@ -566,6 +611,10 @@ export async function upsertWorkspaceCollectionDocument<T extends {
   documentInput: T,
   context: { userId: string; tenantId: string; workspaceId: string },
 ): Promise<T> {
+  if (!isFirebaseConfigured) {
+    throw FIREBASE_WORKSPACE_CONFIG_ERROR;
+  }
+
   const stamped = stampEntityContext(documentInput, context);
   await setDoc(
     doc(workspaceEntityCollection(context.workspaceId, entity), String(stamped.id)),
@@ -581,6 +630,16 @@ export function subscribeToUserProfile(
   onNext: (profile: ProfileState) => void,
   onError?: (error: unknown) => void,
 ): Unsubscribe {
+  if (!isFirebaseConfigured) {
+    queueMicrotask(() => onNext({
+      name: null,
+      theme: 'light',
+      alerts: [],
+      reminders: [],
+    }));
+    return () => undefined;
+  }
+
   return onSnapshot(
     doc(db, 'users', userId),
     (snapshot) => {
@@ -597,6 +656,10 @@ export function subscribeToUserProfile(
 }
 
 export async function saveUserProfile(userId: string, updates: Partial<ProfileState & { name: string }>): Promise<void> {
+  if (!isFirebaseConfigured) {
+    return;
+  }
+
   await setDoc(doc(db, 'users', userId), {
     ...updates,
     updatedAt: nowIso(),
@@ -620,6 +683,15 @@ function sortReminders(reminders: Reminder[]): Reminder[] {
 }
 
 export async function loadWorkspaceEntities(workspaceId: string): Promise<EntityState> {
+  if (!isFirebaseConfigured) {
+    return {
+      accounts: [],
+      transactions: [],
+      goals: [],
+      reminders: [],
+    };
+  }
+
   const [accountSnapshot, transactionSnapshot, goalSnapshot, reminderSnapshot] = await Promise.all([
     getDocs(workspaceEntityCollection(workspaceId, 'accounts')),
     getDocs(workspaceEntityCollection(workspaceId, 'transactions')),
@@ -672,6 +744,16 @@ export async function replaceWorkspaceEntityCollection<T extends { id: string } 
   latestServerUpdatedAt: string;
   reconciledIds: Array<{ clientId: string; serverId: string }>;
 }> {
+  if (!isFirebaseConfigured) {
+    return {
+      success: true,
+      upserted: nextItems.length,
+      deleted: Math.max(previousItems.length - nextItems.length, 0),
+      latestServerUpdatedAt: nowIso(),
+      reconciledIds: [],
+    };
+  }
+
   const collectionRef = workspaceEntityCollection(context.workspaceId, entity);
   const batch = writeBatch(db);
   const now = nowIso();

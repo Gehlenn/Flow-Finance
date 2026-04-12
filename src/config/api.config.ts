@@ -1,4 +1,5 @@
 import { getEphemeralAccessToken } from '../services/authSessionStore';
+import { reportError } from './sentry';
 
 /**
  * API CONFIGURATION — Backend Proxy Setup
@@ -37,6 +38,12 @@ export const BACKEND_BASE_URL = (() => {
   // endpoint contracts remain fully qualified even without injected env vars.
   return 'http://localhost:3001';
 })();
+
+export const HAS_EXPLICIT_BACKEND_URL = Boolean(
+  import.meta.env.VITE_BACKEND_URL ||
+  import.meta.env.VITE_API_PROD_URL ||
+  import.meta.env.VITE_API_DEV_URL,
+);
 
 export const API_ENDPOINTS = {
   // Gemini AI proxy endpoints
@@ -130,6 +137,26 @@ export class ApiRequestError extends Error {
     this.routeScope = params.routeScope;
     this.details = params.details;
   }
+}
+
+function reportApiFailure(endpoint: string, error: Error | null, silent: boolean): void {
+  if (!error || silent) {
+    return;
+  }
+
+  if (error instanceof ApiRequestError && error.statusCode >= 400 && error.statusCode < 500 && error.statusCode !== 429) {
+    return;
+  }
+
+  reportError(error, {
+    endpoint,
+    ...(error instanceof ApiRequestError ? {
+      statusCode: error.statusCode,
+      requestId: error.requestId,
+      routeScope: error.routeScope,
+      ...(error.details || {}),
+    } : {}),
+  });
 }
 
 export const ACTIVE_WORKSPACE_STORAGE_KEY = 'active_workspace_id';
@@ -260,6 +287,7 @@ export async function apiRequest<T>(
   if (!silent) {
     console.error(`[API] Request to ${endpoint} failed after ${maxRetries + 1} attempts:`, lastError);
   }
+  reportApiFailure(endpoint, lastError, silent);
   throw lastError;
 }
 

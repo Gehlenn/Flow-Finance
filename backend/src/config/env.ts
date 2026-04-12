@@ -55,8 +55,8 @@ export const env = {
   GEMINI_OCR_MODEL: readEnv('GEMINI_OCR_MODEL', 'gemini-2.5-pro-vision'),
 
   // AI Orchestrator Configuration
-  AI_PRIMARY_PROVIDER: readEnv('AI_PRIMARY_PROVIDER', 'openai'),        // openai | gemini
-  AI_FALLBACK_PROVIDER: readEnv('AI_FALLBACK_PROVIDER', 'gemini'),     // fallback if primary fails
+  AI_PRIMARY_PROVIDER: readEnv('AI_PRIMARY_PROVIDER', 'gemini'),       // gemini | openai
+  AI_FALLBACK_PROVIDER: readEnv('AI_FALLBACK_PROVIDER', 'openai'),     // fallback if primary fails
   AI_TIMEOUT_MS: readEnv('AI_TIMEOUT_MS', '30000'),                    // timeout per request
   AI_MAX_RETRIES: readEnv('AI_MAX_RETRIES', '2'),                      // retries on failure
   AI_RETRY_DELAY_MS: readEnv('AI_RETRY_DELAY_MS', '500'),              // exponential backoff

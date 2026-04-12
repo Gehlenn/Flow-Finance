@@ -1,9 +1,10 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Transaction, TransactionType, Category } from '../types';
 import {
-  runImportPipeline, toTransactions, detectFormat,
+  runImportPipeline,
   ImportResult, ImportedTransaction, ImportFormat,
 } from '../src/finance/importService';
+import { normalizeFromFileImport, draftToTransaction } from '../src/domain/intakeNormalizer';
 import { saveMerchantCategoryLearning } from '../src/engines/finance/categorization/aiCategorizerFallback';
 import { FinancialEventEmitter } from '../src/events/eventEngine';
 import {
@@ -55,6 +56,25 @@ const CATEGORY_COLORS: Record<Category, string> = {
   [Category.NEGOCIO]:     'text-sky-500 bg-sky-50 dark:bg-sky-500/10',
   [Category.INVESTIMENTO]:'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10',
 };
+
+export function mapImportedItemsToDraftTransactions(items: ImportedTransaction[]): Partial<Transaction>[] {
+  return items
+    .filter((item) => item.selected && !item.duplicate)
+    .map((item) => {
+      const draft = normalizeFromFileImport({
+        amount: item.raw_amount,
+        date: item.raw_date,
+        description: item.raw_description,
+        merchant: item.merchant,
+        type: item.type ?? item.raw_type,
+        category: item.category,
+        confidence: item.confidence,
+        source: 'file',
+      });
+
+      return draftToTransaction(draft) as Partial<Transaction>;
+    });
+}
 
 // ─── Transaction Row ──────────────────────────────────────────────────────────
 
@@ -243,7 +263,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
 
   const handleImport = async () => {
     setPhase('importing');
-    const toImport = toTransactions(items);
+    const toImport = mapImportedItemsToDraftTransactions(items);
     if (toImport.length === 0) { setPhase('preview'); return; }
 
     const selectedItems = items.filter(i => i.selected && !i.duplicate);

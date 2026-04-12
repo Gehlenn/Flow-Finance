@@ -29,6 +29,7 @@ import billingRoutes from './routes/billingRoutes';
 import syncRoutes from './routes/sync';
 import externalIntegrationRoutes from './routes/externalIntegration';
 import clinicIntegrationRoutes from './routes/clinicIntegration';
+import businessIntegrationRoutes from './routes/businessIntegration';
 import { featureGateOpenFinance } from './middleware/featureGate';
 import workspaceRoutes from './routes/workspace';
 import { initializeWorkspaceStorePersistence } from './services/admin/workspaceStore';
@@ -299,6 +300,9 @@ app.use('/api/sync', syncRoutes);
 
 // External integration routes (event contracts from third-party systems)
 app.use('/api/integrations/external', externalIntegrationRoutes);
+
+// Generic business integration routes (lightweight transactions + reminders)
+app.use('/api/integrations', businessIntegrationRoutes);
 
 // Clinic automation integration routes (financial events from clinic automation)
 app.use('/api/integrations/clinic', clinicIntegrationRoutes);

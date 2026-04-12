@@ -193,7 +193,7 @@ curl https://flow-finance-backend.vercel.app/api/version
 ```bash
 curl -X POST https://flow-finance-backend.vercel.app/api/ai/cfo \
   -H "Content-Type: application/json" \
-  -d '{"question":"Como estão minhas finanças?","context":"Saldo: R$ 1000","intent":"general_finance"}'
+  -d '{"question":"Como estão minhas finanças?","context":"Saldo: R$ 1000","intent":"monthly_summary"}'
 
 # Esperado: { "answer": "..." }
 ```
@@ -400,3 +400,4 @@ Se após seguir todos os passos ainda houver problemas:
 **Status:** ✅ Código corrigido - Aguardando configuração no Vercel  
 **Última atualização:** 2026-03-09  
 **Versão:** 0.4.0
+

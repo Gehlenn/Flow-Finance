@@ -9,11 +9,14 @@ import {
   Lightbulb, PiggyBank, AlertTriangle, CheckCircle2,
   BarChart3, Brain, Zap, Info, Activity
 } from 'lucide-react';
+import { canAccessFeature } from '../src/app/monetizationPlan';
+import UpgradePromptCard from '../components/UpgradePromptCard';
 
 interface InsightsProps {
   activeWorkspaceName?: string | null;
   transactions: Transaction[];
   userId?: string;
+  workspacePlan?: 'free' | 'pro';
   hideValues: boolean;
 }
 
@@ -88,7 +91,13 @@ const HEALTH_STYLES: Record<string, { bg: string; text: string; bar: string }> =
   excelente: { bg: 'bg-emerald-500', text: 'text-emerald-500', bar: 'bg-emerald-500' },
 };
 
-const Insights: React.FC<InsightsProps> = ({ activeWorkspaceName, transactions, userId = 'local', hideValues }) => {
+const Insights: React.FC<InsightsProps> = ({
+  activeWorkspaceName,
+  transactions,
+  userId = 'local',
+  workspacePlan = 'free',
+  hideValues,
+}) => {
   // Pipeline completo via orchestrator (síncrono)
   const pipeline = useMemo(
     () => runAIPipelineSync(transactions, userId),
@@ -101,6 +110,10 @@ const Insights: React.FC<InsightsProps> = ({ activeWorkspaceName, transactions, 
 
   const { financial_state, profile: profileResult, risks, insights, health_score, health_label } = pipeline;
   const prediction = intelligence.context.cashflowForecast;
+  const canUseAdvancedInsights = canAccessFeature(workspacePlan, 'advancedCashflowAnalysis');
+  const canUseHistoricalComparisons = canAccessFeature(workspacePlan, 'historicalComparisons');
+  const visibleInsights = canUseAdvancedInsights ? insights : insights.slice(0, 2);
+  const visibleRisks = canUseAdvancedInsights ? risks : risks.slice(0, 1);
 
   const fmt = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -179,111 +192,127 @@ const Insights: React.FC<InsightsProps> = ({ activeWorkspaceName, transactions, 
             ))}
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-5 border border-slate-100 dark:border-slate-700 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <Brain size={16} className="text-indigo-500" />
-              <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Contexto Avançado</h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-[8px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">
-                Confiança {Math.round(intelligence.context.confidence.overall * 100)}%
-              </span>
-              <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
-                Recorrências {intelligence.recurringCount}
-              </span>
-              <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
-                Dados {intelligence.merchantCoveragePercent}%
-              </span>
-              {intelligence.dominantCategoryLabel && (
-                <span className="px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 text-[8px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-300">
-                  {intelligence.dominantCategoryLabel}
+          {canUseAdvancedInsights && (
+            <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-5 border border-slate-100 dark:border-slate-700 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Brain size={16} className="text-indigo-500" />
+                <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Contexto Avancado</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-[8px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">
+                  Confianca {Math.round(intelligence.context.confidence.overall * 100)}%
                 </span>
-              )}
+                <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
+                  Recorrencias {intelligence.recurringCount}
+                </span>
+                <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
+                  Dados {intelligence.merchantCoveragePercent}%
+                </span>
+                {intelligence.dominantCategoryLabel && (
+                  <span className="px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 text-[8px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-300">
+                    {intelligence.dominantCategoryLabel}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* ── Seção 1: Insights Financeiros ───────────────────────────── */}
           <section>
             <div className="flex items-center gap-2 mb-3">
               <Lightbulb size={16} className="text-indigo-500" />
               <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Insights Financeiros</h3>
-              <span className="ml-auto text-[8px] font-black bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full">{insights.length}</span>
+              <span className="ml-auto text-[8px] font-black bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full">{visibleInsights.length}</span>
             </div>
             <div className="flex flex-col gap-3">
-              {insights.length === 0 ? (
+              {visibleInsights.length === 0 ? (
                 <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl border border-emerald-100 dark:border-emerald-500/20">
                   <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
                   <p className="text-sm font-bold text-slate-700 dark:text-white">Tudo sob controle! Nenhum padrão crítico detectado.</p>
                 </div>
               ) : (
-                insights.map(i => <InsightCard key={i.id} insight={i} />)
+                visibleInsights.map(i => <InsightCard key={i.id} insight={i} />)
               )}
             </div>
           </section>
 
           {/* ── Seção 2: Perfil Financeiro ───────────────────────────────── */}
-          <section>
-            <div className="flex items-center gap-2 mb-3">
-              <BarChart3 size={16} className="text-violet-500" />
-              <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Perfil Financeiro</h3>
-            </div>
-            <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
-              <div className="flex items-center gap-4 mb-4">
-                <span className="text-4xl">{profileResult.emoji}</span>
-                <div>
-                  <p className="text-lg font-black text-slate-900 dark:text-white">{profileResult.label}</p>
-                  <p className="text-[8px] font-black text-violet-500 uppercase tracking-widest">{profileResult.profile}</p>
+          {canUseHistoricalComparisons && (
+            <section>
+              <div className="flex items-center gap-2 mb-3">
+                <BarChart3 size={16} className="text-violet-500" />
+                <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Perfil Financeiro</h3>
+              </div>
+              <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
+                <div className="flex items-center gap-4 mb-4">
+                  <span className="text-4xl">{profileResult.emoji}</span>
+                  <div>
+                    <p className="text-lg font-black text-slate-900 dark:text-white">{profileResult.label}</p>
+                    <p className="text-[8px] font-black text-violet-500 uppercase tracking-widest">{profileResult.profile}</p>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-600 dark:text-slate-400 font-bold leading-relaxed mb-4">
+                  {profileResult.description}
+                </p>
+
+                <div className="flex flex-col gap-2 mt-2">
+                  {(Object.entries(profileResult.score) as [string, number][])
+                    .sort(([, a], [, b]) => b - a)
+                    .map(([key, score]) => {
+                      const allScores = Object.values(profileResult.score) as number[];
+                      const maxScore = Math.max(...allScores, 1);
+                      const pct = Math.round((score / maxScore) * 100);
+                      return (
+                        <div key={key} className="flex items-center gap-3">
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-tight w-28 shrink-0 truncate">{key.replace('_', ' ')}</p>
+                          <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-700"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <p className="text-[8px] font-black text-slate-400 w-8 text-right">{pct}%</p>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
-              <p className="text-sm text-slate-600 dark:text-slate-400 font-bold leading-relaxed mb-4">
-                {profileResult.description}
-              </p>
-
-              {/* Score bars */}
-              <div className="flex flex-col gap-2 mt-2">
-                {(Object.entries(profileResult.score) as [string, number][])
-                  .sort(([, a], [, b]) => b - a)
-                  .map(([key, score]) => {
-                    const allScores = Object.values(profileResult.score) as number[];
-                    const maxScore = Math.max(...allScores, 1);
-                    const pct = Math.round((score / maxScore) * 100);
-                    return (
-                      <div key={key} className="flex items-center gap-3">
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-tight w-28 shrink-0 truncate">{key.replace('_', ' ')}</p>
-                        <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-700"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <p className="text-[8px] font-black text-slate-400 w-8 text-right">{pct}%</p>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          </section>
+            </section>
+          )}
 
           {/* ── Seção 3: Alertas de Risco ────────────────────────────────── */}
           <section>
             <div className="flex items-center gap-2 mb-3">
               <ShieldAlert size={16} className="text-rose-500" />
               <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Alertas Financeiros</h3>
-              {risks.length > 0 && (
-                <span className="ml-auto text-[8px] font-black bg-rose-50 dark:bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-full">{risks.length}</span>
+              {visibleRisks.length > 0 && (
+                <span className="ml-auto text-[8px] font-black bg-rose-50 dark:bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-full">{visibleRisks.length}</span>
               )}
             </div>
             <div className="flex flex-col gap-3">
-              {risks.length === 0 ? (
+              {visibleRisks.length === 0 ? (
                 <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl border border-emerald-100 dark:border-emerald-500/20">
                   <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
                   <p className="text-sm font-bold text-slate-700 dark:text-white">Nenhum risco detectado no horizonte.</p>
                 </div>
               ) : (
-                risks.map(r => <RiskCard key={r.id} alert={r} />)
+                visibleRisks.map(r => <RiskCard key={r.id} alert={r} />)
               )}
             </div>
           </section>
+
+          {!canUseAdvancedInsights && (
+            <UpgradePromptCard
+              compact
+              title="Insights aprofundados e comparativos"
+              description="Voce ja tem sinais essenciais no Free. O Pro adiciona contexto avancado para tomada de decisao com mais previsibilidade."
+              bullets={[
+                'perfil financeiro detalhado',
+                'comparativos historicos mais completos',
+                'mais contexto nas analises e alertas de risco',
+              ]}
+            />
+          )}
 
           {/* Footer note */}
           <div className="flex items-start gap-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">

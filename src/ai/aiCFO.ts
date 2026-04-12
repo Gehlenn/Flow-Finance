@@ -1,5 +1,5 @@
 /**
- * AI CFO — Consultor Financeiro Virtual do Flow Finance
+ * Assistente Financeiro IA — Apoio consultivo do Flow Finance
  *
  * Pipeline:
  *   Pergunta do usuário
@@ -38,11 +38,11 @@ export interface AICFOResponse {
 
 export type CFOIntent =
   | 'spending_advice'
-  | 'budget_question'
+  | 'cash_position'
   | 'risk_question'
   | 'savings_question'
-  | 'investment_question'
-  | 'general_finance';
+  | 'monthly_summary'
+  | 'receivables_question';
 
 interface IntentPattern {
   intent: CFOIntent;
@@ -55,20 +55,24 @@ const INTENT_PATTERNS: IntentPattern[] = [
     keywords: ['posso gastar', 'consigo comprar', 'vale a pena', 'devo comprar', 'tenho como pagar', 'posso comprar'],
   },
   {
-    intent: 'budget_question',
-    keywords: ['orçamento', 'limite', 'quanto tenho', 'quanto sobra', 'budget', 'saldo', 'disponível'],
+    intent: 'cash_position',
+    keywords: ['saldo', 'disponível', 'caixa hoje', 'quanto tenho', 'quanto sobra', 'caixa confirmado'],
   },
   {
     intent: 'risk_question',
-    keywords: ['risco', 'perigo', 'dívida', 'negativo', 'prejudicar', 'alerta', 'problema'],
+    keywords: ['risco', 'perigo', 'dívida', 'negativo', 'prejudicar', 'alerta', 'problema', 'curto prazo', 'próximos dias'],
+  },
+  {
+    intent: 'receivables_question',
+    keywords: ['previsão', 'previsao', 'prever', 'próximos 7 dias', 'proximos 7 dias', 'próximos 30 dias', 'proximos 30 dias', 'entrada prevista', 'saida prevista', 'saída prevista', 'projeção', 'projecao', 'pendência', 'pendencias', 'pendências', 'vencido', 'vencidos', 'recebível', 'recebiveis'],
   },
   {
     intent: 'savings_question',
-    keywords: ['economizar', 'poupar', 'guardar', 'reserva', 'poupança', 'meta', 'objetivo'],
+    keywords: ['economizar', 'poupar', 'guardar', 'reserva', 'poupança', 'reduzir gastos', 'cortar gastos', 'economia'],
   },
   {
-    intent: 'investment_question',
-    keywords: ['investir', 'aplicar', 'rendimento', 'cdb', 'ações', 'tesouro', 'retorno'],
+    intent: 'monthly_summary',
+    keywords: ['resumo do mês', 'fechamento do mês', 'resumo mensal', 'como foi o mês'],
   },
 ];
 
@@ -77,7 +81,7 @@ export function analyzeFinancialQuestion(question: string): CFOIntent {
   for (const { intent, keywords } of INTENT_PATTERNS) {
     if (keywords.some(k => lower.includes(k))) return intent;
   }
-  return 'general_finance';
+  return 'monthly_summary';
 }
 
 // ─── PART 3 — Financial Context Builder ──────────────────────────────────────
@@ -130,6 +134,8 @@ export function buildFinancialContext(
 
   const advancedForecast = intelligence?.context.cashflowForecast;
   const advancedProfile = intelligence?.context.base.financialProfile;
+  const forecast30Days = advancedForecast?.in30Days ?? prediction.balance_30_days;
+  const pendingAndOverdueAvailable = false;
   const advancedLines = intelligence
     ? [
         '=== CONTEXTO AVANCADO DE IA ===',
@@ -229,6 +235,15 @@ MAIOR CATEGORIA DE GASTOS:
 INSIGHTS RECENTES:
 ${insightLines}
 
+CLASSIFICACAO DE CAIXA:
+  - Confirmado (disponivel hoje): ${fmt(totalAccountBalance)}
+  - Previsto (30 dias): ${fmt(forecast30Days)}
+  - Pendente (a confirmar): ${pendingAndOverdueAvailable ? 'Disponivel no contexto' : 'Sem base suficiente no contexto atual'}
+  - Vencido (atrasado): ${pendingAndOverdueAvailable ? 'Disponivel no contexto' : 'Sem base suficiente no contexto atual'}
+
+REGRA OPERACIONAL:
+  - Nunca considerar pendente como dinheiro disponivel.
+
 TOTAL DE TRANSAÇÕES REGISTRADAS: ${baseTxs.length}${advancedLines ? `\n\n${advancedLines}` : ''}${graphContext}
 `.trim();
 }
@@ -236,16 +251,20 @@ TOTAL DE TRANSAÇÕES REGISTRADAS: ${baseTxs.length}${advancedLines ? `\n\n${adv
 // ─── PART 5 — Response Generation ────────────────────────────────────────────
 
 const SAFETY_PREAMBLE = `
-Você é o CFO Virtual do Flow Finance, um assistente financeiro pessoal.
+Você é o Assistente Financeiro do Flow Finance.
 
 REGRAS OBRIGATÓRIAS:
 1. Nunca faça garantias financeiras absolutas.
-2. Use sempre linguagem consultiva: "Com base nos seus dados...", "A análise sugere...", "Considerando seu histórico..."
+2. Responda como apoio consultivo prático de caixa de curto prazo, não como agente autônomo.
 3. Seja direto, objetivo e em português brasileiro.
-4. Respostas com no máximo 4 parágrafos curtos.
+4. Responda em 2 a 4 blocos curtos, com foco operacional.
 5. Quando houver risco, avise com clareza mas sem alarmismo.
 6. Nunca invente dados — use APENAS o contexto fornecido.
-7. Se não houver dados suficientes, diga isso claramente.
+7. Se não houver dados suficientes, diga isso de forma explícita e curta.
+8. Diferencie claramente: caixa confirmado, previsto, pendente e vencido.
+9. Recebível pendente NÃO é dinheiro disponível.
+10. Não proponha automação externa, integrações novas nem ações automáticas fora do produto.
+11. Não faça recomendação de investimento e não trate investimento como foco da resposta.
 `.trim();
 
 export async function generateCFOResponse(
@@ -255,12 +274,12 @@ export async function generateCFOResponse(
 ): Promise<AICFOResponse> {
   // note: environment variables / model selection are handled server-side
   const intentGuide: Record<CFOIntent, string> = {
-    spending_advice:     'O usuário quer saber se pode gastar. Analise o impacto no saldo projetado.',
-    budget_question:     'O usuário quer entender seu orçamento. Foque nos números do mês atual e projeções.',
-    risk_question:       'O usuário está preocupado com riscos. Destaque alertas e pontos de atenção.',
-    savings_question:    'O usuário quer economizar. Sugira cortes com base nas categorias dominantes.',
-    investment_question: 'O usuário quer investir. Avalie o saldo disponível antes de fazer sugestões.',
-    general_finance:     'Responda a pergunta financeira com base nos dados disponíveis.',
+    spending_advice:  'O usuário quer saber se pode gastar agora. Traga impacto no caixa confirmado e risco de curto prazo.',
+    cash_position: 'O usuário quer leitura de saldo e caixa disponível. Diferencie confirmado de previsto.',
+    risk_question:    'O usuário quer risco de curto prazo. Destaque sinais de atenção sem exagero.',
+    savings_question: 'O usuário quer economia prática. Sugira cortes concretos e de curto prazo.',
+    monthly_summary:  'O usuário quer resumo do mês com foco em decisão operacional.',
+    receivables_question:'O usuário quer leitura de recebíveis, pendências e vencidos. Separe claramente o que está apenas previsto/pendente do que está confirmado.',
   };
 
   const prompt = `
@@ -273,7 +292,7 @@ TIPO DE PERGUNTA: ${intentGuide[intent]}
 
 PERGUNTA DO USUÁRIO: "${question}"
 
-Responda de forma consultiva, personalizada e baseada exclusivamente nos dados acima.
+Responda de forma consultiva, curta e baseada exclusivamente nos dados acima.
 `;
 
   try {
@@ -283,7 +302,7 @@ Responda de forma consultiva, personalizada e baseada exclusivamente nos dados a
     return {
       question,
       answer: result.answer || 'Não foi possível gerar uma resposta no momento.',
-      context_summary: `Saldo projetado usado como base.`,
+      context_summary: 'Resposta ancorada em dados reais do workspace quando disponíveis.',
       intent,
       timestamp: new Date().toISOString(),
     };
@@ -308,9 +327,6 @@ export async function learnFromConversation(
 
   if (intent === 'savings_question') {
     await learnMemory(userId, 'user_budget_goal', 'save_money', 0.7);
-  }
-  if (intent === 'investment_question') {
-    await learnMemory(userId, 'user_budget_goal', 'invest_money', 0.7);
   }
   if (lower.includes('salário') || lower.includes('salario')) {
     const match = lower.match(/(\d+)/);

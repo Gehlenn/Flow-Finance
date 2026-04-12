@@ -4,6 +4,12 @@ import crypto from 'crypto';
 const DEFAULT_MAX_TIMESTAMP_SKEW_SECONDS = 300;
 const MAX_HEADER_VALUE_LENGTH = 512;
 
+export type ExternalIntegrationAuthReason = 'not_configured' | 'invalid_key' | 'invalid_signature';
+
+type ExternalIntegrationAuthResult =
+  | { ok: true }
+  | { ok: false; statusCode: 401 | 503; reason: ExternalIntegrationAuthReason };
+
 function getAllowedIntegrationKeys(): string[] {
   return String(process.env.FLOW_EXTERNAL_INTEGRATION_KEYS || '')
     .split(',')
@@ -36,7 +42,6 @@ function parseTimestampToSeconds(rawTimestamp: string): number | null {
     return null;
   }
 
-  // Accept milliseconds and normalize to seconds when needed.
   if (numeric > 1_000_000_000_000) {
     return Math.floor(numeric / 1000);
   }
@@ -44,7 +49,7 @@ function parseTimestampToSeconds(rawTimestamp: string): number | null {
   return Math.floor(numeric);
 }
 
-function sanitizeHeaderValue(value: string | undefined): string | null {
+export function sanitizeIntegrationHeaderValue(value: string | undefined): string | null {
   if (typeof value !== 'string') {
     return null;
   }
@@ -79,8 +84,8 @@ function verifyHmacSignature(req: Request, secrets: string[]): boolean {
     return true;
   }
 
-  const signature = sanitizeHeaderValue(req.header('x-integration-signature'));
-  const timestamp = sanitizeHeaderValue(req.header('x-integration-timestamp'));
+  const signature = sanitizeIntegrationHeaderValue(req.header('x-integration-signature'));
+  const timestamp = sanitizeIntegrationHeaderValue(req.header('x-integration-timestamp'));
   const method = String(req.method || '').toUpperCase();
   const contentLengthHeader = req.header('content-length');
   const parsedContentLength = Number.parseInt(contentLengthHeader || '0', 10);
@@ -136,25 +141,42 @@ function verifyHmacSignature(req: Request, secrets: string[]): boolean {
   return false;
 }
 
+export function authorizeExternalIntegrationRequest(req: Request): ExternalIntegrationAuthResult {
+  const allowedKeys = getAllowedIntegrationKeys();
+  if (!allowedKeys.length) {
+    return { ok: false, statusCode: 503, reason: 'not_configured' };
+  }
+
+  const providedKey = sanitizeIntegrationHeaderValue(req.header('x-integration-key'));
+  if (!providedKey || !hasMatchingIntegrationKey(providedKey, allowedKeys)) {
+    return { ok: false, statusCode: 401, reason: 'invalid_key' };
+  }
+
+  const allowedHmacSecrets = getAllowedHmacSecrets();
+  if (!verifyHmacSignature(req, allowedHmacSecrets)) {
+    return { ok: false, statusCode: 401, reason: 'invalid_signature' };
+  }
+
+  return { ok: true };
+}
+
 export function externalIntegrationAuth(
   req: Request,
   res: Response,
   next: NextFunction,
 ): void {
-  const allowedKeys = getAllowedIntegrationKeys();
-  if (!allowedKeys.length) {
-    res.status(503).json({ error: 'External integration is not configured' });
-    return;
-  }
+  const result = authorizeExternalIntegrationRequest(req);
+  if (!result.ok) {
+    if (result.reason === 'not_configured') {
+      res.status(503).json({ error: 'External integration is not configured' });
+      return;
+    }
 
-  const providedKey = sanitizeHeaderValue(req.header('x-integration-key'));
-  if (!providedKey || !hasMatchingIntegrationKey(providedKey, allowedKeys)) {
-    res.status(401).json({ error: 'Invalid integration key' });
-    return;
-  }
+    if (result.reason === 'invalid_key') {
+      res.status(401).json({ error: 'Invalid integration key' });
+      return;
+    }
 
-  const allowedHmacSecrets = getAllowedHmacSecrets();
-  if (!verifyHmacSignature(req, allowedHmacSecrets)) {
     res.status(401).json({ error: 'Invalid integration signature' });
     return;
   }

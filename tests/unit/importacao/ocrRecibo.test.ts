@@ -39,4 +39,20 @@ describe('processarReciboOCR', () => {
     const result = await processarReciboOCR(new File([], 'dummy.png'));
     expect(result.erros[0]).toMatch(/OCR falhou/);
   });
+
+  it('usa description como fallback quando raw_text nao vier no contrato', async () => {
+    mockScanReceipt.mockResolvedValueOnce({
+      success: true,
+      data: {
+        amount: 19.9,
+        category: 'Pessoal',
+        date: '2026-04-01',
+        description: 'Cafe da tarde',
+      },
+    });
+
+    const result = await processarReciboOCR(new File([], 'dummy.png'));
+    expect(result.textoCompleto).toBe('Cafe da tarde');
+    expect(result.erros).toEqual([]);
+  });
 });

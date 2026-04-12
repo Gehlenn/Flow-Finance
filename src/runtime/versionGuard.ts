@@ -10,6 +10,7 @@ const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL ||
   import.meta.env.VITE_API_PROD_URL ||
   '';
+const HAS_EXPLICIT_API_BASE_URL = Boolean(API_BASE_URL);
 
 let lastVersionCheck = 0;
 const VERSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -42,6 +43,15 @@ export async function checkAppVersion(): Promise<GuardResult> {
     clearTimeout(timeoutId);
 
     if (!response.ok) {
+      if (!HAS_EXPLICIT_API_BASE_URL && response.status === 404) {
+        return {
+          guard: 'version',
+          status: 'ok',
+          message: 'Version check skipped (frontend-only environment)',
+          timestamp: now,
+        };
+      }
+
       console.warn('[Version Guard] Failed to fetch backend version:', response.status);
       return {
         guard: 'version',

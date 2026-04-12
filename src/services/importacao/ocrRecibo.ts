@@ -33,7 +33,7 @@ export async function processarReciboOCR(imagem: File | Blob): Promise<OcrResult
     valor: result.data.amount ?? undefined,
     categoria: result.data.category ?? undefined,
     data: result.data.date ?? undefined,
-    textoCompleto: result.data.raw_text,
+    textoCompleto: result.data.raw_text ?? result.data.description ?? '',
     erros: [],
   };
 }

@@ -1,12 +1,12 @@
 /**
  * RECEIPT SCANNER
  *
- * Usa Gemini Vision para extrair dados de recibos/notas fiscais.
- * Não depende de tesseract.js — o Gemini já tem OCR nativo de alta precisão.
+ * Delega a extração de recibos/notas fiscais ao backend.
+ * NENHUMA chave de API é usada aqui — tudo via proxy seguro.
  */
 
-import { GoogleGenAI, Type } from '@google/genai';
-import { Transaction, TransactionType, Category } from '../../types';
+import { TransactionType, Category } from '../../types';
+import { apiRequest, API_ENDPOINTS } from '../config/api.config';
 
 // ─── Model ────────────────────────────────────────────────────────────────────
 
@@ -17,8 +17,8 @@ export interface ScannedReceipt {
   description: string | null;
   category: Category | null;
   type: TransactionType | null;
-  payment_method: Transaction['payment_method'] | null;
-  raw_text: string;             // texto bruto para debug
+  payment_method: 'cash' | 'credit_card' | 'debit_card' | 'pix' | 'transfer' | null;
+  raw_text?: string;            // opcional: não garantido pelo contrato backend
   confidence: number;           // 0–1
 }
 
@@ -69,22 +69,24 @@ function normalizeType(raw: string): TransactionType {
 
 // ─── PART 4 — Core scanner functions ──────────────────────────────────────────
 
-/** Extrai texto OCR + dados estruturados via Gemini Vision */
+/**
+ * Extrai texto OCR enviando a imagem ao backend (Gemini Vision roda no servidor).
+ * Retorna o texto bruto extraído ou string vazia em caso de falha.
+ */
 export async function extractTextFromImage(image: File): Promise<string> {
-  const { base64, mimeType } = await fileToBase64(image);
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
+  try {
+    const result = await scanReceipt(image);
+    if (!result.success || !result.data) return '';
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash',
-    contents: {
-      parts: [
-        { inlineData: { data: base64, mimeType } },
-        { text: 'Transcreva todo o texto visível neste documento financeiro (recibo, nota fiscal, boleto) exatamente como aparece. Mantenha valores, datas e nomes de estabelecimentos.' },
-      ],
-    },
-  });
-
-  return response.text ?? '';
+    const parts = [
+      result.data.description,
+      result.data.amount != null ? String(result.data.amount) : null,
+      result.data.date,
+    ].filter(Boolean);
+    return parts.join(' ').trim();
+  } catch {
+    return '';
+  }
 }
 
 // ─── PART 3 — Confidence breakdown ───────────────────────────────────────────
@@ -217,67 +219,43 @@ export function parseReceiptText(text: string): Partial<ScannedReceipt> {
   return result;
 }
 
-/** Função principal: escaneia recibo e retorna dados estruturados via Gemini */
+/**
+ * Escaneia recibo enviando ao backend (Gemini Vision roda no servidor).
+ * NENHUMA chave de API no frontend.
+ */
 export async function scanReceipt(image: File): Promise<ScanResult> {
   try {
     const { base64, mimeType } = await fileToBase64(image);
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
-
-    const imagePart = { inlineData: { data: base64, mimeType } };
-    const textPart = {
-      text: `Você é um scanner OCR especializado em documentos financeiros brasileiros.
-Analise esta imagem e extraia as informações exatas.
-
-INSTRUÇÕES:
-1. amount: valor TOTAL final em número decimal (ex: 47.90). Se houver múltiplos valores, use o TOTAL.
-2. merchant: nome do estabelecimento ou favorecido (máx 50 chars)
-3. date: data de emissão ou vencimento no formato ISO 8601 (YYYY-MM-DD)
-4. description: breve descrição do serviço/produto (máx 80 chars)
-5. category: uma de: "Pessoal", "Trabalho / Consultório", "Negócio", "Investimento"
-6. type: "Despesa" para compras/pagamentos, "Receita" para recebimentos
-7. payment_method: "cash", "credit_card", "debit_card", "pix" ou null se não identificado
-8. confidence: sua confiança na extração de 0.0 a 1.0
-
-Se não conseguir identificar algum campo, use null.`
-    };
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: { parts: [imagePart, textPart] },
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            amount:         { type: Type.NUMBER  },
-            merchant:       { type: Type.STRING  },
-            date:           { type: Type.STRING  },
-            description:    { type: Type.STRING  },
-            category:       { type: Type.STRING  },
-            type:           { type: Type.STRING  },
-            payment_method: { type: Type.STRING  },
-            confidence:     { type: Type.NUMBER  },
-          },
-        },
+    const raw = await apiRequest<Record<string, unknown>>(
+      API_ENDPOINTS.AI.SCAN_RECEIPT,
+      {
+        method: 'POST',
+        body: JSON.stringify({ imageBase64: base64, imageMimeType: mimeType }),
       },
-    });
-
-    const raw = JSON.parse(response.text ?? '{}');
+    );
 
     const data: ScannedReceipt = {
       amount:         typeof raw.amount === 'number' ? raw.amount : null,
-      merchant:       raw.merchant ?? null,
-      date:           raw.date ? new Date(raw.date).toISOString() : null,
-      description:    raw.description ?? null,
-      category:       raw.category ? normalizeCategory(raw.category) : null,
-      type:           raw.type ? normalizeType(raw.type) : TransactionType.DESPESA,
-      payment_method: raw.payment_method ?? null,
-      raw_text:       response.text ?? '',
-      confidence:     typeof raw.confidence === 'number' ? raw.confidence : 0.5,
+      merchant:       null,
+      date:           raw.date ? new Date(raw.date as string).toISOString() : null,
+      description:    (raw.description as string) ?? null,
+      category:       raw.category ? normalizeCategory(raw.category as string) : null,
+      type:           raw.type ? normalizeType(raw.type as string) : TransactionType.DESPESA,
+      payment_method: null,
+      raw_text:       typeof raw.raw_text === 'string' ? raw.raw_text : undefined,
+      confidence:     calculateConfidence({
+        amount: typeof raw.amount === 'number' ? raw.amount : null,
+        merchant: null,
+        date: raw.date ? String(raw.date) : null,
+      }).overall,
     };
 
     return { success: true, data };
-  } catch (err: any) {
-    return { success: false, data: null, error: err?.message ?? 'Erro ao escanear recibo' };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      data: null,
+      error: err instanceof Error ? err.message : 'Erro ao escanear recibo',
+    };
   }
 }

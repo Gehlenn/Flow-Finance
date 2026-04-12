@@ -49,7 +49,7 @@
 - [x] Analytics habilitado
 
 ### ✅ 7. Backend Endpoints
-- [x] `/api/ai/cfo` - CFO Virtual (GPT-4/Gemini)
+- [x] `/api/ai/cfo` - Apoio Financeiro IA (GPT-4/Gemini)
 - [x] `/api/ai/interpret` - Parser de transações
 - [x] `/api/ai/scan-receipt` - OCR de recibos
 - [x] `/api/ai/classify` - Classificação automática
@@ -75,7 +75,7 @@ git reset .env.local    # Garantir que .env.local não vai
 git commit -m "release: v0.4.0 - Production Ready with GPT-4 CFO + Gemini Fallback
 
 ✨ Features:
-- CFO Virtual com GPT-4 via backend proxy seguro
+- Apoio Financeiro IA com GPT-4 via backend proxy seguro
 - Sistema de fallback automático OpenAI → Gemini
 - Testes corrigidos para novo módulo AI wrapper
 - Firebase Auth produção validado
@@ -165,7 +165,7 @@ curl https://seu-backend.vercel.app/health
 curl -X POST https://seu-backend.vercel.app/api/ai/cfo \
   -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"question":"Qual meu saldo?","context":"saldo: 1000","intent":"budget_question"}'
+  -d '{"question":"Qual meu saldo?","context":"saldo: 1000","intent":"cash_position"}'
 ```
 
 ---
@@ -207,7 +207,7 @@ curl -X POST https://seu-backend.vercel.app/api/ai/cfo \
 ## 📝 POST-DEPLOY TASKS
 
 - [ ] Testar fluxo completo de autenticação (Google OAuth)
-- [ ] Validar CFO Virtual com pergunta real
+- [ ] Validar Apoio Financeiro IA com pergunta real
 - [ ] Confirmar Gemini fallback (desabilitar OpenAI temporariamente)
 - [ ] Testar import de CSV/OFX
 - [ ] Verificar scanner de recibos (Gemini Vision)
@@ -223,7 +223,7 @@ curl -X POST https://seu-backend.vercel.app/api/ai/cfo \
 1. Frontend carrega em < 2s (Lighthouse > 90)
 2. Backend responde em < 500ms
 3. Login Google funcional
-4. CFO Virtual responde corretamente
+4. Apoio Financeiro IA responde corretamente
 5. Zero erros críticos no Sentry (primeiras 24h)
 
 ---
@@ -231,3 +231,4 @@ curl -X POST https://seu-backend.vercel.app/api/ai/cfo \
 **Checklist Validado em:** March 9, 2026  
 **Revisado por:** GitHub Copilot  
 **Próxima Revisão:** v0.5.0 Planning (Q2 2026)
+

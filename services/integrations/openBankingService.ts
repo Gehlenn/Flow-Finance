@@ -21,6 +21,7 @@ import { BankConnection, BankProvider, SyncResult, BRAZILIAN_BANKS } from '../..
 import { getProvider, RawBankTransaction, ProviderKey } from './mockBankProvider';
 import { FinancialEventEmitter } from '../../src/events/eventEngine';
 import { classifyImportedTransactions } from '../../src/finance/importService';
+import { normalizeFromIntegration, draftToTransaction } from '../../src/domain/intakeNormalizer';
 import { learnMemory } from '../../src/ai/aiMemory';
 import { makeId } from '../../utils/helpers';
 import { API_ENDPOINTS, apiRequest, ApiRequestError } from '../../src/config/api.config';
@@ -383,6 +384,7 @@ function mapToTransaction(raw: RawBankTransaction, accountId?: string): Partial<
   raw_date: string;
   raw_type: TransactionType;
   selected: boolean;
+  external_reference: string;
 } {
   const isCredit = raw.amount > 0;
   return {
@@ -398,10 +400,61 @@ function mapToTransaction(raw: RawBankTransaction, accountId?: string): Partial<
     amount:          Math.abs(raw.amount),
     date:            new Date(raw.date).toISOString(),
     account_id:      accountId,
-    source:          'import',
     selected:        true,
     confidence_score: 0.5,
+    external_reference: raw.id,
   };
+}
+
+function normalizeBankTransactionsFromDraft(input: Array<Partial<Transaction>>): Partial<Transaction>[] {
+  return input
+    .filter((item) => typeof item.amount === 'number' && Number.isFinite(item.amount))
+    .map((item, index) => {
+      const rawAmount = item.amount as number;
+      const normalizedAmount = Math.abs(rawAmount);
+
+      const explicitType = typeof item.type === 'string' ? item.type.toLowerCase() : '';
+      const type = explicitType === String(TransactionType.RECEITA).toLowerCase() || explicitType === 'income'
+        ? TransactionType.RECEITA
+        : explicitType === String(TransactionType.DESPESA).toLowerCase() || explicitType === 'expense'
+          ? TransactionType.DESPESA
+          : rawAmount >= 0
+            ? TransactionType.RECEITA
+            : TransactionType.DESPESA;
+
+      const category = Object.values(Category).includes(item.category as Category)
+        ? (item.category as Category)
+        : undefined;
+
+      const draft = normalizeFromIntegration({
+        externalReference: String((item as Record<string, unknown>).external_reference ?? item.id ?? `bank_tx_${index}`),
+        amount: normalizedAmount,
+        occurredAt: item.date ?? new Date().toISOString(),
+        description: item.description ?? item.merchant ?? 'Transacao bancaria sincronizada',
+        type,
+        category,
+      });
+
+      if (typeof (item as Record<string, unknown>).account_id === 'string') {
+        draft.accountId = (item as Record<string, unknown>).account_id as string;
+      }
+
+      const tx = draftToTransaction(draft) as Partial<Transaction>;
+
+      if (typeof item.merchant === 'string') {
+        tx.merchant = item.merchant;
+      }
+
+      if (typeof item.category === 'string' && !category) {
+        tx.category = item.category as any;
+      }
+
+      if (typeof item.confidence_score === 'number') {
+        tx.confidence_score = item.confidence_score;
+      }
+
+      return tx;
+    });
 }
 
 // ─── Detectar duplicatas contra transações existentes ────────────────────────
@@ -449,7 +502,7 @@ export async function syncTransactions(
       });
 
       if (result.transactions?.length) {
-        onNewTransactions(result.transactions);
+        onNewTransactions(normalizeBankTransactionsFromDraft(result.transactions));
       }
 
       const nextStatus: BankConnection['connection_status'] = result.error ? 'error' : 'connected';
@@ -521,17 +574,21 @@ export async function syncTransactions(
       classified = await classifyImportedTransactions(mapped as any, userId) as any;
     } catch { /* usar mapeamento básico se AI falhar */ }
 
-    // Converter para Transaction final
-    const finalTxs: Partial<Transaction>[] = classified.map((item: any) => ({
-      amount:          item.raw_amount ?? item.amount,
-      type:            item.type ?? item.raw_type,
-      category:        item.category ?? Category.PESSOAL,
-      description:     item.raw_description ?? item.description,
-      date:            item.raw_date ?? item.date,
-      merchant:        item.merchant,
-      source:          'import' as const,
-      confidence_score: item.confidence ?? 0.7,
-    }));
+    // Converter para Transaction final sempre via TransactionDraft
+    const finalTxs = normalizeBankTransactionsFromDraft(
+      classified.map((item: any) => ({
+        id: item.id,
+        amount: item.raw_amount ?? item.amount,
+        type: item.type ?? item.raw_type,
+        category: item.category ?? Category.PESSOAL,
+        description: item.raw_description ?? item.description,
+        date: item.raw_date ?? item.date,
+        merchant: item.merchant,
+        account_id: item.account_id,
+        confidence_score: item.confidence ?? 0.7,
+        external_reference: item.external_reference,
+      })),
+    );
 
     onNewTransactions(finalTxs);
 

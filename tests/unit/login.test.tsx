@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Login from '../../components/Login';
 
 const loginMocks = vi.hoisted(() => ({
@@ -24,16 +24,39 @@ vi.mock('firebase/auth', () => ({
 }));
 
 describe('Login accessibility flow', () => {
-  it('informa erro amigavel quando Firebase nao esta configurado', () => {
-    loginMocks.isFirebaseConfigured = false;
+  beforeEach(() => {
+    loginMocks.isFirebaseConfigured = true;
+  });
 
-    render(<Login onLogin={vi.fn()} />);
+  it('aciona o login local em development quando Firebase nao esta configurado', async () => {
+    loginMocks.isFirebaseConfigured = false;
+    const onDevelopmentLogin = vi.fn().mockResolvedValue(undefined);
+
+    render(<Login onLogin={vi.fn()} onDevelopmentLogin={onDevelopmentLogin} />);
 
     fireEvent.change(screen.getByLabelText('E-mail de acesso'), { target: { value: 'teste@flow.dev' } });
     fireEvent.change(screen.getByLabelText('Senha de acesso'), { target: { value: '123456' } });
     fireEvent.click(screen.getByRole('button', { name: /Acessar Conta/i }));
 
-    expect(screen.getByRole('alert').textContent).toContain('Autenticacao Firebase indisponivel neste ambiente');
+    expect(onDevelopmentLogin).toHaveBeenCalledWith({
+      email: 'teste@flow.dev',
+      password: '123456',
+    });
+
+    loginMocks.isFirebaseConfigured = true;
+  });
+
+  it('informa erro amigavel quando o login local falha sem Firebase', async () => {
+    loginMocks.isFirebaseConfigured = false;
+    const onDevelopmentLogin = vi.fn().mockRejectedValue(new Error('Local auth failed'));
+
+    render(<Login onLogin={vi.fn()} onDevelopmentLogin={onDevelopmentLogin} />);
+
+    fireEvent.change(screen.getByLabelText('E-mail de acesso'), { target: { value: 'teste@flow.dev' } });
+    fireEvent.change(screen.getByLabelText('Senha de acesso'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: /Acessar Conta/i }));
+
+    expect((await screen.findByRole('alert')).textContent).toContain('Local auth failed');
 
     loginMocks.isFirebaseConfigured = true;
   });

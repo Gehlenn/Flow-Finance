@@ -59,6 +59,138 @@ components:
         at:
           type: string
           format: date-time
+    BusinessIntegrationResult:
+      type: object
+      required: [ok, workspaceId, sourceSystem, externalRecordId, action, entity, storedAs]
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        workspaceId:
+          type: string
+        sourceSystem:
+          type: string
+        externalRecordId:
+          type: string
+        action:
+          type: string
+          enum: [created, updated, replayed]
+        entity:
+          type: string
+          enum: [transaction, reminder]
+        storedAs:
+          type: string
+          enum: [transactions, reminders]
+    BusinessIntegrationErrorResponse:
+      type: object
+      required: [ok, error, message]
+      properties:
+        ok:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
+          enum: [validation_error, unauthorized, forbidden, integration_unavailable]
+        message:
+          type: string
+    BusinessIntegrationTransactionRequest:
+      type: object
+      required: [workspaceId, sourceSystem, externalRecordId, type, amount, currency, occurredAt, description, status]
+      properties:
+        workspaceId:
+          type: string
+        sourceSystem:
+          type: string
+        externalRecordId:
+          type: string
+        integrationId:
+          type: string
+        externalCustomerId:
+          type: string
+          description: Referência técnica externa. Não enviar CPF, email ou telefone.
+        type:
+          type: string
+          enum: [income, expense, receivable, payable]
+          description: Receivable/payable representam valores que podem permanecer em aberto antes da confirmação.
+        amount:
+          type: number
+          exclusiveMinimum: 0
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+        occurredAt:
+          type: string
+          format: date-time
+        description:
+          type: string
+        status:
+          type: string
+          enum: [confirmed, pending, overdue]
+          description: Income/expense exigem confirmed. Receivable/payable em pending/overdue são materializados como reminders.
+        category:
+          type: string
+        subcategory:
+          type: string
+        counterpartyLabel:
+          type: string
+        notes:
+          type: string
+        dueAt:
+          type: string
+          format: date-time
+          description: Obrigatório para receivable/payable com status pending/overdue.
+        referenceDate:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+              - type: 'null'
+    BusinessIntegrationReminderRequest:
+      type: object
+      required: [workspaceId, sourceSystem, externalRecordId, title, remindAt, kind, status]
+      properties:
+        workspaceId:
+          type: string
+        sourceSystem:
+          type: string
+        externalRecordId:
+          type: string
+        title:
+          type: string
+        remindAt:
+          type: string
+          format: date-time
+        kind:
+          type: string
+          enum: [financial, operational]
+        status:
+          type: string
+          enum: [active, completed, canceled]
+        description:
+          type: string
+        priority:
+          type: string
+          enum: [low, medium, high]
+        relatedTransactionExternalId:
+          type: string
+        integrationId:
+          type: string
+        externalCustomerId:
+          type: string
+          description: Referência técnica externa. Não enviar CPF, email ou telefone.
+        metadata:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+              - type: 'null'
 paths:
   /api/workspace:
     get:
@@ -187,3 +319,142 @@ paths:
                         format: date-time
                       id:
                         type: string
+  /api/integrations/transactions:
+    post:
+      summary: Ingestão de transação leve para integração externa
+      description: Confirmed entra como transaction. Receivable/payable em pending/overdue são materializados como reminders para evitar inflação de caixa confirmado.
+      parameters:
+        - name: x-integration-key
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-integration-timestamp
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: x-integration-signature
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: Cabeçalho de compatibilidade para retries. Idempotência principal usa sourceSystem + externalRecordId.
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessIntegrationTransactionRequest'
+      responses:
+        '201':
+          description: Registro criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessIntegrationResult'
+        '200':
+          description: Registro atualizado ou replay
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessIntegrationResult'
+        '400':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessIntegrationErrorResponse'
+        '401':
+          description: Credencial inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessIntegrationErrorResponse'
+        '403':
+          description: Chave não autorizada para workspace/sourceSystem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessIntegrationErrorResponse'
+        '503':
+          description: Integração não configurada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessIntegrationErrorResponse'
+  /api/integrations/reminders:
+    post:
+      summary: Ingestão de lembrete leve para integração externa
+      parameters:
+        - name: x-integration-key
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-integration-timestamp
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: x-integration-signature
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: Cabeçalho de compatibilidade para retries. Idempotência principal usa sourceSystem + externalRecordId.
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessIntegrationReminderRequest'
+      responses:
+        '201':
+          description: Registro criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessIntegrationResult'
+        '200':
+          description: Registro atualizado ou replay
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessIntegrationResult'
+        '400':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessIntegrationErrorResponse'
+        '401':
+          description: Credencial inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessIntegrationErrorResponse'
+        '403':
+          description: Chave não autorizada para workspace/sourceSystem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessIntegrationErrorResponse'
+        '503':
+          description: Integração não configurada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessIntegrationErrorResponse'

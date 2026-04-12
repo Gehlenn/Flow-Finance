@@ -23,6 +23,13 @@
 - Diretriz de arquitetura para v0.9.x: consolidar lÃ³gica duplicada de categorizaÃ§Ã£o em serviÃ§o Ãºnico com cache e fallback.
 - Encerramento de transicao: validacao final com lint, cobertura critica >= 98% e E2E verde no recorte da release.
 
+### Adendo de Transicao 0.9.6.1v
+- Resultado de gate: BLOQUEADO por regressao em suite global de cobertura.
+- Gate critico preservado: cobertura critica acima de 98% (`99.72%` statements, `98.89%` branches).
+- Regras de seguranca do Firestore validadas no emulator (`8/8` testes).
+- Consistencia Web/Mobile validada por health checks de runtime em desktop e mobile.
+- Criterio de saida reforcado: liberar versao apenas com regressao global zerada e suite completa verde.
+
 ---
 
 ## 1. VISÃƒO ESTRATÃ‰GICA

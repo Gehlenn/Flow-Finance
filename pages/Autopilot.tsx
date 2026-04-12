@@ -3,6 +3,8 @@ import { Transaction } from '../types';
 import { Account } from '../models/Account';
 import { runFinancialAutopilot, AutopilotAction, learnAutopilotPatterns } from '../src/ai/financialAutopilot';
 import { runAIPipelineSync } from '../src/ai/aiOrchestrator';
+import { canAccessFeature } from '../src/app/monetizationPlan';
+import UpgradePromptCard from '../components/UpgradePromptCard';
 import {
   Zap, AlertTriangle, Lightbulb, TrendingUp, ShieldCheck,
   ChevronRight, RefreshCw, CheckCircle2, Info,
@@ -15,6 +17,7 @@ interface AutopilotProps {
   transactions: Transaction[];
   accounts: Account[];
   userId?: string;
+  workspacePlan?: 'free' | 'pro';
   hideValues: boolean;
   onNavigate?: (tab: string) => void;
 }
@@ -135,7 +138,7 @@ const Section: React.FC<{
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-const Autopilot: React.FC<AutopilotProps> = ({ transactions, accounts, userId = 'local', hideValues }) => {
+const Autopilot: React.FC<AutopilotProps> = ({ transactions, accounts, userId = 'local', workspacePlan = 'free', hideValues }) => {
   const pipeline = useMemo(() => runAIPipelineSync(transactions, userId), [transactions, userId]);
 
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
@@ -172,6 +175,20 @@ const Autopilot: React.FC<AutopilotProps> = ({ transactions, accounts, userId = 
 
   const isEmpty = transactions.filter(t => !t.generated).length === 0;
   const allDismissed = visible.length === 0 && allActions.length > 0;
+
+  if (!canAccessFeature(workspacePlan, 'smartAlertSuggestions')) {
+    return (
+      <UpgradePromptCard
+        title="Análise financeira proativa"
+        description="O Autopilot monitora seus dados e sugere ações com base no seu fluxo de caixa real."
+        bullets={[
+          'alertas automáticos de risco financeiro',
+          'sugestões de otimização baseadas em padrões reais',
+          'insights proativos antes que o problema apareça',
+        ]}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-5 animate-in fade-in duration-700 pb-24">

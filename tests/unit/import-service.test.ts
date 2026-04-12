@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Category, TransactionType } from '../../types';
 import {
+  classifyImportedTransactions,
   detectFormat,
   parseCSV,
+  parsePDF,
   parseOFX,
   runImportPipeline,
   toTransactions,
 } from '../../src/finance/importService';
+import * as categorizationService from '../../src/services/ai/categorizationService';
 
 describe('importService', () => {
   beforeEach(() => {
@@ -127,5 +130,52 @@ describe('importService', () => {
     expect(result.errors).toEqual([]);
     expect(steps).toContain('Detectando formato…');
     expect(steps).toContain('Concluído!');
+  });
+
+  it('parsePDF usa fallback local por texto e retorna transacoes parseadas', async () => {
+    const pdfLikeFile = new File([
+      [
+        'Extrato',
+        '01/04/2026 Mercado Central R$ 125,90',
+        '02/04/2026 Salario Cliente R$ 1500,00',
+      ].join('\n'),
+    ], 'extrato.pdf', { type: 'application/pdf' });
+
+    const result = await parsePDF(pdfLikeFile);
+    expect(result.length).toBeGreaterThan(0);
+    expect(result.every((tx) => tx.raw_amount > 0)).toBe(true);
+    expect(result.every((tx) => tx.selected)).toBe(true);
+  });
+
+  it('classifyImportedTransactions usa o servico canonico de categorizacao', async () => {
+    vi.spyOn(categorizationService, 'classifyTransactionsWithAI').mockResolvedValueOnce([
+      {
+        category: Category.NEGOCIO,
+        financeCategory: 'servicos',
+        confidence: 0.84,
+        type: TransactionType.RECEITA,
+        source: 'ai',
+      },
+    ]);
+
+    const result = await classifyImportedTransactions(
+      [
+        {
+          raw_date: '2026-04-01T00:00:00.000Z',
+          raw_amount: 950,
+          raw_description: 'Pagamento cliente recorrente',
+          raw_type: TransactionType.RECEITA,
+          selected: true,
+          merchant: 'Cliente XP',
+        },
+      ],
+      'user-import',
+    );
+
+    expect(result[0]).toMatchObject({
+      category: Category.NEGOCIO,
+      confidence: 0.84,
+      type: TransactionType.RECEITA,
+    });
   });
 });

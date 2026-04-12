@@ -1,8 +1,33 @@
 ﻿ï»¿# FLOW FINANCE â€” ROADMAP (v0.9.1)
 
+> Documentation reality (2026-04-11): this file is historical context only and should not be used as the source of truth for release readiness.
+> For current code reality and release gating, use:
+> - `docs/CODE_REALITY_MATRIX_v0.6_to_v0.9_2026-04-11.md`
+> - `docs/CHECKLIST_EXECUCAO_PRIORIZADA_v0.7_v0.9_2026-04-11.md`
+> - `docs/PRODUCTION_RISK_REVIEW_2026-04-11.md`
+> - `docs/HTTP_CONTRATOS_SENSIVEIS_CONGELADOS_2026-04-11.md`
+
 **Data:** 2026-04-02
 **Status:** TransiÃ§Ã£o v0.9.1 iniciada
 **Objetivo:** prontidÃ£o SaaS segura para Web (Vercel) e Mobile (iOS/Android)
+
+## Checkpoint 0.9.6.1v (2026-04-12)
+
+Status: BLOQUEADO por regressao na suite global.
+
+Validado neste checkpoint:
+- lint/type-check aprovados
+- scan de segredos aprovado
+- audit de dependencias de producao sem vulnerabilidades
+- runtime web e mobile aprovados
+- cobertura critica acima da meta (99.72/98.89)
+- regras do Firestore aprovadas no emulator (8/8)
+
+Plano imediato de desbloqueio:
+1. Corrigir arquivos de teste com falha na suite global e eliminar flakiness.
+2. Reexecutar `npm run test:coverage` ate zerar falhas.
+3. Revalidar gates criticos (`test:coverage:critical`, firestore rules, health runtime).
+4. Reabrir transicao com status aprovado somente apos regressao zero.
 
 ## Prioridades 0.9.1 â†’ 0.9.3
 

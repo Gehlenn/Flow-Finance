@@ -23,6 +23,16 @@ type PlanCatalogEntry = {
   features: string[];
 };
 
+type BillingProviderMode = 'stripe' | 'mock' | 'none';
+
+type BillingCapabilities = {
+  stripeConfigured: boolean;
+  stripePortalEnabled: boolean;
+  hasBillingCustomer: boolean;
+  billingProvider: BillingProviderMode;
+  manualPlanChangeAllowed: boolean;
+};
+
 type ChangeUserPlanInput = {
   userId: string;
   targetPlan: PlanId;
@@ -44,11 +54,19 @@ export function isMockBillingEnabled(): boolean {
 export function getPlanCatalog(userId: string): {
   currentPlan: PlanId;
   mockBillingEnabled: boolean;
+  stripeConfigured: boolean;
+  stripePortalEnabled: boolean;
+  hasBillingCustomer: boolean;
+  billingProvider: BillingProviderMode;
+  manualPlanChangeAllowed: boolean;
   plans: PlanCatalogEntry[];
 } {
+  const capabilities = getBillingCapabilities();
+
   return {
     currentPlan: getUserPlan(userId),
     mockBillingEnabled: isMockBillingEnabled(),
+    ...capabilities,
     plans: buildPlanCatalogEntries(),
   };
 }
@@ -56,6 +74,11 @@ export function getPlanCatalog(userId: string): {
 export async function getWorkspacePlanCatalog(workspaceId: string): Promise<{
   currentPlan: PlanId;
   mockBillingEnabled: boolean;
+  stripeConfigured: boolean;
+  stripePortalEnabled: boolean;
+  hasBillingCustomer: boolean;
+  billingProvider: BillingProviderMode;
+  manualPlanChangeAllowed: boolean;
   plans: PlanCatalogEntry[];
 }> {
   const workspace = await getWorkspaceAsync(workspaceId);
@@ -63,9 +86,12 @@ export async function getWorkspacePlanCatalog(workspaceId: string): Promise<{
     throw new AppError(404, 'Workspace not found');
   }
 
+  const capabilities = getBillingCapabilities(Boolean(workspace.billingCustomerId));
+
   return {
     currentPlan: workspace.plan,
     mockBillingEnabled: isMockBillingEnabled(),
+    ...capabilities,
     plans: buildPlanCatalogEntries(workspaceId),
   };
 }
@@ -336,6 +362,19 @@ function getProMonthlyPriceCents(): number {
   const rawValue = process.env.SAAS_PRO_MONTHLY_PRICE_CENTS;
   const parsedValue = rawValue ? parseInt(rawValue, 10) : NaN;
   return Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : 2990;
+}
+
+function getBillingCapabilities(hasBillingCustomer = false): BillingCapabilities {
+  const stripeConfigured = Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_PRO_MONTHLY);
+  const manualPlanChangeAllowed = isMockBillingEnabled();
+
+  return {
+    stripeConfigured,
+    stripePortalEnabled: stripeConfigured && hasBillingCustomer,
+    hasBillingCustomer,
+    billingProvider: stripeConfigured ? 'stripe' : manualPlanChangeAllowed ? 'mock' : 'none',
+    manualPlanChangeAllowed,
+  };
 }
 
 function buildPlanCatalogEntries(workspaceId?: string): PlanCatalogEntry[] {

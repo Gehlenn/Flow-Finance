@@ -1,0 +1,24 @@
+{
+  "events": [
+    {
+      "workspaceId": "ws_2",
+      "type": "goal_created",
+      "occurredAt": "2026-04-01T13:00:00.000Z",
+      "id": "e5c18d71-2679-4eeb-8032-c069343442d4"
+    },
+    {
+      "workspaceId": "ws_1",
+      "tenantId": "tenant_1",
+      "userId": "user_1",
+      "aggregateId": "tx_1",
+      "aggregateType": "transaction",
+      "type": "transaction_created",
+      "payload": {
+        "id": "tx_1",
+        "amount": 100
+      },
+      "occurredAt": "2026-04-01T12:00:00.000Z",
+      "id": "65561963-6ffc-422d-87c2-7b9f4c065a83"
+    }
+  ]
+}

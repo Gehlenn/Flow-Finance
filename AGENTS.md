@@ -6,12 +6,18 @@ This repository has project-specific operating rules. Read this file at the star
 
 Before making substantial changes, read:
 
-1. [FLOW_FINANCE_PROJECT_RULES.md](docs/FLOW_FINANCE_PROJECT_RULES.md)
-2. [FLOW_FINANCE_PRODUCT_PLAN.md](docs/FLOW_FINANCE_PRODUCT_PLAN.md)
-3. [FLOW_FINANCE_CODE_TASKS.md](docs/FLOW_FINANCE_CODE_TASKS.md)
-4. [PROJECT_STACK_GUIDE.md](docs/PROJECT_STACK_GUIDE.md)
-5. [PLAN_30D.md](docs/PLAN_30D.md)
-6. Relevant project docs in `docs/` and root `*.md` files that affect the current task
+1. [Project Rules](E:/app e jogos criados/obsidian-vault/Projetos/Core/Project Rules.md)
+2. [Product Plan](E:/app e jogos criados/obsidian-vault/Projetos/Core/Product Plan.md)
+3. [Code Tasks](E:/app e jogos criados/obsidian-vault/Projetos/Core/Code Tasks.md)
+4. [Project Stack Guide](E:/app e jogos criados/obsidian-vault/Projetos/Core/Project Stack Guide.md)
+5. [30-Day Plan](E:/app e jogos criados/obsidian-vault/Projetos/Planning/30-Day Plan.md)
+6. Relevant notes in `E:/app e jogos criados/obsidian-vault/Projetos/Planning/2026-04-flow-focus/` and root `*.md` files that affect the current task
+
+## Documentation Reality
+
+- The repository-local `obsidian-vault/` directory is not the active canonical planning source right now.
+- The current canonical Flow notes live in `E:/app e jogos criados/obsidian-vault/Projetos/`.
+- If the repo-local vault is repopulated later, this file must be updated explicitly instead of assuming both vaults are synchronized.
 
 ## Execution Rules
 
@@ -23,8 +29,23 @@ Before making substantial changes, read:
 - For this repository, use `GSD` as the main execution spine unless there is a clear reason not to.
 - Use `Superpowers` as execution/review support, not as a competing primary workflow.
 - Use `context7` only when current library or platform docs are needed.
-- Use `n8n-mcp` when the task touches clinic automation or workflow orchestration.
+- Use `n8n-mcp` when the task touches external automation workflows or workflow orchestration.
 - Use `UI/UX Pro Max` for clarity and hierarchy improvements after product simplification decisions are already clear.
+
+## Project-Scoped Skills (Tier 1 Integration)
+
+These skills are now available as part of Flow Finance workflow:
+
+### Critical Path Skills
+- **GSD** (`.agents/skills/gsd/`) — Release cycles, auditoria, test engineering, atomic commits
+- **Gstack** (`.agents/skills/gstack/`) — QA automation, performance monitoring, E2E validation, canary deployment
+- **UI/UX Pro Max** (`.agents/skills/ui-ux-pro-max/`) — Design audit, simplification, hierarchy, visual consistency
+
+### When to Activate
+- Release cycle: `/gsd-do [release task]` → audit → test → ship
+- Pre-ship QA: `/qa` (full test+fix) or `/qa-only` (report only)
+- Design audit: `/design-review` (live site) or `/design-shotgun` (exploration)
+- Performance: `/benchmark` (baseline + tracking)
 
 ## Quality Gates
 
@@ -40,11 +61,12 @@ If the user says:
 
 follow the transition protocol defined in:
 
-[FLOW_FINANCE_PROJECT_RULES.md](docs/FLOW_FINANCE_PROJECT_RULES.md)
+[Project Rules](E:/app e jogos criados/obsidian-vault/Projetos/Core/Project Rules.md)
 
 ## Notes
 
 - This file is the stable entry point for future Codex sessions.
-- Additional project `.md` files provided later should be consolidated into `docs/` and referenced from here.
-- Current product direction: simplify the app around cash flow, transactions, projected/realized revenue, consultative AI, and operational linkage for service businesses, starting with the dental clinic case.
-- Current operating horizon: focus this repository only on `Flow Finance + clínica`. Parallel efforts such as channel/content work do not belong to this project context.
+- Additional project `.md` files should be consolidated into the canonical vault path above or the repository docs, and this file should be updated whenever that source of truth changes.
+- Current product direction: simplify the app around cash flow, transactions, projected/realized revenue, consultative AI, and operational linkage for service businesses.
+- The dental clinic is only a validation case, not the product identity.
+- Current operating horizon: focus this repository only on `Flow Finance`. Parallel efforts such as channel/content work and standalone automation work do not belong to this project context.

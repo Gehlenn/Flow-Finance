@@ -12,11 +12,26 @@ describe('AI schema hardening', () => {
     expect(result.success).toBe(true);
   });
 
+  it('accepts cash_position and receivables_question intents', () => {
+    const cashPosition = CFOSchema.safeParse({
+      question: 'Como esta meu caixa?',
+      intent: 'cash_position',
+    });
+
+    const receivables = CFOSchema.safeParse({
+      question: 'Tenho pendencias em aberto?',
+      intent: 'receivables_question',
+    });
+
+    expect(cashPosition.success).toBe(true);
+    expect(receivables.success).toBe(true);
+  });
+
   it('rejects oversized CFO question', () => {
     const result = CFOSchema.safeParse({
       question: 'a'.repeat(1001),
       context: 'ok',
-      intent: 'general_finance',
+      intent: 'monthly_summary',
     });
 
     expect(result.success).toBe(false);

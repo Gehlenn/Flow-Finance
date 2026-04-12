@@ -116,6 +116,7 @@ const App: React.FC = () => {
     activeTenantId: authState.activeWorkspace.tenantId,
     activeTenantName: authState.activeWorkspace.tenantName,
     activeWorkspaceName: authState.activeWorkspace.name,
+    activeWorkspacePlan: authState.activeWorkspace.plan || 'free',
     activeWorkspaceRole: authState.activeWorkspace.role,
     hideValues,
     theme,
@@ -155,6 +156,7 @@ const App: React.FC = () => {
     onDeleteAlert: financialState.deleteAlert,
   }), [
     authState.activeWorkspace.name,
+    authState.activeWorkspace.plan,
     authState.activeWorkspace.role,
     authState.activeWorkspace.tenantId,
     authState.activeWorkspace.tenantName,
@@ -202,7 +204,7 @@ const App: React.FC = () => {
   }
 
   if (!authState.isLoggedIn) {
-    return <Login onLogin={authState.handleLogin} />;
+    return <Login onLogin={authState.handleLogin} onDevelopmentLogin={authState.handleDevelopmentLogin} />;
   }
 
   if (!userName) {

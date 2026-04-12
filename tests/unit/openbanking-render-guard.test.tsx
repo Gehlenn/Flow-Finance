@@ -10,6 +10,7 @@ const baseContext: NavigationRenderContext = {
   activeTenantId: 't1',
   activeTenantName: null,
   activeWorkspaceName: 'Workspace Teste',
+  activeWorkspacePlan: 'free',
   activeWorkspaceRole: null,
   hideValues: false,
   theme: 'light',
@@ -79,5 +80,35 @@ describe('guard de render do openbanking', () => {
     const output = result.current.renderActiveTab({ ...baseContext, isDev: false });
 
     expect(output).toBeNull();
+  });
+
+  it('analytics mostra upgrade suave no plano free e tela completa no plano pro', () => {
+    const { result } = renderHook(() => useNavigationTabs());
+
+    act(() => {
+      result.current.setActiveTab('analytics');
+    });
+
+    const freeOutput = result.current.renderActiveTab({ ...baseContext, activeWorkspacePlan: 'free' }) as any;
+    const proOutput = result.current.renderActiveTab({ ...baseContext, activeWorkspacePlan: 'pro' }) as any;
+
+    expect(freeOutput).not.toBeNull();
+    expect(freeOutput.props?.title).toBe('Relatorios completos do caixa');
+    expect(proOutput).not.toBeNull();
+    expect(proOutput.type?.toString?.()).toContain('Symbol(react.suspense)');
+  });
+
+  it('propaga o plano ativo para o AICFO no tab cfo', () => {
+    const { result } = renderHook(() => useNavigationTabs());
+
+    act(() => {
+      result.current.setActiveTab('cfo');
+    });
+
+    const output = result.current.renderActiveTab({ ...baseContext, activeWorkspacePlan: 'pro' }) as any;
+    const child = output?.props?.children;
+
+    expect(output).not.toBeNull();
+    expect(child?.props?.workspacePlan).toBe('pro');
   });
 });

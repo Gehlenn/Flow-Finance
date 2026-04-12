@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Transaction, TransactionType, Category } from '../types';
 import { scanReceipt, ScannedReceipt } from '../src/ai/receiptScanner';
+import { normalizeFromAIImage, draftToTransaction } from '../src/domain/intakeNormalizer';
 import {
   Camera, Upload, X, Check, ScanLine, AlertCircle,
   FileImage, Loader2, RotateCcw, ChevronRight,
@@ -92,17 +93,30 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
 
   const handleConfirm = () => {
     if (!editData.amount) return;
-    const tx: Partial<Transaction> = {
-      amount:         editData.amount,
-      description:    editData.description ?? editData.merchant ?? 'Recibo escaneado',
-      merchant:       editData.merchant ?? undefined,
-      date:           editData.date ?? new Date().toISOString(),
-      type:           editData.type ?? TransactionType.DESPESA,
-      category:       editData.category ?? Category.PESSOAL,
-      payment_method: editData.payment_method ?? undefined,
-      source:         'ai_image',
-      confidence_score: editData.confidence ?? 0.7,
+    const draft = normalizeFromAIImage({
+      data: {
+        amount: editData.amount,
+        description: editData.description ?? editData.merchant ?? 'Recibo escaneado',
+        type: editData.type ?? TransactionType.DESPESA,
+        category: editData.category ?? Category.PESSOAL,
+      },
+      confidence: scanData?.confidence ?? editData.confidence ?? 0.7,
+      mimeType: imageFile?.type,
+    });
+
+    if (editData.date) {
+      draft.occurredAt = new Date(editData.date).toISOString();
+    }
+
+    if (editData.payment_method) {
+      draft.paymentMethod = editData.payment_method;
+    }
+
+    const tx = {
+      ...(draftToTransaction(draft) as Partial<Transaction>),
+      merchant: editData.merchant ?? undefined,
     };
+
     onAddTransaction?.([tx]);
     setConfirmed(true);
     setPhase('done');

@@ -6,6 +6,7 @@ let sentryLoader: Promise<SentryModule | null> | null = null;
 let sentryInitialized = false;
 
 const getDsn = (): string => import.meta.env.VITE_SENTRY_DSN || '';
+export const isSentryConfigured = (): boolean => Boolean(getDsn().trim());
 
 async function loadSentry(): Promise<SentryModule | null> {
   if (sentryModule) return sentryModule;
@@ -35,7 +36,6 @@ export const initSentry = () => {
   const dsn = getDsn();
 
   if (!dsn) {
-    console.warn('Sentry DSN not found. Error tracking disabled.');
     return;
   }
 

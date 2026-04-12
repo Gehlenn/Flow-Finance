@@ -27,8 +27,8 @@ test.describe('Insights + AI CFO', () => {
     await clickWithRetry(() => page.getByRole('button', { name: /Insights/i }));
     await expect(page.getByText(/Análise Financeira com IA|Insights/i).first()).toBeVisible();
 
-    await clickWithRetry(() => page.getByRole('button', { name: /Consultor IA/i }));
-    await expect(page.getByText(/Consultor IA|Apoio consultivo para decisoes financeiras/i).first()).toBeVisible();
+    await clickWithRetry(() => page.getByRole('button', { name: /Apoio IA|Consultor IA/i }));
+    await expect(page.getByText(/Apoio Financeiro IA|Apoio consultivo para decisoes financeiras|Consultor IA/i).first()).toBeVisible();
 
     expect(consoleIssues).toEqual([]);
   });

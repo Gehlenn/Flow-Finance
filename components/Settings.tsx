@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   User, LogOut, Moon, Sliders, Sun, Edit2,
   ChevronRight, Phone, BrainCircuit, X, Loader2, Send,
@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import NamePromptModal from './NamePromptModal';
 import LegalModal from './LegalModal';
-import { GoogleGenAI } from '@google/genai';
+import { apiRequest, API_ENDPOINTS } from '../src/config/api.config';
 import { auth, googleProvider, appleProvider, linkWithPopup } from '../services/firebase';
 import type { AuthProvider } from 'firebase/auth';
 import {
@@ -65,7 +65,7 @@ const Settings: React.FC<SettingsProps> = ({
   const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceSummary | null>(null);
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [workspaceSwitching, setWorkspaceSwitching] = useState(false);
-  const [monthlyUsageSummary, setMonthlyUsageSummary] = useState('0 transacoes · 0 consultas IA');
+  const [monthlyUsageSummary, setMonthlyUsageSummary] = useState('0 transacoes - 0 consultas IA');
 
   useEffect(() => {
     void loadBillingOverview();
@@ -98,7 +98,7 @@ const Settings: React.FC<SettingsProps> = ({
       setCurrentPlan(overview.currentPlan);
       setPlanName(overview.currentPlan === 'pro' ? 'Pro' : 'Free');
       setMonthlyUsageSummary(
-        `${overview.currentMonthUsage.transactions} transacoes · ` +
+        `${overview.currentMonthUsage.transactions} transacoes - ` +
         `${overview.currentMonthUsage.aiQueries} consultas IA`,
       );
     } catch (error) {
@@ -131,15 +131,17 @@ const Settings: React.FC<SettingsProps> = ({
     setIsGeneratingSupport(true);
     setSupportResponse('');
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: supportQuery,
-        config: {
-          systemInstruction: 'Voce e o assistente de suporte do Flow Finance. Ajude com fluxos financeiros, uso do produto e duvidas operacionais. Seja conciso e amigavel. Responda sempre em portugues.',
+      const response = await apiRequest<{ answer?: string; text?: string }>(
+        API_ENDPOINTS.AI.CFO,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            question: supportQuery,
+            intent: 'monthly_summary',
+          }),
         },
-      });
-      setSupportResponse(response.text || 'Nao foi possivel processar sua pergunta agora.');
+      );
+      setSupportResponse(response.answer ?? response.text ?? 'Nao foi possivel processar sua pergunta agora.');
     } catch {
       setSupportResponse('Suporte IA temporariamente indisponivel.');
     } finally {
@@ -204,7 +206,7 @@ const Settings: React.FC<SettingsProps> = ({
           <div className="flex items-center justify-between px-1">
             <h4 className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-widest">Resumo do workspace</h4>
             <span className={`text-[9px] font-black uppercase tracking-widest ${currentPlan === 'pro' ? 'text-emerald-500' : 'text-indigo-500'}`}>
-              {currentPlan.toUpperCase()} · {activeWorkspaceRole || activeWorkspace?.role || 'membro'}
+              {currentPlan.toUpperCase()} - {activeWorkspaceRole || activeWorkspace?.role || 'membro'}
             </span>
           </div>
 
@@ -218,7 +220,7 @@ const Settings: React.FC<SettingsProps> = ({
             >
               {workspaces.map((workspace) => (
                 <option key={workspace.workspaceId} value={workspace.workspaceId}>
-                  {workspace.name} · {workspace.plan.toUpperCase()}
+                  {workspace.name} - {workspace.plan.toUpperCase()}
                 </option>
               ))}
             </select>
@@ -435,3 +437,4 @@ const Settings: React.FC<SettingsProps> = ({
 };
 
 export default Settings;
+

@@ -6,10 +6,14 @@ const billingMocks = vi.hoisted(() => ({
   setDocMock: vi.fn(),
   generatedId: { value: 0 },
   writeAuditLogEventMock: vi.fn().mockResolvedValue(undefined),
+  isFirebaseConfigured: { value: true },
 }));
 
 vi.mock('../../services/firebase', () => ({
   db: {},
+  get isFirebaseConfigured() {
+    return billingMocks.isFirebaseConfigured.value;
+  },
 }));
 
 vi.mock('../../src/services/firestoreWorkspaceStore', () => ({
@@ -42,6 +46,8 @@ vi.mock('firebase/firestore', () => ({
 
 import {
   getWorkspaceBillingOverview,
+  listWorkspaceBillingHooks,
+  readWorkspaceUsage,
   updateWorkspacePlan,
 } from '../../src/services/firestoreBillingStore';
 
@@ -49,6 +55,7 @@ describe('firestoreBillingStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     billingMocks.generatedId.value = 0;
+    billingMocks.isFirebaseConfigured.value = true;
   });
 
   it('reads billing overview from Firestore collections', async () => {
@@ -96,5 +103,19 @@ describe('firestoreBillingStore', () => {
       { merge: true },
     );
     expect(billingMocks.writeAuditLogEventMock).toHaveBeenCalled();
+  });
+
+  it('returns safe defaults when Firebase billing is not configured', async () => {
+    billingMocks.isFirebaseConfigured.value = false;
+
+    await expect(readWorkspaceUsage('ws-1')).resolves.toEqual({});
+    await expect(listWorkspaceBillingHooks({ workspaceId: 'ws-1' })).resolves.toEqual([]);
+    await expect(getWorkspaceBillingOverview({ tenantId: 'tenant-1', workspaceId: 'ws-1' })).resolves.toEqual(
+      expect.objectContaining({
+        currentPlan: 'free',
+        currentMonthUsage: { transactions: 0, aiQueries: 0, bankConnections: 0 },
+        billingHooks: [],
+      }),
+    );
   });
 });
