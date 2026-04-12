@@ -1,9 +1,9 @@
-# Code Reality Matrix - v0.6 to v0.9
+# Matriz de Realidade do Código - v0.6 a v0.9
 
 Data: 2026-04-11
 Escopo: avaliacao do codigo e dos contratos atuais, sem presumir que a documentacao previa estava correta
 
-## Resumo Executivo
+## Resumo executivo
 
 - `0.6.x`: fechado no codigo e coerente com a trilha principal do produto.
 - `0.7.x`: implementado de forma relevante, mas sem fechamento formal unificado.

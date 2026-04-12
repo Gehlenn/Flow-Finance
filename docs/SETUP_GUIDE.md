@@ -1,258 +1,151 @@
-# 🔧 Quick Setup Guide - Flow Finance
+# Guia de Setup
 
-## 1️⃣ OpenAI / GPT-4 Configuration
+## Papel deste documento
 
-### Get Your OpenAI API Key
+Este e o guia canonico de setup do Flow Finance. Ele cobre a preparacao local, a ordem correta de validacao e os pontos minimos para envolver Firebase, Stripe e Vercel sem depender de memoria de sessao.
 
-1. **Go to OpenAI Platform**
-   - Visit: https://platform.openai.com/api/keys
-   - Login with your account
+## Links oficiais atuais
 
-2. **Create API Key**
-   - Click "Create new secret key"
-   - Copy the key (starts with `sk-proj-`)
-   - ⚠️ Save it securely (never share!)
+- Frontend principal: https://flow-finance-frontend-nine.vercel.app/
+- Backend principal: https://flow-finance-backend.vercel.app/
+- Frontend alternativo: https://flow-finance-xi.vercel.app/
 
-3. **Add to .env.local**
-   ```
-   OPENAI_API_KEY=your_openai_api_key_here
-   OPENAI_MODEL=gpt-4-turbo-preview
-   OPENAI_MAX_TOKENS=4096
-   ```
+## Pre-requisitos
 
-4. **Cost Estimation**
-   - GPT-4: ~$0.03 per 1K tokens
-   - 1000 users = ~$10-50/month
-   - Can optimize with prompt engineering
+- Node.js `18+`
+- npm `8+`
+- Vercel CLI quando houver necessidade de deploy
+- Stripe CLI quando houver validacao real de billing sandbox
+- acesso as credenciais corretas quando a tarefa exigir Firebase, Stripe, Sentry ou providers de IA
 
-### Setup Backend OpenAI Integration
+## Ordem correta
 
-1. **Backend URL**
-   ```
-   VITE_API_DEV_URL=http://localhost:3001
-   VITE_API_PROD_URL=https://your-backend.vercel.app
-   ```
+1. instalar dependencias do frontend e backend
+2. preencher variaveis locais minimas
+3. subir frontend e backend
+4. rodar checks criticos
+5. so depois envolver deploy no Vercel
 
-2. **Verify Backend is Configured**
-   - Check: `backend/src/config/openai.ts` ✅ (already done)
-   - Check: `backend/src/controllers/aiController.ts` ✅ (already done)
+## Instalar dependencias
 
----
-
-## 2️⃣ Firebase Configuration
-
-### Option A: Firebase Console (Recommended)
-
-1. **Go to Firebase Console**
-   - https://console.firebase.google.com
-   - Select project: `komodo-flow`
-
-2. **Get Admin SDK Key**
-   - Project Settings → Service Accounts
-   - Click "Generate New Private Key"
-   - A JSON file will download
-
-3. **Extract Values**
-   ```
-   FIREBASE_PROJECT_ID=komodo-flow
-   FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
-   FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxx@komodo-flow.iam.gserviceaccount.com
-   ```
-
-4. **Add to .env.local**
-   ```env
-   FIREBASE_PROJECT_ID=komodo-flow
-   FIREBASE_PRIVATE_KEY="YOUR_PRIVATE_KEY_HERE"
-   FIREBASE_CLIENT_EMAIL=YOUR_EMAIL_HERE
-   ```
-
-### Option B: Using Firestore Web SDK
-- Already configured in the app
-- Keys from Firebase Console → Project Settings → General tab:
-  - API Key
-  - Auth Domain
-  - Project ID
-
-### Firestore Security Rules (Required for app sync)
-
-This repository now tracks rules at `firestore.rules` for the collections used by the app (`users`, `accounts`, `transactions`).
-
-1. Install Firebase CLI:
-   ```bash
-   npm i -g firebase-tools
-   ```
-
-2. Login and select project:
-   ```bash
-   firebase login
-   firebase use komodo-flow
-   ```
-
-3. Deploy rules:
-   ```bash
-   firebase deploy --only firestore:rules --project komodo-flow
-   ```
-
-4. Validate quickly in app:
-   - Login with a user.
-   - Create/update account or transaction.
-   - Confirm no `permission-denied` in console.
-  - Storage Bucket
-
----
-
-## 3️⃣ Vercel Deployment & Linking
-
-### Step 1: Install Vercel CLI
+Raiz:
 
 ```bash
-npm install -g vercel
+npm ci
 ```
 
-### Step 2: Login to Vercel
+Backend:
 
 ```bash
-vercel login
-```
-- Opens browser
-- Approve authentication
-- Returns to terminal
-
-### Step 3: Link Your Project
-
-```bash
-vercel link
-```
-- Select "Create a new project"
-- Set project name: `flow-finance`
-- Framework: React ✅
-- Root directory: `.` ✅
-
-### Step 4: Add Environment Variables
-
-**Option A: Via CLI**
-```bash
-vercel env add OPENAI_API_KEY
-vercel env add VITE_API_PROD_URL
-vercel env add FIREBASE_PROJECT_ID
-vercel env add FIREBASE_PRIVATE_KEY
-vercel env add FIREBASE_CLIENT_EMAIL
-```
-
-**Option B: Via Vercel Dashboard**
-1. Go to Vercel Dashboard
-2. Select `flow-finance` project
-3. Settings → Environment Variables
-4. Add all variables from `.env.local`
-
-### Step 5: Deploy to Production
-
-```bash
-npm run deploy
-```
-
-Or for preview:
-```bash
-npm run deploy:preview
-```
-
----
-
-## 4️⃣ Environment Variables Checklist
-
-### Frontend (.env.local)
-- [ ] `VITE_API_DEV_URL` = http://localhost:3001
-- [ ] `VITE_API_PROD_URL` = your backend URL
-- [ ] `VITE_FIREBASE_API_KEY`
-- [ ] `VITE_FIREBASE_PROJECT_ID`
-
-### Backend (.env or .env.local)
-- [ ] `OPENAI_API_KEY` = your OpenAI key
-- [ ] `FIREBASE_PROJECT_ID`
-- [ ] `FIREBASE_PRIVATE_KEY`
-- [ ] `FIREBASE_CLIENT_EMAIL`
-
-### Vercel Dashboard
-- [ ] All backend variables set
-- [ ] Production domain configured
-- [ ] Auto-deploy from Git enabled
-
----
-
-## 5️⃣ Testing the Setup
-
-### Local Development
-```bash
-# Terminal 1: Backend
 cd backend
-npm install
-npm start
+npm ci
+```
 
-# Terminal 2: Frontend
-npm install
+## Variaveis locais mais relevantes
+
+### Frontend
+
+```env
+VITE_API_DEV_URL=http://localhost:3001
+VITE_API_PROD_URL=https://flow-finance-backend.vercel.app/
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_PROJECT_ID=
+VITE_SENTRY_DSN=
+VITE_APP_VERSION=
+```
+
+### Backend
+
+```env
+OPENAI_API_KEY=
+GEMINI_API_KEY=
+JWT_SECRET=
+FIREBASE_PROJECT_ID=
+FIREBASE_PRIVATE_KEY=
+FIREBASE_CLIENT_EMAIL=
+SENTRY_DSN=
+APP_VERSION=
+```
+
+## Rodar localmente
+
+Frontend:
+
+```bash
 npm run dev
 ```
 
-Visit: http://localhost:3078
+Backend:
 
-### Production Testing
 ```bash
-npm run deploy:preview
+cd backend
+npm run dev
 ```
 
-Visit: https://flow-finance-preview.vercel.app
+## Checks recomendados
 
-### Production Deployment
 ```bash
-npm run deploy
+npm run lint
+npm run test:coverage:critical
+npm run health:runtime
+npm run health:runtime:mobile
 ```
 
-Visit: https://flow-finance.vercel.app
+## Quando envolver Firebase
 
----
+Use Firebase real apenas quando o fluxo depender disso.
 
-## 6️⃣ Troubleshooting
+Regras praticas:
 
-### OpenAI 401 Unauthorized
-- [ ] Check API key is correct
-- [ ] Check API key hasn't expired
-- [ ] Check API key has usage credits
+- nao assumir que ausencia de Firebase local e bug do produto
+- preencher frontend e backend com o mesmo projeto correto
+- validar se a tarefa realmente precisa da trilha completa de auth Firebase
 
-### Firebase Connection Error
-- [ ] Check FIREBASE_PROJECT_ID is correct
-- [ ] Check private key format (should have newlines)
-- [ ] Check email is from same Google account
+## Quando envolver Stripe sandbox
 
-### Vercel Deployment Failed
-- [ ] Check `npm run build` passes locally
-- [ ] Check all environment variables are set
-- [ ] Check Node.js version >= 18
-- [ ] Check no circular dependencies
+Para billing real em sandbox:
 
-### API Calls Fail
-- [ ] Check backend is running
-- [ ] Check `VITE_API_PROD_URL` is correct
-- [ ] Check CORS is configured
-- [ ] Check API endpoints match
+```bash
+stripe login
+stripe listen --forward-to http://localhost:3001/api/saas/stripe/webhook
+```
 
----
+Objetivos minimos da validacao:
 
-## 7️⃣ Next Steps
+- checkout
+- webhook
+- mudanca de plano
+- `billingCustomerId`
+- portal
 
-1. ✅ Set up OpenAI + Firebase locally
-2. ✅ Test with `npm run dev`
-3. ✅ Deploy backend to Vercel/Railway
-4. ✅ Link Vercel project
-5. ✅ Configure environment variables
-6. ✅ Deploy frontend to Vercel
-7. ✅ Monitor production metrics
+## Quando envolver Vercel
 
----
+Login e vinculo:
 
-## 📞 Support
+```bash
+vercel login
+vercel link
+```
 
-- **OpenAI Help**: https://platform.openai.com/docs
-- **Firebase Help**: https://firebase.google.com/docs
-- **Vercel Help**: https://vercel.com/docs
+Validacao do alvo acessivel:
 
-Happy coding! 🚀
+```bash
+VERCEL_TARGET_URL=https://seu-preview.vercel.app npm run health:vercel
+```
+
+Sem URL acessivel, nao declarar fechamento do ambiente alvo.
+
+## Regras operacionais
+
+- preview protegido por Vercel Authentication nao serve como evidencia automatizada de health
+- sem DSN e versao configurados, observabilidade e versionamento ficam incompletos no destino
+- a documentacao principal do projeto deve permanecer em PT-BR
+- toda mudanca estrutural relevante deve ser refletida no repositorio e no vault
+
+## Leitura complementar
+
+- [docs/COMECE_AQUI.md](E:\app e jogos criados\Flow-Finance\docs\COMECE_AQUI.md)
+- [docs/DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT.md)
+- [docs/VERCEL_CONFIG.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_CONFIG.md)
+- [docs/VERCEL_DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_DEPLOYMENT.md)
+- [docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](E:\app e jogos criados\Flow-Finance\docs\EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)

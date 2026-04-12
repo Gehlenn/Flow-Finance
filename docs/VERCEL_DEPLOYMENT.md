@@ -1,108 +1,78 @@
-# 🚀 Flow Finance - Vercel Deployment Guide
+# Guia de Deploy no Vercel
 
-## Prerequisites
+## Papel deste documento
 
-1. **Vercel Account**: [Sign up at vercel.com](https://vercel.com)
-2. **Backend API**: Deploy your backend first and get the production URL
-3. **Environment Variables**: Configure API keys and URLs
+Este guia descreve a execucao pratica de deploy e validacao no Vercel. Ele complementa `VERCEL_CONFIG`, mas nao repete toda a matriz de variaveis.
 
-## Quick Deploy
+## Links oficiais conhecidos
 
-### 1. Install Vercel CLI
-```bash
-npm install -g vercel
-```
+- Frontend principal: https://flow-finance-frontend-nine.vercel.app/
+- Backend principal: https://flow-finance-backend.vercel.app/
+- Frontend alternativo: https://flow-finance-xi.vercel.app/
 
-### 2. Login to Vercel
-```bash
-vercel login
-```
+## Premissas
 
-### 3. Deploy to Preview
+Antes de fechar qualquer deploy:
+
+1. os checks criticos locais precisam estar verdes
+2. as variaveis de ambiente precisam estar alinhadas
+3. a URL alvo precisa estar acessivel para verificacao
+4. health e version precisam responder a aplicacao real
+
+## Comandos
+
+Preview:
+
 ```bash
 npm run deploy:preview
 ```
 
-### 4. Deploy to Production
+Producao:
+
 ```bash
 npm run deploy
 ```
 
-## Environment Variables
+Validacao do alvo:
 
-Configure these in your Vercel dashboard or using CLI:
-
-### Required Variables
 ```bash
-# Backend API URLs
-VITE_API_DEV_URL=http://localhost:3001
-VITE_API_PROD_URL=https://your-backend-api.com
-
-# App Configuration
-VITE_APP_VERSION=0.3.1
-VITE_SENTRY_DSN=your_sentry_dsn_here
-VITE_SENTRY_DEV_ENABLED=false
+VERCEL_TARGET_URL=https://seu-preview.vercel.app npm run health:vercel
 ```
 
-### Firebase Configuration (if using Firebase)
-```bash
-VITE_FIREBASE_API_KEY=your_firebase_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-```
+## Interpretacao correta
 
-## Build Configuration
+Resultado util:
 
-The `vercel.json` file is already configured with:
-- Static build using Vite
-- SPA routing (all routes serve index.html)
-- API proxy to your backend
-- Optimized build settings
+- `200` nas rotas esperadas
+- `requestId` presente
+- `routeScope` presente
+- payload coerente de health e version
 
-## Backend API Requirements
+Resultado que nao fecha validacao:
 
-Your backend must provide these endpoints:
-- `POST /api/ai/interpret` - Text interpretation
-- `POST /api/ai/analyze` - Transaction analysis
-- `POST /api/ai/classify-transactions` - Category classification
-- `POST /api/ai/scan-receipt` - Receipt OCR
-- `POST /api/ai/insights` - Financial insights
-- `POST /api/ai/cfo` - AI CFO assistant
+- `blockedByVercelAuth=true`
+- `401` antes da aplicacao responder
+- HTML de autenticacao no lugar do app
 
-## Custom Domain (Optional)
+## Fluxo recomendado
 
-1. Go to Vercel Dashboard
-2. Select your project
-3. Go to Settings → Domains
-4. Add your custom domain
+1. rodar checks locais criticos
+2. publicar preview
+3. revisar variaveis do frontend e backend
+4. liberar acesso ao preview ou obter share URL
+5. rodar `npm run health:vercel`
+6. confirmar `/health`, `/api/health` e `/api/version`
 
-## Monitoring & Analytics
+## Bloqueio operacional atual
 
-- **Sentry**: Error tracking (configure VITE_SENTRY_DSN)
-- **Vercel Analytics**: Built-in analytics
-- **Performance**: Monitor with Vercel's dashboard
+O principal bloqueio de validacao externa continua sendo:
 
-## Troubleshooting
+- preview ou URL de verificacao protegida antes da aplicacao responder
 
-### Build Fails
-- Check that all dependencies are in `package.json`
-- Ensure Node.js version >= 18.0.0
-- Verify environment variables are set
+Esse bloqueio invalida o fechamento do ambiente alvo mesmo quando o deploy existe.
 
-### API Calls Fail
-- Check backend URL in environment variables
-- Ensure CORS is configured on backend
-- Verify API endpoints match the expected format
+## Referencias relacionadas
 
-### Performance Issues
-- Enable Vercel's Edge Functions for better performance
-- Use proper caching headers
-- Optimize bundle size with code splitting
-
-## Cost Optimization
-
-- **Free Tier**: 100GB bandwidth, 1000 functions/month
-- **Pro Tier**: $20/month for higher limits
-- **Enterprise**: Custom pricing for large scale
-
-Monitor usage in Vercel dashboard to optimize costs.
+- [docs/VERCEL_CONFIG.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_CONFIG.md)
+- [docs/DEPLOYMENT_STATUS.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT_STATUS.md)
+- [docs/DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT.md)

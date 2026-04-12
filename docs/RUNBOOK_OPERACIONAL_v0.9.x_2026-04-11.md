@@ -10,10 +10,10 @@ Este runbook consolida a referencia operacional unica da linha v0.9.x para evita
 
 Fontes consolidadas (obrigatorias):
 - `docs/CHANGELOG.md`
-- `docs/CHECKLIST_EXECUCAO_PRIORIZADA_v0.7_v0.9_2026-04-11.md`
-- `docs/CODE_REALITY_MATRIX_v0.6_to_v0.9_2026-04-11.md`
-- `docs/PRODUCTION_RISK_REVIEW_2026-04-11.md`
-- `docs/PR_SUMMARY_0.9.6.md`
+- `docs/archive/CHECKLIST_EXECUCAO_PRIORIZADA_v0.7_v0.9_2026-04-11.md`
+- `docs/archive/CODE_REALITY_MATRIX_v0.6_to_v0.9_2026-04-11.md`
+- `docs/archive/PRODUCTION_RISK_REVIEW_2026-04-11.md`
+- `docs/archive/PR_SUMMARY_0.9.6.md`
 
 Diretriz desta consolidacao:
 - nao reabrir discussao de release

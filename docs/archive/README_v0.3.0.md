@@ -4,4 +4,4 @@ This file preserves the historical README that described the project at the v0.3
 
 The original content has been archived to keep the repository root focused on current documentation while preserving milestone context for audits and historical review.
 
-See the current project overview in [README.md](/E:/app%20e%20jogos%20criados/Flow-Finance/README.md).
+See the current project overview in [README.md](E:\app e jogos criados\Flow-Finance\README.md).

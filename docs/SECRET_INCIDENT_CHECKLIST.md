@@ -1,35 +1,41 @@
-# Secret Incident Checklist
+# Checklist de Incidente com Segredos
 
-## Objective
-Short operational checklist for accidental exposure of API keys, tokens, or webhook secrets.
+## Objetivo
 
-## Immediate Actions (First 15 Minutes)
-1. Revoke and rotate exposed credentials in the provider dashboard.
-2. Invalidate related sessions, webhooks, and API tokens if supported.
-3. Confirm no secret was committed to tracked files.
-4. Remove sensitive content from local temporary files/editors.
-5. Notify maintainers about scope and impacted integrations.
+Checklist curto para responder a exposição acidental de chaves, tokens, segredos de webhook ou credenciais equivalentes.
 
-## Repository Verification
-1. Search tracked files for secret patterns.
-2. Check git history for leaked values.
-3. Confirm .env and local secret files are ignored by git.
-4. Replace realistic values in example env files with placeholders.
+## Ações imediatas
 
-## Runtime Validation After Rotation
-1. Update local env files with new values.
-2. Validate auth and webhook flows in staging/local.
-3. Re-run lint and impacted tests.
-4. Re-run critical coverage when touching IA, finance, or shared flow.
+1. revogar e rotacionar as credenciais expostas
+2. invalidar sessões, tokens e webhooks relacionados quando aplicável
+3. confirmar que nenhum segredo real ficou em arquivo rastreado
+4. remover valores sensíveis de arquivos temporários e editores
+5. notificar os mantenedores sobre o escopo do incidente
 
-## Stripe-Specific Steps
-1. Rotate secret key and webhook signing secret.
-2. Update backend env values.
-3. Re-deliver webhook events (if needed) to validate signature checks.
-4. Validate billing flows in mock mode and real sandbox mode.
+## Verificação do repositório
 
-## Prevention Baseline
-1. Keep only placeholders in .env.example and .env.local.example.
-2. Never paste real secrets in untitled editors or markdown docs.
-3. Keep local .env files gitignored.
-4. Use secret scanning in CI when possible.
+1. buscar padrões de segredo em arquivos rastreados
+2. verificar histórico Git quando houver suspeita de commit indevido
+3. confirmar que arquivos `.env` e equivalentes seguem ignorados
+4. manter apenas placeholders em arquivos de exemplo
+
+## Validação após rotação
+
+1. atualizar variáveis locais e de ambiente
+2. validar autenticação e webhooks nos fluxos afetados
+3. rerodar lint e testes impactados
+4. rerodar cobertura crítica quando o incidente tocar IA, finanças ou fluxo compartilhado
+
+## Passos específicos para Stripe
+
+1. rotacionar chave secreta e segredo de assinatura de webhook
+2. atualizar o backend com os novos valores
+3. redisparar eventos quando necessário para validar assinatura
+4. validar billing em mock e em sandbox real quando fizer sentido
+
+## Prevenção mínima
+
+1. manter placeholders em `.env.example` e `.env.local.example`
+2. não colar segredos reais em markdown ou notas soltas
+3. manter arquivos locais de segredo fora do Git
+4. usar varredura de segredo no CI quando possível

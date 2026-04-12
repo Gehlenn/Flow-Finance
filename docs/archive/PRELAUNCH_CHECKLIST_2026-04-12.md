@@ -108,10 +108,10 @@
 ## 📤 Artefatos de Lançamento Produzidos
 
 - [x] `CHANGELOG.md` — Histórico completo v0.9.6
-- [x] `docs/RELEASE_NOTES_0.9.6_PT-BR.md` — Notas para usuários finais
-- [x] `docs/GO_NO_GO_DECISION_2026-04-12.md` — Decisão oficial com evidências
+- [x] `docs/archive/RELEASE_NOTES_0.9.6_PT-BR.md` — Notas para usuários finais
+- [x] `docs/archive/GO_NO_GO_DECISION_2026-04-12.md` — Decisão oficial com evidências
 - [x] `docs/DEPLOYMENT_STATUS.md` — Histórico de execução técnica
-- [x] `docs/PLANO_LANCAMENTO_10_DIAS_2026-04-12.md` — Roadmap próximos 10 dias
+- [x] `docs/archive/PLANO_LANCAMENTO_10_DIAS_2026-04-12.md` — Roadmap próximos 10 dias
 - [x] Este checklist — Validação pré-lançamento
 
 ---
@@ -165,7 +165,7 @@
 > "Produto pronto para produção. Zero bloqueadores críticos. Testes >98% cobertura. Validação em produção: backend healthy, frontend acessível. Lançamento aprovado com estratégia 'GO WITH KNOWN LIMITATION' — Sentry e mobile native seguem em fase 2."
 
 ### Para Developers
-> "v0.9.6 em produção. Observabilidade básica OK, advanced observability (Sentry) pronta mas desativada. Veja [GO_NO_GO_DECISION](docs/GO_NO_GO_DECISION_2026-04-12.md) para detalhes técnicos e próximos passos."
+> "v0.9.6 em produção. Observabilidade básica OK, advanced observability (Sentry) pronta mas desativada. Veja [GO_NO_GO_DECISION](GO_NO_GO_DECISION_2026-04-12.md) para detalhes técnicos e próximos passos."
 
 ---
 
@@ -174,8 +174,8 @@
 - **Frontend**: https://flow-finance-frontend-nine.vercel.app/
 - **Backend**: https://flow-finance-backend.vercel.app/
 - **Health Check**: https://flow-finance-backend.vercel.app/api/health
-- **Documentation**: docs/GO_NO_GO_DECISION_2026-04-12.md
-- **Release Notes**: docs/RELEASE_NOTES_0.9.6_PT-BR.md
+- **Documentation**: docs/archive/GO_NO_GO_DECISION_2026-04-12.md
+- **Release Notes**: docs/archive/RELEASE_NOTES_0.9.6_PT-BR.md
 
 ---
 

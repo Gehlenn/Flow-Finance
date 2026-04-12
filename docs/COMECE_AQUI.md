@@ -1,222 +1,64 @@
-# 🎯 PASSO A PASSO - Setup Completo (30 min)
+# Comece Aqui
 
-## Resumo do que vamos fazer:
-1. ✅ Obter API Key do OpenAI
-2. ✅ Configurar Firebase
-3. ✅ Linkar Vercel
-4. ✅ Fazer deploy
+Este e o ponto de entrada mais curto para entender o estado real do Flow Finance sem atravessar toda a base documental.
 
----
+## Estado atual
 
-## PASSO 1: OpenAI API Key (3 min)
+- Versao documental: `0.9.6.1v`
+- Data de referencia: `2026-04-12`
+- Estado do ciclo: `bloqueado`
+- Suite global: `verde`
+- Bloqueio principal: fechamento incompleto do ambiente alvo no Vercel
 
-1. Visite: **https://platform.openai.com/api/keys**
-2. Login na sua conta
-3. Clique **"Create new secret key"**
-4. Copie o valor que começa com `sk-proj-`
-5. **GUARDE COM SEGURANÇA** ⚠️
+## Links oficiais
 
----
+- Frontend principal: [https://flow-finance-frontend-nine.vercel.app/](https://flow-finance-frontend-nine.vercel.app/)
+- Backend principal: [https://flow-finance-backend.vercel.app/](https://flow-finance-backend.vercel.app/)
+- Frontend alternativo: [https://flow-finance-xi.vercel.app/](https://flow-finance-xi.vercel.app/)
 
-## PASSO 2: Configurar Variáveis Localmente (5 min)
+## Se voce precisa se orientar agora
 
-### Windows (PowerShell):
-```powershell
-npm run setup
-```
+### 1. Entender o projeto e o estado real
 
-### macOS/Linux:
-```bash
-npm run setup
-```
+- [README.md](E:\app e jogos criados\Flow-Finance\README.md)
+- [docs/README.md](E:\app e jogos criados\Flow-Finance\docs\README.md)
+- [docs/ROADMAP.md](E:\app e jogos criados\Flow-Finance\docs\ROADMAP.md)
+- [docs/CHANGELOG.md](E:\app e jogos criados\Flow-Finance\docs\CHANGELOG.md)
 
-**O script vai pedir:**
-- OpenAI API Key (cole aqui)
-- Firebase Project ID (padrão: komodo-flow)
-- Firebase Email (do JSON baixado)
-- Backend URL (deixe em branco por enquanto)
+### 2. Entender o bloqueio atual
 
-✅ Pronto! `.env.local` criado automaticamente
+- [docs/DEPLOYMENT_STATUS.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT_STATUS.md)
+- [docs/VERCEL_CONFIG.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_CONFIG.md)
+- [docs/archive/PRODUCTION_RISK_REVIEW_2026-04-11.md](E:\app e jogos criados\Flow-Finance\docs\archive\PRODUCTION_RISK_REVIEW_2026-04-11.md)
 
----
+### 3. Entender billing e observabilidade
 
-## PASSO 3: Instalar Vercel CLI (2 min)
+- [docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](E:\app e jogos criados\Flow-Finance\docs\EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)
+- [docs/SAAS_ARCHITECTURE.md](E:\app e jogos criados\Flow-Finance\docs\SAAS_ARCHITECTURE.md)
+- [docs/HTTP_CONTRATOS_SENSIVEIS_CONGELADOS_2026-04-11.md](E:\app e jogos criados\Flow-Finance\docs\HTTP_CONTRATOS_SENSIVEIS_CONGELADOS_2026-04-11.md)
 
-```bash
-npm install -g vercel
-```
+### 4. Entender a organizacao da documentacao
 
----
+- [docs/OPERATIONS_README.md](E:\app e jogos criados\Flow-Finance\docs\OPERATIONS_README.md)
+- [docs/HISTORICAL_README.md](E:\app e jogos criados\Flow-Finance\docs\HISTORICAL_README.md)
+- [docs/AUDIT_AND_EVIDENCE_INDEX.md](E:\app e jogos criados\Flow-Finance\docs\AUDIT_AND_EVIDENCE_INDEX.md)
 
-## PASSO 4: Login no Vercel (1 min)
+### 5. Entender o vault do projeto
 
-```bash
-vercel login
-```
+- [Project Rules.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\Project Rules.md)
+- [Product Plan.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\Product Plan.md)
+- [Code Tasks.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\Code Tasks.md)
+- [Documentation Map.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\Documentation Map.md)
+- [Operational Context.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\Operational Context.md)
+- [Release Status.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\Release Status.md)
 
-Escolha:
-- **GitHub** (recomendado)
-- Ou Email
+## Proxima fila objetiva
 
-Aprove no browser quando pedir
+1. Fechar configuracao de observabilidade e versao no Vercel.
+2. Liberar ou compartilhar o preview protegido.
+3. Validar `/health`, `/api/health` e `/api/version` no deploy acessivel.
+4. Continuar mantendo repositorio e vault coerentes em PT-BR.
 
----
+## Regra pratica
 
-## PASSO 5: Linkar Projeto (2 min)
-
-```bash
-vercel link
-```
-
-Assim que perguntar:
-```
-Set up and deploy? › (y/N) → y
-```
-
-Deixe os padrões:
-- Framework detected: **Other** ✅
-- Root directory: **. (dot)** ✅
-- Project name: **flow-finance**
-
-✅ **SEU PROJETO AGORA ESTÁ LINKADO AO VERCEL!**
-
-Vai retornar:
-```
-✅ Linked to seu-usuario/flow-finance (created .vercelignore)
-```
-
----
-
-## PASSO 6: Adicionar Variáveis de Ambiente (3 min)
-
-Execute cada comando abaixo e tente seguindo as instruções:
-
-```bash
-vercel env add OPENAI_API_KEY
-```
-→ Cole sua chave
-→ Escolha **Production, Preview, Development**
-
-```bash
-vercel env add FIREBASE_PROJECT_ID
-```
-→ Digite: komodo-flow
-
-```bash
-vercel env add FIREBASE_CLIENT_EMAIL  
-```
-→ Cole o email do Firebase
-
-```bash
-vercel env add VITE_API_PROD_URL
-```
-→ Deixe em branco por enquanto (você vai atualizar depois com seu backend)
-
----
-
-## PASSO 7: Testar Build Local (3 min)
-
-```bash
-npm run build
-```
-
-Se passar (deve mostrar ✓), você está bom pra deploy!
-
-```
-✓ built in X.XXs
-```
-
----
-
-## PASSO 8: Deploy em Produção (3 min)
-
-```bash
-npm run deploy
-```
-
-Você vai ver:
-```
-✓ Production: https://flow-finance.vercel.app
-```
-
-🎉 **PARABÉNS! SEU APP ESTÁ ONLINE!**
-
----
-
-## VERIFICAR SE FUNCIONOU
-
-Visite:
-- **https://flow-finance.vercel.app** ← seu app ao vivo!
-- Fazer login
-- Testar funcionalidades
-
----
-
-## ⚠️ SE DER ERRO
-
-### Build falha no Vercel
-```bash
-# Verificar localmente primeiro
-npm run build
-
-# Se passou local, em produção é provavelmente variável de ambiente
-vercel env ls  # ver variáveis
-```
-
-### Deploy falha
-```bash
-# Checar logs
-vercel logs
-
-# Refazer deploy
-vercel deploy --prod
-```
-
-### App não carrega no navegador
-- Abra DevTools (F12)
-- Check: Console → ver erros
-- Geralmente é falta de `VITE_API_PROD_URL`
-
----
-
-## ✅ CHECKLIST FINAL
-
-- [ ] OpenAI API Key obtida
-- [ ] npm run setup executado
-- [ ] Vercel CLI instalado
-- [ ] vercel login funcionou
-- [ ] vercel link criou projeto
-- [ ] Variáveis de ambiente adicionadas no Vercel
-- [ ] npm run build passou
-- [ ] npm run deploy funcionou
-- [ ] App está online em https://flow-finance.vercel.app
-
----
-
-## 🎯 PRÓXIMOS PASSOS (Opcional)
-
-1. **Domínio customizado**
-   - Vercel Dashboard → Settings → Domains
-   - Adicione seu domínio
-
-2. **Backend**
-   - Deploy seu backend (Node.js)
-   - Atualize `VITE_API_PROD_URL` no Vercel
-
-3. **Monitoramento**
-   - Ative Sentry para error tracking
-   - Configure analytics
-
-4. **Auto-deploy**
-   - Já está ativo! Cada push = novo deploy automático
-
----
-
-## 📞 DÚVIDAS?
-
-Leia:
-- **Português**: `SETUP_GUIA_PT.md`
-- **Inglês completo**: `SETUP_GUIDE.md`
-- **Apenas Vercel**: `VERCEL_QUICK_START.md`
-
-**Bora! Você consegue! 🚀**
+Se houver conflito entre texto antigo e codigo atual, o codigo vence e a documentacao deve ser atualizada na mesma passada.

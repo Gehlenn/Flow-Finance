@@ -1,277 +1,116 @@
-# Flow Finance - SaaS Architecture Documentation
+# Arquitetura SaaS do Flow Finance
 
-## 🏗️ Arquitetura SaaS Escalável
+## Objetivo
 
-Esta documentação descreve a arquitetura SaaS implementada no Flow Finance v0.3.1v, seguindo os princípios de Clean Architecture, Domain Driven Design (DDD), SOLID e arquitetura orientada a eventos.
+Este documento resume a arquitetura SaaS adotada pelo Flow Finance, com foco em separacao de responsabilidades, integridade financeira, multi-tenant e capacidade de evolucao operacional.
 
-## 📚 Camadas da Arquitetura
+## Visao em camadas
 
-### 1. 🏛️ Domain Layer (Camada de Domínio)
+### 1. Dominio
 
-**Localização:** `src/domain/`
-**Responsabilidade:** Contém as regras de negócio puras, entidades e lógica de domínio.
+Responsavel por entidades, regras de negocio e invariantes financeiras.
 
-#### Entidades de Domínio
+Exemplos de preocupacoes:
 
-```typescript
-// src/domain/entities.ts
-export class UserEntity {
-  // Regras de negócio do usuário
-  // - Email deve ser válido
-  // - Nome não pode ser vazio
-  // - Preferências devem ter valores padrão
-}
+- validade de transacoes
+- consistencia de contas e saldos
+- classificacao de plano e gating de capacidades
+- contratos de integridade financeira
 
-export class AccountEntity {
-  // Regras de negócio da conta
-  // - Saldo não pode ser negativo (opcional por conta)
-  // - Tipo deve ser válido
-  // - Moeda deve ser suportada
-}
+### 2. Aplicacao
 
-export class TransactionEntity {
-  // Regras de negócio da transação
-  // - Valor deve ser diferente de zero
-  // - Data não pode ser futura
-  // - Categoria deve existir
-}
-```
+Coordena casos de uso e conecta dominio com infraestrutura.
 
-**Princípios:**
-- Entidades contêm apenas lógica de negócio
-- Validações de domínio
-- Invariantes de negócio
-- Não dependem de frameworks externos
+Exemplos:
 
-### 2. 🚀 Application Layer (Camada de Aplicação)
+- fluxos de criacao e importacao de transacoes
+- servicos de billing e catalogo SaaS
+- orquestracao de AI, sync e auditoria
 
-**Localização:** `src/app/`
-**Responsabilidade:** Coordenação entre domínio e infraestrutura, casos de uso.
+### 3. Infraestrutura
 
-#### Serviços de Aplicação
+Implementa persistencia, integracoes externas, observabilidade e adaptadores concretos.
 
-```typescript
-// src/app/services.ts
-export class TransactionService {
-  constructor(
-    private storage: StorageProvider,
-    private userId: string
-  ) {}
+Exemplos:
 
-  async createTransaction(data: TransactionData): Promise<Transaction> {
-    // 1. Validação de domínio
-    // 2. Coordenação com infraestrutura
-    // 3. Emissão de eventos
-    // 4. Logging de auditoria
-  }
-}
-```
+- API backend
+- storage local ou remoto
+- Stripe
+- Firebase quando habilitado
+- logs, health checks e telemetria
 
-**Serviços Implementados:**
-- `UserService` - Gerenciamento de usuários
-- `TransactionService` - Operações com transações
-- `AccountService` - Gerenciamento de contas
-- `GoalService` - Metas financeiras
-- `SimulationService` - Simulações
-- `ReportService` - Relatórios
-- `SubscriptionService` - Assinaturas
-- `BankConnectionService` - Conexões bancárias
+## Principios arquiteturais
 
-### 3. 💾 Infrastructure Layer (Camada de Infraestrutura)
+- separacao clara entre contrato e implementacao
+- isolamento por workspace e contexto multi-tenant
+- integridade financeira antes de conveniencia
+- uso de eventos e auditoria para rastreabilidade
+- possibilidade de fallback controlado em ambientes locais
 
-**Localização:** `src/storage/`, `src/ai/`, `src/finance/`, etc.
-**Responsabilidade:** Implementações concretas de interfaces, integrações externas.
+## Modulos relevantes no projeto
 
-#### Storage Abstraction
+### Frontend
 
-```typescript
-// src/storage/StorageProvider.ts
-export interface StorageProvider {
-  getUser(userId: string): Promise<User | null>;
-  saveUser(user: User): Promise<void>;
-  // ... outros métodos
-}
+- `src/app/`
+- `src/services/`
+- `src/saas/`
+- `src/security/`
+- `src/events/`
 
-export class LocalStorageProvider implements StorageProvider {
-  // Implementação com localStorage
-}
+### Backend
 
-export class ApiStorageProvider implements StorageProvider {
-  // Implementação com API REST
-}
-```
+- `backend/src/routes/`
+- `backend/src/services/`
+- `backend/src/middleware/`
+- `backend/src/utils/`
+- `backend/src/config/`
 
-#### Engines Especializados
+## Storage e persistencia
 
-- **AI Engine:** `src/ai/` - Processamento de IA e aprendizado
-- **Finance Engine:** `src/finance/` - Cálculos financeiros
-- **Security Engine:** `src/security/` - Segurança e integridade
-- **Event Engine:** `src/events/` - Sistema de eventos
+O projeto opera com abstractions de persistencia para permitir:
 
-## 🔄 Dependency Injection & Configuration
+- execucao local com baselines deterministicas
+- execucao backend com stores dedicadas
+- evolucao de drivers de persistencia sem reescrever a camada de negocio
 
-### Container de Dependências
+## Eventos e reatividade
 
-```typescript
-// src/config/appConfig.ts
-export class AppContainer {
-  private storageProvider: StorageProvider;
+O uso de eventos permite:
 
-  constructor(config: AppConfig) {
-    this.storageProvider = config.storageProvider === 'api'
-      ? new ApiStorageProvider(config.apiUrl)
-      : new LocalStorageProvider();
-  }
+- desacoplamento entre modulos
+- processamento adicional sem poluir o caso de uso principal
+- auditoria e rastreabilidade operacional
+- invalidacao de cache e atualizacao de previsoes
 
-  getTransactionService(userId: string): TransactionService {
-    return new TransactionService(this.storageProvider, userId);
-  }
-}
-```
+## Seguranca e integridade
 
-### Inicialização
+Pontos estruturais:
 
-```typescript
-// Configuração local (desenvolvimento)
-const app = initializeApp({
-  storageProvider: 'local'
-});
+- JWT e escopo de workspace
+- validacao de schema na borda
+- trilhas de auditoria
+- controles de quota e gating de plano
+- contratos de sync com policy explicita
 
-// Configuração API (produção)
-const apiApp = initializeApp({
-  storageProvider: 'api',
-  apiUrl: 'https://api.flowfinance.com',
-  authToken: 'jwt-token'
-});
-```
+## Billing e monetizacao
 
-## 📡 Event-Driven Architecture
+O eixo SaaS atual se apoia em:
 
-### Sistema de Eventos
+- catalogo de planos
+- checkout e portal Stripe
+- webhooks de conciliacao de assinatura
+- reflexo do estado de billing no workspace
+- gating Free/Pro no frontend
 
-```typescript
-// src/events/eventEngine.ts
-export class FinancialEventEmitter {
-  static transactionCreated(transaction: Transaction) {
-    // Emite evento para AI processing
-    // Triggers: aiOrchestrator.runAIOrchestrator()
-  }
+## Observabilidade
 
-  static goalCreated(goal: FinancialGoal) {
-    // Emite evento para notificações
-  }
-}
-```
+A operacao moderna depende de:
 
-**Benefícios:**
-- Desacoplamento entre módulos
-- Extensibilidade
-- Reatividade a mudanças
-- Tracing e monitoramento
+- health checks
+- `requestId` e `routeScope`
+- bootstrap de Sentry quando configurado
+- logs e evidencia operacional por ambiente
 
-## 🛡️ Segurança e Integridade
+## Leitura correta deste documento
 
-### Módulos de Segurança
-
-- **Money Math:** Cálculos precisos com `decimal.js`
-- **Transaction Integrity:** Verificação de idempotência
-- **Audit Logging:** Logs completos de auditoria
-- **Reconciliation:** Reconciliação de saldos
-
-### Validações
-
-```typescript
-// src/security/transactionIntegrity.ts
-export function validateTransaction(tx: Transaction): ValidationResult {
-  // Validações de segurança
-  // - Idempotência
-  // - Integridade de dados
-  // - Regras de negócio
-}
-```
-
-## 🔧 Padrões Implementados
-
-### Repository Pattern
-
-```typescript
-interface StorageProvider {
-  // Abstração de persistência
-  getTransactions(userId: string): Promise<Transaction[]>;
-  saveTransaction(tx: Transaction): Promise<void>;
-}
-```
-
-### Service Layer Pattern
-
-```typescript
-class TransactionService {
-  // Coordenação de operações complexas
-  async importTransactions(transactions: TransactionData[]): Promise<Transaction[]> {
-    // Validação, processamento, eventos
-  }
-}
-```
-
-### Dependency Inversion
-
-```typescript
-// Alto nível não depende de baixo nível
-class ReportService {
-  constructor(private storage: StorageProvider) {}
-  // StorageProvider é interface, não implementação
-}
-```
-
-## 🚀 Próximos Passos para SaaS Completo
-
-### Backend API
-- Refatorar `backend/` para módulos (controllers, services, repositories)
-- Implementar PostgreSQL com TypeORM/Prisma
-- Adicionar autenticação JWT
-- Rate limiting e segurança
-
-### Multi-tenancy
-- Isolamento por usuário/organização
-- Sharding de dados
-- Configurações por tenant
-
-### Cloud & DevOps
-- Deploy no Vercel/Railway
-- CI/CD com GitHub Actions
-- Monitoring com Sentry
-- Backup e recuperação
-
-### Features SaaS
-- Planos de assinatura
-- Billing com Stripe
-- Analytics de uso
-- Suporte multi-usuário
-
-## 📊 Benefícios da Arquitetura
-
-- **🏗️ Escalabilidade:** Camadas independentes, fácil de escalar
-- **🧪 Testabilidade:** Dependências injetadas, fácil mock
-- **🔄 Manutenibilidade:** Separação clara de responsabilidades
-- **🚀 Flexibilidade:** Fácil troca de implementações
-- **🛡️ Segurança:** Validações em múltiplas camadas
-- **📈 Performance:** Caching e otimização por camada
-
-## 🛠️ Como Usar
-
-```typescript
-import { initializeApp } from './src/config/appConfig';
-
-// Inicializar app
-const app = initializeApp({ storageProvider: 'local' });
-
-// Obter serviços
-const userService = app.getUserService();
-const transactionService = app.getTransactionService('user_123');
-
-// Usar serviços
-const user = await userService.createUser(userData);
-const transaction = await transactionService.createTransaction(txData);
-```
-
-Para exemplos completos, veja `example-usage.ts`.
+Este texto e um mapa sintetico da arquitetura SaaS. Para estado de release, deploy, evidencias e riscos atuais, consultar os documentos operacionais principais em `README.md`, `docs/ARCHITECTURE.md`, `docs/DEPLOYMENT_STATUS.md` e no vault do projeto.

@@ -1,99 +1,81 @@
-# 📱 Plano de Testes Móveis - Flow Finance v0.1.0
+# Plano de Testes Mobile
 
-**Data**: 8 de Março de 2026  
-**Status**: ⚠️ BLOQUEADO - JDK não instalado  
-**Objetivo**: Validar que o Flow Finance funciona corretamente em dispositivos móveis (Android/iOS)
+## Objetivo
 
----
+Validar que o Flow Finance opera de forma confiável em contexto mobile sem misturar falhas do app com lacunas do ambiente nativo.
 
-## 🚨 BLOQUEADO: Ambiente de Build Android
+## Situação histórica conhecida
 
-### ❌ Problema Identificado
-- **JDK não instalado** no sistema Windows
-- **Chocolatey falhou** devido a permissões administrativas
-- **Build Android impossível** sem JDK 17+
+Na trilha anterior, o principal bloqueio foi:
 
-### 🔧 Soluções Possíveis
-1. **Instalar Android Studio** (inclui JDK embutido)
-2. **Instalar JDK manualmente** via download direto
-3. **Usar WSL2** com Ubuntu para desenvolvimento
-4. **Configurar CI/CD** (GitHub Actions, etc.)
+- ausência de JDK no ambiente Windows
 
----
+Esse tipo de bloqueio deve ser tratado como dependência de ambiente, não como falha funcional do produto.
 
-## ✅ Testes Que Podemos Fazer Agora
+## O que pode ser validado sem build nativo completo
 
-### **Teste 1: Validação do Build Web**
-- [x] Build Vite funciona (`npm run build`)
-- [x] Arquivos gerados em `dist/`
-- [x] Capacitor sync funciona
-- [x] Estrutura Android criada
+### Web mobile
 
-### **Teste 2: Validação da Configuração**
-- [x] `capacitor.config.ts` correto
-- [x] Plugins configurados (SplashScreen, etc.)
-- [x] Permissões Android documentadas
-- [x] App ID e versão corretos
+- responsividade
+- navegação principal
+- interações centrais
+- comportamento de runtime
 
-### **Teste 3: Testes Unitários**
-```bash
-npm run test          # Vitest
-npm run type-check    # TypeScript
-```
+### PWA
 
-### **Teste 4: Testes de Integração**
-- [ ] Backend API responde
-- [ ] Firebase Auth funciona
-- [ ] Sentry captura erros
-- [ ] PWA funciona no browser
+- carregamento
+- comportamento de instalação quando aplicável
+- consistência visual em viewport mobile
 
----
+### Integração com backend
 
-## 🎯 Plano de Contingência
+- autenticação
+- endpoints principais
+- billing e health quando aplicável
 
-### **Opção A: Instalar Android Studio**
-```bash
-# Download: https://developer.android.com/studio
-# Instalar com JDK embutido
-# Configurar ANDROID_HOME
-# Retry: npx cap build android
-```
+## O que depende de ambiente nativo completo
 
-### **Opção B: Usar Emulador Web**
-```bash
-# Testar PWA no Chrome DevTools
-# Simular mobile device
-# Validar responsive design
-npm run dev
-```
+- geração de APK
+- geração de AAB
+- execução em emulador Android
+- execução em dispositivo físico
+- distribuição iOS
 
-### **Opção C: Build na Cloud**
-```bash
-# GitHub Actions com macOS runner
-# Build iOS e Android
-# Deploy automático
-```
+## Plano recomendado
 
----
+### Etapa 1 - Base web mobile
 
-## 📊 Status Atual
+- rodar aplicação local
+- validar layout e navegação em viewport mobile
+- confirmar que não há erro de runtime crítico
 
-```
-✅ Capacitor: Configurado e sincronizado
-✅ Build Web: Funcionando (Vite)
-✅ Estrutura Android: Criada
-❌ JDK: Não instalado
-❌ Build APK: Bloqueado
-❌ Testes Dispositivo: Impossível
-```
+### Etapa 2 - Empacotamento
 
----
+- `npm run build`
+- `npx cap sync`
+- abrir projeto nativo
 
-## 🚀 Próximas Ações Recomendadas
+### Etapa 3 - Build nativo
 
-1. **Imediato**: Instalar Android Studio ou JDK
-2. **Alternativo**: Configurar testes web mobile
-3. **Futuro**: Setup CI/CD para builds automáticos
+- Android com JDK e SDK completos
+- iOS com Xcode e assinatura quando aplicável
 
-**Resultado**: Ambiente preparado, mas bloqueado por dependências do sistema.
+### Etapa 4 - Validação funcional
 
+- login
+- dashboard
+- transações
+- fluxo principal do produto
+- telas administrativas relevantes
+
+## Critérios de saída
+
+1. base web mobile validada
+2. sync com Capacitor funcionando
+3. build nativo funcionando no ambiente correto
+4. fluxo principal validado em contexto mobile
+
+## Referências
+
+- [docs/MOBILE_BUILD_GUIDE.md](E:\app e jogos criados\Flow-Finance\docs\MOBILE_BUILD_GUIDE.md)
+- [docs/MOBILE_TESTING_STATUS.md](E:\app e jogos criados\Flow-Finance\docs\MOBILE_TESTING_STATUS.md)

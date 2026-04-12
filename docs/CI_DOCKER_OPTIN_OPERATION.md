@@ -1,70 +1,46 @@
-# CI and Docker Opt-in Operation
+# Operação de CI com Docker Opcional
 
-This document defines how CI behaves after the stabilization changes on main.
+## Papel deste documento
 
-## 1) Build and Test workflow
+Descrever como o CI se comporta quando as etapas de Docker e deploy externo são tratadas como opt-in.
 
-File: `.github/workflows/build.yml`
+## Build e testes
 
-- Job `docker-build` is opt-in.
-- Default behavior: `docker-build` is skipped.
-- Activation: set repository variable `ENABLE_DOCKER_BUILD=true`.
+Arquivo relacionado:
 
-### Docker Hub behavior in Build and Test
+- `.github/workflows/build.yml`
 
-- If Docker Hub credentials are present (`DOCKER_USERNAME` and `DOCKER_PASSWORD`), image push is enabled on main.
-- If credentials are missing, the job can still run build steps, but push is disabled.
+Comportamento registrado:
 
-## 2) Deploy to Production workflow
+- o job de Docker é opcional
+- por padrão, a validação principal não depende dele
+- a ativação ocorre por variável de repositório específica
 
-File: `.github/workflows/deploy.yml`
+## Deploy
 
-- Deploy target is controlled by repository variable `DEPLOY_PLATFORM`.
-- Valid values: `railway`, `render`, `aws`.
-- If variable is not set, pipeline resolves target to `none` and skips external deploy steps safely.
+Arquivo relacionado:
 
-### Required secrets by platform
+- `.github/workflows/deploy.yml`
 
-- Railway:
-  - `RAILWAY_TOKEN`
-- Render:
-  - `RENDER_API_KEY`
-  - `RENDER_SERVICE_ID`
-- AWS ECS:
-  - `AWS_ECS_CLUSTER`
-  - `AWS_ECS_SERVICE`
-  - `AWS_REGION`
+Comportamento registrado:
 
-### Optional shared secrets
+- o alvo de deploy é controlado por variável de repositório
+- quando o alvo não está configurado, o pipeline evita acoplamento desnecessário com infraestrutura externa
 
-- `SENTRY_DSN`
-- `SLACK_WEBHOOK_URL`
-- `VITE_API_URL` (for frontend image build args)
+## Intenção operacional
 
-## 3) Recommended operation modes
+Separar:
 
-- Daily development mode:
-  - `ENABLE_DOCKER_BUILD` unset or different from `true`
-  - `DEPLOY_PLATFORM` unset
-  - Result: fast CI validation without external deployment coupling
+1. gates centrais de qualidade
+2. infraestrutura opcional de publicação
 
-- Release validation mode:
-  - `ENABLE_DOCKER_BUILD=true`
-  - `DEPLOY_PLATFORM` set to the target platform
-  - Required platform secrets configured
+Isso reduz falso negativo em CI quando a plataforma externa não faz parte da validação obrigatória daquele ciclo.
 
-## 4) Troubleshooting checklist
+## Leitura correta hoje
 
-- `Build and Test` failed on docker stage:
-  - check if `ENABLE_DOCKER_BUILD` should be enabled for this repository
-  - verify Dockerfile and build context if docker build is intentionally active
+Este documento é útil como regra operacional de pipeline, mas a trilha principal atual do projeto está concentrada no Vercel.
 
-- `Deploy to Production` failed with target validation:
-  - verify `DEPLOY_PLATFORM` value is one of `railway`, `render`, `aws`
+## Referências
 
-- `Deploy` failed on secret validation:
-  - configure missing platform secrets in repository settings
-
-## 5) Audit note
-
-These changes were made to keep core quality gates (lint, unit tests, e2e, build checks) reliable while avoiding false negatives caused by optional deployment infrastructure.
+- [docs/DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT.md)
+- [docs/VERCEL_DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_DEPLOYMENT.md)

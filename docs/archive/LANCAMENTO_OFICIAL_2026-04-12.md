@@ -66,14 +66,14 @@ https://flow-finance-backend.vercel.app/api/health
 ## 📋 Documentação de Referência
 
 ### Para Stakeholders
-- **[Release Notes](docs/RELEASE_NOTES_0.9.6_PT-BR.md)** — O que há de novo (comunicação do usuário)
-- **[Go/No-Go Decision](docs/GO_NO_GO_DECISION_2026-04-12.md)** — Decisão com evidências
-- **[Checklist](docs/PRELAUNCH_CHECKLIST_2026-04-12.md)** — Validações completas
+- **[Release Notes](RELEASE_NOTES_0.9.6_PT-BR.md)** — O que há de novo (comunicação do usuário)
+- **[Go/No-Go Decision](GO_NO_GO_DECISION_2026-04-12.md)** — Decisão com evidências
+- **[Checklist](PRELAUNCH_CHECKLIST_2026-04-12.md)** — Validações completas
 
 ### Para Desenvolvedores
-- **[CHANGELOG.md](CHANGELOG.md)** — História técnica de mudanças
-- **[Deployment Status](docs/DEPLOYMENT_STATUS.md)** — Histórico de execução
-- **[10-Day Plan](docs/PLANO_LANCAMENTO_10_DIAS_2026-04-12.md)** — Roadmap próximos passos
+- **[CHANGELOG.md](../CHANGELOG.md)** — História técnica de mudanças
+- **[Deployment Status](../DEPLOYMENT_STATUS.md)** — Histórico de execução
+- **[10-Day Plan](PLANO_LANCAMENTO_10_DIAS_2026-04-12.md)** — Roadmap próximos passos
 
 ---
 
@@ -133,7 +133,7 @@ Dia 9:  🎯 Distribuição em massa
 Dia 10: 🚀 Lançamento controlado
 ```
 
-Veja [Plano de 10 Dias](docs/PLANO_LANCAMENTO_10_DIAS_2026-04-12.md) para detalhes.
+Veja [Plano de 10 Dias](PLANO_LANCAMENTO_10_DIAS_2026-04-12.md) para detalhes.
 
 ---
 
@@ -189,8 +189,8 @@ Time Engineering
 |------|-----------|
 | [Frontend](https://flow-finance-frontend-nine.vercel.app/) | Interface principal |
 | [Health Check](https://flow-finance-backend.vercel.app/api/health) | Status de saúde |
-| [Release Notes](docs/RELEASE_NOTES_0.9.6_PT-BR.md) | O que há de novo |
-| [Plano de 10 Dias](docs/PLANO_LANCAMENTO_10_DIAS_2026-04-12.md) | Próximos passos |
+| [Release Notes](RELEASE_NOTES_0.9.6_PT-BR.md) | O que há de novo |
+| [Plano de 10 Dias](PLANO_LANCAMENTO_10_DIAS_2026-04-12.md) | Próximos passos |
 | [GitHub Issues](https://github.com/seu-repo/flow-finance/issues) | Reporte bugs |
 
 ---

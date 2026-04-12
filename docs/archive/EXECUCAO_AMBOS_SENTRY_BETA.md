@@ -17,11 +17,11 @@
 
 | Doc | Para Quem | Propósito |
 |-----|-----------|-----------|
-| [SENTRY_SETUP_GUIDE.md](docs/SENTRY_SETUP_GUIDE.md) | Você (tech owner) | Criar projetos Sentry |
-| [DIA_2_BETA_TESTING_PLAN.md](docs/DIA_2_BETA_TESTING_PLAN.md) | Testers + Team | Cenários de teste |
-| [QUICK_START_AMBOS.md](QUICK_START_AMBOS.md) | Quick reference | Como executar ambos |
-| [LANCAMENTO_OFICIAL_2026-04-12.md](docs/LANCAMENTO_OFICIAL_2026-04-12.md) | Everyone | Status oficial de lançamento |
-| [CHANGELOG.md](CHANGELOG.md) | Developers | Histórico técnico |
+| [SENTRY_SETUP_GUIDE.md](../SENTRY_SETUP_GUIDE.md) | Você (tech owner) | Criar projetos Sentry |
+| [DIA_2_BETA_TESTING_PLAN.md](DIA_2_BETA_TESTING_PLAN.md) | Testers + Team | Cenários de teste |
+| [QUICK_START_AMBOS.md](../../QUICK_START_AMBOS.md) | Quick reference | Como executar ambos |
+| [LANCAMENTO_OFICIAL_2026-04-12.md](LANCAMENTO_OFICIAL_2026-04-12.md) | Everyone | Status oficial de lançamento |
+| [CHANGELOG.md](../CHANGELOG.md) | Developers | Histórico técnico |
 
 ---
 

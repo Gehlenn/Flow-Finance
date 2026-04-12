@@ -2,6 +2,41 @@
 
 ### Transicao de versao iniciada (status: bloqueado)
 
+#### Curadoria documental - 2026-04-12
+- 8 documentos de ciclos encerrados movidos de `docs/` para `docs/archive/`: auditorias de marco/26, security review de v0.9.2, assessments de fechamento v0.6.x, checklist P0 concluido de v0.7-v0.9, matriz de realidade de codigo v0.6-v0.9 e production risk review com addendum encerrado.
+- 9 documentos adicionais movidos para `docs/archive/`: registros de lancamento v0.9.6 (GO/NO-GO, release notes, prelaunch checklist, lancamento oficial), planos de beta testing e Sentry, plano de 10 dias e checklist de sprint D1+D2 e UI simplificacao ciclo 1.
+- `docs/AUDIT_AND_EVIDENCE_INDEX.md` reestruturado: trilha viva e historica separadas, runbooks operacionais categorizados, status real dos quick wins de seguranca da clinica verificado no codigo e registrado.
+- `docs/ROADMAP.md` atualizado: fase 0.9.x marcada como `nucleo concluido, pendente fechamento de ambiente alvo`; criterios do ciclo com status por item; curadoria documental registrada como concluida.
+- `docs/HISTORICAL_README.md` corrigido: links atualizados para apontar para `docs/archive/` apos movimentacao dos arquivos.
+- `docs/archive/README.md` expandido com indice categorizado de todo o conteudo arquivado, incluindo novo bloco de lancamento v0.9.6 e sprints encerrados.
+- Banners de estado adicionados em `docs/MOBILE_TESTING_STATUS.md` e `docs/ROBUSTNESS_OPERATIONAL_v0.9.2.md`.
+- Confirmado no codigo: todos os quick wins de seguranca da integracao clinica identificados na revisao historica ja estao implementados (`SET NX EX`, `createDistributedRateLimitByUser`, regex em `externalEventId`, ordem edge/auth de middlewares).
+
+#### Documentacao consolidada em PT-BR
+- `README.md` reescrito integralmente em portugues como documento canônico de entrada.
+- `docs/ROADMAP.md` reescrito integralmente em portugues com foco em estado real, bloqueios e prioridades.
+- `docs/ARCHITECTURE.md`, `docs/VERCEL_DEPLOYMENT.md`, `docs/DEPLOYMENT_STATUS.md` e `docs/SETUP_GUIDE.md` reescritos em portugues para remover legado em ingles e reduzir contradicao operacional.
+- `docs/VERCEL_QUICK_START.md`, `docs/SENTRY_SETUP.md` e `docs/DEPLOYMENT.md` reescritos em portugues e alinhados com a trilha real do projeto no Vercel.
+- `docs/ARCHITECTURE_SYSTEM_MAP.md`, `docs/ASSESSMENT_V0_6X_CLOSURE_CODE_REALITY_2026-04-11.md`, `docs/MOBILE_BUILD_GUIDE.md`, `docs/MOBILE_TESTING_PLAN.md` e `docs/MOBILE_TESTING_STATUS.md` normalizados em portugues para segunda camada de limpeza documental.
+- `docs/RELEASE_SUMMARY_v0.5.2v.md`, `docs/PR_SUMMARY_0.9.6.md`, `docs/SECRET_INCIDENT_CHECKLIST.md` e `docs/AUDITORIA_THOROUGH_2026-03-11.md` reescritos em portugues como materiais historicos e de evidencia com leitura mais clara.
+- `docs/PR_SUMMARY_0.9.5.md`, `docs/ASSESSMENT_PHASES_1_TO_6_2026-04-11.md` e `docs/CODE_REALITY_MATRIX_v0.6_to_v0.9_2026-04-11.md` receberam acabamento de PT-BR na camada historica e analitica.
+- `docs/CI_DOCKER_OPTIN_OPERATION.md`, `docs/DATABASE_DECISION.md` e `docs/E2E_SKIP_STRATEGY.md` foram simplificados e normalizados em PT-BR na terceira passada de limpeza.
+- `docs/WORKTREE_CURATION_2026-04-02.md`, `docs/TAILWIND_ISSUE_DIAGNOSIS.md`, `docs/NEXT_STEPS.md`, `docs/PRODUCTION_RISK_REVIEW_2026-04-11.md`, `docs/PR_CHECKLIST_SPRINT2_D1_D2.md`, `docs/SAAS_ARCHITECTURE.md`, `docs/SECURITY_REVIEW_CLINIC_v0.9.2.md` e `docs/SECURITY_UPDATES_v0.1.0.md` foram reescritos em PT-BR para fechar a camada residual de documentos historicos, arquiteturais e de seguranca.
+- `docs/README.md` e `docs/COMECE_AQUI.md` passaram a funcionar como trilha de entrada e mapa canônico da documentacao.
+- `obsidian-vault/Flow/Documentation Map.md`, `obsidian-vault/Flow/Operational Context.md` e `obsidian-vault/Flow/Release Status.md` foram adicionados para espelhar no vault a organizacao documental, o contexto operacional e o estado atual do ciclo.
+- `docs/SETUP_GUIA_PT.md` e `docs/RESUMO_SETUP.md` deixaram de competir com o guia principal e passaram a apontar explicitamente para `docs/SETUP_GUIDE.md` como fonte canônica.
+- `obsidian-vault/Flow/Environment Checklist.md` foi adicionado para resumir a trilha correta de ambiente, Vercel e validacao operacional.
+- `docs/OPERATIONS_README.md` e `docs/HISTORICAL_README.md` foram adicionados para separar explicitamente operacao atual de material historico/auditoria.
+- `obsidian-vault/Flow/Operations Map.md` e `obsidian-vault/Flow/Historical Map.md` passaram a espelhar essa separacao no vault.
+- `docs/BUGLOG.md` e `docs/GDD.md` foram reescritos como documentos historicos compactos, removendo duplicacao, encoding ruim e competicao com a documentacao viva.
+- `docs/VERCEL_CONFIG.md` foi reescrito para o mesmo padrao editorial do restante da base, com papel do documento, checklist operacional e leitura correta do ambiente alvo.
+- `backend/README.md` reescrito em portugues com foco em contratos atuais do backend e no estado real de billing e observabilidade.
+- `obsidian-vault/Flow/` passou a conter os documentos minimos exigidos por `AGENTS.md` (`Project Rules`, `Product Plan`, `Code Tasks`, `Project Stack Guide` e `30-Day Plan`).
+- Links oficiais do projeto no Vercel consolidados na documentacao principal:
+  - `https://flow-finance-frontend-nine.vercel.app/`
+  - `https://flow-finance-backend.vercel.app/`
+  - `https://flow-finance-xi.vercel.app/`
+
 #### Auditoria sistemica
 - `npm run lint`: aprovado
 - `npm run security:scan-secrets`: aprovado (sem segredos suspeitos)
@@ -17,12 +52,13 @@
 	- Functions: `100%`
 	- Lines: `100%`
 - `node scripts/run-firestore-rules.mjs`: aprovado (`8/8`)
-- `npm run test:coverage`: bloqueado por regressao na suite global (`9` arquivos de teste com falha)
+- `npm run test:coverage`: aprovado apos correcoes de contratos legados, mocks e timeouts de bootstrap em testes backend
+- Ajuste de gate em `2026-04-12`: `npm run test:coverage` passou a excluir `tests/firestore/**`, mantendo `npm run test:firestore:rules` como trilha canonica e obrigatoria para rules com emulator.
 
 #### Resultado de release
 - Status final: `BLOQUEADO`
-- Motivo: regressao na suite global impede fechamento da transicao com garantia de qualidade integral.
-- Acoes imediatas: corrigir falhas da suite global e reexecutar protocolo completo.
+- Motivo: ambiente alvo do Vercel ainda impede fechamento honesto de observabilidade e validacao externa.
+- Acoes imediatas: fechar variaveis de ambiente, liberar preview acessivel e rodar `npm run health:vercel`.
 
 # [0.9.6] - 2026-04-07
 

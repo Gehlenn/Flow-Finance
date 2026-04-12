@@ -1,169 +1,218 @@
-# FLOW FINANCE - SYSTEM ARCHITECTURE MAP
+# Mapa Sistêmico da Arquitetura
 
-## Layer 1 - Client Layer
-- Web App (React)
-- Mobile App (Capacitor)
-- PWA
+## Papel deste documento
 
-Responsibilities:
-- UI rendering
-- data visualization
-- user input handling
+Este arquivo resume o mapa de camadas do Flow Finance de forma visual e direta. Ele complementa a arquitetura principal, mas não a substitui.
 
-## Layer 2 - Runtime Guard
+## Camada 1 - Cliente
+
+Superfícies atendidas:
+
+- aplicação web em React
+- empacotamento mobile com Capacitor
+- PWA quando aplicável
+
+Responsabilidades:
+
+- renderização de interface
+- entrada do usuário
+- navegação
+- visualização de estado financeiro
+
+## Camada 2 - Guardas de runtime
+
+Componentes principais:
+
 - API Guard
 - Chunk Guard
-- ServiceWorker Guard
+- Service Worker Guard
 - Version Guard
 
-Responsibilities:
-- detect API offline
-- recover broken chunks
-- prevent inconsistent deploy states
+Responsabilidades:
 
-## Layer 3 - API Layer
-Primary endpoints:
+- detectar indisponibilidade de API
+- reduzir falhas por chunks quebrados
+- evitar inconsistência entre deploys
+
+## Camada 3 - API
+
+Entradas mais relevantes:
+
 - `/api/auth`
 - `/api/accounts`
 - `/api/transactions`
 - `/api/ai`
 - `/api/health`
 - `/api/version`
-- `/api/saas/usage`
-- `/api/saas/billing-hooks`
+- `/api/saas`
 
-Responsibilities:
-- input entry
-- validation
-- authentication
+Responsabilidades:
 
-## Layer 4 - User Context
-- `UserContext`
-  - `userId`
-  - `accounts`
-  - `currency`
-  - `timezone`
+- entrada de dados
+- validação
+- autenticação
+- mediação de fluxos sensíveis
 
-Enables:
-- multi-user
-- multi-account
+## Camada 4 - Contexto do usuário
 
-## Layer 5 - Domain Layer
-Entities:
-- User
-- Account
-- Transaction
-- Goal
-- Budget
+Dados principais:
 
-Value Objects:
-- Money
-- Category
-- Currency
+- usuário ativo
+- workspace ativo
+- moeda
+- fuso
 
-## Layer 6 - Financial Engine
-- `cashflowEngine`
-- `forecastEngine`
-- `budgetEngine`
-- `financialHealthEngine`
+Função:
 
-Responsibilities:
-- balance calculations
-- forecasting
-- spending analysis
+- garantir que o fluxo do produto opere dentro do contexto correto
 
-## Layer 7 - AI Engine
-- `aiOrchestrator`
-- `aiContextBuilder`
-- `aiDecisionEngine`
+## Camada 5 - Domínio
 
-Responsibilities:
-- insights generation
-- financial analysis
-- recommendations
+Entidades relevantes:
 
-## Layer 8 - Autopilot Engine
-Responsibilities:
-- overspending detection
-- financial health analysis
-- alert generation
+- usuário
+- conta
+- transação
+- meta
+- orçamento
 
-## Layer 9 - AI CFO Agent
-Components:
+Objetos de valor:
+
+- dinheiro
+- categoria
+- moeda
+
+## Camada 6 - Motores financeiros
+
+Motores principais:
+
+- fluxo de caixa
+- previsão
+- orçamento
+- saúde financeira
+
+Responsabilidades:
+
+- cálculos de saldo
+- projeções
+- análise de gastos
+
+## Camada 7 - Motores de IA
+
+Componentes principais:
+
+- orquestrador de IA
+- construtor de contexto
+- decisão assistida
+
+Responsabilidades:
+
+- gerar insights
+- apoiar análise financeira
+- produzir recomendações
+
+## Camada 8 - Autopilot
+
+Responsabilidades:
+
+- detectar overspending
+- analisar saúde financeira
+- gerar alertas e sinais
+
+## Camada 9 - Agente CFO
+
+Componentes:
+
 - `AICFOAgent`
 - `CFOPlanner`
 - `CFOAdvisor`
 
-Responsibilities:
-- financial planning
-- savings strategies
-- simulation guidance
+Responsabilidades:
 
-## Layer 10 - Event Bus
-Events:
-- `transaction_created`
-- `transaction_deleted`
-- `goal_created`
-- `budget_changed`
-- `ai_task_completed`
+- planejamento financeiro
+- orientação de corte e economia
+- apoio a simulações
 
-Enables:
-- automation
-- reactivity
-- cross-module integration
+## Camada 10 - Barramento de eventos
 
-## Layer 11 - AI Task Queue
-Task types:
-- `INSIGHT_GENERATION`
-- `AUTOPILOT_ANALYSIS`
-- `REPORT_GENERATION`
-- `CASHFLOW_SIMULATION`
+Eventos típicos:
 
-Goal:
-- avoid UI/main-thread blocking
+- transação criada
+- transação removida
+- meta criada
+- orçamento alterado
+- tarefa de IA concluída
 
-## Layer 12 - Repository Layer
-- `transactionRepository`
-- `accountRepository`
-- `goalRepository`
-- `aiMemoryRepository`
+Objetivo:
 
-Rule:
-- engines must not read/write database directly
+- automação
+- reatividade
+- integração entre módulos
 
-## Layer 13 - Database Layer
-Current:
-- Firebase
+## Camada 11 - Fila de IA
 
-Future:
+Tipos comuns:
+
+- geração de insights
+- análise do Autopilot
+- geração de relatório
+- simulação de fluxo
+
+Objetivo:
+
+- evitar bloqueio de interface
+
+## Camada 12 - Repositórios
+
+Camada responsável por mediar persistência.
+
+Regra:
+
+- motores não devem ler ou escrever no banco diretamente
+
+## Camada 13 - Persistência
+
+Estado atual mais relevante:
+
+- Firebase como base principal em partes do sistema
+
+Possibilidades futuras:
+
 - PostgreSQL
-- Supabase
+- outras persistências específicas conforme a necessidade
 
-## Visual Summary
-Client
+## Resumo visual
+
+```text
+Cliente
  |
-Runtime Guard
+Guardas de runtime
  |
 Frontend
  |
 API
  |
-User Context
+Contexto do usuário
  |
-Domain
+Domínio
  |
-Financial Engines
+Motores financeiros
  |
-AI Engines
+Motores de IA
  |
 Autopilot
  |
-AI CFO Agent
+Agente CFO
  |
-Event Bus
+Eventos
  |
-AI Queue
+Fila de IA
  |
-Repositories
+Repositórios
  |
-Database
+Persistência
+```
+
+## Referência principal
+
+- [docs/ARCHITECTURE.md](E:\app e jogos criados\Flow-Finance\docs\ARCHITECTURE.md)

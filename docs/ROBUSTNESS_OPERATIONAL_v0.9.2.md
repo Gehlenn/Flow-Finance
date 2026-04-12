@@ -1,5 +1,8 @@
 # Robustez Operacional do Flow Finance - Documentação
 
+> **Versão de referência:** v0.9.2 — documentação técnica de features implementadas.
+> Válida como referência de como as camadas abaixo funcionam; revisar ao alterar qualquer uma delas.
+
 ## Visão Geral
 
 Esta documentação descreve as camadas de robustez operacional implementadas na versão 0.9.2 do Flow Finance:

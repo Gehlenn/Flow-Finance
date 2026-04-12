@@ -1,171 +1,170 @@
-# Flow Finance Architecture
+# Arquitetura do Flow Finance
 
-This document reflects the current application shape after the Firestore-first multi-tenant cutover.
+## Papel deste documento
 
-## Overview
+Este documento descreve a arquitetura ativa do produto e a distribuicao atual de responsabilidades entre frontend, backend, dominio e infraestrutura. Ele nao deve carregar backlog antigo nem status de release.
 
-Flow Finance is now a React SPA with a thin composition root in [App.tsx](/E:/app%20e%20jogos%20criados/Flow-Finance/App.tsx), backed by:
+## Visao geral
 
-- Firebase Auth for client identity bootstrap
-- Firestore for profile state, tenant/workspace metadata, financial entities, SaaS usage, billing hooks, and audit logs
-- Backend routes only for auxiliary flows that still need server-side mediation
+O Flow Finance opera hoje como:
 
-The app is no longer local-first. `localStorage` is used only for lightweight client session helpers and safe workspace-scoped caches, not as the authoritative store for core business data.
+- frontend React com Vite
+- backend Node.js com Express
+- contexto orientado por workspace
+- billing via Stripe
+- observabilidade e health checks como contrato operacional minimo
 
-## Frontend Layers
+O foco arquitetural atual e sustentar com clareza:
 
-### Composition Root
+- fluxo de caixa e transacoes
+- receitas previstas e realizadas
+- apoio consultivo por IA
+- billing e controle por plano
+- operacao coerente entre web e mobile
 
-[App.tsx](/E:/app%20e%20jogos%20criados/Flow-Finance/App.tsx) is responsible for:
+## Camadas principais
 
-- Sentry initialization
-- composing the app hooks
-- providing navigation context to pages/components
-- rendering the application shell
+### Frontend
 
-Core domain logic no longer lives in `App.tsx`.
+Responsabilidades:
 
-### Application Hooks
+- composicao da interface e navegacao
+- bootstrap de sessao e workspace
+- consumo dos servicos de dominio
+- renderizacao web e empacotamento mobile
 
-- [hooks/useAuthAndWorkspace.ts](/E:/app%20e%20jogos%20criados/Flow-Finance/hooks/useAuthAndWorkspace.ts)
-  Handles auth bootstrap, backend session bootstrap, workspace selection, logout, and active workspace persistence.
-- [hooks/useSyncEngine.ts](/E:/app%20e%20jogos%20criados/Flow-Finance/hooks/useSyncEngine.ts)
-  Owns profile/entity sync state, Firestore sync, sync status, and temp-id reconciliation.
-- [hooks/useFinancialState.ts](/E:/app%20e%20jogos%20criados/Flow-Finance/hooks/useFinancialState.ts)
-  Exposes the single high-level domain API for transactions, accounts, goals, reminders, and alerts.
-- [hooks/useNavigationTabs.tsx](/E:/app%20e%20jogos%20criados/Flow-Finance/hooks/useNavigationTabs.tsx)
-  Owns active tab state and tab rendering.
+Entradas principais:
 
-### Domain Service Layer
+- [App.tsx](E:\app e jogos criados\Flow-Finance\App.tsx)
+- [hooks/useAuthAndWorkspace.ts](E:\app e jogos criados\Flow-Finance\hooks\useAuthAndWorkspace.ts)
+- [hooks/useSyncEngine.ts](E:\app e jogos criados\Flow-Finance\hooks\useSyncEngine.ts)
+- [hooks/useFinancialState.ts](E:\app e jogos criados\Flow-Finance\hooks\useFinancialState.ts)
 
-[src/app/financeService.ts](/E:/app%20e%20jogos%20criados/Flow-Finance/src/app/financeService.ts) centralizes:
+### Backend
 
-- entity normalization
-- workspace/user ownership validation
-- business rules such as “do not delete the last active account”
-- goal contribution limits
-- temp-id creation for optimistic UX
-- sync invocation through the injected sync engine contract
-- financial event emission
+Responsabilidades:
 
-UI components should talk to `useFinancialState` or higher-level adapters, never directly to low-level sync helpers.
+- autenticacao e sessao nos fluxos suportados
+- mediacao de chamadas sensiveis
+- billing, checkout, portal e webhook
+- health, version e observabilidade
+- integracoes e servicos de suporte
 
-## Source of Truth
+Entrada principal:
 
-### Profile, Workspace, and SaaS Metadata
+- [backend/src/index.ts](E:\app e jogos criados\Flow-Finance\backend\src\index.ts)
 
-Firestore remains responsible for:
+### Servicos de dominio
 
-- `users/{userId}` for lightweight profile state such as name/theme/reminders/alerts
-- `tenants/{tenantId}`
-- `tenant_members/{tenantId_userId}`
-- `workspaces/{workspaceId}`
-- `workspace_members/{workspaceId_userId}`
-- `workspaces/{workspaceId}/insights/{insightId}`
-- `workspaces/{workspaceId}/imports/{importId}`
-- `workspaces/{workspaceId}/subscriptions/{subscriptionId}`
-- `workspaces/{workspaceId}/billing_state/{docId}`
-- `workspaces/{workspaceId}/saas_usage/{docId}`
-- `workspaces/{workspaceId}/billing_hooks/{eventId}`
-- `audit_logs/{tenantId}/events/{eventId}`
+O dominio nao deve ficar espalhado em componentes. Regras criticas devem viver em servicos, stores e hooks de alto nivel.
 
-### Financial Entities
+Arquivo central:
 
-The authoritative path for:
+- [src/app/financeService.ts](E:\app e jogos criados\Flow-Finance\src\app\financeService.ts)
 
-- accounts
-- transactions
-- goals
+Responsabilidades:
 
-is Firestore through [src/services/sync/cloudSyncClient.ts](/E:/app%20e%20jogos%20criados/Flow-Finance/src/services/sync/cloudSyncClient.ts) and the Firestore service layer in [src/services/firestoreWorkspaceStore.ts](/E:/app%20e%20jogos%20criados/Flow-Finance/src/services/firestoreWorkspaceStore.ts).
+- validacao de ownership
+- normalizacao de entidades
+- regras financeiras
+- reconciliacao de ids
+- sincronizacao e emissao de eventos internos
 
-Every write is scoped with:
+## Fontes de verdade por area
 
-- `userId`
-- `tenantId`
-- `workspaceId`
+### Sessao e bootstrap
 
-Deletes are validated against the active ownership context before being persisted.
+O sistema trabalha com dois contextos principais:
 
-## Multi-Workspace Model
+- fluxo real de autenticacao quando o ambiente esta configurado
+- fallback controlado em `development` para nao bloquear o produto local
 
-The active workspace is resolved on the client and propagated in authenticated requests through `x-workspace-id`.
+Arquivos principais:
 
-Each financial entity carries:
+- [components/Login.tsx](E:\app e jogos criados\Flow-Finance\components\Login.tsx)
+- [hooks/useAuthAndWorkspace.ts](E:\app e jogos criados\Flow-Finance\hooks\useAuthAndWorkspace.ts)
+- [src/services/backendSession.ts](E:\app e jogos criados\Flow-Finance\src\services\backendSession.ts)
 
-- `user_id`
-- `tenant_id`
-- `workspace_id`
+### Workspace e persistencia
 
-This allows:
+O workspace e a unidade operacional principal do sistema.
 
-- tenant-aware sync
-- workspace-scoped SaaS entitlements
-- auditability
-- safer delete/update validation
+Regras ativas:
 
-## SaaS and Observability
+- operacoes sensiveis devem carregar `x-workspace-id`
+- billing e uso sao associados ao workspace
+- isolamento de dados depende de `user_id`, `tenant_id` e `workspace_id` quando aplicavel
 
-SaaS usage, billing context, and event history are Firestore-backed:
+Arquivos principais:
 
-- usage tracking: [src/saas/usageTracker.ts](/E:/app%20e%20jogos%20criados/Flow-Finance/src/saas/usageTracker.ts) configured through [src/saas/firestoreAdapters.ts](/E:/app%20e%20jogos%20criados/Flow-Finance/src/saas/firestoreAdapters.ts)
-- billing state and hooks: [src/services/firestoreBillingStore.ts](/E:/app%20e%20jogos%20criados/Flow-Finance/src/services/firestoreBillingStore.ts)
-- event engine: [src/events/eventEngine.ts](/E:/app%20e%20jogos%20criados/Flow-Finance/src/events/eventEngine.ts) with Firestore audit persistence for critical workspace events
+- [src/services/firestoreWorkspaceStore.ts](E:\app e jogos criados\Flow-Finance\src\services\firestoreWorkspaceStore.ts)
+- [src/services/sync/cloudSyncClient.ts](E:\app e jogos criados\Flow-Finance\src\services\sync\cloudSyncClient.ts)
 
-The dedicated workspace administration UI lives in [pages/WorkspaceAdmin.tsx](/E:/app%20e%20jogos%20criados/Flow-Finance/pages/WorkspaceAdmin.tsx).
-The dedicated audit page with filters lives in [pages/WorkspaceAudit.tsx](/E:/app%20e%20jogos%20criados/Flow-Finance/pages/WorkspaceAudit.tsx).
+### Billing e SaaS
 
-## Deployment and CI
+O backend concentra o fluxo sensivel de billing. O frontend apenas inicia checkout, consulta estado e abre portal.
 
-- Vercel remains responsible for the frontend SPA deployment.
-- Firestore security rule validation is not executed inside Vercel. It runs in GitHub Actions through [.github/workflows/firestore-rules.yml](/E:/app%20e%20jogos%20criados/Flow-Finance/.github/workflows/firestore-rules.yml), which provisions Java 21 for the Firebase emulator.
-- Local rule validation uses `npm run test:firestore:rules`. The wrapper in [run-firestore-rules.mjs](/E:/app%20e%20jogos%20criados/Flow-Finance/scripts/run-firestore-rules.mjs) prefers an installed Temurin JDK 21 on Windows so the emulator does not depend on the global `PATH` being updated.
-- The audit UI now supports date-range and resource-type filters with Firestore cursor pagination so large workspaces do not dump the full event list into the first render and paging remains stable even with repeated timestamps.
-- Firestore rules now cross-check tenant ownership between `tenant_members`, `workspace_members`, `workspaces`, financial documents, future workspace-scoped collections, billing documents, and audit events to reduce cross-tenant document injection risk.
+Arquivos principais:
 
-OpenAPI docs are exposed in non-production environments through:
+- [src/services/firestoreBillingStore.ts](E:\app e jogos criados\Flow-Finance\src\services\firestoreBillingStore.ts)
+- [src/saas/usageTracker.ts](E:\app e jogos criados\Flow-Finance\src\saas\usageTracker.ts)
+- [pages/WorkspaceAdmin.tsx](E:\app e jogos criados\Flow-Finance\pages\WorkspaceAdmin.tsx)
+- [backend/src/services/saas](E:\app e jogos criados\Flow-Finance\backend\src\services\saas)
 
-- `/api/openapi.json`
-- `/api/docs`
+Estado arquitetural relevante:
 
-## Current Runtime Flow
+- o nucleo Stripe sandbox foi validado localmente
+- o fechamento do ambiente alvo depende de Vercel e nao de redesenho da arquitetura de billing
+
+### Observabilidade
+
+A arquitetura atual assume observabilidade minima e explicita.
+
+Contratos ativos:
+
+- `GET /health`
+- `GET /api/health`
+- `GET /api/version`
+
+Campos esperados quando aplicavel:
+
+- `requestId`
+- `routeScope`
+- dados de versao e observabilidade
+
+Arquivos principais:
+
+- [src/config/sentry.ts](E:\app e jogos criados\Flow-Finance\src\config\sentry.ts)
+- [backend/src/config/sentry.ts](E:\app e jogos criados\Flow-Finance\backend\src\config\sentry.ts)
+- [backend/src/index.ts](E:\app e jogos criados\Flow-Finance\backend\src\index.ts)
+
+## Fluxo resumido de runtime
 
 ```mermaid
 graph TD
-    User["User"] --> App["App.tsx"]
+    Usuario["Usuario"] --> App["App.tsx"]
     App --> Auth["useAuthAndWorkspace"]
     App --> Sync["useSyncEngine"]
     App --> Finance["useFinancialState"]
-    App --> Nav["useNavigationTabs"]
-
     Finance --> Service["financeService"]
-    Service --> Sync
-
-    Sync --> Firestore["Firestore profile/workspace/entity data"]
-    App --> WorkspaceAdmin["WorkspaceAdmin page"]
-    WorkspaceAdmin --> Firestore
-    Firestore --> Billing["Billing / Usage / Hooks"]
-    Firestore --> EventStore["Audit events"]
-    Firestore --> EntityStore["Workspace-scoped entity store"]
+    Service --> Stores["Workspace / Billing / Sync"]
+    App --> Backend["API Backend"]
+    Backend --> Billing["Stripe / SaaS"]
+    Backend --> Obs["Health / Version / Observabilidade"]
 ```
 
-## Compatibility Notes
+## Decisoes arquiteturais ativas
 
-- [hooks/useCashFlowState.ts](/E:/app%20e%20jogos%20criados/Flow-Finance/hooks/useCashFlowState.ts) is now only a deprecated compatibility adapter to `useFinancialState`.
-- Some legacy wrappers still exist for compatibility, but they should delegate to the canonical path instead of maintaining their own data logic.
+1. Manter o frontend fino em regra de negocio.
+2. Centralizar logica financeira em servicos e hooks de alto nivel.
+3. Tratar workspace como contexto obrigatorio para operacoes sensiveis.
+4. Preservar health, version e observabilidade como contrato de runtime.
+5. Evitar reintroduzir complexidade historica como se fosse fonte primaria de verdade.
 
-## Near-Term Direction
+## Limites deste documento
 
-The current architecture is optimized around:
+Este documento nao substitui:
 
-- one source of truth per concern
-- workspace-safe operations
-- backend-owned financial persistence
-- thin UI components
-
-The next major improvements should continue along that line:
-
-- finish migrating remaining compatibility wrappers out of active runtime paths
-- add emulator-backed Firestore security tests in CI
-- keep reducing the number of auxiliary backend flows that are not strictly required for Firebase-first operation
-- expand integration and concurrency coverage around workspace isolation and health checks
+- [docs/ARCHITECTURE_SYSTEM_MAP.md](E:\app e jogos criados\Flow-Finance\docs\ARCHITECTURE_SYSTEM_MAP.md) para leitura sistemica
+- [docs/VERCEL_CONFIG.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_CONFIG.md) para ambiente
+- [docs/DEPLOYMENT_STATUS.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT_STATUS.md) para status operacional

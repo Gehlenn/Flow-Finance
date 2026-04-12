@@ -1,210 +1,69 @@
-# 🚀 GUIA RÁPIDO - Flow Finance Setup (Português)
+# Guia Rapido de Setup em PT-BR
 
-## 1️⃣ Obter OpenAI API Key
+## Papel deste documento
 
-### Passo 1: Acesse OpenAI Platform
-- URL: https://platform.openai.com/api/keys
-- Login com sua conta
+Este arquivo e um atalho curto. O documento canonico de setup e [docs/SETUP_GUIDE.md](E:\app e jogos criados\Flow-Finance\docs\SETUP_GUIDE.md).
 
-### Passo 2: Criar Chave
-- Clique "Create new secret key"
-- Copie a chave (começa com `sk-proj-`)
-- ⚠️ Guarde com segurança
+Use este guia quando voce so precisa lembrar a sequencia pratica.
 
-### Passo 3: Adicione ao .env.local
-```env
-OPENAI_API_KEY=your_openai_api_key_here
-```
+## Ordem recomendada
 
-**Custo**: ~$0.03 por 1K tokens (muito barato)
+1. instalar dependencias
+2. preencher variaveis locais minimas
+3. subir frontend e backend
+4. rodar checks criticos
+5. so depois pensar em Vercel
 
----
+## Comandos base
 
-## 2️⃣ Configurar Firebase
+Instalacao:
 
-### Opção A: Admin Key (Recomendado para Backend)
-
-1. Acesse: https://console.firebase.google.com
-2. Projeto: `komodo-flow`
-3. **Project Settings** → **Service Accounts**
-4. Clique **Generate New Private Key**
-5. Salve o arquivo JSON
-
-6. Extraia do JSON:
-   ```env
-   FIREBASE_PROJECT_ID=komodo-flow
-   FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-   FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxx@komodo-flow.iam.gserviceaccount.com
-   ```
-
-### Opção B: Web Config (Frontend)
-```env
-VITE_FIREBASE_API_KEY=your_firebase_web_api_key_here
-VITE_FIREBASE_PROJECT_ID=komodo-flow
-VITE_FIREBASE_AUTH_DOMAIN=komodo-flow.firebaseapp.com
-VITE_FIREBASE_STORAGE_BUCKET=komodo-flow.firebasestorage.app
-```
-
----
-
-## 3️⃣ Linkar Conta Vercel (5 minutos)
-
-### Passo 1: Instalar Vercel CLI
 ```bash
-npm install -g vercel
+npm ci
+cd backend
+npm ci
 ```
 
-### Passo 2: Fazer Login
+Frontend:
+
 ```bash
-vercel login
-```
-- Escolha **GitHub** ou **Email**
-- Aprove no browser
-
-### Passo 3: Linkar Projeto
-```bash
-vercel link
-```
-- Responda:**"Set up and deploy?"** → **Yes**
-- **Framework**: Other
-- **Root directory**: .
-- **Project name**: flow-finance
-
-✅ **Pronto! Seu projeto está linkado!**
-
-### Passo 4: Adicionar Variáveis de Ambiente
-
-**Via CLI (Rápido):**
-```bash
-vercel env add OPENAI_API_KEY
-# Digite sua chave
-# Escolha: Production + Preview
-```
-
-Repita para:
-- `FIREBASE_PROJECT_ID`
-- `FIREBASE_PRIVATE_KEY`
-- `FIREBASE_CLIENT_EMAIL`
-- `VITE_API_PROD_URL`
-
-**Via Dashboard:**
-1. https://vercel.com/dashboard
-2. Selecione `flow-finance`
-3. **Settings** → **Environment Variables**
-4. Clique **Add**
-5. Preencha as variáveis
-
----
-
-## 4️⃣ Deploy
-
-### Testar Localmente
-```bash
-npm run build
 npm run dev
 ```
-Visite: http://localhost:3078
 
-### Deploy em Preview (Staging)
+Backend:
+
 ```bash
-npm run deploy:preview
+cd backend
+npm run dev
 ```
-Visite URL fornecida
 
-### Deploy em Produção
+## Checks minimos
+
 ```bash
-npm run deploy
+npm run lint
+npm run test:coverage:critical
+npm run health:runtime
+npm run health:runtime:mobile
 ```
-Visite: https://flow-finance.vercel.app
 
----
+## Quando envolver Vercel
 
-## 5️⃣ Checklist Final
+```bash
+vercel login
+vercel link
+VERCEL_TARGET_URL=https://seu-preview.vercel.app npm run health:vercel
+```
 
-### ✅ Setup Local
-- [ ] npm install
-- [ ] .env.local criado com:
-  - [ ] OPENAI_API_KEY
-  - [ ] FIREBASE_PROJECT_ID
-  - [ ] FIREBASE_CLIENT_EMAIL
-  - [ ] VITE_API_PROD_URL
+## Quando envolver Stripe sandbox
 
-### ✅ Vercel
-- [ ] CLI instalado
-- [ ] Projeto linkado (`vercel link`)
-- [ ] Variáveis de ambiente adicionadas
-- [ ] Test deploy: `npm run deploy:preview` ✅
+```bash
+stripe login
+stripe listen --forward-to http://localhost:3001/api/saas/stripe/webhook
+```
 
-### ✅ Deploy
-- [ ] Build local passa: `npm run build` ✅
-- [ ] Preview funciona
-- [ ] Produção deployada
+## Referencias corretas
 
----
-
-## 🎯 URLs Importantes
-
-| Serviço | URL |
-|---------|-----|
-| OpenAI | https://platform.openai.com |
-| Firebase | https://console.firebase.google.com |
-| Vercel | https://vercel.com/dashboard |
-| App (Dev) | http://localhost:3078 |
-| App (Prod) | https://flow-finance.vercel.app |
-
----
-
-## 💡 Dicas
-
-1. **Guardar Chaves com Segurança**
-   - Nunca commit `.env.local` no Git
-   - Já está em `.gitignore` ✅
-
-2. **Testar Tudo Localmente**
-   - Antes de fazer deploy
-   - Evita surpresas em produção
-
-3. **Monitorar Custos**
-   - OpenAI: ~$0.03 por 1K tokens
-   - Firebase: Grátis até 1GB/mês
-   - Vercel: 100GB bandwidth grátis
-
-4. **Auto-Deploy do GitHub**
-   - Vercel configura automaticamente
-   - Cada push = novo deploy
-
----
-
-## ❓ Problemas Comuns
-
-### OpenAI retorna erro 401
-- Chave está correta?
-- Tem créditos na conta?
-- Não foi revogada?
-
-### Firebase não conecta
-- FIREBASE_PROJECT_ID está certo?
-- EMAIL está certo?
-- PRIVATE_KEY tem `\n` para quebras de linha?
-
-### Deploy falha no Vercel
-- `npm run build` funciona localmente?
-- Variáveis de ambiente estão todas setadas?
-- Node.js >= 18?
-
----
-
-## 📞 Próximos Passos
-
-1. ✅ Setup OpenAI
-2. ✅ Setup Firebase
-3. ✅ Linkar Vercel
-4. ✅ Fazer deploy
-5. ✅ Testar em produção
-6. 🔄 Integrar mais funcionalidades
-
-Qualquer dúvida, check:
-- `SETUP_GUIDE.md` (completo)
-- `VERCEL_QUICK_START.md` (Vercel)
-
-**Bora programar! 🚀**
+- Canonico: [docs/SETUP_GUIDE.md](E:\app e jogos criados\Flow-Finance\docs\SETUP_GUIDE.md)
+- Deploy geral: [docs/DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT.md)
+- Vercel: [docs/VERCEL_DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_DEPLOYMENT.md)
+- Inicio rapido: [docs/COMECE_AQUI.md](E:\app e jogos criados\Flow-Finance\docs\COMECE_AQUI.md)

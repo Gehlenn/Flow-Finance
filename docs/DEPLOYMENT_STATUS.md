@@ -1,50 +1,166 @@
-# Firebase Optimization Guide
+# Status de Deploy - Flow Finance
 
-## Current Status
-✅ **Migration to GPT-4**: Backend proxy implemented, frontend calls backend endpoints
-✅ **Vercel Deployment**: Configuration created, deployment scripts added
-✅ **Firebase Optimization**: Optimized service with caching, batching, and lazy loading
+## Papel deste documento
 
-## Migration Summary
+Este arquivo resume o estado real de deploy e publicacao do projeto. Ele nao substitui validacao operacional nem checks automatizados, mas serve como quadro rapido de situacao.
 
-### 1. GPT-4 Migration ✅
-- **Backend**: OpenAI wrapper with GPT-4 via GPT-Go
-- **Frontend**: API proxy calls to backend endpoints
-- **Security**: API keys never exposed in client-side code
-- **Cost**: Minimal usage with efficient prompting
+## Links de referencia
 
-### 2. Vercel Deployment ✅
-- **Configuration**: `vercel.json` with optimized settings
-- **Scripts**: `npm run deploy` and `npm run deploy:preview`
-- **Routing**: SPA routing with API proxy
-- **Build**: Static build with Vite
+- Frontend principal: https://flow-finance-frontend-nine.vercel.app/
+- Backend principal: https://flow-finance-backend.vercel.app/
+- Frontend alternativo: https://flow-finance-xi.vercel.app/
 
-### 3. Firebase Optimization ✅
-- **Lazy Loading**: Firebase initialized only when needed
-- **Caching**: 5-minute cache for frequently accessed data
-- **Batching**: Batch operations for multiple transactions
-- **Real-time**: Optimized subscriptions with limits
-- **Storage**: Efficient file uploads with cleanup
+## Situacao atual
 
-## Next Steps
+### Frontend
 
-1. **Deploy Backend**: Deploy your Node.js backend to Railway/Vercel/Railway
-2. **Update URLs**: Set `VITE_API_PROD_URL` in Vercel environment variables
-3. **Test Deployment**: Run `npm run deploy:preview` first
-4. **Monitor Usage**: Check Vercel dashboard for performance metrics
+Estado:
 
-## Cost Estimation (Monthly)
+- publicado no Vercel
+- acessivel nos dominios conhecidos
 
-- **Vercel (Free)**: $0 (up to 100GB bandwidth)
-- **Firebase (Blaze Plan)**: $0 base + usage
-- **OpenAI (GPT-4)**: ~$0.10-0.50 per 1K users (depending on usage)
-- **Total**: <$1/month for small scale
+Observacao:
 
-## Performance Optimizations
+- a validacao local de runtime foi aprovada
+- o fechamento honesto no ambiente alvo ainda depende de variaveis corretas e de acesso de verificacao
 
-- **Bundle Size**: ~700KB gzipped (optimized)
-- **Loading**: Lazy-loaded components
-- **Caching**: Firebase data cached locally
-- **API**: Efficient backend proxy calls
+### Backend
 
-Ready for production deployment! 🚀
+Estado:
+
+- publicado no Vercel
+- endpoints de saude e versao implementados com contrato novo de observabilidade
+
+Observacao:
+
+- a validacao externa continua bloqueada quando o preview esta protegido por Vercel Authentication
+- sem acesso liberado, o teste automatizado nao consegue provar resposta real da aplicacao
+
+### Billing
+
+Estado:
+
+- validado localmente em sandbox Stripe
+- ainda depende de ambiente alvo acessivel para fechamento completo de deploy operacional
+
+## Bloqueios atuais
+
+1. Preview ou URL de validacao ainda protegido por autenticacao antes da aplicacao responder.
+2. Variaveis de ambiente ainda pendentes no destino:
+   - `VITE_SENTRY_DSN`
+   - `SENTRY_DSN`
+   - `VITE_APP_VERSION`
+   - `APP_VERSION`
+
+## O que ja esta fechado
+
+- `npm run test:coverage`
+- `npm run test:coverage:critical`
+- `npm run test:firestore:rules`
+- login local de desenvolvimento sem Firebase configurado
+- endpoints `/health`, `/api/health` e `/api/version` com `requestId` e `routeScope`
+- bootstrap silencioso de Sentry sem DSN
+- billing Stripe sandbox validado no nucleo critico
+
+## O que falta para marcar o deploy como pronto
+
+1. Preencher as variaveis de ambiente ausentes no Vercel.
+2. Liberar ou compartilhar o preview protegido.
+3. Executar:
+
+```bash
+VERCEL_TARGET_URL=https://seu-preview.vercel.app npm run health:vercel
+```
+
+4. Confirmar resposta real da aplicacao em:
+   - `/health`
+   - `/api/health`
+   - `/api/version`
+
+## Referencias relacionadas
+
+- [README.md](E:\app e jogos criados\Flow-Finance\README.md)
+- [docs/ROADMAP.md](E:\app e jogos criados\Flow-Finance\docs\ROADMAP.md)
+- [docs/VERCEL_CONFIG.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_CONFIG.md)
+- [docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](E:\app e jogos criados\Flow-Finance\docs\EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)
+
+## Atualizacao de validacao - 2026-04-12 (rodada manual)
+
+Comandos executados:
+- `VERCEL_TARGET_URL=https://flow-finance-backend.vercel.app/ npm run health:vercel`
+- `VERCEL_TARGET_URL=https://flow-finance-frontend-nine.vercel.app/ npm run health:vercel`
+
+Resultado:
+- Backend: falha de contrato em `/health` sem `requestId/routeScope`.
+- Frontend: `/health`, `/api/health` e `/api/version` retornando `404`.
+
+Leitura operacional:
+- O bloqueio de release permanece no alinhamento de ambiente alvo e contrato de observabilidade.
+- Nao ha evidencia nova de regressao no nucleo de testes locais nesta rodada.
+
+## Atualizacao de execucao - 2026-04-12 (backend corrigido)
+
+Acoes executadas:
+- Deploy de producao do projeto `flow-finance-backend` realizado no Vercel.
+- `APP_VERSION` de producao ajustado para `0.9.6`.
+- Revalidacao de endpoint publico de versao executada com sucesso.
+
+Evidencia:
+- `GET https://flow-finance-backend.vercel.app/api/version` retornando:
+  - `version: 0.9.6`
+  - `requestId` presente
+  - `routeScope` presente
+- `GET /health`, `GET /api/health` e `GET /api/version` no backend retornando `200` com contrato esperado.
+
+Residual conhecido:
+- O comando `npm run health:vercel` ainda falha no backend por considerar `GET /` como obrigatorio com `200`.
+- No backend, `GET /` retornar `404` e esperado (nao ha rota raiz).
+
+## Atualizacao de execucao - 2026-04-12 (gate backend aprovado)
+
+Acoes executadas:
+- Ajuste no validador `scripts/verify-vercel-observability.mjs` para aceitar `GET / = 404` quando o alvo for backend API-only com contrato estruturado.
+- Teste unitario adicionado para a regra de API-only root (`tests/unit/verify-vercel-observability.test.ts`).
+
+Validacoes executadas:
+- `npx vitest run tests/unit/verify-vercel-observability.test.ts` -> aprovado
+- `npm run lint` -> aprovado
+- `npm test` -> aprovado
+- `VERCEL_TARGET_URL=https://flow-finance-backend.vercel.app/ npm run health:vercel` -> aprovado
+
+Estado resultante:
+- Backend oficial com contrato de observabilidade validado em `/health`, `/api/health` e `/api/version`.
+- Falso negativo de `GET /` removido para contexto API-only.
+
+## Atualizacao de execucao - 2026-04-12 (frontend versionado)
+
+Acoes executadas:
+- Variavel `VITE_APP_VERSION` ajustada para `0.9.6` no projeto `flow-finance-frontend`.
+- Deploy de producao executado no frontend e alias aplicado em `https://flow-finance-frontend-nine.vercel.app/`.
+
+Evidencia:
+- `curl -I https://flow-finance-frontend-nine.vercel.app/` retornando `HTTP/1.1 200 OK`.
+
+Observacao:
+- O contrato de `/health` e `/api/*` permanece responsabilidade do backend (`flow-finance-backend`), nao do dominio de frontend estatico.
+
+
+## Estado consolidado final - 2026-04-12
+
+Resumo executivo atualizado:
+- Backend (flow-finance-backend) validado com sucesso no gate de observabilidade:
+  - /health 200
+  - /api/health 200
+  - /api/version 200
+  - requestId e routeScope presentes
+- Frontend (flow-finance-frontend) publicado e disponivel (HTTP 200) com VITE_APP_VERSION=0.9.6.
+- APP_VERSION de producao no backend alinhado para 0.9.6.
+
+Bloqueio residual real:
+- SENTRY_DSN (backend) e VITE_SENTRY_DSN (frontend) ainda nao configurados nos projetos de producao.
+- A aplicacao opera com bootstrap silencioso sem DSN, sem quebrar runtime.
+
+Decisao operacional:
+- GO WITH KNOWN LIMITATION para lancamento funcional.
+- GO TOTAL depende apenas da ativacao dos DSNs e revalidacao final do monitoramento.
+

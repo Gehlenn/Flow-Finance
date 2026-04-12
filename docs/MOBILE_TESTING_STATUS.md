@@ -1,115 +1,58 @@
-# 📱 **STATUS ATUAL - Mobile Testing Phase** 
+# Status de Testes Mobile
 
-**Data**: 8 de Março de 2026  
-**Fase**: 4/4 - Mobile Testing  
-**Status**: ⚠️ **PARCIALMENTE PRONTO** - Capacitor configurado, bloqueado por JDK
+> **Estado deste documento:** registro de um corte passado com bloqueadores de ambiente conhecidos.
+> Ultimo corte registrado: ambiente nativo incompleto (JDK/SDK ausente no runner).
+> Atualizar este documento quando o ambiente nativo for completado e validado.
 
----
+## Papel deste documento
 
-## ✅ **CONQUISTAS ALCANÇADAS**
+Registrar o estado operacional da trilha mobile sem exagerar claims de prontidão.
 
-### **1. Capacitor Configurado** ✅
-- Capacitor CLI instalado (`@capacitor/cli@8.2.0`)
-- Plataforma Android adicionada (`npx cap add android`)
-- Build web sincronizado (`npx cap sync`)
-- Estrutura de projeto criada (`android/` folder)
+## Estado resumido
 
-### **2. Build Web Funcionando** ✅
-- Vite build passa (`npm run build`)
-- Assets gerados em `dist/`
-- PWA configurada corretamente
-- Service Worker ativo
+- Capacitor configurado
+- build web utilizável como base
+- trilha nativa dependente do ambiente do desenvolvedor
 
-### **3. Backend Pronto** ✅
-- API endpoints `/api/ai/*` implementados
-- JWT authentication ativo
-- Rate limiting configurado
-- Sentry error tracking integrado
+## O que já foi alcançado historicamente
 
----
+- configuração inicial do Capacitor
+- estrutura Android criada
+- build web funcionando
 
-## ❌ **BLOQUEADORES TÉCNICOS**
+## Bloqueadores já observados
 
-### **1. JDK Ausente** 🚫
-```
-ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH
-```
-- **Impacto**: Impossível gerar APK Android
-- **Solução**: Instalar JDK 17+ ou Android Studio
+- JDK ausente
+- dependências nativas incompletas
+- erros de ambiente impedindo geração de build nativo
 
-### **2. TypeScript Errors** ⚠️
-- ~22 erros em 7 arquivos
-- Build falha, mas não afeta testes web
-- Principalmente: tipos não encontrados, configs inválidas
+## Leitura correta
 
----
+Quando existir bloqueio de JDK, SDK, Xcode ou assinatura:
 
-## 🎯 **TESTES POSSÍVEIS AGORA**
+- o mobile não está validado por completo
+- mas isso não significa automaticamente regressão funcional do app web
 
-### **Teste Web Mobile** 🌐
-```bash
-npm run dev
-# Chrome DevTools → Toggle Device Toolbar → iPhone/Android
-```
+## Estado honesto
 
-### **Teste PWA** 📱
-- Instalar como app no Chrome
-- Validar offline functionality
-- Testar push notifications (se suportado)
+No cenário com ambiente nativo incompleto, o status correto é:
 
-### **Teste API Integration** 🔗
-```bash
-# Backend local
-cd backend && npm run dev
-# Testar endpoints /api/ai/*
-```
+- `parcialmente pronto`
 
----
+Porque:
 
-## 🚀 **RESUMO EXECUTADO**
+- a base web existe
+- a camada Capacitor existe
+- a validação nativa integral ainda depende de infraestrutura local
 
-**Comandos executados com sucesso:**
-```bash
-npm install @capacitor/core @capacitor/android
-npx cap add android
-npm run build
-npx cap sync
-```
+## Próximos passos
 
-**Estrutura criada:**
-```
-android/           ← Projeto Android nativo
-dist/             ← Build web para Capacitor
-capacitor.config.ts ← Configuração validada
-```
+1. completar ambiente nativo
+2. gerar build
+3. validar fluxo principal
+4. registrar evidência real de execução mobile
 
----
+## Referências
 
-## 📋 **PRÓXIMAS AÇÕES**
-
-### **Para Completar Mobile Testing:**
-1. **Resolver JDK** (instalar Android Studio)
-2. **Corrigir TypeScript errors** 
-3. **Gerar APK**: `npx cap build android`
-4. **Testar em dispositivo real**
-5. **Validar funcionalidades críticas**
-
-### **Alternativa Imediata:**
-- **Testes web mobile** no browser
-- **PWA validation**
-- **API testing** com backend
-
----
-
-## 🎯 **CONCLUSÃO**
-
-**Fase 4 (Mobile Testing)**: **70% Completa** 
-
-- ✅ **Preparação**: Capacitor configurado
-- ✅ **Build Web**: Funcionando
-- ✅ **Estrutura**: Projeto Android criado
-- ❌ **Build APK**: Bloqueado por JDK
-- ❌ **Testes Nativos**: Dependem de APK
-
-**Recomendação**: Ambiente preparado para desenvolvimento mobile. Faltam apenas dependências do sistema (JDK) para builds nativos completos.</content>
-<parameter name="filePath">e:\app e jogos criados\Flow-Finance\MOBILE_TESTING_STATUS.md
+- [docs/MOBILE_BUILD_GUIDE.md](E:\app e jogos criados\Flow-Finance\docs\MOBILE_BUILD_GUIDE.md)
+- [docs/MOBILE_TESTING_PLAN.md](E:\app e jogos criados\Flow-Finance\docs\MOBILE_TESTING_PLAN.md)

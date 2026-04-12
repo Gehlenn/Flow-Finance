@@ -202,7 +202,7 @@ O projeto Flow Finance completou com sucesso a transição para a versão 0.4.0 
 
 ### 6.2 Ação Necessária Antes do Deploy
 
-⚠️ **IMPORTANTE:**  O arquivo [backend/.env](backend/.env#L9) contém placeholder para `OPENAI_API_KEY`.  
+⚠️ **IMPORTANTE:**  O arquivo `backend/.env` (linha 9, referência histórica) contém placeholder para `OPENAI_API_KEY`.  
 **Você deve substituir por uma chave real** antes de fazer deploy.
 
 ```bash
