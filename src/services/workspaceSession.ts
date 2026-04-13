@@ -65,6 +65,29 @@ function getE2EBootstrapIdentity(): UserIdentity | undefined {
   };
 }
 
+function canUseE2EWorkspaceFallback(userId?: string | null): boolean {
+  const e2eIdentity = getE2EBootstrapIdentity();
+  if (!e2eIdentity?.userId) {
+    return false;
+  }
+
+  return !userId || userId === e2eIdentity.userId;
+}
+
+function buildE2EWorkspaceSummary(identity: UserIdentity): WorkspaceSummary {
+  const workspaceId = getStoredWorkspaceId() || `ws-e2e-${identity.userId}`;
+
+  return {
+    workspaceId,
+    tenantId: `tenant-e2e-${identity.userId}`,
+    name: 'Workspace E2E',
+    tenantName: 'Tenant E2E',
+    plan: 'free',
+    role: 'owner',
+    isDefault: true,
+  };
+}
+
 export function getCurrentWorkspaceIdentity(): UserIdentity | undefined {
   const currentUser = auth.currentUser;
   if (!currentUser?.uid) {
@@ -102,6 +125,13 @@ export function clearActiveWorkspace(): void {
 }
 
 export async function listUserWorkspaces(userId?: string | null): Promise<WorkspaceSummary[]> {
+  if (canUseE2EWorkspaceFallback(userId)) {
+    const identity = getE2EBootstrapIdentity();
+    if (identity?.userId) {
+      return [buildE2EWorkspaceSummary(identity)];
+    }
+  }
+
   return listUserWorkspaceSummaries(userId);
 }
 
@@ -113,6 +143,13 @@ export async function createPersonalWorkspace(identity?: UserIdentity, name?: st
 
 export async function ensureActiveWorkspace(identity?: UserIdentity): Promise<WorkspaceSummary> {
   const resolvedIdentity = resolveIdentity(identity);
+
+  if (canUseE2EWorkspaceFallback(resolvedIdentity.userId)) {
+    const e2eWorkspace = buildE2EWorkspaceSummary(resolvedIdentity);
+    setActiveWorkspaceId(e2eWorkspace.workspaceId);
+    return e2eWorkspace;
+  }
+
   const storedWorkspaceId = getStoredWorkspaceId();
   const workspaces = await listUserWorkspaces(resolvedIdentity.userId);
 

@@ -18,6 +18,19 @@ import {
 import { hydrateGoalsFromCloud } from '../src/services/localSyncService';
 
 const IS_DEV = import.meta.env.DEV;
+
+function canEnableE2EBootstrap(): boolean {
+  if (IS_DEV) {
+    return true;
+  }
+
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const hostname = window.location.hostname;
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+}
 const ALLOW_INSECURE_LOCAL_LOGIN = import.meta.env.VITE_AUTH_ALLOW_INSECURE_LOCAL_LOGIN === 'true';
 const INITIAL_LOADING_TIMEOUT_MS = 4000;
 
@@ -43,7 +56,7 @@ export function useAuthAndWorkspace() {
       return null;
     }
 
-    return getE2EAuthBootstrap(window.location.search, window.localStorage, IS_DEV);
+    return getE2EAuthBootstrap(window.location.search, window.localStorage, canEnableE2EBootstrap());
   }, [e2eSearch]);
   const isE2EBootstrapActive = Boolean(e2eBootstrap);
 
@@ -304,3 +317,6 @@ export function useAuthAndWorkspace() {
     setBackendSyncEnabled,
   };
 }
+
+
+

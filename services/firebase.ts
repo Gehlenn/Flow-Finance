@@ -48,6 +48,19 @@ export const isFirebaseConfigured = [
   firebaseConfig.appId,
 ].every((value) => isMeaningfulFirebaseValue(value));
 
+const missingFirebaseConfigKeys = [
+  ['VITE_FIREBASE_API_KEY', firebaseConfig.apiKey],
+  ['VITE_FIREBASE_AUTH_DOMAIN', firebaseConfig.authDomain],
+  ['VITE_FIREBASE_PROJECT_ID', firebaseConfig.projectId],
+  ['VITE_FIREBASE_APP_ID', firebaseConfig.appId],
+].filter(([, value]) => !isMeaningfulFirebaseValue(value)).map(([key]) => key);
+
+if (!isFirebaseConfigured && typeof window !== 'undefined') {
+  console.warn(
+    `[Firebase] Web auth/Firestore disabled. Configure env vars: ${missingFirebaseConfigKeys.join(', ') || 'VITE_FIREBASE_*'}.`,
+  );
+}
+
 const app = isFirebaseConfigured
   ? (getApps()[0] || initializeApp(firebaseConfig))
   : null;

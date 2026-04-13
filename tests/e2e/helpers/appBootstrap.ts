@@ -26,6 +26,7 @@ export async function gotoAuthedApp(page: Page, options: E2EBootstrapOptions = {
     window.localStorage.setItem('flow_e2e_user_email', bootstrap.userEmail);
     window.localStorage.setItem('flow_e2e_user_name', bootstrap.userName);
     window.localStorage.setItem('flow_e2e_auth_token', bootstrap.token);
+    window.localStorage.setItem('active_workspace_id', 'ws-e2e-' + bootstrap.userId);
   }, {
     userId: options.userId || 'e2e-user',
     userEmail: options.userEmail || 'e2e@flowfinance.test',
@@ -45,3 +46,5 @@ export async function gotoAuthedApp(page: Page, options: E2EBootstrapOptions = {
     }
   }
 }
+
+

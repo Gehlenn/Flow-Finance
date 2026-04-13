@@ -79,6 +79,22 @@ describe('workspaceSession', () => {
     window.removeEventListener(WORKSPACE_CHANGED_EVENT, listener as EventListener);
   });
 
+
+  it('returns deterministic owner workspace for E2E auth mode', async () => {
+    localStorage.setItem('flow_e2e_auth', '1');
+    localStorage.setItem('flow_e2e_user_id', 'e2e-owner-1');
+    localStorage.setItem('flow_e2e_user_email', 'owner@flow.dev');
+    localStorage.setItem('flow_e2e_user_name', 'Owner QA');
+
+    const workspace = await ensureActiveWorkspace({ userId: 'e2e-owner-1', email: 'owner@flow.dev', name: 'Owner QA' });
+
+    expect(workspace.workspaceId).toBe('ws-e2e-e2e-owner-1');
+    expect(workspace.role).toBe('owner');
+    expect(workspace.tenantId).toBe('tenant-e2e-e2e-owner-1');
+    expect(localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY)).toBe('ws-e2e-e2e-owner-1');
+    expect(firestoreWorkspaceMocks.listUserWorkspaceSummariesMock).not.toHaveBeenCalled();
+    expect(firestoreWorkspaceMocks.ensureActiveWorkspaceForUserMock).not.toHaveBeenCalled();
+  });
   it('falls back to E2E bootstrap identity when firebase auth is unavailable', () => {
     localStorage.setItem('flow_e2e_auth', '1');
     localStorage.setItem('flow_e2e_user_id', 'e2e-user-1');
@@ -92,3 +108,4 @@ describe('workspaceSession', () => {
     });
   });
 });
+

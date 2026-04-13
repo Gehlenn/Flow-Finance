@@ -1,4 +1,4 @@
-﻿import { getEphemeralAccessToken } from '../services/authSessionStore';
+import { getEphemeralAccessToken } from '../services/authSessionStore';
 import { reportError } from './sentry';
 
 /**
@@ -27,15 +27,23 @@ export const BACKEND_BASE_URL = (() => {
     import.meta.env.VITE_API_DEV_URL;
 
   if (configuredUrl) {
-    return configuredUrl;
+    return configuredUrl.replace(/\/$/, '');
   }
 
   if (IS_DEVELOPMENT) {
     return 'http://localhost:3001';
   }
 
-  // Test and local build environments need a stable absolute fallback so
-  // endpoint contracts remain fully qualified even without injected env vars.
+  if (typeof window !== 'undefined') {
+    const { origin, hostname } = window.location;
+    const isLocalHostname = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+
+    if (!isLocalHostname) {
+      return origin.replace(/\/$/, '');
+    }
+  }
+
+  // Keep a deterministic local fallback for local preview/test environments.
   return 'http://localhost:3001';
 })();
 
@@ -137,6 +145,14 @@ export class ApiRequestError extends Error {
   }
 }
 
+type WorkspaceSummaryLite = {
+  workspaceId?: string;
+};
+
+type WorkspaceListResponse = {
+  workspaces?: WorkspaceSummaryLite[];
+};
+
 function reportApiFailure(endpoint: string, error: Error | null, silent: boolean): void {
   if (!error || silent) {
     return;
@@ -155,6 +171,37 @@ function reportApiFailure(endpoint: string, error: Error | null, silent: boolean
       ...(error.details || {}),
     } : {}),
   });
+}
+
+function isWorkspaceContextFailure(error: ApiRequestError): boolean {
+  const msg = error.message.toLowerCase();
+  return (
+    (error.statusCode === 400 && msg.includes('workspaceid obrigatorio'))
+    || (error.statusCode === 403 && msg.includes('acesso negado ao workspace'))
+    || (error.statusCode === 404 && msg.includes('workspace nao encontrado'))
+  );
+}
+
+async function recoverWorkspaceFromBackend(): Promise<boolean> {
+  const headers = getAuthHeaders({ includeWorkspace: false });
+  const response = await fetch(API_ENDPOINTS.WORKSPACE.ROOT, {
+    method: 'GET',
+    credentials: 'include',
+    headers,
+  });
+
+  if (!response.ok) {
+    return false;
+  }
+
+  const payload = await response.json() as WorkspaceListResponse;
+  const workspaceId = payload.workspaces?.[0]?.workspaceId;
+  if (!workspaceId) {
+    return false;
+  }
+
+  setStoredWorkspaceId(workspaceId);
+  return true;
 }
 
 export const ACTIVE_WORKSPACE_STORAGE_KEY = 'active_workspace_id';
@@ -223,6 +270,7 @@ export async function apiRequest<T>(
   };
 
   let lastError: Error | null = null;
+  let workspaceRecoveryAttempted = false;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const controller = new AbortController();
@@ -240,11 +288,12 @@ export async function apiRequest<T>(
 
       if (!response.ok) {
         const errorPayload = await response.json().catch(() => ({} as Record<string, unknown>));
-        const message = String((errorPayload as any).message || response.statusText || 'Request failed');
+        const payloadMessage = (errorPayload as any).message || (errorPayload as any).error;
+        const message = String(payloadMessage || response.statusText || 'Request failed');
         const requestIdFromBody = typeof (errorPayload as any).requestId === 'string' ? (errorPayload as any).requestId : undefined;
         const requestIdFromHeader = response.headers.get('x-request-id') || undefined;
 
-        throw new ApiRequestError({
+        const apiError = new ApiRequestError({
           statusCode: response.status,
           message: `API Error ${response.status}: ${message}`,
           requestId: requestIdFromBody || requestIdFromHeader,
@@ -253,6 +302,21 @@ export async function apiRequest<T>(
             ? (errorPayload as any).details as Record<string, unknown>
             : undefined,
         });
+
+        // Self-heal workspace header drift (missing, stale or unauthorized workspace id).
+        if (
+          !workspaceRecoveryAttempted
+          && endpoint !== API_ENDPOINTS.WORKSPACE.ROOT
+          && isWorkspaceContextFailure(apiError)
+        ) {
+          workspaceRecoveryAttempted = true;
+          const recovered = await recoverWorkspaceFromBackend().catch(() => false);
+          if (recovered) {
+            continue;
+          }
+        }
+
+        throw apiError;
       }
 
       return await response.json();
@@ -308,6 +372,7 @@ export async function apiRequest<T>(
  *   }
  * );
  */
+
 
 
 
