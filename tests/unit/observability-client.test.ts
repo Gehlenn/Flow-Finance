@@ -85,6 +85,53 @@ describe('client observability', () => {
     expect(sentryMocks.reportError).not.toHaveBeenCalled();
   });
 
+  it('auto-recovers workspace context and retries request once', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        statusText: 'Bad Request',
+        headers: {
+          get: () => null,
+        },
+        json: async () => ({
+          error: 'WorkspaceId obrigatorio',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        headers: {
+          get: () => null,
+        },
+        json: async () => ({
+          workspaces: [{ workspaceId: 'ws-recovered' }],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        headers: {
+          get: () => null,
+        },
+        json: async () => ({
+          answer: 'ok' }),
+      });
+
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+    const { apiRequest, ACTIVE_WORKSPACE_STORAGE_KEY } = await import('../../src/config/api.config');
+    const result = await apiRequest<{ answer: string }>('/api/ai/cfo', { retries: 0 });
+
+    expect(result.answer).toBe('ok');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY)).toBe('ws-recovered');
+    expect(sentryMocks.reportError).not.toHaveBeenCalled();
+  });
+
   it('keeps initSentry quiet when no DSN is configured', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     vi.stubEnv('VITE_SENTRY_DSN', '');
