@@ -1,4 +1,24 @@
-# CHANGELOG - Flow Finance
+﻿# CHANGELOG - Flow Finance
+
+## [Unreleased] - 2026-04-13
+
+### Corrigido
+
+- **Workspace E2E Deterministico**: O bootstrap de autenticacao para testes end-to-end agora resolve um workspace owner estavel e isolado por usuario de teste
+- **Billing E2E Estabilizado**: O fluxo de billing/admin deixou de falhar por contaminacao de contexto entre execucoes e passou a aceitar corretamente os estados validos de permissao
+- **Recuperacao de Workspace no Cliente**: `apiRequest` agora recompõe headers a cada tentativa e reaplica a requisicao apos recuperar o workspace sem consumir o orcamento de retry
+- **Fallback de Backend em Producao**: O cliente evita fallback indevido para `localhost` quando roda fora de ambiente local
+- **Diagnostico de Firebase**: O app passou a emitir aviso explicito quando Firebase web auth/Firestore nao esta configurado no ambiente
+
+### Validado
+
+- `npx playwright test tests/e2e/billing.spec.ts --workers=1`
+- `npx vitest run tests/unit/workspace-session.test.ts`
+- `npx vitest run tests/unit/observability-client.test.ts`
+- `npm run lint`
+- `npm run test:coverage:critical`
+
+---
 
 ## [0.9.6] - 2026-04-12 🚀
 
@@ -120,5 +140,5 @@ Lançamento de produção com consolidação de fluxo de caixa inteligente e int
 ---
 
 **Versionamento**: Semântico (MAJOR.MINOR.PATCH)  
-**Última Atualização**: 2026-04-12  
+**Última Atualização**: 2026-04-13  
 **Responsabilidade**: Flow Finance Team + AI Engineering
