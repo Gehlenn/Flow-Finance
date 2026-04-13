@@ -1,4 +1,4 @@
-# Flow Finance
+﻿# Flow Finance
 
 Aplicacao SaaS de gestao financeira com foco em fluxo de caixa, transacoes, receitas previstas e realizadas, e apoio consultivo por IA para empresas de servico.
 
@@ -117,6 +117,18 @@ npm run health:runtime
 npm run health:runtime:mobile
 ```
 
+## Smoke real de autenticacao
+
+Antes de validar login real (Google/Microsoft), rode o checker de readiness local:
+
+```bash
+node scripts/check-local-auth-readiness.mjs
+```
+
+Checklist operacional completo:
+
+- [docs/SMOKE_AUTH_REAL_CHECKLIST.md](docs/SMOKE_AUTH_REAL_CHECKLIST.md)
+
 ## Estado de qualidade atual
 
 Validacoes aprovadas no checkpoint `2026-04-12`:
@@ -195,3 +207,6 @@ Ao alterar comportamento, arquitetura, readiness, deploy ou operacao:
 ## Observacao final
 
 Este repositorio deve ser tratado como sistema financeiro com requisito alto de integridade. Em caso de conflito entre documentacao antiga e realidade do codigo, a realidade do codigo vence e a documentacao deve ser atualizada imediatamente.
+
+
+
