@@ -264,11 +264,6 @@ export async function apiRequest<T>(
   const maxRetries = options?.retries ?? API_CONFIG.RETRY_ATTEMPTS;
   const silent = options?.silent === true;
   
-  const headers = {
-    ...getAuthHeaders(),
-    ...(options?.headers || {}),
-  };
-
   let lastError: Error | null = null;
   let workspaceRecoveryAttempted = false;
 
@@ -277,6 +272,11 @@ export async function apiRequest<T>(
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
+      const headers = {
+        ...getAuthHeaders(),
+        ...(options?.headers || {}),
+      };
+
       const response = await fetch(endpoint, {
         ...options,
         credentials: options?.credentials ?? 'include',
@@ -312,6 +312,7 @@ export async function apiRequest<T>(
           workspaceRecoveryAttempted = true;
           const recovered = await recoverWorkspaceFromBackend().catch(() => false);
           if (recovered) {
+            attempt -= 1;
             continue;
           }
         }
@@ -372,6 +373,7 @@ export async function apiRequest<T>(
  *   }
  * );
  */
+
 
 
 
