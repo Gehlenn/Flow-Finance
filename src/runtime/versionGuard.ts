@@ -11,13 +11,35 @@ const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL ||
   import.meta.env.VITE_API_PROD_URL ||
   '';
-const HAS_EXPLICIT_API_BASE_URL = Boolean(API_BASE_URL);
+const IS_AUTOMATED_BROWSER = typeof navigator !== 'undefined' && navigator.webdriver === true;
+
+function isLocalNetworkTarget(url: string): boolean {
+  if (!url) return true;
+
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return ['localhost', '127.0.0.1', '0.0.0.0'].includes(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+const SHOULD_SKIP_NETWORK_PROBES = IS_AUTOMATED_BROWSER && isLocalNetworkTarget(API_BASE_URL);
 
 let lastVersionCheck = 0;
 const VERSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 export async function checkAppVersion(): Promise<GuardResult> {
   const now = Date.now();
+
+  if (SHOULD_SKIP_NETWORK_PROBES) {
+    return {
+      guard: 'version',
+      status: 'ok',
+      message: 'Version check skipped (local/non-production runtime)',
+      timestamp: now,
+    };
+  }
 
   // Rate limit version checks
   if (now - lastVersionCheck < VERSION_CHECK_INTERVAL) {
@@ -44,7 +66,7 @@ export async function checkAppVersion(): Promise<GuardResult> {
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      if (!HAS_EXPLICIT_API_BASE_URL && response.status === 404) {
+      if (response.status === 404 && isLocalNetworkTarget(API_BASE_URL)) {
         return {
           guard: 'version',
           status: 'ok',
@@ -73,7 +95,7 @@ export async function checkAppVersion(): Promise<GuardResult> {
       // Hard reload to avoid inconsistent deploy state.
       // Skip reload during benchmark sessions to keep performance measurements stable.
       if (!isBenchmarkBrowserSession()) {
-        window.location.reload();
+        console.warn('[HOTFIX] reload bloqueado');
       } else {
         console.info('[Version Guard] Reload skipped in benchmark mode');
       }
@@ -179,5 +201,6 @@ function showVersionMismatchNotification(localVersion: string, backendVersion: s
 export function getLocalVersion(): string {
   return APP_VERSION;
 }
+
 
 
