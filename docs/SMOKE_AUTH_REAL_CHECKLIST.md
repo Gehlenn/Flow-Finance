@@ -70,3 +70,17 @@ Considerar o smoke real aprovado somente se:
 - health de backend estiver aprovado
 - login real concluir
 - workspace e billing carregarem sem regressao de permissao
+
+## 7. Registro desta sessao (2026-04-14)
+
+Automatizado nesta sessao:
+- `npm run health:auth-local` => READY
+- `node scripts/verify-vercel-observability.mjs https://flow-finance-backend.vercel.app` => contratos OK (`/health`, `/api/health`, `/api/version`)
+- Variaveis `VITE_FIREBASE_*` configuradas no Vercel:
+  - Production
+  - Development
+  - Preview (`feature/simplification-ui-0.9.6`)
+
+Pendente manual para conclusao total do smoke:
+- Login real com conta Google/Microsoft autorizada
+- Evidencias visuais (prints) de autenticacao, workspace ativo e estado de billing/admin
