@@ -4,7 +4,7 @@
  * Coverage alvo: 98%+
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as aiConfig from '../../backend/src/config/ai';
 import { cfoController, generateInsightsController, interpretController } from '../../backend/src/controllers/aiController';
 import { loginController, logoutController, refreshController } from '../../backend/src/controllers/authController';
@@ -152,6 +152,13 @@ describe('Auth Controller', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetRefreshStoreForTests();
+    // loginController requires AUTH_ALLOW_INSECURE_LOCAL_LOGIN=true to allow
+    // email/password login in non-production environments (reads process.env at call time).
+    process.env.AUTH_ALLOW_INSECURE_LOCAL_LOGIN = 'true';
+  });
+
+  afterEach(() => {
+    delete process.env.AUTH_ALLOW_INSECURE_LOCAL_LOGIN;
   });
 
   it('loginController preserva userId informado pelo frontend', async () => {

@@ -1,4 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// The script calls process.exit(1) at top level when VERCEL_TARGET_URL is absent.
+// vi.hoisted runs before static imports, so this sets the var before module evaluation.
+vi.hoisted(() => {
+  process.env.VERCEL_TARGET_URL = 'https://test.example.vercel.app';
+});
 
 import {
   isExpectedApiRoot404,

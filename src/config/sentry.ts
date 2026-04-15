@@ -1,11 +1,23 @@
 type SeverityLevel = 'fatal' | 'error' | 'warning' | 'log' | 'info' | 'debug';
 type SentryModule = typeof import('@sentry/react');
+type SentryEnv = {
+  VITE_SENTRY_DSN?: string;
+  SENTRY_DSN?: string;
+};
 
 let sentryModule: SentryModule | null = null;
 let sentryLoader: Promise<SentryModule | null> | null = null;
 let sentryInitialized = false;
 
-const getDsn = (): string => import.meta.env.VITE_SENTRY_DSN || '';
+export const resolveSentryDsn = (env: SentryEnv): string => {
+  const viteDsn = String(env.VITE_SENTRY_DSN || '').trim();
+  if (viteDsn) return viteDsn;
+
+  return String(env.SENTRY_DSN || '').trim();
+};
+
+const getDsn = (): string => resolveSentryDsn(import.meta.env as unknown as SentryEnv);
+const isSentryDevEnabled = (): boolean => String(import.meta.env.VITE_SENTRY_DEV_ENABLED || '').trim().toLowerCase() === 'true';
 export const isSentryConfigured = (): boolean => Boolean(getDsn().trim());
 
 async function loadSentry(): Promise<SentryModule | null> {
@@ -49,7 +61,7 @@ export const initSentry = () => {
       tracesSampleRate: import.meta.env.DEV ? 1.0 : 0.1,
       sampleRate: 1.0,
       beforeSend: (event) => {
-        if (import.meta.env.DEV && !import.meta.env.VITE_SENTRY_DEV_ENABLED) {
+        if (import.meta.env.DEV && !isSentryDevEnabled()) {
           return null;
         }
 
@@ -198,3 +210,5 @@ export const useErrorReporting = () => {
     addBreadcrumb,
   };
 };
+
+
