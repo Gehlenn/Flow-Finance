@@ -1,4 +1,4 @@
-import { test, type Page } from '@playwright/test';
+﻿import { test, type Page } from '@playwright/test';
 
 type E2EBootstrapOptions = {
   userId?: string;
@@ -10,6 +10,7 @@ type E2EBootstrapOptions = {
 export function buildE2EAuthUrl(options: E2EBootstrapOptions = {}): string {
   const params = new URLSearchParams({
     e2eAuth: '1',
+    bench: '1',
     userId: options.userId || 'e2e-user',
     userEmail: options.userEmail || 'e2e@flowfinance.test',
     userName: options.userName || 'E2E Flow',
@@ -39,15 +40,11 @@ export async function gotoAuthedApp(page: Page, options: E2EBootstrapOptions = {
   } catch (err) {
     const msg = (err as Error)?.message ?? '';
     if (msg.includes('ERR_CONNECTION_REFUSED') || msg.includes('ERR_CONNECTION_TIMED_OUT') || msg.includes('ERR_EMPTY_RESPONSE')) {
-      test.skip(true, 'Dev server unavailable at localhost:4173 — skipping E2E test');
+      test.skip(true, 'Dev server unavailable at localhost:4173 - skipping E2E test');
     } else {
       throw err;
     }
   }
 
-  // Wait for app shell to render. Long-lived WS/polling keeps network busy indefinitely,
-  // so we use a short timeout and swallow the error — the goto above already ensured DOM is ready.
   await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => undefined);
 }
-
-
