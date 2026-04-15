@@ -29,15 +29,15 @@ export class AIServiceFactory {
           apiKey: env.OPENAI_API_KEY,
           enabled: true,
           models: {
-            chat: env.OPENAI_CHAT_MODEL || 'gpt-4-turbo',
-            analysis: env.OPENAI_ANALYSIS_MODEL || 'gpt-4-turbo',
-            ocr: env.OPENAI_OCR_MODEL || 'gpt-4-turbo',
+            chat: env.OPENAI_CHAT_MODEL || 'gpt-4o-mini',
+            analysis: env.OPENAI_ANALYSIS_MODEL || 'gpt-4o-mini',
+            ocr: env.OPENAI_OCR_MODEL || 'gpt-4o-mini',
           },
           timeout: parseInt(env.AI_TIMEOUT_MS || '30000', 10),
           maxRetries: parseInt(env.AI_MAX_RETRIES || '2', 10),
           costPerMillion: {
-            input: 0.003, // $3 per 1M input tokens
-            output: 0.006, // $6 per 1M output tokens
+            input: 0.00015, // $0.15 per 1M input tokens (gpt-4o-mini)
+            output: 0.0006,  // $0.60 per 1M output tokens (gpt-4o-mini)
           },
         };
 

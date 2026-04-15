@@ -41,15 +41,15 @@ export const env = {
   // API Keys
   // AI provider keys (backend only)
   GEMINI_API_KEY: readEnv('GEMINI_API_KEY'),            // optional, used only if explicitly chosen
-  OPENAI_API_KEY: readEnv('OPENAI_API_KEY'),            // GPT-4 via GPT Go subscription
-  OPENAI_MODEL: readEnv('OPENAI_MODEL', 'gpt-4'),
+  OPENAI_API_KEY: readEnv('OPENAI_API_KEY'),            // gpt-4o-mini — custo-benefício
+  OPENAI_MODEL: readEnv('OPENAI_MODEL', 'gpt-4o-mini'),
   OPENAI_MAX_TOKENS: readEnv('OPENAI_MAX_TOKENS', '4096'),
 
   // AI Model Configuration (Orchestrator)
   // Models selection by type: chat (lightweight), analysis (heavyweight), ocr
-  OPENAI_CHAT_MODEL: readEnv('OPENAI_CHAT_MODEL', 'gpt-4-turbo'),
-  OPENAI_ANALYSIS_MODEL: readEnv('OPENAI_ANALYSIS_MODEL', 'gpt-4-turbo'),
-  OPENAI_OCR_MODEL: readEnv('OPENAI_OCR_MODEL', 'gpt-4-turbo'),
+  OPENAI_CHAT_MODEL: readEnv('OPENAI_CHAT_MODEL', 'gpt-4o-mini'),
+  OPENAI_ANALYSIS_MODEL: readEnv('OPENAI_ANALYSIS_MODEL', 'gpt-4o-mini'),
+  OPENAI_OCR_MODEL: readEnv('OPENAI_OCR_MODEL', 'gpt-4o-mini'),
   GEMINI_CHAT_MODEL: readEnv('GEMINI_CHAT_MODEL', 'gemini-2.5-flash'),
   GEMINI_ANALYSIS_MODEL: readEnv('GEMINI_ANALYSIS_MODEL', 'gemini-2.5-pro'),
   GEMINI_OCR_MODEL: readEnv('GEMINI_OCR_MODEL', 'gemini-2.5-pro-vision'),

@@ -33,7 +33,7 @@ export async function generateContent(
     
     logger.debug({ model: env.OPENAI_MODEL, maxTokens: env.OPENAI_MAX_TOKENS }, 'Sending request to OpenAI');
     const resp = await openai.chat.completions.create({
-      model: env.OPENAI_MODEL || 'gpt-4',
+      model: env.OPENAI_MODEL || 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
       max_tokens: parseInt(env.OPENAI_MAX_TOKENS || '4096', 10),
