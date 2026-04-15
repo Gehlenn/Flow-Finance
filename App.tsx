@@ -225,19 +225,19 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-500 pb-20 overflow-visible">
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] transition-all duration-500">
           {syncEngine.syncStatus === 'syncing' && (
-            <div className="bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 border border-white/10 shadow-2xl animate-in slide-in-from-top-4">
+            <div className="flow-status-pill px-4 py-2 rounded-full flex items-center gap-2 animate-in slide-in-from-top-4">
               <Loader2 size={12} className="text-indigo-400 animate-spin" />
               <span className="text-[8px] font-black uppercase tracking-widest text-white">Gravando na Nuvem...</span>
             </div>
           )}
           {syncEngine.syncStatus === 'synced' && (
-            <div className="bg-emerald-500/90 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 border border-white/20 shadow-2xl animate-in zoom-in-95">
+            <div className="flow-status-pill bg-emerald-500/90 px-4 py-2 rounded-full flex items-center gap-2 animate-in zoom-in-95">
               <CloudCheck size={12} className="text-white" />
               <span className="text-[8px] font-black uppercase tracking-widest text-white">Sincronizado</span>
             </div>
           )}
           {syncEngine.syncStatus === 'error' && (
-            <div className="bg-rose-500 px-4 py-2 rounded-full flex items-center gap-2 shadow-2xl animate-bounce">
+            <div className="flow-status-pill bg-rose-500/95 px-4 py-2 rounded-full flex items-center gap-2 animate-pulse">
               <CloudOff size={12} className="text-white" />
               <span className="text-[8px] font-black uppercase tracking-widest text-white">Erro de Conexao</span>
             </div>
@@ -247,41 +247,16 @@ const App: React.FC = () => {
         <div className="max-w-xl mx-auto px-4 pt-6 pb-24">
           {navigation.renderActiveTab(navigationContext)}
         </div>
-
-        <style>{`
-          @keyframes liquid {
-            0% { transform: scale(1); border-radius: 1.8rem; }
-            50% { transform: scale(1.05); border-radius: 2.5rem; }
-            100% { transform: scale(1); border-radius: 1.8rem; }
-          }
-          @keyframes liquid-active {
-            0% { transform: scale(0.95); border-radius: 2.0rem; }
-            50% { transform: scale(0.85); border-radius: 2.8rem; }
-            100% { transform: scale(0.95); border-radius: 2.0rem; }
-          }
-          @keyframes glow {
-            0% { box-shadow: 0 15px 40px -5px rgba(79,70,229,0.5); }
-            50% { box-shadow: 0 20px 50px -5px rgba(124,58,237,0.6); }
-            100% { box-shadow: 0 15px 40px -5px rgba(79,70,229,0.5); }
-          }
-          .btn-liquid:hover {
-            animation: liquid 2s infinite ease-in-out, glow 2s infinite ease-in-out;
-          }
-          .btn-liquid:active {
-            animation: liquid-active 0.6s infinite ease-in-out, glow 0.6s infinite ease-in-out;
-          }
-        `}</style>
-
         <button
           onClick={() => setShowAIInput(true)}
           aria-label="Adicionar lançamento"
           title="Adicionar lançamento"
-          className="fixed bottom-24 right-6 w-16 h-16 bg-gradient-to-tr from-indigo-600 to-violet-600 text-white shadow-[0_15px_40px_-5px_rgba(79,70,229,0.5)] flex items-center justify-center z-50 hover:scale-110 active:scale-90 transition-all duration-300 btn-liquid rounded-[1.8rem]"
+          className="flow-fab fixed bottom-24 right-6 z-50 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-500 text-white transition-all duration-300 hover:scale-110 active:scale-90 btn-liquid"
         >
           <Plus size={32} strokeWidth={2.5} />
         </button>
 
-        <nav className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border-t border-slate-200 dark:border-slate-800 px-1 py-3 flex justify-between items-center z-[60] shadow-lg">
+        <nav className="flow-nav fixed bottom-0 left-0 right-0 z-[60] flex justify-between items-center px-1 py-3">
           {mainNavigationItems.map((item) => (
             <NavButton
               key={item.tab}
@@ -311,32 +286,32 @@ const App: React.FC = () => {
 };
 
 const NAV_BUTTON_CLASS_MAP = {
-  buttonBase: 'flex flex-col items-center gap-1 transition-all',
-  active: 'text-indigo-600 dark:text-indigo-400 scale-110',
-  inactive: 'text-slate-400 dark:text-slate-600',
-  iconActive: 'p-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-500/10',
-  iconInactive: 'p-1.5 rounded-xl',
-  label: 'text-[8px] font-black uppercase tracking-widest',
+  buttonBase: 'flex min-h-11 min-w-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 transition-all duration-300',
+  active: 'text-indigo-600 dark:text-indigo-300 -translate-y-1',
+  inactive: 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300',
+  iconActive: 'flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 shadow-sm dark:bg-indigo-500/15',
+  iconInactive: 'flex h-10 w-10 items-center justify-center rounded-2xl',
+  label: 'text-[10px] font-black uppercase tracking-[0.22em]',
 };
 
 function renderTabIcon(tab: string): React.ReactNode {
   switch (tab) {
     case 'dashboard':
-      return <LayoutDashboard size={17} />;
+      return <LayoutDashboard size={18} />;
     case 'history':
-      return <History size={17} />;
+      return <History size={18} />;
     case 'flow':
-      return <TrendingUp size={17} />;
+      return <TrendingUp size={18} />;
     case 'cfo':
-      return <MessageSquare size={17} />;
+      return <MessageSquare size={18} />;
     case 'insights':
-      return <Activity size={17} />;
+      return <Activity size={18} />;
     case 'settings':
-      return <SettingsIcon size={17} />;
+      return <SettingsIcon size={18} />;
     case 'aicontrol':
-      return <Terminal size={17} />;
+      return <Terminal size={18} />;
     default:
-      return <LayoutDashboard size={17} />;
+      return <LayoutDashboard size={18} />;
   }
 }
 
@@ -348,3 +323,4 @@ const NavButton: React.FC<{ active: boolean; onClick: () => void; icon: React.Re
 );
 
 export default App;
+

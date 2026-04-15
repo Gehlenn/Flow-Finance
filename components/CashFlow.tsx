@@ -1,4 +1,4 @@
-
+﻿
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Transaction, TransactionType, Category } from '../types';
 import { formatCurrency } from '../utils/helpers';
@@ -27,7 +27,7 @@ interface CashFlowProps {
   theme: 'light' | 'dark';
 }
 
-const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+const COLORS = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#f43f5e', '#334155'];
 
 interface CustomTooltipProps {
   active?: boolean;
@@ -155,7 +155,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
 
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-700 pb-20 overflow-visible relative">
-      <div className="bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] p-6 rounded-[2rem] flex justify-between items-center shadow-lg shadow-indigo-500/20 shrink-0">
+      <div className="bg-gradient-to-r from-indigo-600 to-sky-500 p-6 rounded-3xl flex justify-between items-center shadow-lg shadow-indigo-500/20 shrink-0">
         <div>
           <h2 className="text-2xl font-black text-white tracking-tight leading-none">Fluxo</h2>
           <p className="text-[8px] font-black text-white/80 uppercase tracking-widest mt-2">
@@ -199,7 +199,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
         )}
       </div>
 
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-700 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)] overflow-hidden min-h-[220px]">
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-[0_18px_45px_-24px_rgba(15,23,42,0.3)] overflow-hidden min-h-[220px]">
         <h3 className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Calendar size={14} /> Evolução de Caixa</h3>
         <div className="h-[220px] w-full" style={{ minHeight: '220px' }}>
           <ResponsiveContainer width="100%" height={220} minWidth={0}>
@@ -216,7 +216,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden min-h-[220px]">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-[0_18px_45px_-24px_rgba(15,23,42,0.3)] overflow-hidden min-h-[220px]">
           <h3 className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><PieIcon size={14} /> Composição</h3>
           <div className="h-[220px] w-full" style={{ minHeight: '220px' }}>
             <ResponsiveContainer width="100%" height={220} minWidth={0}>
@@ -230,7 +230,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-[2.5rem] border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden min-h-[220px]">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-[0_18px_45px_-24px_rgba(15,23,42,0.3)] overflow-hidden min-h-[220px]">
           <h3 className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Target size={14} /> Ranking</h3>
           <div className="h-[220px] w-full" style={{ minHeight: '220px' }}>
             <ResponsiveContainer width="100%" height={220} minWidth={0}>
@@ -249,8 +249,8 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
       </div>
 
       <div className="w-full overflow-visible py-4">
-        <div className="bg-slate-900 rounded-[2.5rem] p-8 flex flex-col justify-between border border-indigo-500/10 shadow-[0_30px_60px_-15px_rgba(79,70,229,0.3)] animate-pulse-wiggle relative overflow-visible">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.1)_0%,_transparent_60%)] pointer-events-none rounded-[2.5rem]"></div>
+        <div className="bg-slate-900 rounded-3xl p-8 flex flex-col justify-between border border-indigo-500/10 shadow-[0_30px_60px_-15px_rgba(79,70,229,0.3)] animate-pulse-wiggle relative overflow-visible">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.1)_0%,_transparent_60%)] pointer-events-none rounded-3xl"></div>
           <div className="flex items-start gap-5 relative z-10">
              <div className="w-14 h-14 bg-indigo-600/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-indigo-400 shrink-0 shadow-inner border border-indigo-500/30">
                <Target size={28} />
@@ -262,7 +262,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
           </div>
           <button 
             onClick={handleGenerateReport}
-            className="w-full py-5 bg-indigo-600 text-white rounded-[1.8rem] font-black text-[11px] uppercase tracking-widest shadow-2xl flex items-center justify-center gap-3 mt-8 active:scale-95 transition-all relative z-10 group overflow-hidden"
+            className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-2xl flex items-center justify-center gap-3 mt-8 active:scale-95 transition-all relative z-10 group overflow-hidden"
           >
             <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <BrainCircuit size={20} className="group-hover:rotate-12 transition-transform" /> {report ? 'Abrir Relatório' : 'Gerar Relatório'}
@@ -272,7 +272,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
 
       {isShareModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[300] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-[3rem] p-8 shadow-2xl space-y-6 animate-in zoom-in-95">
+          <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-3xl p-8 shadow-2xl space-y-6 animate-in zoom-in-95">
             <div className="flex justify-between items-center">
               <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Exportar Fluxo</h3>
               <button onClick={() => setIsShareModalOpen(false)} className="p-1 text-slate-400"><X size={20} /></button>
@@ -315,7 +315,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
 
       {isConsultancyOpen && (
         <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-xl z-[200] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-lg max-h-[85vh] rounded-[3.5rem] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95">
+          <div className="bg-white dark:bg-slate-800 w-full max-w-lg max-h-[85vh] rounded-3xl overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95">
             <div className="p-8 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Estratégia Flow</h3>
@@ -336,7 +336,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
                     <h4 className="text-[10px] font-black text-indigo-600 mb-2 uppercase tracking-widest flex items-center gap-2"><Target size={14}/> Diagnóstico Executivo</h4>
                     <p className="text-xs text-slate-600 dark:text-slate-400 font-bold leading-relaxed">{report.executiveSummary}</p>
                   </div>
-                  <div className="p-6 bg-indigo-600 text-white rounded-[2.5rem] shadow-xl">
+                  <div className="p-6 bg-indigo-600 text-white rounded-3xl shadow-xl">
                     <h4 className="text-[10px] font-black uppercase mb-4 tracking-widest flex items-center gap-2"><Lightbulb size={16}/> Plano de Ação</h4>
                     <ul className="space-y-3">
                       {report.actionPlan && Array.isArray(report.actionPlan) && report.actionPlan.map((step: string, i: number) => (
