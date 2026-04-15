@@ -5,6 +5,7 @@ const ALLOWED_WARNING_PATTERNS = [
   /Download the React DevTools/i,
   /was preloaded using link preload but not used/i,
   /Sentry DSN not found\. Error tracking disabled\./i,
+  /\[Firebase\] Web auth\/Firestore disabled\. Configure env vars:/i,
   /\[API Guard\] Backend returned non-OK status: 404/i,
   /\[Version Guard\] Failed to fetch backend version: 404/i,
   /Failed to load resource: the server responded with a status of 404 \(Not Found\)/i,
