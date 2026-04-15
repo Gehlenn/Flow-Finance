@@ -35,8 +35,7 @@ export async function gotoAuthedApp(page: Page, options: E2EBootstrapOptions = {
   });
 
   try {
-    await page.goto(buildE2EAuthUrl(options));
-    await page.waitForLoadState('networkidle');
+    await page.goto(buildE2EAuthUrl(options), { waitUntil: 'domcontentloaded' });
   } catch (err) {
     const msg = (err as Error)?.message ?? '';
     if (msg.includes('ERR_CONNECTION_REFUSED') || msg.includes('ERR_CONNECTION_TIMED_OUT') || msg.includes('ERR_EMPTY_RESPONSE')) {
@@ -45,6 +44,10 @@ export async function gotoAuthedApp(page: Page, options: E2EBootstrapOptions = {
       throw err;
     }
   }
+
+  // Wait for app shell to render. Long-lived WS/polling keeps network busy indefinitely,
+  // so we use a short timeout and swallow the error — the goto above already ensured DOM is ready.
+  await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => undefined);
 }
 
 

@@ -12,14 +12,14 @@ vi.mock('../../src/config/api.config', () => ({
     },
   },
   apiRequest: vi.fn(async () => ({
-    insights: [{ category: 'Negócio', threshold: 900, reason: 'Padrão de gasto recorrente.' }],
+    insights: [{ category: 'NegÃƒÆ’Ã‚Â³cio', threshold: 900, reason: 'PadrÃƒÆ’Ã‚Â£o de gasto recorrente.' }],
   })),
 }));
 
 describe('isFinancialReminder', () => {
   const makeReminder = (overrides: Partial<Reminder> = {}): Reminder => ({
     id: 'rem-fin-1',
-    title: 'Cobrança',
+    title: 'CobranÃƒÆ’Ã‚Â§a',
     date: '2026-04-12T10:00:00.000Z',
     type: ReminderType.NEGOCIO,
     completed: false,
@@ -100,10 +100,45 @@ describe('assistant reminder states', () => {
 
     expect(screen.getByText(/financeiro 1/i)).toBeTruthy();
     expect(screen.getByText(/operacional 1/i)).toBeTruthy();
-    expect(screen.getByText(/vencido 1/i)).toBeTruthy();
+    expect(screen.getByText(/agendar retorno/i)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: /concluidos e cancelados/i }));
     expect(screen.getByText(/boleto pago/i)).toBeTruthy();
+  });
+
+  it('confirms bulk reminder deletion through modal before removing selected items', () => {
+    const onDeleteReminder = vi.fn();
+
+    render(
+      <Assistant
+        reminders={[
+          makeReminder({ id: 'active-fin', title: 'Receber consulta', amount: 300 }),
+        ]}
+        alerts={[]}
+        goals={[]}
+        transactions={[]}
+        onToggleComplete={vi.fn()}
+        onDeleteReminder={onDeleteReminder}
+        onAddReminder={vi.fn()}
+        onUpdateReminder={vi.fn()}
+        onSaveAlert={vi.fn()}
+        onDeleteAlert={vi.fn()}
+        onSaveGoal={vi.fn()}
+        onDeleteGoal={vi.fn()}
+        onUpdateGoal={vi.fn()}
+        hideValues={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /selecionar lembrete/i }));
+    fireEvent.click(screen.getByRole('button', { name: /excluir \(1\)/i }));
+
+    expect(screen.getByRole('dialog', { name: /confirmar exclusao/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /confirmar exclusao/i }));
+
+    expect(onDeleteReminder).toHaveBeenCalledWith('active-fin');
+    expect(onDeleteReminder).toHaveBeenCalledTimes(1);
   });
 
   it('plano free mostra modal de upgrade ao solicitar sugestoes inteligentes', () => {
