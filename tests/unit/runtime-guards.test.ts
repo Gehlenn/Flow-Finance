@@ -40,4 +40,50 @@ describe('runtime guards', () => {
     expect(result.status).toBe('ok');
     expect(result.message).toContain('frontend-only environment');
   });
+
+  it('reloads on version mismatch outside benchmark mode', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ version: '9.9.9' }),
+    });
+
+    const reloadMock = vi.fn();
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        ...window.location,
+        search: '',
+        reload: reloadMock,
+      },
+    });
+
+    const { checkAppVersion } = await import('../../src/runtime/versionGuard');
+    const result = await checkAppVersion();
+
+    expect(result.status).toBe('warning');
+    expect(reloadMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not reload on version mismatch in benchmark mode', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ version: '9.9.9' }),
+    });
+
+    const reloadMock = vi.fn();
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        ...window.location,
+        search: '?bench=1',
+        reload: reloadMock,
+      },
+    });
+
+    const { checkAppVersion } = await import('../../src/runtime/versionGuard');
+    const result = await checkAppVersion();
+
+    expect(result.status).toBe('warning');
+    expect(reloadMock).not.toHaveBeenCalled();
+  });
 });

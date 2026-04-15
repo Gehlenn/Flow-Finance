@@ -1,9 +1,10 @@
-/**
+﻿/**
  * Version Guard
  * Monitors app version consistency between frontend and backend
  */
 
 import { GuardResult } from './types';
+import { isBenchmarkBrowserSession } from './benchmarkMode';
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '0.6.1';
 const API_BASE_URL =
@@ -70,7 +71,12 @@ export async function checkAppVersion(): Promise<GuardResult> {
       );
 
       // Hard reload to avoid inconsistent deploy state.
-      window.location.reload();
+      // Skip reload during benchmark sessions to keep performance measurements stable.
+      if (!isBenchmarkBrowserSession()) {
+        window.location.reload();
+      } else {
+        console.info('[Version Guard] Reload skipped in benchmark mode');
+      }
 
       return {
         guard: 'version',
@@ -136,7 +142,7 @@ function showVersionMismatchNotification(localVersion: string, backendVersion: s
         <line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
       <div style="flex: 1;">
-        <strong style="display: block; margin-bottom: 8px;">Nova versão disponível</strong>
+        <strong style="display: block; margin-bottom: 8px;">Nova versao disponivel</strong>
         <p style="margin: 0 0 12px 0; opacity: 0.95; font-size: 13px;">
           Frontend: v${localVersion}<br/>
           Backend: v${backendVersion}
@@ -173,3 +179,5 @@ function showVersionMismatchNotification(localVersion: string, backendVersion: s
 export function getLocalVersion(): string {
   return APP_VERSION;
 }
+
+
