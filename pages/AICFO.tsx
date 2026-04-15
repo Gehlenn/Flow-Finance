@@ -159,7 +159,7 @@ const WelcomeScreen: React.FC<{
     <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl w-full">
       <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
       <p className="text-[8px] text-slate-400 font-bold leading-relaxed">
-        Suas informações são processadas via backend seguro com controles de autenticação, quota e rate limit.
+        Respostas consultivas com base nos seus dados reais. Nao substituem analise ou orientacao especializada.
       </p>
     </div>
   </div>

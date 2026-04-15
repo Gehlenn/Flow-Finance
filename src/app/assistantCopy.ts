@@ -1,4 +1,4 @@
-export const ASSISTANT_COPY = {
+﻿export const ASSISTANT_COPY = {
   headerTitle: 'Assistente Financeiro',
   headerSubtitle: 'Apoio leve para caixa, pendências e rotina operacional',
   smartAlertsCta: 'Gerar sugestoes de limite',
@@ -6,10 +6,10 @@ export const ASSISTANT_COPY = {
 };
 
 export const AI_CFO_COPY = {
-  headerTitle: 'Apoio Financeiro IA',
-  headerSubtitle: 'Caixa confirmado, recebíveis e risco de curto prazo',
-  welcomeTitle: 'Apoio Financeiro IA',
-  welcomeSubtitle: 'Orientacao pratica com base nos seus dados',
-  welcomeDescription: 'Faça perguntas curtas sobre caixa, risco, pendências e recebíveis. As respostas priorizam dados reais do workspace e sinalizam quando a base estiver incompleta.',
+  headerTitle: 'Apoio Financeiro',
+  headerSubtitle: 'Analise o caixa, riscos e pendencias com base nos seus dados',
+  welcomeTitle: 'Apoio Financeiro',
+  welcomeSubtitle: 'Respostas consultivas baseadas no seu historico real',
+  welcomeDescription: 'Faca perguntas sobre caixa, pendencias e recebiveis. As respostas sao baseadas nos seus dados reais e indicam quando o historico disponivel e limitado.',
   inputPlaceholder: 'Pergunte sobre saldo, risco, pendências ou recebíveis...',
 };
