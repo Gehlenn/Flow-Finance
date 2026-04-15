@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -14,7 +14,7 @@
     <meta name="description" content="Controle inteligente de fluxo de caixa com IA">
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f172a'/%3E%3Cpath d='M14 22h36l-4 20H18l-4-20z' fill='%233b82f6'/%3E%3Cpath d='M24 16h16' stroke='%2394a3b8' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
-    <title>Flow Finance — Controle de Caixa Inteligente</title>
+    <title>Flow Finance - Controle de Caixa Inteligente</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script type="importmap">
 {
@@ -40,8 +40,11 @@
     <div id="root"></div>
 <script type="module" src="/index.tsx"></script>
 <script>
-  // PART 8 — Registrar Service Worker para suporte PWA/offline com limpeza de cache antigo
-  if ('serviceWorker' in navigator) {
+  // PART 8 - Registrar Service Worker para suporte PWA/offline com limpeza de cache antigo
+  const benchmarkParams = new URLSearchParams(window.location.search);
+  const benchmarkMode = benchmarkParams.has('bench') || benchmarkParams.has('benchmark') || benchmarkParams.has('lh');
+
+  if (!benchmarkMode && 'serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
       try {
         // Force delete old caches (v1-v4) before registering new SW
@@ -60,9 +63,9 @@
             await registration.unregister();
           }
           
-          console.log('[Flow] Cache limpo! Recarregando página...');
+          console.log('[Flow] Cache limpo! Recarregando pagina...');
           // Force hard reload to bypass any cached content
-          window.location.reload(true);
+          console.info('[Flow] reload(true) suprimido');
           return;
         }
         

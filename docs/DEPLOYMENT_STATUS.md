@@ -47,8 +47,8 @@ Estado:
 
 1. Preview ou URL de validacao ainda protegido por autenticacao antes da aplicacao responder.
 2. Variaveis de ambiente ainda pendentes no destino:
-   - `VITE_SENTRY_DSN`
-   - `SENTRY_DSN`
+   - `VITE_SENTRY_DSN` (frontend preferencial)
+   - `SENTRY_DSN` (backend e fallback legado do frontend no build)
    - `VITE_APP_VERSION`
    - `APP_VERSION`
 
@@ -157,7 +157,7 @@ Resumo executivo atualizado:
 - APP_VERSION de producao no backend alinhado para 0.9.6.
 
 Bloqueio residual real:
-- SENTRY_DSN (backend) e VITE_SENTRY_DSN (frontend) ainda nao configurados nos projetos de producao.
+- SENTRY_DSN (backend) e VITE_SENTRY_DSN (frontend preferencial) ainda nao configurados nos projetos de producao.
 - A aplicacao opera com bootstrap silencioso sem DSN, sem quebrar runtime.
 
 Decisao operacional:
@@ -168,7 +168,7 @@ Decisao operacional:
 
 Acoes executadas:
 - `SENTRY_DSN` validado em producao no backend (`flow-finance-backend`).
-- `VITE_SENTRY_DSN` validado no frontend.
+- `VITE_SENTRY_DSN` validado no frontend (ou fallback legado via `SENTRY_DSN` quando necessario).
 - Revalidacao final do contrato de observabilidade executada no backend oficial.
 
 Evidencia tecnica:
@@ -180,4 +180,5 @@ Evidencia tecnica:
 Decisao operacional final:
 - **GO TOTAL** confirmado para o ciclo atual.
 - Sem bloqueios de release em aberto no contrato backend.
+
 
