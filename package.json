@@ -46,7 +46,8 @@
     "build:ios:release": "npm run build && cap sync ios && cap build ios --prod",
     "cap:build:android": "npx cap build android",
     "cap:build:ios": "npx cap build ios",
-    "cap:sync": "npx cap sync"
+    "cap:sync": "npx cap sync",
+    "health:auth-local": "node scripts/check-local-auth-readiness.mjs"
   },
   "engines": {
     "node": ">=18.0.0"
