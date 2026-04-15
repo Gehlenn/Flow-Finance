@@ -1,6 +1,12 @@
 # [0.9.6.1v] - 2026-04-12
 
-### Transicao de versao iniciada (status: bloqueado)
+### Transicao de versao concluida (status: GO TOTAL)
+
+#### Fechamento de release - 2026-04-15 (GO TOTAL)
+- Contrato de backend em producao revalidado: `/health`, `/api/health` e `/api/version` com `200`.
+- Observabilidade de producao confirmada com `sentryConfigured=true` no backend.
+- DSN de frontend e backend confirmados no ambiente alvo.
+- Estado final do ciclo alterado de `bloqueado` para `GO TOTAL` sem bloqueios remanescentes de release.
 
 #### Curadoria documental - 2026-04-12
 - 8 documentos de ciclos encerrados movidos de `docs/` para `docs/archive/`: auditorias de marco/26, security review de v0.9.2, assessments de fechamento v0.6.x, checklist P0 concluido de v0.7-v0.9, matriz de realidade de codigo v0.6-v0.9 e production risk review com addendum encerrado.
@@ -56,9 +62,9 @@
 - Ajuste de gate em `2026-04-12`: `npm run test:coverage` passou a excluir `tests/firestore/**`, mantendo `npm run test:firestore:rules` como trilha canonica e obrigatoria para rules com emulator.
 
 #### Resultado de release
-- Status final: `BLOQUEADO`
-- Motivo: ambiente alvo do Vercel ainda impede fechamento honesto de observabilidade e validacao externa.
-- Acoes imediatas: fechar variaveis de ambiente, liberar preview acessivel e rodar `npm run health:vercel`.
+- Status da rodada em `2026-04-12`: `BLOQUEADO`
+- Motivo na rodada: ambiente alvo do Vercel ainda impedia fechamento honesto de observabilidade e validacao externa.
+- Fechamento final em `2026-04-15`: `GO TOTAL` apos ativacao/validacao de observabilidade e reexecucao do gate de saude.
 
 # [0.9.6] - 2026-04-07
 

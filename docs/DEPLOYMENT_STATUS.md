@@ -164,3 +164,20 @@ Decisao operacional:
 - GO WITH KNOWN LIMITATION para lancamento funcional.
 - GO TOTAL depende apenas da ativacao dos DSNs e revalidacao final do monitoramento.
 
+## Atualizacao final - 2026-04-15 (GO TOTAL)
+
+Acoes executadas:
+- `SENTRY_DSN` validado em producao no backend (`flow-finance-backend`).
+- `VITE_SENTRY_DSN` validado no frontend.
+- Revalidacao final do contrato de observabilidade executada no backend oficial.
+
+Evidencia tecnica:
+- `GET https://flow-finance-backend.vercel.app/health` -> `200`
+- `GET https://flow-finance-backend.vercel.app/api/health` -> `200`
+- `GET https://flow-finance-backend.vercel.app/api/version` -> `200`
+- `apiHealth.observability.sentryConfigured` -> `true`
+
+Decisao operacional final:
+- **GO TOTAL** confirmado para o ciclo atual.
+- Sem bloqueios de release em aberto no contrato backend.
+
