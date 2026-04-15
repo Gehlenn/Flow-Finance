@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { buildE2EAuthUrl } from '../../tests/e2e/helpers/appBootstrap';
 
 describe('buildE2EAuthUrl', () => {
