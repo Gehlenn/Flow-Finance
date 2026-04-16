@@ -1,0 +1,17 @@
+{
+  "milestone_version": "v1.1.0",
+  "milestone_name": "Enhanced Cash Flow Intelligence",
+  "commit_docs": true,
+  "workflow": {
+    "discuss_mode": "discuss",
+    "auto_advance": false
+  },
+  "models": {
+    "executor": "",
+    "planner": ""
+  },
+  "shared_vault": {
+    "path": "E:\\app e jogos criados\\obsidian-vault",
+    "graphify": "E:\\app e jogos criados\\obsidian-graphify-out"
+  }
+}
