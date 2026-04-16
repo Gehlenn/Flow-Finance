@@ -2,6 +2,7 @@ import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import type { UserConfig } from 'vite';
+import { resolveManualChunk } from './build/manualChunks';
 
 interface VitestConfigExport extends UserConfig {
   test: any;
@@ -23,16 +24,7 @@ export default defineConfig(({ mode }) => {
         rollupOptions: {
           output: {
             manualChunks(id) {
-              if (id.includes('node_modules')) {
-                if (id.includes('react') || id.includes('scheduler')) return 'vendor-react';
-                if (id.includes('firebase')) {
-                  // Keep Firebase in a single chunk to avoid runtime init order issues.
-                  return 'vendor-firebase';
-                }
-                if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts';
-                if (id.includes('lucide-react')) return 'vendor-icons';
-                if (id.includes('@google/generative-ai') || id.includes('@google/genai')) return 'vendor-ai-sdk';
-              }
+              return resolveManualChunk(id);
             },
           },
         },
@@ -41,12 +33,19 @@ export default defineConfig(({ mode }) => {
       // SECURITY: Never expose API keys in client-side code!
       // Use backend proxy instead. Define safe environment variables only:
       define: {
-        'import.meta.env.VITE_BACKEND_URL': JSON.stringify(env.VITE_BACKEND_URL || ''),
+        // In test mode, zero out backend URLs so unit tests run in frontend-only isolation
+        // (prevents .env.local values from contaminating guard logic tests)
+        'import.meta.env.VITE_BACKEND_URL': JSON.stringify(mode === 'test' ? '' : (env.VITE_BACKEND_URL || '')),
         'import.meta.env.VITE_API_DEV_URL': JSON.stringify(env.VITE_API_DEV_URL || 'http://localhost:3001'),
-        'import.meta.env.VITE_API_PROD_URL': JSON.stringify(env.VITE_API_PROD_URL || ''),
+        'import.meta.env.VITE_API_PROD_URL': JSON.stringify(mode === 'test' ? '' : (env.VITE_API_PROD_URL || '')),
         'import.meta.env.VITE_APP_VERSION': JSON.stringify(env.VITE_APP_VERSION || '0.4.0'),
         'import.meta.env.VITE_SENTRY_DSN': JSON.stringify(env.VITE_SENTRY_DSN || ''),
+        // Sentry DSN is public by design; expose legacy key for backwards-compatible bootstrap fallback.
+        'import.meta.env.SENTRY_DSN': JSON.stringify(env.SENTRY_DSN || ''),
         'import.meta.env.VITE_SENTRY_DEV_ENABLED': JSON.stringify(env.VITE_SENTRY_DEV_ENABLED || 'false'),
+        // In test mode, enable local dev login so Login component tests can exercise
+        // the onDevelopmentLogin code path (ALLOW_INSECURE_LOCAL_LOGIN = true).
+        'import.meta.env.VITE_AUTH_ALLOW_INSECURE_LOCAL_LOGIN': JSON.stringify(mode === 'test' ? 'true' : (env.VITE_AUTH_ALLOW_INSECURE_LOCAL_LOGIN || 'false')),
       },
       resolve: {
         alias: {
@@ -62,15 +61,18 @@ export default defineConfig(({ mode }) => {
             external: [/^firebase/, /^pino/],
           },
         },
-        exclude: [
+          exclude: [
           '**/node_modules/**',
           '**/dist/**',
           '**/tests/e2e/**',
           '**/tests/integration/**',
           '**/backend/tests/integration/**',
+          // Requires running Firestore emulator — excluded from regular CI runs
+          '**/tests/firestore/**',
         ],
       },
     };
     return config;
 });
+
 

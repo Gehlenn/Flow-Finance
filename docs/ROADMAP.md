@@ -183,9 +183,9 @@ Executado:
 
 1. suite global sem regressao — `aprovado`
 2. gates criticos aprovados novamente — `aprovado (cobertura critica 99.72%)`
-3. deploy alvo validado com endpoints de saude acessiveis — `pendente (Vercel)`
-4. observabilidade configurada no ambiente alvo — `pendente (variaveis de ambiente)`
-5. documentacao principal e vault atualizados — `aprovado (curadoria 2026-04-12)`
+3. deploy alvo validado com endpoints de saude acessiveis — `aprovado (backend oficial validado em 2026-04-15)`
+4. observabilidade configurada no ambiente alvo — `aprovado (Sentry backend/frontend ativo em 2026-04-15)`
+5. documentacao principal e vault atualizados — `aprovado (curadoria 2026-04-12 + fechamento 2026-04-15)`
 
 ## Referencias obrigatorias
 

@@ -34,7 +34,7 @@ if (javaHome) {
 
 const firebaseCli = path.resolve(process.cwd(), 'node_modules', 'firebase-tools', 'lib', 'bin', 'firebase.js');
 const vitestCli = path.resolve(process.cwd(), 'node_modules', 'vitest', 'vitest.mjs');
-const vitestCommand = `\"${process.execPath}\" \"${vitestCli}\" run tests/firestore/firestore.rules.emulator.test.ts --maxWorkers=1 --pool=forks`;
+const vitestCommand = `\"${process.execPath}\" \"${vitestCli}\" run --config vitest.firestore.config.ts --maxWorkers=1 --pool=forks`;
 
 const child = spawn(process.execPath, [
   firebaseCli,

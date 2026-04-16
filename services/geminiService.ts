@@ -16,6 +16,102 @@ import { API_ENDPOINTS, apiRequest } from "../src/config/api.config";
 type DailyInsightsApiResponse = { insights?: any[] } | any[];
 type StrategicInsightsApiResponse = { report?: any } | any;
 
+function normalizeInput(raw: string): string {
+  return raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function parseCurrencyAmount(raw: string): number | null {
+  const directCurrency = raw.match(/(?:r\$\s*)?(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})|\d+(?:[.,]\d{1,2})?)/i);
+  if (!directCurrency?.[1]) {
+    return null;
+  }
+
+  const normalized = directCurrency[1]
+    .replace(/\./g, '')
+    .replace(',', '.');
+  const parsed = Number.parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function inferCategory(normalizedText: string): Category {
+  if (/(salario|salario|cliente|consulta|freela|trabalho)/.test(normalizedText)) {
+    return Category.CONSULTORIO;
+  }
+  if (/(marketing|empresa|negocio|negocio|fornecedor)/.test(normalizedText)) {
+    return Category.NEGOCIO;
+  }
+  if (/(cdb|acoes|acao|invest|aporte)/.test(normalizedText)) {
+    return Category.INVESTIMENTO;
+  }
+  return Category.PESSOAL;
+}
+
+function buildReminderFallback(rawText: string): InterpretResponse {
+  const amount = parseCurrencyAmount(rawText) ?? undefined;
+  const dateMatch = rawText.match(/\bdia\s+(\d{1,2})\b/i);
+  let reminderDate: string | undefined;
+
+  if (dateMatch?.[1]) {
+    const day = Number.parseInt(dateMatch[1], 10);
+    if (day >= 1 && day <= 31) {
+      const now = new Date();
+      const next = new Date(now.getFullYear(), now.getMonth(), day, 12, 0, 0, 0);
+      if (next.getTime() < now.getTime()) {
+        next.setMonth(next.getMonth() + 1);
+      }
+      reminderDate = next.toISOString();
+    }
+  }
+
+  return {
+    intent: 'reminder',
+    data: [{
+      title: rawText.trim(),
+      date: reminderDate,
+      type: 'pessoal',
+      amount,
+      priority: 'média',
+    }],
+  };
+}
+
+export function buildSmartInputFallback(text: string): InterpretResponse {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return { intent: 'transaction', data: [] };
+  }
+
+  const normalizedText = normalizeInput(trimmed);
+  const looksLikeReminder = /(lembrar|lembrete|venc|vencer|pagar|boleto|conta)/.test(normalizedText)
+    && !/(recebi|ganhei|gastei|comprei|vendi)/.test(normalizedText);
+
+  if (looksLikeReminder) {
+    return buildReminderFallback(trimmed);
+  }
+
+  const amount = parseCurrencyAmount(trimmed);
+  if (amount === null) {
+    return { intent: 'transaction', data: [] };
+  }
+
+  const isIncome = /(recebi|ganhei|entrou|vendi|faturei|deposito|salario)/.test(normalizedText);
+
+  const transaction: TransactionData = {
+    amount,
+    description: trimmed,
+    category: inferCategory(normalizedText),
+    type: isIncome ? TransactionType.RECEITA : TransactionType.DESPESA,
+  };
+
+  return {
+    intent: 'transaction',
+    data: [transaction],
+  };
+}
+
 export class GeminiService {
   /**
    * Process smart input text to extract transactions or reminders
@@ -37,9 +133,8 @@ export class GeminiService {
         }
       );
     } catch (error) {
-      console.warn('[AIService] processSmartInput unavailable, using safe fallback');
-      // Return empty result instead of crashing
-      return { intent: 'transaction', data: [] };
+      console.warn('[AIService] processSmartInput unavailable, using deterministic fallback');
+      return buildSmartInputFallback(text);
     }
   }
 

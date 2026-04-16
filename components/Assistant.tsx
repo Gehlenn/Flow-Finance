@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Reminder, ReminderType, Alert, Transaction, TransactionType, Category, Goal } from '../types';
 import { 
   Calendar, Clock, Trash2, Edit2, X, 
@@ -95,6 +95,21 @@ const Assistant: React.FC<AssistantProps> = ({
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [showInactiveReminders, setShowInactiveReminders] = useState(false);
   
+  useEffect(() => {
+    if (!showBulkDeleteConfirm) {
+      return;
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowBulkDeleteConfirm(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [showBulkDeleteConfirm]);
+
   // Filter State
   const [reminderFilter, setReminderFilter] = useState<'all' | 'pessoal' | 'trabalho' | 'negocio' | 'investimento' | 'saude' | 'alta' | 'media' | 'baixa'>('all');
   const smartAlertsEnabled = canAccessFeature(workspacePlan, 'smartAlertSuggestions');

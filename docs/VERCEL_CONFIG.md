@@ -29,7 +29,7 @@ Garantir que:
 ```env
 VITE_API_PROD_URL=https://flow-finance-backend.vercel.app/
 VITE_APP_VERSION=
-VITE_SENTRY_DSN=
+VITE_SENTRY_DSN=  # preferencial no frontend
 VITE_FIREBASE_API_KEY=
 VITE_FIREBASE_PROJECT_ID=
 ```
@@ -58,7 +58,7 @@ Sem `VITE_APP_VERSION` e `APP_VERSION`, a validacao de `/api/version` fica incom
 
 ### Observabilidade
 
-Sem `VITE_SENTRY_DSN` e `SENTRY_DSN`, a trilha de observabilidade fica parcialmente aberta. O bootstrap silencioso evita ruido, mas nao substitui configuracao real de ambiente.
+Sem DSN configurado, a trilha de observabilidade fica parcialmente aberta. No frontend, priorize `VITE_SENTRY_DSN`; `SENTRY_DSN` segue obrigatorio no backend e funciona como fallback legado do frontend no build. O bootstrap silencioso evita ruido, mas nao substitui configuracao real de ambiente.
 
 ### Acesso ao preview
 
@@ -70,8 +70,9 @@ Se a URL estiver protegida por Vercel Authentication antes da aplicacao responde
 - [ ] `FRONTEND_URL` alinhado ao frontend oficial
 - [ ] `VITE_APP_VERSION` preenchido
 - [ ] `APP_VERSION` preenchido
-- [ ] `VITE_SENTRY_DSN` preenchido quando aplicavel
-- [ ] `SENTRY_DSN` preenchido quando aplicavel
+- [ ] `VITE_SENTRY_DSN` preenchido no frontend quando aplicavel
+- [ ] `SENTRY_DSN` preenchido no backend quando aplicavel
+- [ ] fallback legado via `SENTRY_DSN` no frontend usado apenas quando necessario
 - [ ] preview ou URL compartilhada acessivel para verificacao
 
 ## Referencias relacionadas
@@ -79,3 +80,4 @@ Se a URL estiver protegida por Vercel Authentication antes da aplicacao responde
 - [docs/VERCEL_DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_DEPLOYMENT.md)
 - [docs/DEPLOYMENT_STATUS.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT_STATUS.md)
 - [docs/OPERATIONS_README.md](E:\app e jogos criados\Flow-Finance\docs\OPERATIONS_README.md)
+

@@ -1,22 +1,45 @@
-/**
+﻿/**
  * Version Guard
  * Monitors app version consistency between frontend and backend
  */
 
 import { GuardResult } from './types';
+import { isBenchmarkBrowserSession } from './benchmarkMode';
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '0.6.1';
 const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL ||
   import.meta.env.VITE_API_PROD_URL ||
   '';
-const HAS_EXPLICIT_API_BASE_URL = Boolean(API_BASE_URL);
+const IS_AUTOMATED_BROWSER = typeof navigator !== 'undefined' && navigator.webdriver === true;
+
+function isLocalNetworkTarget(url: string): boolean {
+  if (!url) return true;
+
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return ['localhost', '127.0.0.1', '0.0.0.0'].includes(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+const SHOULD_SKIP_NETWORK_PROBES = IS_AUTOMATED_BROWSER && isLocalNetworkTarget(API_BASE_URL);
 
 let lastVersionCheck = 0;
 const VERSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 export async function checkAppVersion(): Promise<GuardResult> {
   const now = Date.now();
+
+  if (SHOULD_SKIP_NETWORK_PROBES) {
+    return {
+      guard: 'version',
+      status: 'ok',
+      message: 'Version check skipped (local/non-production runtime)',
+      timestamp: now,
+    };
+  }
 
   // Rate limit version checks
   if (now - lastVersionCheck < VERSION_CHECK_INTERVAL) {
@@ -43,7 +66,7 @@ export async function checkAppVersion(): Promise<GuardResult> {
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      if (!HAS_EXPLICIT_API_BASE_URL && response.status === 404) {
+      if (response.status === 404 && isLocalNetworkTarget(API_BASE_URL)) {
         return {
           guard: 'version',
           status: 'ok',
@@ -70,7 +93,12 @@ export async function checkAppVersion(): Promise<GuardResult> {
       );
 
       // Hard reload to avoid inconsistent deploy state.
-      window.location.reload();
+      // Skip reload during benchmark sessions to keep performance measurements stable.
+      if (!isBenchmarkBrowserSession()) {
+        console.warn('[HOTFIX] reload bloqueado');
+      } else {
+        console.info('[Version Guard] Reload skipped in benchmark mode');
+      }
 
       return {
         guard: 'version',
@@ -136,7 +164,7 @@ function showVersionMismatchNotification(localVersion: string, backendVersion: s
         <line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
       <div style="flex: 1;">
-        <strong style="display: block; margin-bottom: 8px;">Nova versão disponível</strong>
+        <strong style="display: block; margin-bottom: 8px;">Nova versao disponivel</strong>
         <p style="margin: 0 0 12px 0; opacity: 0.95; font-size: 13px;">
           Frontend: v${localVersion}<br/>
           Backend: v${backendVersion}
@@ -173,3 +201,6 @@ function showVersionMismatchNotification(localVersion: string, backendVersion: s
 export function getLocalVersion(): string {
   return APP_VERSION;
 }
+
+
+

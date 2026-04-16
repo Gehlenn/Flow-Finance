@@ -1,32 +1,59 @@
-import React from 'react';
+﻿import React from 'react';
 import { createRoot } from 'react-dom/client';
-import App from './App';
+import AppWithAnalytics from './AppWithAnalytics';
 import './src/styles/tailwind.css';
 import { initializeRuntimeGuard } from './src/runtime/runtimeGuard';
+import { isBenchmarkBrowserSession } from './src/runtime/benchmarkMode';
 import { aiTaskQueue } from './src/ai/queue';
 import { initializeFinancialEventPipeline } from './src/events/financialEventPipeline';
 import { registerEventListeners } from './src/events/listeners/registerListeners';
 import { AIControlPanel } from './src/debug/aiPanel/AIControlPanel';
 
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  const isLocal = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+
+  if (isLocal && 'serviceWorker' in navigator) {
+    navigator.serviceWorker
+      .getRegistrations()
+      .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+      .then(() => console.info('[SW Guard] Service workers removidos em DEV'))
+      .catch((err) => console.warn('[SW Guard] Falha ao remover SW em DEV', err));
+
+    if ('caches' in window) {
+      caches
+        .keys()
+        .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+        .then(() => console.info('[SW Guard] Caches limpos em DEV'))
+        .catch((err) => console.warn('[SW Guard] Falha ao limpar caches em DEV', err));
+    }
+  }
+}
+
 (window as any).process = (window as any).process || { env: {} };
 
-// ─── RUNTIME GUARD INITIALIZATION ─────────────────────────────────────────────
+// Runtime guard initialization
 
 async function initializeApp() {
+  const benchmarkMode = isBenchmarkBrowserSession();
+
   // Initialize runtime protection before rendering
-  try {
-    await initializeRuntimeGuard({
-      apiHealthCheckInterval: 60000, // 1 min
-      versionCheckInterval: 300000, // 5 min
-      enableChunkRetry: true,
-      enableAutoReload: true,
-    });
-  } catch (error) {
-    console.error('[App] Runtime guard initialization failed:', error);
-    // Continue anyway - some guards may still be active
+  if (!benchmarkMode) {
+    try {
+      await initializeRuntimeGuard({
+        apiHealthCheckInterval: 60000, // 1 min
+        versionCheckInterval: 300000, // 5 min
+        enableChunkRetry: true,
+        enableAutoReload: true,
+      });
+    } catch (error) {
+      console.error('[App] Runtime guard initialization failed:', error);
+      // Continue anyway - some guards may still be active
+    }
+  } else {
+    console.info('[App] Benchmark mode enabled - runtime guards skipped');
   }
 
-  // ─── AI TASK QUEUE INITIALIZATION ──────────────────────────────────────────
+  // AI task queue initialization
 
   try {
     aiTaskQueue.initialize();
@@ -49,16 +76,16 @@ async function initializeApp() {
     console.error('[App] Event listeners registration failed:', error);
   }
 
-  // ─── VERSION LOG ────────────────────────────────────────────────────────────
+  // Version log
 
   console.info(
     `%c[Flow Finance] v0.6.3 | ${import.meta.env.MODE} | event-listeners + cache + observability`,
     'color: #34d399; font-weight: bold;'
   );
 
-  // ─── SERVICE WORKER AUTO-UPDATE ─────────────────────────────────────────────
+  // Service worker auto-update
 
-  if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  if (!benchmarkMode && 'serviceWorker' in navigator && import.meta.env.PROD) {
     window.addEventListener('load', () => {
       // Force service worker update on load
       navigator.serviceWorker.getRegistrations().then((regs) => {
@@ -102,7 +129,7 @@ async function initializeApp() {
 
   root.render(
     <React.StrictMode>
-      <App />
+      <AppWithAnalytics />
     </React.StrictMode>
   );
 }
@@ -124,7 +151,7 @@ initializeApp().catch((error) => {
     ">
       <div>
         <h1 style="font-size: 32px; margin-bottom: 16px;">Erro ao Inicializar</h1>
-        <p style="font-size: 16px; margin-bottom: 24px; opacity: 0.9;">Não foi possível carregar a aplicação</p>
+        <p style="font-size: 16px; margin-bottom: 24px; opacity: 0.9;">NÃ£o foi possÃ­vel carregar a aplicaÃ§Ã£o</p>
         <button 
           onclick="window.location.reload()"
           style="
@@ -144,3 +171,5 @@ initializeApp().catch((error) => {
     </div>
   `;
 });
+
+

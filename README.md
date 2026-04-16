@@ -1,4 +1,4 @@
-﻿# Flow Finance
+# Flow Finance
 
 Aplicacao SaaS de gestao financeira com foco em fluxo de caixa, transacoes, receitas previstas e realizadas, e apoio consultivo por IA para empresas de servico.
 
@@ -93,6 +93,14 @@ O vault em `obsidian-vault/Flow/` deve concentrar o espelho resumido da operacao
 - dependencias instaladas com `npm ci`
 - `backend/.env` preenchido para a trilha backend local
 
+### Nota de seguranca mobile (temporaria)
+
+- O script `resources:generate` foi removido por risco de supply chain na cadeia `cordova-res -> sharp`.
+- Enquanto nao houver versao segura upstream, a geracao de icones/splash deve ser feita por ferramentas nativas:
+   - Android Studio (Image Asset)
+   - Xcode (Assets.xcassets)
+- Essa medida reduz superficie de ataque no ambiente de desenvolvimento e CI.
+
 ### Subir frontend
 
 ```bash
@@ -152,8 +160,8 @@ Observacao operacional:
 
 1. Preview ou ambiente alvo do Vercel ainda protegido ou indisponivel para validacao externa completa.
 2. Variaveis de ambiente do destino ainda precisam de fechamento consistente:
-   - `VITE_SENTRY_DSN`
-   - `SENTRY_DSN`
+   - `VITE_SENTRY_DSN` (preferencial no frontend)
+   - `SENTRY_DSN` (backend e fallback legado do frontend no build)
    - `VITE_APP_VERSION`
    - `APP_VERSION`
 3. Falta provar `/health`, `/api/health` e `/api/version` no deploy acessivel.
@@ -207,6 +215,7 @@ Ao alterar comportamento, arquitetura, readiness, deploy ou operacao:
 ## Observacao final
 
 Este repositorio deve ser tratado como sistema financeiro com requisito alto de integridade. Em caso de conflito entre documentacao antiga e realidade do codigo, a realidade do codigo vence e a documentacao deve ser atualizada imediatamente.
+
 
 
 

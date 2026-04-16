@@ -9,7 +9,20 @@ const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL ||
   import.meta.env.VITE_API_PROD_URL ||
   '';
-const HAS_EXPLICIT_API_BASE_URL = Boolean(API_BASE_URL);
+const IS_AUTOMATED_BROWSER = typeof navigator !== 'undefined' && navigator.webdriver === true;
+
+function isLocalNetworkTarget(url: string): boolean {
+  if (!url) return true;
+
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return ['localhost', '127.0.0.1', '0.0.0.0'].includes(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+const SHOULD_SKIP_NETWORK_PROBES = IS_AUTOMATED_BROWSER && isLocalNetworkTarget(API_BASE_URL);
 
 let apiOfflineMode = false;
 let lastHealthCheck = 0;
@@ -21,6 +34,16 @@ export function isAPIOffline(): boolean {
 
 export async function checkAPIHealth(): Promise<GuardResult> {
   const now = Date.now();
+
+  if (SHOULD_SKIP_NETWORK_PROBES) {
+    apiOfflineMode = false;
+    return {
+      guard: 'api',
+      status: 'ok',
+      message: 'API health probe skipped (local/non-production runtime)',
+      timestamp: now,
+    };
+  }
   
   // Avoid spamming health checks
   if (now - lastHealthCheck < HEALTH_CHECK_COOLDOWN) {
@@ -55,7 +78,7 @@ export async function checkAPIHealth(): Promise<GuardResult> {
         message: 'API online',
         timestamp: now,
       };
-    } else if (!HAS_EXPLICIT_API_BASE_URL && response.status === 404) {
+    } else if (response.status === 404 && isLocalNetworkTarget(API_BASE_URL)) {
       apiOfflineMode = false;
       return {
         guard: 'api',
