@@ -123,6 +123,11 @@ export const API_CONFIG = {
   },
 };
 
+export const CLIENT_APP_VERSION =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APP_VERSION
+    ? String(import.meta.env.VITE_APP_VERSION)
+    : '0.9.6');
+
 export class ApiRequestError extends Error {
   statusCode: number;
   requestId?: string;
@@ -235,7 +240,7 @@ export function getAuthHeaders(options?: {
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    'X-Client-Version': '0.6.1',
+    'X-Client-Version': CLIENT_APP_VERSION,
     'X-Client-Platform': getPlatform(),
     ...(includeWorkspace && workspaceId ? { 'x-workspace-id': workspaceId } : {}),
   };

@@ -132,6 +132,25 @@ describe('client observability', () => {
     expect(sentryMocks.reportError).not.toHaveBeenCalled();
   });
 
+  it('uses VITE_APP_VERSION in X-Client-Version header', async () => {
+    vi.stubEnv('VITE_APP_VERSION', '9.9.9-test');
+
+    const { getAuthHeaders } = await import('../../src/config/api.config');
+    const headers = getAuthHeaders({ includeWorkspace: false });
+
+    expect(headers['X-Client-Version']).toBe('9.9.9-test');
+  });
+
+  it('falls back to default client version when VITE_APP_VERSION is empty', async () => {
+    vi.stubEnv('VITE_APP_VERSION', '');
+
+    const { getAuthHeaders, CLIENT_APP_VERSION } = await import('../../src/config/api.config');
+    const headers = getAuthHeaders({ includeWorkspace: false });
+
+    expect(CLIENT_APP_VERSION).toBe('0.9.6');
+    expect(headers['X-Client-Version']).toBe('0.9.6');
+  });
+
   it('keeps initSentry quiet when no DSN is configured', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     vi.stubEnv('VITE_SENTRY_DSN', '');
