@@ -10,6 +10,7 @@ interface VitestConfigExport extends UserConfig {
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+  const appVersion = env.VITE_APP_VERSION || process.env.npm_package_version || '0.9.6';
     const config: VitestConfigExport = {
       server: {
         port: 3078,
@@ -38,7 +39,7 @@ export default defineConfig(({ mode }) => {
         'import.meta.env.VITE_BACKEND_URL': JSON.stringify(mode === 'test' ? '' : (env.VITE_BACKEND_URL || '')),
         'import.meta.env.VITE_API_DEV_URL': JSON.stringify(env.VITE_API_DEV_URL || 'http://localhost:3001'),
         'import.meta.env.VITE_API_PROD_URL': JSON.stringify(mode === 'test' ? '' : (env.VITE_API_PROD_URL || '')),
-        'import.meta.env.VITE_APP_VERSION': JSON.stringify(env.VITE_APP_VERSION || '0.4.0'),
+        'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
         'import.meta.env.VITE_SENTRY_DSN': JSON.stringify(env.VITE_SENTRY_DSN || ''),
         // Sentry DSN is public by design; expose legacy key for backwards-compatible bootstrap fallback.
         'import.meta.env.SENTRY_DSN': JSON.stringify(env.SENTRY_DSN || ''),

@@ -68,6 +68,8 @@ vi.mock('../../src/config/ai', async () => {
 describe('AI CFO route integration', () => {
   let app: express.Express;
 
+  // Importing the AI routes can be slow on Windows / CI due to ESM dynamic imports and
+  // module graph initialization. Keep this explicit to avoid flaky hook timeouts.
   beforeAll(async () => {
     process.env.NODE_ENV = 'test';
 
@@ -78,7 +80,7 @@ describe('AI CFO route integration', () => {
     app.use(express.json());
     app.use('/api/ai', aiRoutesModule.default);
     app.use(errorHandlerModule.errorHandler);
-  });
+  }, 30_000);
 
   it('returns 401 when auth header is missing', async () => {
     const response = await request(app)
