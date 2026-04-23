@@ -1,15 +1,15 @@
-# Mapa Historico e de Auditoria
+# Mapa Histórico e de Auditoria
 
-Este arquivo agrupa materiais uteis como evidencia, contexto ou memoria tecnica, mas que nao devem ser tratados como fonte de verdade operacional atual.
+Este arquivo agrupa materiais úteis como evidência, contexto ou memória técnica, mas que não devem ser tratados como fonte de verdade operacional atual.
 
 ## Ler apenas quando o objetivo for
 
-- investigar decisao passada
+- investigar decisão passada
 - recuperar contexto de versao antiga
-- consultar evidencia historica
-- entender diagnostico ou bug antigo
+- consultar evidência histórica
+- entender diagnóstico ou bug antigo
 
-## Auditorias e avaliacoes
+## Auditorias e avaliações
 
 - [archive/AUDITORIA_THOROUGH_2026-03-11.md](./archive/AUDITORIA_THOROUGH_2026-03-11.md)
 - [archive/ASSESSMENT_PHASES_1_TO_6_2026-04-11.md](./archive/ASSESSMENT_PHASES_1_TO_6_2026-04-11.md)
@@ -18,7 +18,7 @@ Este arquivo agrupa materiais uteis como evidencia, contexto ou memoria tecnica,
 - [archive/SECURITY_REVIEW_CLINIC_v0.9.2.md](./archive/SECURITY_REVIEW_CLINIC_v0.9.2.md)
 - [archive/PRODUCTION_RISK_REVIEW_2026-04-11.md](./archive/PRODUCTION_RISK_REVIEW_2026-04-11.md)
 
-## Evidencias e sumarios
+## Evidências e sumários
 
 - [AUDIT_AND_EVIDENCE_INDEX.md](./AUDIT_AND_EVIDENCE_INDEX.md)
 - [archive/RELEASE_SUMMARY_v0.5.2v.md](./archive/RELEASE_SUMMARY_v0.5.2v.md)
@@ -42,5 +42,5 @@ Este arquivo agrupa materiais uteis como evidencia, contexto ou memoria tecnica,
 
 ## Regra de leitura
 
-- documentos desta trilha nao substituem o estado atual descrito em `README.md`, `docs/README.md`, `docs/OPERATIONS_README.md`, `docs/ROADMAP.md` e `docs/DEPLOYMENT_STATUS.md`
-- se uma informacao historica ainda for importante operacionalmente, ela deve ser promovida explicitamente para a trilha viva
+- documentos desta trilha não substituem o estado atual descrito em `README.md`, `docs/README.md`, `docs/OPERATIONS_README.md`, `docs/ROADMAP.md` e `docs/DEPLOYMENT_STATUS.md`
+- se uma informação histórica ainda for importante operacionalmente, ela deve ser promovida explicitamente para a trilha viva
