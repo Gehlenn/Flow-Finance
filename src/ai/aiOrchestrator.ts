@@ -262,7 +262,7 @@ export interface AIOrchestratorResult {
 /**
  * Executa o AI Orchestrator completo.
  */
-export async function runAIOrchestrator(
+export async function runLegacyAIOrchestrator(
   userId: string,
   accounts: Account[],
   transactions: Transaction[]
@@ -301,3 +301,8 @@ export async function runAIOrchestrator(
     leaks,
   };
 }
+
+/**
+ * @deprecated Use runLegacyAIOrchestrator (event pipeline) or engines/ai/runAIOrchestrator (CFO engine path).
+ */
+export const runAIOrchestrator = runLegacyAIOrchestrator;

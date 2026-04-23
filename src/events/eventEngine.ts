@@ -237,8 +237,8 @@ export function initEventListeners(
 
     try {
       // PART 6 â€” Run AI Orchestrator on relevant events
-      const { runAIOrchestrator } = await import('../ai/aiOrchestrator');
-      const orchestratorResult = await runAIOrchestrator(userId, accounts, transactions);
+      const { runLegacyAIOrchestrator } = await import('../ai/aiOrchestrator');
+      const orchestratorResult = await runLegacyAIOrchestrator(userId, accounts, transactions);
 
       // Emit events for each result
       if (orchestratorResult.insights.length > 0) {
