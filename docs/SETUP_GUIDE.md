@@ -2,7 +2,7 @@
 
 ## Papel deste documento
 
-Este e o guia canonico de setup do Flow Finance. Ele cobre a preparacao local, a ordem correta de validacao e os pontos minimos para envolver Firebase, Stripe e Vercel sem depender de memoria de sessao.
+Este é o guia canônico de setup do Flow Finance. Ele cobre a preparação local, a ordem correta de validação e os pontos mínimos para envolver Firebase, Stripe e Vercel sem depender de memória de sessão.
 
 ## Links oficiais atuais
 
@@ -15,16 +15,16 @@ Este e o guia canonico de setup do Flow Finance. Ele cobre a preparacao local, a
 - Node.js `18+`
 - npm `8+`
 - Vercel CLI quando houver necessidade de deploy
-- Stripe CLI quando houver validacao real de billing sandbox
-- acesso as credenciais corretas quando a tarefa exigir Firebase, Stripe, Sentry ou providers de IA
+- Stripe CLI quando houver validação real de billing sandbox
+- acesso às credenciais corretas quando a tarefa exigir Firebase, Stripe, Sentry ou providers de IA
 
 ## Ordem correta
 
-1. instalar dependencias do frontend e backend
-2. preencher variaveis locais minimas
+1. instalar dependências do frontend e backend
+2. preencher variáveis locais mínimas
 3. subir frontend e backend
-4. rodar checks criticos
-5. so depois envolver deploy no Vercel
+4. rodar checks críticos
+5. só depois envolver deploy no Vercel
 
 ## Instalar dependencias
 
@@ -95,9 +95,9 @@ npm run health:runtime:mobile
 
 Use Firebase real apenas quando o fluxo depender disso.
 
-Regras praticas:
+Regras práticas:
 
-- nao assumir que ausencia de Firebase local e bug do produto
+- não assumir que ausência de Firebase local é bug do produto
 - preencher frontend e backend com o mesmo projeto correto
 - validar se a tarefa realmente precisa da trilha completa de auth Firebase
 
@@ -110,7 +110,7 @@ stripe login
 stripe listen --forward-to http://localhost:3001/api/saas/stripe/webhook
 ```
 
-Objetivos minimos da validacao:
+Objetivos mínimos da validação:
 
 - checkout
 - webhook
@@ -127,20 +127,20 @@ vercel login
 vercel link
 ```
 
-Validacao do alvo acessivel:
+Validação do alvo acessível:
 
 ```bash
 VERCEL_TARGET_URL=https://seu-preview.vercel.app npm run health:vercel
 ```
 
-Sem URL acessivel, nao declarar fechamento do ambiente alvo.
+Sem URL acessível, não declarar fechamento do ambiente-alvo.
 
 ## Regras operacionais
 
-- preview protegido por Vercel Authentication nao serve como evidencia automatizada de health
-- sem DSN e versao configurados, observabilidade e versionamento ficam incompletos no destino
-- a documentacao principal do projeto deve permanecer em PT-BR
-- toda mudanca estrutural relevante deve ser refletida no repositorio e no vault
+- preview protegido por Vercel Authentication não serve como evidência automatizada de health
+- sem DSN e versão configurados, observabilidade e versionamento ficam incompletos no destino
+- a documentação principal do projeto deve permanecer em PT-BR
+- toda mudança estrutural relevante deve ser refletida no repositório e no vault
 
 ## Leitura complementar
 

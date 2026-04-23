@@ -1,8 +1,8 @@
-# Archived Test Suite v0.3.0
+# Suite de Testes Arquivada v0.3.0
 
-This document preserves the old v0.3.0 test-suite draft that previously lived in the repository root as `TEST_SUITE_v0.3.0.test.ts`.
+Este documento preserva o rascunho antigo da suíte de testes v0.3.0 que antes vivia na raiz do repositório como `TEST_SUITE_v0.3.0.test.ts`.
 
-It was converted to Markdown because it no longer represents an active executable suite and should not be discoverable by TypeScript or test runners.
+Ele foi convertido para Markdown porque não representa mais uma suíte executável ativa e não deve ser descoberto por TypeScript nem por test runners.
 
 ```ts
 // 🧪 TEST SUITE v0.3.0 - Complete Unit & Integration Tests
@@ -14,5 +14,5 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-// Historical draft content archived intentionally.
+// Conteúdo histórico arquivado intencionalmente.
 ```

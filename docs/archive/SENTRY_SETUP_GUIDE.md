@@ -1,15 +1,15 @@
-# 🔧 Sentry Setup Guide - Flow Finance v0.9.6
+# 🔧 Guia de Configuração do Sentry - Flow Finance v0.9.6
 
-**Objetivo**: Ativar observabilidade avançada (crash reporting, session replay, performance monitoring)
+**Objetivo**: ativar observabilidade avançada (crash reporting, session replay, performance monitoring).
 
 ---
 
 ## Passo 1: Criar/Acessar Projeto Sentry
 
-### 1.1 Se ainda não tem conta
+### 1.1 Se você ainda não tem conta
 - Visite: https://sentry.io/signup/
 - Crie conta (gratuito começa com 5K events/mês)
-- Confirme email
+- Confirme o e-mail
 
 ### 1.2 Se já tem conta
 - Vá para: https://sentry.io/auth/login/
@@ -19,7 +19,7 @@
 
 ## Passo 2: Criar Dois Projetos Sentry
 
-Você precisa de **dois DSNs** — um para backend, outro para frontend (plataformas diferentes).
+Você precisa de **dois DSNs**: um para backend e outro para frontend (plataformas diferentes).
 
 ### 2.1 Projeto Backend (Node.js)
 ```
