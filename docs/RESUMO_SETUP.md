@@ -6,9 +6,9 @@ Este arquivo nao e a fonte principal de setup. Ele existe para redirecionar refe
 
 ## Ler primeiro
 
-- [docs/COMECE_AQUI.md](E:\app e jogos criados\Flow-Finance\docs\COMECE_AQUI.md)
-- [docs/SETUP_GUIDE.md](E:\app e jogos criados\Flow-Finance\docs\SETUP_GUIDE.md)
-- [docs/VERCEL_DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_DEPLOYMENT.md)
+- [COMECE_AQUI.md](./COMECE_AQUI.md)
+- [SETUP_GUIDE.md](./SETUP_GUIDE.md)
+- [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)
 
 ## Sequencia correta
 

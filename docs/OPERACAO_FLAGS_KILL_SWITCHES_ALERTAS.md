@@ -74,4 +74,4 @@ Guia operacional para reduzir risco de regressao e falhas em producao nas integr
 - backend/src/routes/clinicIntegration.ts
 - backend/src/controllers/clinicController.ts
 - backend/src/services/featureFlags/EnhancedFeatureFlagService.ts
-- docs/ROBUSTNESS_OPERATIONAL_v0.9.2.md
+- docs/archive/ROBUSTNESS_OPERATIONAL_v0.9.2.md

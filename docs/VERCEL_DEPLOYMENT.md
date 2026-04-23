@@ -73,6 +73,6 @@ Esse bloqueio invalida o fechamento do ambiente alvo mesmo quando o deploy exist
 
 ## Referencias relacionadas
 
-- [docs/VERCEL_CONFIG.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_CONFIG.md)
-- [docs/DEPLOYMENT_STATUS.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT_STATUS.md)
-- [docs/DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT.md)
+- [VERCEL_CONFIG.md](./VERCEL_CONFIG.md)
+- [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md)
+- [DEPLOYMENT.md](./DEPLOYMENT.md)

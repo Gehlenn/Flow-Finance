@@ -77,7 +77,7 @@ Se a URL estiver protegida por Vercel Authentication antes da aplicacao responde
 
 ## Referencias relacionadas
 
-- [docs/VERCEL_DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_DEPLOYMENT.md)
-- [docs/DEPLOYMENT_STATUS.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT_STATUS.md)
-- [docs/OPERATIONS_README.md](E:\app e jogos criados\Flow-Finance\docs\OPERATIONS_README.md)
+- [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)
+- [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md)
+- [OPERATIONS_README.md](./OPERATIONS_README.md)
 

@@ -67,7 +67,7 @@ E2E:      ✅ OK  (33 passed, 32 skipped backend-optional, 0 failed)
 
 1. Injetar as variáveis listadas em `backend/README.md` → seção *"Staging / production variables (Firebase-first)"*.
 2. Confirmar `/api/banking/health` em staging com `persistenceDriver=firebase` e `persistenceReady=true`.
-3. Executar o roteiro de 9 passos em `docs/OPEN_FINANCE_GO_LIVE_PLAN.md` → seção *"Roteiro de validacao manual com banco real"*.
+3. Executar o roteiro de 9 passos em `docs/archive/OPEN_FINANCE_GO_LIVE_PLAN.md` → seção *"Roteiro de validacao manual com banco real"*.
 4. Coletar as 5 evidências e assinar o sign-off abaixo.
 
 ---
@@ -80,4 +80,4 @@ E2E:      ✅ OK  (33 passed, 32 skipped backend-optional, 0 failed)
 | Produto / Owner | | | |
 | QA | | | |
 
-> Após sign-off completo, mover este arquivo para `docs/releases/GO_NO_GO_v0.5.1v_SIGNED.md`.
+> Historico: apos sign-off completo, manter uma copia assinada no archive (ex.: `GO_NO_GO_v0.5.1v_SIGNED.md`).

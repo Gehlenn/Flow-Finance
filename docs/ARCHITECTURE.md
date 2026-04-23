@@ -165,6 +165,6 @@ graph TD
 
 Este documento nao substitui:
 
-- [docs/ARCHITECTURE_SYSTEM_MAP.md](E:\app e jogos criados\Flow-Finance\docs\ARCHITECTURE_SYSTEM_MAP.md) para leitura sistemica
-- [docs/VERCEL_CONFIG.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_CONFIG.md) para ambiente
-- [docs/DEPLOYMENT_STATUS.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT_STATUS.md) para status operacional
+- [ARCHITECTURE_SYSTEM_MAP.md](./ARCHITECTURE_SYSTEM_MAP.md) para leitura sistemica
+- [VERCEL_CONFIG.md](./VERCEL_CONFIG.md) para ambiente
+- [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md) para status operacional

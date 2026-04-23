@@ -2,7 +2,7 @@
 
 ## Papel deste documento
 
-Este arquivo e um atalho curto. O documento canonico de setup e [docs/SETUP_GUIDE.md](E:\app e jogos criados\Flow-Finance\docs\SETUP_GUIDE.md).
+Este arquivo e um atalho curto. O documento canonico de setup e [SETUP_GUIDE.md](./SETUP_GUIDE.md).
 
 Use este guia quando voce so precisa lembrar a sequencia pratica.
 
@@ -63,7 +63,7 @@ stripe listen --forward-to http://localhost:3001/api/saas/stripe/webhook
 
 ## Referencias corretas
 
-- Canonico: [docs/SETUP_GUIDE.md](E:\app e jogos criados\Flow-Finance\docs\SETUP_GUIDE.md)
-- Deploy geral: [docs/DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT.md)
-- Vercel: [docs/VERCEL_DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_DEPLOYMENT.md)
-- Inicio rapido: [docs/COMECE_AQUI.md](E:\app e jogos criados\Flow-Finance\docs\COMECE_AQUI.md)
+- Canonico: [SETUP_GUIDE.md](./SETUP_GUIDE.md)
+- Deploy geral: [DEPLOYMENT.md](./DEPLOYMENT.md)
+- Vercel: [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)
+- Inicio rapido: [COMECE_AQUI.md](./COMECE_AQUI.md)

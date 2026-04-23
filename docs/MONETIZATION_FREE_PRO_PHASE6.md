@@ -42,3 +42,8 @@ Separar Free e Pro sem bloquear o core do produto.
 - Free: R$ 0
 - Pro mensal: R$ 29,90
 - Pro anual: opcional (20% de desconto), sem obrigatoriedade nesta fase.
+
+## Referencias tecnicas
+
+- `src/app/monetizationPlan.ts`
+- `docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md`

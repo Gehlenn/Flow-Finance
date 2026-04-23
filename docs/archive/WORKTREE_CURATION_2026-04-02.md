@@ -48,7 +48,7 @@ Naquele momento, esses arquivos ja estavam preparados para partir de estado limp
 
 ### Documentacao historica com drift de encoding
 
-- `docs/AUDITORIA_THOROUGH_2026-03-11.md`
+- `docs/archive/AUDITORIA_THOROUGH_2026-03-11.md`
 - `docs/CHANGELOG.md`
 
 Esses arquivos pediam uma passada exclusiva de documentacao, sem mistura com commit de codigo.
