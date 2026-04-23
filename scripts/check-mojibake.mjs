@@ -3,10 +3,26 @@ import path from 'node:path';
 
 const repoRoot = process.cwd();
 
-const roots = [
-  path.join(repoRoot, 'docs'),
-  path.join(repoRoot, 'obsidian-vault', 'Flow'),
-];
+// Scan the whole repository, but skip heavy/generated directories.
+const roots = [repoRoot];
+
+const ignoredDirNames = new Set([
+  '.git',
+  '.vercel',
+  '.firebase',
+  '.tmp',
+  '.tmp-gh-run-download',
+  '.logs',
+  '.worktrees',
+  '.planning',
+  'node_modules',
+  'build',
+  'dist',
+  'coverage',
+  'playwright-report',
+  'test-results',
+  'qa-reports',
+]);
 
 const textExtensions = new Set([
   '.md',
@@ -54,6 +70,7 @@ async function listFilesRec(dir) {
   for (const entry of entries) {
     const abs = path.join(dir, entry.name);
     if (entry.isDirectory()) {
+      if (ignoredDirNames.has(entry.name)) continue;
       out.push(...(await listFilesRec(abs)));
       continue;
     }
@@ -85,6 +102,10 @@ async function main() {
   const hits = [];
 
   for (const f of files) {
+    // This file intentionally contains mojibake examples in comments.
+    if (path.resolve(f) === path.resolve(path.join(repoRoot, 'scripts', 'check-mojibake.mjs'))) {
+      continue;
+    }
     let content = '';
     try {
       content = await fs.readFile(f, 'utf8');

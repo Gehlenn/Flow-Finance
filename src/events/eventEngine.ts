@@ -149,7 +149,7 @@ export function subscribeToFinancialEvents(callback: EventCallback): () => void 
   };
 }
 
-/** Registra um callback apenas para um tipo especÃ­fico de evento. */
+/** Registra um callback apenas para um tipo especifico de evento. */
 export function subscribeToEvent(
   type: FinancialEventType,
   callback: EventCallback
@@ -209,9 +209,9 @@ export const FinancialEventEmitter = {
  * Deve ser chamado uma vez na inicializacao do app.
  *
  * transaction_created
- *   â†’ runFinancialAutopilot  (lazy import para evitar circular)
- *   â†’ generateFinancialInsights
- *   â†’ detectFinancialRisks
+ *   -> runFinancialAutopilot  (lazy import para evitar circular)
+ *   -> generateFinancialInsights
+ *   -> detectFinancialRisks
  */
 export function initEventListeners(
   getState: () => {
@@ -224,7 +224,7 @@ export function initEventListeners(
   }
 ): () => void {
   const unsubscribe = subscribeToFinancialEvents(async (event) => {
-    // SÃ³ reage a eventos de transaÃ§Ã£o ou goal
+    // So reage a eventos de transacao ou goal
     if (
       event.type !== 'transaction_created' &&
       event.type !== 'goal_created' &&
@@ -236,7 +236,7 @@ export function initEventListeners(
     const { transactions, accounts, userId, onAutopilotActions, onInsights, onRisks } = getState();
 
     try {
-      // PART 6 â€” Run AI Orchestrator on relevant events
+      // PART 6 - Run AI Orchestrator on relevant events
       const { runLegacyAIOrchestrator } = await import('../ai/aiOrchestrator');
       const orchestratorResult = await runLegacyAIOrchestrator(userId, accounts, transactions);
 

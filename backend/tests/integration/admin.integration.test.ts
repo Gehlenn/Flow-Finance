@@ -96,7 +96,7 @@ describe('Admin API', () => {
     return created.body.workspaceId as string;
   }
 
-  it('GET /api/admin/users deve listar usuÃ¡rios do workspace', async () => {
+  it('GET /api/admin/users deve listar usuários do workspace', async () => {
     const ownerUserId = 'owner-admin-users';
     const workspaceId = await createProWorkspace(ownerUserId);
 

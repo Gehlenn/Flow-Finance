@@ -151,7 +151,7 @@ initializeApp().catch((error) => {
     ">
       <div>
         <h1 style="font-size: 32px; margin-bottom: 16px;">Erro ao Inicializar</h1>
-        <p style="font-size: 16px; margin-bottom: 24px; opacity: 0.9;">NÃ£o foi possÃ­vel carregar a aplicaÃ§Ã£o</p>
+        <p style="font-size: 16px; margin-bottom: 24px; opacity: 0.9;">Não foi possível carregar a aplicação</p>
         <button 
           onclick="window.location.reload()"
           style="
