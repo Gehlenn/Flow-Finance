@@ -181,4 +181,25 @@ Decisao operacional final:
 - **GO TOTAL** confirmado para o ciclo atual.
 - Sem bloqueios de release em aberto no contrato backend.
 
+## Atualizacao de execucao - 2026-04-23 (CI verde + revalidacao)
+
+Acoes executadas:
+- Suite do GitHub Actions confirmada como `success` no branch `main` (Build & Test, Test Suite, CI/CD Pipeline e Deploy).
+- Revalidacao do contrato do backend via `npm run health:vercel` apontando para:
+  - `https://flow-finance-backend.vercel.app/`
+- Check de disponibilidade do frontend por header HTTP:
+  - `https://flow-finance-frontend-nine.vercel.app/` -> `200`
+  - `https://flow-finance-xi.vercel.app/` -> `200`
+
+Resultado observado (backend):
+- `GET /` -> `404` esperado (API-only)
+- `GET /health` -> `200` com `requestId` e `routeScope`
+- `GET /api/health` -> `200` com `observability.sentryConfigured = true`
+- `GET /api/version` -> `200` com `version = 0.9.6`
+
+Leitura operacional:
+- Estado do ciclo: `verde`.
+- O backend continua cumprindo o contrato de observabilidade.
+- O frontend esta publicado e acessivel nos dominios de referencia.
+
 
