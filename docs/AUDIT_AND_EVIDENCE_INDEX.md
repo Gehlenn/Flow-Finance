@@ -1,22 +1,22 @@
-# Indice de Auditorias e Evidencias
+# Índice de Auditorias e Evidências
 
-Este documento centraliza auditorias, evidencias operacionais e materiais de comprovacao. A funcao dele e evitar que cada evidencia fique solta e sem contexto.
+Este documento centraliza auditorias, evidências operacionais e materiais de comprovação. A função dele é evitar que cada evidência fique solta e sem contexto.
 
-Ultima revisao estrutural: 2026-04-22
+Última revisão estrutural: 2026-04-22
 
-## Entrada recomendada (historico)
+## Entrada recomendada (histórico)
 
 Se o objetivo for entender decisoes antigas, auditorias passadas ou diagnosticos encerrados, comece por:
 
-- [HISTORICAL_README.md](./HISTORICAL_README.md)
-- [archive/README.md](./archive/README.md)
+- [HISTORICAL_README.md](./HISTORICAL_README.md) (mapa histórico)
+- [archive/README.md](./archive/README.md) (índice do arquivo `docs/archive/`)
 
 ## Evidencias operacionais vivas
 
 - [EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](./EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)
 - [HTTP_CONTRATOS_SENSIVEIS_CONGELADOS_2026-04-11.md](./HTTP_CONTRATOS_SENSIVEIS_CONGELADOS_2026-04-11.md)
 
-## Runbooks e referencias operacionais ativas
+## Runbooks e referências operacionais ativas
 
 - [RUNBOOK_OPERACIONAL_v0.9.x_2026-04-11.md](./RUNBOOK_OPERACIONAL_v0.9.x_2026-04-11.md)
 - [OPERACAO_FLAGS_KILL_SWITCHES_ALERTAS.md](./OPERACAO_FLAGS_KILL_SWITCHES_ALERTAS.md)
@@ -32,17 +32,16 @@ Se o objetivo for entender decisoes antigas, auditorias passadas ou diagnosticos
 
 ## Auditorias e buglog (historico)
 
-Entrada rapida:
+Entrada rápida:
 
 - [archive/BUGLOG.md](./archive/BUGLOG.md)
 - [archive/CHANGELOG_ANTIGO.md](./archive/CHANGELOG_ANTIGO.md)
 - [archive/PRODUCTION_RISK_REVIEW_2026-04-11.md](./archive/PRODUCTION_RISK_REVIEW_2026-04-11.md)
 - [archive/AUDITORIA_THOROUGH_2026-03-11.md](./archive/AUDITORIA_THOROUGH_2026-03-11.md)
-- `archive/AUDIT_REPORT_v0.3.0.md` ate `archive/AUDIT_REPORT_v0.6.1.md` (serie historica)
+- `archive/AUDIT_REPORT_v0.3.0.md` até `archive/AUDIT_REPORT_v0.6.1.md` (série histórica)
 
-## Historico arquivado
+## Histórico arquivado
 
-- [archive/PRODUCTION_RISK_REVIEW_2026-04-11.md](./archive/PRODUCTION_RISK_REVIEW_2026-04-11.md)
 - [archive/CODE_REALITY_MATRIX_v0.6_to_v0.9_2026-04-11.md](./archive/CODE_REALITY_MATRIX_v0.6_to_v0.9_2026-04-11.md)
 - [archive/CHECKLIST_EXECUCAO_PRIORIZADA_v0.7_v0.9_2026-04-11.md](./archive/CHECKLIST_EXECUCAO_PRIORIZADA_v0.7_v0.9_2026-04-11.md)
 - [archive/ASSESSMENT_PHASES_1_TO_6_2026-04-11.md](./archive/ASSESSMENT_PHASES_1_TO_6_2026-04-11.md)
@@ -55,8 +54,8 @@ Entrada rapida:
 - [archive/DATABASE_DECISION.md](./archive/DATABASE_DECISION.md)
 - [archive/README.md](./archive/README.md)
 
-## Regra de manutencao
+## Regra de manutenção
 
-- evidencia viva precisa continuar referenciada no README raiz ou no mapa operacional
+- evidência viva precisa continuar referenciada no README raiz ou no mapa operacional
 - quando um material perder valor operacional e servir apenas como memoria, mover para `docs/archive/`
-- antes de arquivar uma revisao de seguranca, verificar se os achados ainda estao abertos no codigo ou registrar que o item e apenas historico
+- antes de arquivar uma revisão de segurança, verificar se os achados ainda estão abertos no código ou registrar que o item é apenas histórico
