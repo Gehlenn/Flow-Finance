@@ -94,7 +94,7 @@ export function analyzeFinancialHealth(context: FinancialHealthContext): string[
   }).map((alert) => alert.message);
 }
 
-// â”€â”€â”€ A3: PriorizaÃ§Ã£o de aÃ§Ãµes por risco + impacto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- A3: Priorizacao de acoes por risco + impacto ---
 
 export type ActionPriority = 'critica' | 'alta' | 'media' | 'baixa';
 
@@ -106,7 +106,7 @@ export interface PrioritizedAction {
   riskScore: number;        // 0..100 (maior risco se ignorado)
   title: string;
   description: string;
-  suggestedCut?: number;    // valor R$ sugerido de corte (quando aplicÃ¡vel)
+  suggestedCut?: number;    // valor R$ sugerido de corte (quando aplicavel)
   category?: string;
 }
 
@@ -116,7 +116,7 @@ export interface PrioritizedActionsResult {
 }
 
 /**
- * Prioriza aÃ§Ãµes financeiras acionÃ¡veis por risco Ã— impacto.
+ * Prioriza acoes financeiras acionaveis por risco x impacto.
  * Consome alerts do FinancialAutopilot e dados de budget para gerar cortes sugeridos.
  */
 export function prioritizeActions(
@@ -131,7 +131,7 @@ export function prioritizeActions(
     ? (monthlyIncome - monthlyExpenses) / monthlyIncome
     : 0;
 
-  // AÃ§Ã£o 1: Saldo negativo â€” risco crÃ­tico
+  // Acao 1: Saldo negativo - risco critico
   if (currentBalance < 0) {
     actions.push({
       id: 'negative_balance',
@@ -145,7 +145,7 @@ export function prioritizeActions(
     });
   }
 
-  // AÃ§Ã£o 2: Gastos > Receita â€” overspending
+  // Acao 2: Gastos > Receita - overspending
   if (monthlyExpenses > monthlyIncome) {
     const overshoot = monthlyExpenses - monthlyIncome;
     actions.push({
@@ -160,7 +160,7 @@ export function prioritizeActions(
     });
   }
 
-  // AÃ§Ã£o 3: Taxa de poupanÃ§a baixa
+  // Acao 3: Taxa de poupanca baixa
   if (savingsRate < 0.1 && monthlyIncome > 0) {
     const targetCut = monthlyExpenses - monthlyIncome * 0.85; // poupar 15%
     actions.push({
@@ -175,7 +175,7 @@ export function prioritizeActions(
     });
   }
 
-  // AÃ§Ã£o 4: Categoria dominante (>35% das despesas)
+  // Acao 4: Categoria dominante (>35% das despesas)
   if (transactions.length > 0) {
     const dominant = moneyMapEngine.getDominantCategory(transactions);
     if (dominant && dominant.percentage >= 35) {
@@ -195,7 +195,7 @@ export function prioritizeActions(
     }
   }
 
-  // AÃ§Ã£o 5: Perfil Spender com poupanÃ§a positiva â€” oportunidade de investimento
+  // Acao 5: Perfil Spender com poupanca positiva - oportunidade de investimento
   if (profile === 'Saver' && savingsRate >= 0.2) {
     const investable = Number((monthlyIncome * savingsRate * 0.5).toFixed(2));
     actions.push({
@@ -210,7 +210,7 @@ export function prioritizeActions(
     });
   }
 
-  // Se nenhuma aÃ§Ã£o crÃ­tica â†’ aÃ§Ã£o de manutenÃ§Ã£o
+  // Se nenhuma acao critica -> acao de manutencao
   if (actions.length === 0) {
     actions.push({
       id: 'maintain_health',

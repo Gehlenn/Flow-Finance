@@ -12,14 +12,14 @@ vi.mock('../../src/config/api.config', () => ({
     },
   },
   apiRequest: vi.fn(async () => ({
-    insights: [{ category: 'NegÃƒÆ’Ã‚Â³cio', threshold: 900, reason: 'PadrÃƒÆ’Ã‚Â£o de gasto recorrente.' }],
+    insights: [{ category: 'Negócio', threshold: 900, reason: 'Padrão de gasto recorrente.' }],
   })),
 }));
 
 describe('isFinancialReminder', () => {
   const makeReminder = (overrides: Partial<Reminder> = {}): Reminder => ({
     id: 'rem-fin-1',
-    title: 'CobranÃƒÆ’Ã‚Â§a',
+    title: 'Cobrança',
     date: '2026-04-12T10:00:00.000Z',
     type: ReminderType.NEGOCIO,
     completed: false,
