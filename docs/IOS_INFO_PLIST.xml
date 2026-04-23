@@ -1,187 +1,58 @@
 <!--
-  iOS INFO.PLIST CONFIGURATION - Required Keys
-  
-  This file documents the Info.plist keys required for Flow Finance on iOS.
-  Add these to: ios/App/App/Info.plist
-  
-  Usage descriptions are required by Apple App Store for user privacy.
+  Referencia Info.plist (Capacitor / iOS)
+
+  Este arquivo e uma referencia de chaves que podem ser exigidas pelo iOS
+  dependendo das features ativas.
+
+  Onde aplicar (projeto nativo):
+  - ios/App/App/Info.plist
+
+  Regra pratica:
+  - nunca pedir permissao que o app nao usa
+  - manter textos claros e verdadeiros (App Store)
 -->
 
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- ─── Camera & Photo Library (Receipt Scanner) ──────────────────────── -->
-    
-    <!-- Camera usage description (required for receipt scanning) -->
-    <key>NSCameraUsageDescription</key>
-    <string>Flow Finance precisa acessar sua câmera para escanear recibos, notas fiscais e boletos. Suas imagens são processadas localmente no seu dispositivo e nunca armazenadas.</string>
-    
-    <!-- Photo library usage description (for image imports) -->
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>Flow Finance precisa acessar suas fotos para importar recibos e documentos financeiros.</string>
-    
-    <!-- Photo library add only (iOS 11+) -->
-    <key>NSPhotoLibraryAddOnlyUsageDescription</key>
-    <string>Flow Finance pode salvar extratos que você exportou para sua biblioteca de fotos.</string>
+  <!-- Opcional: camera (scanner/import por imagem) -->
+  <key>NSCameraUsageDescription</key>
+  <string>O Flow Finance precisa acessar sua camera para importar imagens de comprovantes.</string>
 
-    <!-- ─── Microphone (Voice Input) ────────────────────────────────────── -->
-    
-    <!-- Microphone usage description (for voice financial commands) -->
-    <key>NSMicrophoneUsageDescription</key>
-    <string>Flow Finance pode usar seu microfone para processar comandos de voz financeiros. O áudio é transcrito localmente e não é armazenado.</string>
+  <!-- Opcional: fotos (import/export) -->
+  <key>NSPhotoLibraryUsageDescription</key>
+  <string>O Flow Finance pode acessar suas fotos para importar documentos financeiros.</string>
+  <key>NSPhotoLibraryAddOnlyUsageDescription</key>
+  <string>O Flow Finance pode salvar arquivos exportados na sua biblioteca de fotos.</string>
 
-    <!-- ─── Location Services (Future - Optional) ──────────────────────── -->
-    
-    <!-- Fine location (for location-based bank services) -->
-    <!-- <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Flow Finance pode usar sua localização para serviços bancários localizados.</string> -->
-    
-    <!-- Background location -->
-    <!-- <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>Flow Finance precisa de permissão para acessar sua localização.</string> -->
+  <!-- Opcional: microfone (entrada por voz) -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>O Flow Finance pode usar o microfone para comandos de voz financeiros.</string>
 
-    <!-- ─── Files & Storage ──────────────────────────────────────────────── -->
-    
-    <!-- File sharing enabled (for importing/exporting files via iTunes File Sharing) -->
-    <key>UIFileSharingEnabled</key>
-    <true/>
-    
-    <!-- Document browser enabled (for accessing iCloud files) -->
-    <key>LSSupportsOpeningDocumentsInPlace</key>
-    <true/>
+  <!-- Opcional: files app / import/export via app Arquivos -->
+  <key>UIFileSharingEnabled</key>
+  <true/>
+  <key>LSSupportsOpeningDocumentsInPlace</key>
+  <true/>
 
-    <!-- Accept file extensions for import via file picker -->
-    <key>CFBundleDocumentTypes</key>
-    <array>
-        <!-- CSV files -->
-        <dict>
-            <key>CFBundleTypeName</key>
-            <string>CSV Transactions</string>
-            <key>CFBundleTypeRole</key>
-            <string>Viewer</string>
-            <key>LSHandlerRank</key>
-            <string>Alternate</string>
-            <key>LSItemContentTypes</key>
-            <array>
-                <string>public.comma-separated-values-text</string>
-            </array>
-        </dict>
-        <!-- PDF files -->
-        <dict>
-            <key>CFBundleTypeName</key>
-            <string>PDF Document</string>
-            <key>CFBundleTypeRole</key>
-            <string>Viewer</string>
-            <key>LSHandlerRank</key>
-            <string>Alternate</string>
-            <key>LSItemContentTypes</key>
-            <array>
-                <string>com.adobe.pdf</string>
-            </array>
-        </dict>
-        <!-- OFX files (banking format) -->
-        <dict>
-            <key>CFBundleTypeName</key>
-            <string>OFX Banking File</string>
-            <key>CFBundleTypeRole</key>
-            <string>Viewer</string>
-            <key>LSHandlerRank</key>
-            <string>Alternate</string>
-            <key>LSItemContentTypes</key>
-            <array>
-                <string>public.text</string>
-            </array>
-        </dict>
-    </array>
-
-    <!-- ─── App Transport Security ──────────────────────────────────────── -->
-    
-    <!-- Allow HTTP for development localhost only -->
-    <key>NSAppTransportSecurity</key>
+  <!-- ATS: permitir http apenas para localhost (desenvolvimento) -->
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <false/>
+    <key>NSExceptionDomains</key>
     <dict>
-        <!-- Allow arbitrary loads in development -->
-        <key>NSAllowsArbitraryLoads</key>
-        <false/>
-        
-        <!-- Development localhost exception -->
-        <key>NSExceptionDomains</key>
-        <dict>
-            <key>localhost</key>
-            <dict>
-                <key>NSIncludesSubdomains</key>
-                <true/>
-                <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
-                <true/>
-                <key>NSTemporaryExceptionMinimumTLSVersion</key>
-                <string>TLSv1.2</string>
-            </dict>
-            <key>192.168.1.0</key>
-            <dict>
-                <key>NSIncludesSubdomains</key>
-                <true/>
-                <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
-                <true/>
-            </dict>
-        </dict>
+      <key>localhost</key>
+      <dict>
+        <key>NSIncludesSubdomains</key>
+        <true/>
+        <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+        <true/>
+        <key>NSTemporaryExceptionMinimumTLSVersion</key>
+        <string>TLSv1.2</string>
+      </dict>
     </dict>
-
-    <!-- ─── Background Modes (Optional - for future) ──────────────────── -->
-    
-    <!-- Background fetch for periodic data sync -->
-    <!-- <key>UIBackgroundModes</key>
-    <array>
-        <string>fetch</string>
-        <string>remote-notification</string>
-    </array> -->
-
-    <!-- ─── Capabilities ───────────────────────────────────────────────── -->
-    
-    <!-- iCloud key-value storage (optional) -->
-    <!-- <key>com.apple.developer.ubiquity-kvstore-identifier</key>
-    <string>$(TeamIdentifierPrefix)com.flowfinance.app</string> -->
-    
-    <!-- Push notifications (optional) -->
-    <!-- Configured in Xcode capabilities tab -->
-
-    <!-- ─── App Version & Minimum iOS ──────────────────────────────────── -->
-    
-    <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
-    
-    <key>CFBundleVersion</key>
-    <string>1</string>
-    
-    <!-- Minimum iOS version: iOS 14+ (API equivalent to Android 24+) -->
-    <key>MinimumOSVersion</key>
-    <string>14.0</string>
-
+  </dict>
 </dict>
 </plist>
-
-<!--
-  SETUP INSTRUCTIONS:
-  
-  1. Open ios/App in Xcode
-  2. Select the App target
-  3. Go to Info tab
-  4. Add the required keys above to Info.plist
-  
-  Alternative (programmatic):
-  1. Close Xcode
-  2. Edit ios/App/App/Info.plist directly in text editor
-  3. Paste the keys from this file
-  4. Save and reopen in Xcode
-  
-  TESTING:
-  1. Build and run on simulator
-  2. When app first requests camera/microphone, iOS will show permission prompt
-  3. Allow permissions and verify functionality
-  4. Check Settings > Flow Finance > Permissions are set correctly
-  
-  App Store REQUIREMENTS:
-  - Each permission must have NSxxxUsageDescription key
-  - Descriptions must be clear and user-friendly
-  - Never request permissions you don't actually use
-  - Users can revoke permissions at any time
--->

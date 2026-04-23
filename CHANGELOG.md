@@ -106,8 +106,8 @@ Lançamento de produção com consolidação de fluxo de caixa inteligente e int
 
 ### 📚 Documentação
 
-- [Go/No-Go Decision](docs/GO_NO_GO_DECISION_2026-04-12.md) - Validações e decisão operacional
-- [Plano de 10 Dias](docs/PLANO_LANCAMENTO_10_DIAS_2026-04-12.md) - Roadmap pós-lançamento
+- [Go/No-Go Decision](docs/archive/GO_NO_GO_DECISION_2026-04-12.md) - Validações e decisão operacional
+- [Plano de 10 Dias](docs/archive/PLANO_LANCAMENTO_10_DIAS_2026-04-12.md) - Roadmap pós-lançamento
 - [Deployment Status](docs/DEPLOYMENT_STATUS.md) - Histórico de execução
 - [Architecture](docs/ARCHITECTURE.md) - Visão técnica do sistema
 

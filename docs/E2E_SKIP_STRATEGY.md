@@ -1,73 +1,50 @@
-# Estratégia de Skip em E2E
+# Estrategia de Skip em E2E
 
-## Objetivo
+## Papel deste documento
 
-Registrar por que a suíte E2E usa skips condicionais em runtime em vez de skips estáticos e cegos.
+Registrar quando skips condicionais em E2E sao aceitaveis e quando viram mascaramento de regressao.
 
-## Princípio
+## Principio
 
-Os testes E2E do Flow Finance adaptam a execução ao ambiente real para evitar:
+Os testes E2E do Flow Finance podem adaptar a execucao ao ambiente real para evitar:
 
 - falso negativo por indisponibilidade transitória
 - erro de infraestrutura sendo tratado como bug de produto
-- instabilidade inútil em cenários dependentes de backend, fixture ou tipo de dispositivo
+- execucao de roteiro desktop em viewport mobile ou o inverso
 
-## Categorias principais
+## Categorias legitimas
 
-### 1. Dependência de fixture
+### Dependencia de fixture
 
-Usado quando a interface autenticada ou elementos críticos ainda não ficaram visíveis no momento da checagem.
+Usada quando a interface autenticada ou elementos criticos ainda nao ficaram visiveis no momento da checagem.
 
-Objetivo:
+### Dependencia de backend
 
-- proteger contra flakiness de inicialização
+Usada quando backend ou servico externo necessario nao esta disponivel.
 
-### 2. Dependência de backend
+### Dependencia de dispositivo
 
-Usado quando o backend ou serviço externo necessário não está disponível.
+Usada quando o cenario e desktop-only ou mobile-only.
 
-Objetivo:
+### Decisao de produto
 
-- degradar com clareza quando a infraestrutura do teste não responde
+Usada quando a funcionalidade foi congelada, desligada ou removida por direcao de produto.
 
-### 3. Dependência de dispositivo
+## Regra operacional
 
-Usado quando o cenário é desktop-only ou mobile-only.
+Um skip legitimo:
 
-Objetivo:
+- explica a causa
+- nao mascara bug real
+- e limitado ao contexto que justifica o skip
 
-- não forçar o mesmo roteiro em contexto de viewport incompatível
+Um skip invalido:
 
-### 4. Decisão de produto
+- esconde regressao
+- vira substituto de correcao estrutural
+- permanece indefinidamente sem motivo verificavel
 
-Usado quando a funcionalidade foi congelada ou desligada por direção de produto.
-
-Objetivo:
-
-- explicitar que o skip não é acidente técnico
-
-## Interpretação correta
-
-Um skip legítimo:
-
-- não mascara bug real
-- documenta a razão
-- mantém a suíte mais honesta
-
-## Diretriz operacional
-
-Skips devem continuar:
-
-- explícitos
-- rastreáveis
-- limitados a causas legítimas
-
-Skips não devem virar:
-
-- atalho para esconder regressão
-- substituto de correção estrutural
-
-## Referências
+## Referencias
 
 - [playwright.config.ts](E:\app e jogos criados\Flow-Finance\playwright.config.ts)
 - [tests/e2e/helpers](E:\app e jogos criados\Flow-Finance\tests\e2e\helpers)

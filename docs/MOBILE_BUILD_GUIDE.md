@@ -7,58 +7,49 @@ Este guia resume a trilha de build mobile do Flow Finance com Capacitor para And
 ## Estado atual
 
 - frontend web e empacotamento mobile coexistem
-- a base mobile depende do build web estar íntegro
-- builds nativos continuam dependentes do ambiente do desenvolvedor
-- geracao automatica de assets mobile via dependencia NPM foi desativada temporariamente por seguranca
+- a base mobile depende do build web estar integro
+- builds nativos dependem do ambiente do desenvolvedor
+- geracao automatica de assets mobile por dependencia NPM continua desativada por seguranca
 
 ## Nota de seguranca sobre assets
 
-- O projeto removeu `cordova-res` para eliminar vulnerabilidades de alto risco na cadeia de dependencias.
-- Ate a liberacao de um caminho upstream comprovadamente seguro, gere assets nativos manualmente:
-	- Android: Android Studio > New Image Asset
-	- iOS: Xcode > Assets.xcassets
-- Registre os arquivos gerados no controle de versao junto com o build correspondente.
+O projeto removeu `cordova-res` para evitar vulnerabilidades na cadeia de dependencias.
 
-## Pré-requisitos gerais
+Enquanto nao houver caminho upstream comprovadamente seguro:
+
+- Android: gerar icones e splash via Android Studio > New Image Asset
+- iOS: gerar assets via Xcode > Assets.xcassets
+- versionar os assets nativos junto com a rodada correspondente
+
+## Pre-requisitos
+
+Gerais:
 
 - Node.js `18+`
 - npm
 - Capacitor CLI
-- dependências do projeto instaladas
+- dependencias do projeto instaladas
 
-## Android
-
-Requisitos comuns:
+Android:
 
 - JDK `17+`
 - Android Studio
 - SDK Android configurado
-- variáveis de ambiente do SDK corretas
+- variaveis do SDK corretas
 
-## iOS
-
-Requisitos comuns:
+iOS:
 
 - macOS
 - Xcode
 - CocoaPods
-- conta Apple Developer quando houver distribuição
+- conta Apple Developer quando houver distribuicao
 
 ## Fluxo base
 
-### 1. Build web
-
 ```bash
 npm run build
-```
-
-### 2. Sincronizar com Capacitor
-
-```bash
 npx cap sync
 ```
-
-### 3. Abrir projeto nativo
 
 Android:
 
@@ -72,35 +63,7 @@ iOS:
 npx cap open ios
 ```
 
-## Checklist operacional rapido (sem script de assets)
-
-### Android
-
-1. Rodar `npm run build`.
-2. Rodar `npx cap sync android`.
-3. Abrir o projeto com `npx cap open android`.
-4. Atualizar icones/splash em Android Studio (Image Asset), se necessario.
-5. Executar build Debug para validacao local.
-6. Executar build Release (APK/AAB) quando assinatura estiver pronta.
-7. Validar abertura do app, login, dashboard e fluxo de transacao.
-
-### iOS
-
-1. Rodar `npm run build`.
-2. Rodar `npx cap sync ios`.
-3. Abrir o projeto com `npx cap open ios`.
-4. Atualizar icones/splash em Assets.xcassets, se necessario.
-5. Executar build no simulador para validacao local.
-6. Gerar Archive quando certificados e profiles estiverem corretos.
-7. Validar abertura do app, login, dashboard e fluxo de transacao.
-
-### Fechamento da rodada
-
-1. Registrar data, responsavel e resultado do teste.
-2. Versionar assets nativos alterados junto com o codigo da rodada.
-3. Anotar bloqueios de ambiente separando problema de app vs problema nativo.
-
-## Atalhos úteis
+## Atalhos existentes
 
 Android:
 
@@ -116,35 +79,36 @@ npm run build:ios
 npm run build:ios:release
 ```
 
-## Resultado esperado
+## Checklist Android
 
-### Android
+1. rodar `npm run build`
+2. rodar `npx cap sync android`
+3. abrir com `npx cap open android`
+4. atualizar assets nativos se necessario
+5. executar build Debug
+6. executar build Release quando assinatura estiver pronta
+7. validar abertura, login, dashboard e fluxo de transacao
 
-- APK de debug
-- APK ou AAB de release, quando o ambiente estiver completo
+## Checklist iOS
 
-### iOS
+1. rodar `npm run build`
+2. rodar `npx cap sync ios`
+3. abrir com `npx cap open ios`
+4. atualizar assets nativos se necessario
+5. executar build no simulador
+6. gerar Archive quando certificados e profiles estiverem corretos
+7. validar abertura, login, dashboard e fluxo de transacao
 
-- build via Xcode
-- archive e distribuição quando o ambiente estiver completo
+## Regra pratica
 
-## Bloqueios típicos
-
-- JDK ausente ou mal configurado
-- SDK Android incompleto
-- assinatura de release ausente
-- perfis e certificados iOS ausentes
-
-## Regra prática
-
-Quando o build mobile falhar, separar o problema em duas classes:
+Quando o build mobile falhar, separar:
 
 1. falha do aplicativo
 2. falha do ambiente nativo
 
-Isso evita confundir erro de sistema com regressão do produto.
+Isso evita confundir problema de sistema com regressao do produto.
 
-## Referências
+## Referencias
 
-- [docs/MOBILE_TESTING_PLAN.md](E:\app e jogos criados\Flow-Finance\docs\MOBILE_TESTING_PLAN.md)
-- [docs/MOBILE_TESTING_STATUS.md](E:\app e jogos criados\Flow-Finance\docs\MOBILE_TESTING_STATUS.md)
+- [MOBILE_TESTING_PLAN.md](./MOBILE_TESTING_PLAN.md)
+- [MOBILE_TESTING_STATUS.md](./MOBILE_TESTING_STATUS.md)

@@ -17,6 +17,8 @@
     "type-check:app": "tsc -p tsconfig.app.json --noEmit",
     "type-check:backend": "npm --prefix backend run type-check",
     "docs:update": "node scripts/update-readme.js",
+    "docs:check-links": "node scripts/check-doc-links.mjs",
+    "docs:check-mojibake": "node scripts/check-mojibake.mjs",
     "deploy": "vercel --prod",
     "deploy:preview": "vercel",
     "teste": "npm test",

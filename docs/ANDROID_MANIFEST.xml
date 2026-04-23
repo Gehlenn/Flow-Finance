@@ -1,127 +1,37 @@
 <!--
-  ANDROID MANIFEST PERMISSIONS - Reference
-  
-  This file documents the permissions required for Flow Finance on Android.
-  These should be added to your Android project's AndroidManifest.xml
-  Located at: android/app/src/main/AndroidManifest.xml
-  
-  Or configure via capacitor.config.ts with Capacitor plugins.
+  Referencia AndroidManifest.xml (Capacitor)
+
+  Este arquivo e uma referencia de permissoes/configuracoes que podem ser
+  necessarias no app Android, dependendo das features ativas.
+
+  Onde aplicar (projeto nativo):
+  - android/app/src/main/AndroidManifest.xml
+
+  Regra pratica:
+  - nao habilitar permissoes que o app nao usa
+  - tratar storage/permissoes legadas com cautela (Android moderno usa scoped storage)
 -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.flowfinance.app">
 
-    <!-- ─── Required Permissions ──────────────────────────────────────────── -->
-
-    <!-- Internet access (required for Gemini API calls via backend) -->
+    <!-- Basico (comunicacao) -->
     <uses-permission android:name="android.permission.INTERNET" />
-    
-    <!-- Network connectivity check -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
-    <!-- ─── Camera & Microphone (Required for Receipt Scanner & Voice Input) ──── -->
-    
-    <!-- Camera - for receipt image scanning -->
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-feature android:name="android.hardware.camera" android:required="false" />
-    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
-    
-    <!-- Microphone - for voice financial commands -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-feature android:name="android.hardware.microphone" android:required="false" />
-
-    <!-- ─── Storage Permissions (API 32+) ────────────────────────────────── -->
-    
-    <!-- Read external storage (for importing transaction files) -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    
-    <!-- Write external storage (for exporting reports) - Android 12+ -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-
-    <!-- Storage access scoped (Android 11+) - for importing files -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_DOCUMENTS" />
-
-    <!-- ─── Location Permissions (Optional - for future bank sync) ────────── -->
-    
-    <!-- Fine location (for location-based financial services) -->
-    <!-- <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /> -->
-    
-    <!-- Coarse location (network-based location) -->
-    <!-- <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /> -->
-
-    <!-- ─── Background Execution (Optional - for future background sync) ─── -->
-    
-    <!-- Wake lock (keep device awake during sync) -->
-    <!-- <uses-permission android:name="android.permission.WAKE_LOCK" /> -->
-    
-    <!-- Background execution (Android 12+) -->
-    <!-- <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" /> -->
-
-    <!-- ─── Notifications (Android 13+) ──────────────────────────────────── -->
-    
-    <!-- Post notifications (required for local notifications on Android 13+) -->
+    <!-- Notificacoes (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- ─── Application Definition ───────────────────────────────────────── -->
-    
-    <application
-        android:allowBackup="true"
-        android:icon="@drawable/ic_launcher"
-        android:roundIcon="@drawable/ic_launcher_round"
-        android:label="@string/app_name"
-        android:theme="@style/AppTheme"
-        android:usesCleartextTraffic="false">
-        
-        <!-- Main Activity -->
-        <activity android:name=".MainActivity"
-            android:exported="true"
-            android:label="@string/app_name"
-            android:theme="@style/AppTheme"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
-            android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-    </application>
+    <!-- Opcional: camera (scanner/import por imagem) -->
+    <!-- <uses-permission android:name="android.permission.CAMERA" /> -->
+    <!-- <uses-feature android:name="android.hardware.camera" android:required="false" /> -->
 
-    <!-- ─── Minimum & Target SDK ────────────────────────────────────────── -->
-    
-    <!-- Android 6.0+ (API 24) - Android 14+ (API 34) -->
-    <uses-sdk
-        android:minSdkVersion="24"
-        android:targetSdkVersion="34" />
+    <!-- Opcional: microfone (entrada por voz) -->
+    <!-- <uses-permission android:name="android.permission.RECORD_AUDIO" /> -->
+    <!-- <uses-feature android:name="android.hardware.microphone" android:required="false" /> -->
+
+    <!-- Opcional: leitura de imagens/documentos (Android 13+) -->
+    <!-- <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" /> -->
+    <!-- Nao existe permissao oficial "READ_MEDIA_DOCUMENTS" em Android base; use intents/SAF quando possivel -->
 
 </manifest>
-
-<!--
-  IMPLEMENTATION NOTES:
-  
-  1. Permissions required at runtime (Android 6+):
-     - CAMERA
-     - RECORD_AUDIO
-     - READ_EXTERNAL_STORAGE
-     - WRITE_EXTERNAL_STORAGE
-     - POST_NOTIFICATIONS
-     
-     Capacitor handles these via: Capacitor.requestPermissions(['camera', 'microphone', ...])
-  
-  2. To add via Capacitor:
-     Install plugins:
-     - npm install @capacitor/camera
-     - npm install @capacitor/filesystem
-     - npm install @capacitor/local-notifications
-     
-     Then configure in capacitor.config.ts
-  
-  3. Request permissions in your app code:
-     const result = await Camera.requestPermission();
-     const audio = await Microphone.requestPermission();
-  
-  4. Test on actual device or emulator:
-     Settings > Apps > Flow Finance > Permissions
--->

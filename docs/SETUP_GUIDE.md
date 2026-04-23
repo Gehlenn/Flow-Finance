@@ -144,8 +144,8 @@ Sem URL acessivel, nao declarar fechamento do ambiente alvo.
 
 ## Leitura complementar
 
-- [docs/COMECE_AQUI.md](E:\app e jogos criados\Flow-Finance\docs\COMECE_AQUI.md)
-- [docs/DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT.md)
-- [docs/VERCEL_CONFIG.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_CONFIG.md)
-- [docs/VERCEL_DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_DEPLOYMENT.md)
-- [docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](E:\app e jogos criados\Flow-Finance\docs\EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)
+- [COMECE_AQUI.md](./COMECE_AQUI.md)
+- [DEPLOYMENT.md](./DEPLOYMENT.md)
+- [VERCEL_CONFIG.md](./VERCEL_CONFIG.md)
+- [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)
+- [EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](./EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)

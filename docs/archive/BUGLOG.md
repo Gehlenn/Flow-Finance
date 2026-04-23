@@ -165,4 +165,4 @@ Este arquivo registra bugs, regressões e decisões de correção relevantes na 
 - `docs/HISTORICAL_README.md`
 - `docs/CHANGELOG.md`
 - `docs/DEPLOYMENT_STATUS.md`
-- `docs/CODE_REALITY_MATRIX_v0.6_to_v0.9_2026-04-11.md`
+- `docs/archive/CODE_REALITY_MATRIX_v0.6_to_v0.9_2026-04-11.md`

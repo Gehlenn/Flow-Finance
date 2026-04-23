@@ -81,7 +81,7 @@ Não marcar observabilidade como “fechada em produção” só porque o códig
 
 ## Referências
 
-- [src/config/sentry.ts](E:\app e jogos criados\Flow-Finance\src\config\sentry.ts)
-- [backend/src/config/sentry.ts](E:\app e jogos criados\Flow-Finance\backend\src\config\sentry.ts)
-- [docs/VERCEL_CONFIG.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_CONFIG.md)
-- [docs/VERCEL_DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_DEPLOYMENT.md)
+- [src/config/sentry.ts](../src/config/sentry.ts)
+- [backend/src/config/sentry.ts](../backend/src/config/sentry.ts)
+- [VERCEL_CONFIG.md](./VERCEL_CONFIG.md)
+- [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)

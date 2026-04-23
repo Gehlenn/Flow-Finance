@@ -1,46 +1,48 @@
-# Operação de CI com Docker Opcional
+# Operacao de CI com Docker Opcional
 
 ## Papel deste documento
 
-Descrever como o CI se comporta quando as etapas de Docker e deploy externo são tratadas como opt-in.
+Este documento registra como o CI trata Docker e deploy externo como trilhas opt-in. A trilha principal atual do projeto continua concentrada no Vercel.
 
 ## Build e testes
 
 Arquivo relacionado:
 
-- `.github/workflows/build.yml`
+- [.github/workflows/build.yml](E:\app e jogos criados\Flow-Finance\.github\workflows\build.yml)
 
-Comportamento registrado:
+Comportamento atual:
 
-- o job de Docker é opcional
-- por padrão, a validação principal não depende dele
-- a ativação ocorre por variável de repositório específica
+- o job de Docker e opcional
+- a validacao principal nao depende dele por padrao
+- a ativacao ocorre com a variavel de repositorio `ENABLE_DOCKER_BUILD=true`
+- push de imagem depende de credenciais Docker Hub configuradas
 
-## Deploy
+## Deploy externo
 
 Arquivo relacionado:
 
-- `.github/workflows/deploy.yml`
+- [.github/workflows/deploy.yml](E:\app e jogos criados\Flow-Finance\.github\workflows\deploy.yml)
 
-Comportamento registrado:
+Comportamento atual:
 
-- o alvo de deploy é controlado por variável de repositório
-- quando o alvo não está configurado, o pipeline evita acoplamento desnecessário com infraestrutura externa
+- `DEPLOY_PLATFORM` controla a plataforma externa
+- valores suportados pelo workflow: `railway`, `render`, `aws`
+- sem `DEPLOY_PLATFORM`, o workflow evita acoplamento com infraestrutura externa
 
-## Intenção operacional
+## Intencao operacional
 
 Separar:
 
 1. gates centrais de qualidade
-2. infraestrutura opcional de publicação
+2. build de imagem
+3. deploy externo fora da trilha Vercel
 
-Isso reduz falso negativo em CI quando a plataforma externa não faz parte da validação obrigatória daquele ciclo.
+Isso reduz falso negativo em CI quando Docker ou outra plataforma nao fazem parte da validacao obrigatoria daquele ciclo.
 
-## Leitura correta hoje
+## Leitura correta
 
-Este documento é útil como regra operacional de pipeline, mas a trilha principal atual do projeto está concentrada no Vercel.
+Este documento continua vivo como regra de pipeline, mas nao substitui:
 
-## Referências
-
-- [docs/DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT.md)
-- [docs/VERCEL_DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_DEPLOYMENT.md)
+- [DEPLOYMENT.md](./DEPLOYMENT.md)
+- [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)
+- [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md)

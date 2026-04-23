@@ -57,6 +57,6 @@ Um deploy so deve ser tratado como pronto quando:
 
 Para isso, usar:
 
-- [docs/VERCEL_CONFIG.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_CONFIG.md)
-- [docs/VERCEL_DEPLOYMENT.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_DEPLOYMENT.md)
-- [docs/DEPLOYMENT_STATUS.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT_STATUS.md)
+- [VERCEL_CONFIG.md](./VERCEL_CONFIG.md)
+- [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)
+- [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md)

@@ -79,10 +79,10 @@ VERCEL_TARGET_URL=https://seu-preview.vercel.app npm run health:vercel
 
 ## Referencias relacionadas
 
-- [README.md](E:\app e jogos criados\Flow-Finance\README.md)
-- [docs/ROADMAP.md](E:\app e jogos criados\Flow-Finance\docs\ROADMAP.md)
-- [docs/VERCEL_CONFIG.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_CONFIG.md)
-- [docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](E:\app e jogos criados\Flow-Finance\docs\EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)
+- [README.md](../README.md)
+- [ROADMAP.md](./ROADMAP.md)
+- [VERCEL_CONFIG.md](./VERCEL_CONFIG.md)
+- [EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](./EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)
 
 ## Atualizacao de validacao - 2026-04-12 (rodada manual)
 

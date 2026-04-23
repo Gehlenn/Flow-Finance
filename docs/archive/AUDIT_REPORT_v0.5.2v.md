@@ -274,7 +274,7 @@ helpers            |  100.00 |   100.00 |  100.00 | 100.00
 | ROADMAP atualizado | ✅ |
 | GDD atualizado | ✅ |
 | package.json sincronizado | ✅ 0.6.3 (trilha técnica) |
-| Release summary publicável | ✅ `docs/RELEASE_SUMMARY_v0.5.2v.md` |
+| Release summary publicável | ✅ `docs/archive/RELEASE_SUMMARY_v0.5.2v.md` |
 | Tag Git criada | ✅ `v0.5.2v-tech-0.6.3` |
 | Push do branch e tag | ✅ `hardening-architecture` + tag no remote |
 
@@ -286,7 +286,7 @@ helpers            |  100.00 |   100.00 |  100.00 | 100.00
 
 Todos os critérios do protocolo foram atendidos. Os issues identificados (A001–A006) são de severidade baixa/info e não bloqueiam a transição. Estão registrados para endereçamento na próxima iteração.
 
-**Decisão de staging/prod:** ⏳ Aguardando injeção de variáveis e validação manual em ambiente real conforme `docs/OPEN_FINANCE_GO_LIVE_PLAN.md`.
+**Decisão de staging/prod:** ⏳ Aguardando injeção de variáveis e validação manual em ambiente real conforme `docs/archive/OPEN_FINANCE_GO_LIVE_PLAN.md`.
 
 ---
 

@@ -1,6 +1,6 @@
 # Flow Finance
 
-Aplicacao SaaS de gestao financeira com foco em fluxo de caixa, transacoes, receitas previstas e realizadas, e apoio consultivo por IA para empresas de servico.
+Aplicação SaaS de gestão financeira com foco em fluxo de caixa, transações, receitas previstas e realizadas, e apoio consultivo por IA para empresas de serviço.
 
 ## Estado atual
 
@@ -19,47 +19,41 @@ Aplicacao SaaS de gestao financeira com foco em fluxo de caixa, transacoes, rece
 
 ## Escopo do produto
 
-O Flow Finance esta sendo simplificado para operar bem no nucleo de gestao financeira:
+O Flow Finance está sendo simplificado para operar bem no núcleo de gestão financeira:
 
 - fluxo de caixa
-- transacoes
+- transações
 - receitas previstas e realizadas
 - camada consultiva de IA
 - operacao web e mobile como alvos de primeira classe
 
-O caso da clinica odontologica continua sendo apenas cenario de validacao. Ele nao define a identidade do produto.
+O caso da clínica odontológica continua sendo apenas cenário de validação. Ele não define a identidade do produto.
 
 ## Fonte de verdade documental
 
 Use estes documentos como trilha principal antes de tomar decisoes de produto, arquitetura ou release:
 
-- Indice da documentacao: [docs/README.md](E:\app e jogos criados\Flow-Finance\docs\README.md)
-- Entrada rapida: [docs/COMECE_AQUI.md](E:\app e jogos criados\Flow-Finance\docs\COMECE_AQUI.md)
-- Mapa operacional: [docs/OPERATIONS_README.md](E:\app e jogos criados\Flow-Finance\docs\OPERATIONS_README.md)
-- Mapa historico: [docs/HISTORICAL_README.md](E:\app e jogos criados\Flow-Finance\docs\HISTORICAL_README.md)
-- Roadmap consolidado: [docs/ROADMAP.md](E:\app e jogos criados\Flow-Finance\docs\ROADMAP.md)
-- Changelog operacional: [docs/CHANGELOG.md](E:\app e jogos criados\Flow-Finance\docs\CHANGELOG.md)
-- Status de deploy: [docs/DEPLOYMENT_STATUS.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT_STATUS.md)
-- Configuracao de Vercel e observabilidade: [docs/VERCEL_CONFIG.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_CONFIG.md)
-- Evidencia operacional do Stripe sandbox: [docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](E:\app e jogos criados\Flow-Finance\docs\EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)
-- Indice de auditorias e evidencias: [docs/AUDIT_AND_EVIDENCE_INDEX.md](E:\app e jogos criados\Flow-Finance\docs\AUDIT_AND_EVIDENCE_INDEX.md)
+- Índice da documentação: [docs/README.md](./docs/README.md)
+- Entrada rápida: [docs/COMECE_AQUI.md](./docs/COMECE_AQUI.md)
+- Mapa operacional: [docs/OPERATIONS_README.md](./docs/OPERATIONS_README.md)
+- Mapa histórico: [docs/HISTORICAL_README.md](./docs/HISTORICAL_README.md)
+- Roadmap consolidado: [docs/ROADMAP.md](./docs/ROADMAP.md)
+- Changelog operacional: [docs/CHANGELOG.md](./docs/CHANGELOG.md)
+- Status de deploy: [docs/DEPLOYMENT_STATUS.md](./docs/DEPLOYMENT_STATUS.md)
+- Configuração de Vercel e observabilidade: [docs/VERCEL_CONFIG.md](./docs/VERCEL_CONFIG.md)
+- Evidência operacional do Stripe sandbox: [docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](./docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)
+- Índice de auditorias e evidências: [docs/AUDIT_AND_EVIDENCE_INDEX.md](./docs/AUDIT_AND_EVIDENCE_INDEX.md)
 
 ## Espelho no vault
 
-O vault em `obsidian-vault/Flow/` deve concentrar o espelho resumido da operacao e da memoria util:
+O repositório contém um vault auxiliar em `./obsidian-vault/`, mas o **vault canônico do projeto** fica fora do repositório, em:
 
-- Regras do projeto: [obsidian-vault/Flow/Project Rules.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\Project Rules.md)
-- Plano de produto: [obsidian-vault/Flow/Product Plan.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\Product Plan.md)
-- Tarefas de codigo: [obsidian-vault/Flow/Code Tasks.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\Code Tasks.md)
-- Guia de stack: [obsidian-vault/Flow/Project Stack Guide.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\Project Stack Guide.md)
-- Plano de 30 dias: [obsidian-vault/Flow/30-Day Plan.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\30-Day Plan.md)
-- Mapa da documentacao: [obsidian-vault/Flow/Documentation Map.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\Documentation Map.md)
-- Contexto operacional: [obsidian-vault/Flow/Operational Context.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\Operational Context.md)
-- Status de release: [obsidian-vault/Flow/Release Status.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\Release Status.md)
-- Checklist de ambiente: [obsidian-vault/Flow/Environment Checklist.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\Environment Checklist.md)
-- Mapa operacional: [obsidian-vault/Flow/Operations Map.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\Operations Map.md)
-- Mapa historico: [obsidian-vault/Flow/Historical Map.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\Historical Map.md)
-- Mapa de auditorias e evidencias: [obsidian-vault/Flow/Audit and Evidence Map.md](E:\app e jogos criados\Flow-Finance\obsidian-vault\Flow\Audit and Evidence Map.md)
+`E:\app e jogos criados\obsidian-vault\Projetos\`
+
+Regras operacionais:
+
+- documentação de projeto (repo) e memória operacional (vault) devem permanecer coerentes
+- quando existir conflito entre documentação e código, o código vence e a documentação é atualizada na mesma passada
 
 ## Arquitetura resumida
 
@@ -67,7 +61,7 @@ O vault em `obsidian-vault/Flow/` deve concentrar o espelho resumido da operacao
 
 - React + Vite
 - suporte mobile via Capacitor
-- fallback local controlado para desenvolvimento quando Firebase nao estiver configurado
+- fallback local controlado para desenvolvimento quando Firebase não estiver configurado
 - camadas de sessao, workspace e billing desacopladas
 
 ### Backend
@@ -135,7 +129,7 @@ node scripts/check-local-auth-readiness.mjs
 
 Checklist operacional completo:
 
-- [docs/SMOKE_AUTH_REAL_CHECKLIST.md](docs/SMOKE_AUTH_REAL_CHECKLIST.md)
+- [docs/SMOKE_AUTH_REAL_CHECKLIST.md](./docs/SMOKE_AUTH_REAL_CHECKLIST.md)
 
 ## Estado de qualidade atual
 
@@ -180,7 +174,7 @@ O fluxo operacional local do Stripe foi validado com:
 
 Evidencia detalhada:
 
-- [docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](E:\app e jogos criados\Flow-Finance\docs\EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)
+- [docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](./docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)
 
 ### Observabilidade
 
@@ -208,7 +202,7 @@ VERCEL_TARGET_URL=https://seu-preview.vercel.app npm run health:vercel
 Ao alterar comportamento, arquitetura, readiness, deploy ou operacao:
 
 - atualizar os documentos relevantes em `docs/`
-- atualizar os documentos equivalentes em `obsidian-vault/Flow/` quando o assunto for estrutural
+- atualizar o espelho equivalente no vault canônico (fora do repo) quando o assunto for estrutural
 - evitar manter conteudo duplicado e contraditorio entre README, roadmap, changelog e vault
 - tratar auditorias antigas e evidencias antigas como material historico, nao como fonte de verdade viva
 

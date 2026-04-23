@@ -1,67 +1,68 @@
-# Guia de Contribuição e Manutenção
+# Contribuição e Manutenção (PT-BR)
 
-Para garantir que a documentação do projeto **Flow Finance** permaneça sempre atualizada e útil, seguimos rigorosamente as diretrizes abaixo.
+Este documento define como contribuir no Flow Finance sem degradar integridade financeira, qualidade de código e rastreabilidade operacional.
 
-## 🔄 Política de Atualização Contínua
+## Regras de ouro
 
-Toda alteração no código que impacte a arquitetura, o fluxo de dados ou a interface do usuário **DEVE** ser acompanhada de uma atualização correspondente na documentação.
+- se não está documentado, não existe (para efeitos de operação e auditoria)
+- não declarar tarefa concluída se testes relevantes falharam ou se a lógica do fluxo principal está quebrada
+- tratar como superfícies de alto risco: autenticação, billing, Firestore rules, dados financeiros, multi-tenancy e integrações externas
+- manter a documentação do projeto em PT-BR (a trilha viva)
 
-### Regra de Ouro
-> **"Se não está documentado, não existe."**
+## Quando atualizar documentação
 
-### Checklist de Pull Request / Commit
+Você deve atualizar a documentação na mesma passada quando houver:
 
-Antes de finalizar qualquer tarefa, verifique:
+- mudança de fluxo de autenticação, sessão, workspace ou escopo de permissões
+- mudança em endpoints, contratos de request/response, headers obrigatórios (ex.: `x-workspace-id`)
+- mudança em billing (Stripe), webhooks, planos ou portal
+- mudança em observabilidade (Sentry), health endpoints, versionamento
+- mudança estrutural relevante (pastas, scripts, comandos de validação)
 
-1.  **Novos Arquivos:** Se você criou novos arquivos ou pastas, execute o script de atualização automática:
-    ```bash
-    npm run docs:update
-    ```
-    Isso atualizará a árvore de arquivos no `README.md`.
+## Onde documentar
 
-2.  **Novas Funcionalidades:**
-    -   Adicione uma breve descrição na seção "Funcionalidades" do `README.md`.
-    -   Se houver mudança no fluxo de dados, atualize o diagrama no `ARCHITECTURE.md`.
+Trilha viva (repo):
 
-3.  **Alteração de Dependências:**
-    -   Se adicionou uma nova biblioteca, explique o motivo no `README.md` (seção Arquitetura Técnica).
+- visão geral: `../README.md`
+- mapa de docs: `./README.md`
+- estado operacional: `./OPERATIONS_README.md`
+- status de deploy: `./DEPLOYMENT_STATUS.md`
+- roadmap operacional: `./ROADMAP.md`
+- setup: `./SETUP_GUIDE.md`
 
-4.  **Variáveis de Ambiente:**
-    -   Se criou uma nova variável, adicione-a ao `.env.example` e explique seu uso no `README.md`.
+Evidências e auditorias:
 
-## 🛠️ Ferramentas de Automação
+- índice: `./AUDIT_AND_EVIDENCE_INDEX.md`
+- evidência operacional Stripe sandbox: `./EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md`
 
-### Script de Atualização da Estrutura (`docs:update`)
+Memória operacional (vault canônico, fora do repo):
 
-Criamos um script personalizado para manter a seção "Estrutura de Pastas" do README sempre sincronizada com o projeto real.
+- `E:\app e jogos criados\obsidian-vault\Projetos\`
 
-**Como usar:**
+Regra prática:
+
+- se o repo muda, o vault também deve receber o resumo útil (decisões, estado, próximos passos)
+
+## Qualidade mínima antes de subir mudanças
+
+Quando o change impacta runtime, auth, billing, storage ou UI crítica, rode:
+
 ```bash
-npm run docs:update
+npm run lint
+npm run test:coverage:critical
+npm run health:runtime
+npm run health:runtime:mobile
 ```
 
-**O que ele faz:**
-1.  Lê a estrutura atual de diretórios do projeto.
-2.  Ignora arquivos irrelevantes (`node_modules`, `.git`, etc.).
-3.  Gera uma árvore de texto formatada.
-4.  Substitui automaticamente o bloco de código na seção `## 📂 Estrutura de Pastas` do `README.md`.
+Quando o change impacta rules do Firestore:
 
----
+```bash
+npm run test:firestore:rules
+```
 
-## 📝 Padrões de Documentação
+## Padrões de escrita
 
-### README.md
-Deve ser o ponto de partida para qualquer pessoa. Mantenha-o conciso e focado em:
--   O que é o projeto?
--   Como rodar?
--   Como testar?
+- texto direto, técnico e auditável
+- usar datas concretas (YYYY-MM-DD) ao registrar evidências
+- evitar caminhos absolutos do Windows em links Markdown; preferir links relativos portáveis
 
-### ARCHITECTURE.md
-Destinado a desenvolvedores que precisam entender o funcionamento interno.
--   Use diagramas (Mermaid) sempre que possível.
--   Explique o "porquê" das decisões técnicas.
-
-### Comentários no Código
--   Use JSDoc para funções complexas.
--   Evite comentários óbvios (ex: `// const x = 1; // define x como 1`).
--   Explique a intenção do código, não o que ele faz (o código já diz o que faz).

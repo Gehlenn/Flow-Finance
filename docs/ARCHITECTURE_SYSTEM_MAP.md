@@ -1,218 +1,133 @@
-# Mapa Sistêmico da Arquitetura
+# Mapa Sistemico da Arquitetura
 
 ## Papel deste documento
 
-Este arquivo resume o mapa de camadas do Flow Finance de forma visual e direta. Ele complementa a arquitetura principal, mas não a substitui.
+Este documento resume o mapa de camadas do Flow Finance de forma visual e direta. Ele complementa a arquitetura principal, mas nao a substitui.
 
-## Camada 1 - Cliente
+Referencia principal:
 
-Superfícies atendidas:
+- [ARCHITECTURE.md](./ARCHITECTURE.md)
 
-- aplicação web em React
+## Visao em camadas (alto nivel)
+
+1. Cliente (Web/Mobile)
+2. Guardas de runtime (resiliencia)
+3. API (contratos e protecoes)
+4. Contexto do usuario (sessao + workspace)
+5. Dominio (regras de negocio)
+6. Persistencia (stores)
+7. Integracoes (Stripe, Sentry, IA, etc.)
+
+## Diagrama simplificado
+
+```mermaid
+flowchart TD
+  U[Usuario] --> C[Cliente: React/Vite + Capacitor]
+  C --> G[Guardas de Runtime\n(API/Chunk/SW/Version)]
+  G --> A[Backend API (Express)\n/auth /workspace /saas /ai /health /version]
+  A --> CTX[Contexto\n(userId + workspaceId)]
+  CTX --> D[Dominio\n(transacoes, cashflow, previsoes, IA consultiva)]
+  D --> P[Persistencia\n(files/postgres/firestore - conforme configuracao)]
+  A --> I[Integracoes\nStripe/Sentry/Providers IA]
+```
+
+## Camada 1 - Cliente (Web/Mobile)
+
+Superficies atendidas:
+
+- aplicacao web em React
 - empacotamento mobile com Capacitor
-- PWA quando aplicável
+- PWA quando aplicavel
 
 Responsabilidades:
 
-- renderização de interface
-- entrada do usuário
-- navegação
-- visualização de estado financeiro
+- renderizacao de interface
+- entrada do usuario
+- navegacao
+- visualizacao de estado financeiro
 
 ## Camada 2 - Guardas de runtime
 
-Componentes principais:
+Componentes tipicos:
 
-- API Guard
-- Chunk Guard
-- Service Worker Guard
-- Version Guard
+- API Guard (queda de API / indisponibilidade)
+- Chunk Guard (assets quebrados)
+- Service Worker Guard (quando aplicavel)
+- Version Guard (build incompatvel)
 
 Responsabilidades:
 
-- detectar indisponibilidade de API
-- reduzir falhas por chunks quebrados
-- evitar inconsistência entre deploys
+- reduzir falhas em runtime
+- evitar inconsistencias entre deploys
+- expor estado de readiness de forma objetiva
 
 ## Camada 3 - API
 
-Entradas mais relevantes:
+Entradas relevantes (exemplos):
 
 - `/api/auth`
-- `/api/accounts`
+- `/api/workspace`
 - `/api/transactions`
 - `/api/ai`
+- `/api/saas`
 - `/api/health`
 - `/api/version`
-- `/api/saas`
 
 Responsabilidades:
 
 - entrada de dados
-- validação
-- autenticação
-- mediação de fluxos sensíveis
+- validacao
+- autenticacao
+- mediacao de fluxos sensiveis (billing, IA, integracoes)
 
-## Camada 4 - Contexto do usuário
+## Camada 4 - Contexto do usuario
 
 Dados principais:
 
-- usuário ativo
+- usuario ativo
 - workspace ativo
-- moeda
-- fuso
+- moeda e locale
+- fuso horario
 
-Função:
+Funcao:
 
-- garantir que o fluxo do produto opere dentro do contexto correto
+- garantir que o produto opere sempre no contexto correto
+- impedir operacoes sensiveis sem `workspaceId` quando aplicavel
 
-## Camada 5 - Domínio
+## Camada 5 - Dominio
 
-Entidades relevantes:
+Entidades e regras:
 
-- usuário
-- conta
-- transação
-- meta
-- orçamento
-
-Objetos de valor:
-
-- dinheiro
-- categoria
-- moeda
-
-## Camada 6 - Motores financeiros
-
-Motores principais:
-
-- fluxo de caixa
-- previsão
-- orçamento
-- saúde financeira
-
-Responsabilidades:
-
-- cálculos de saldo
-- projeções
-- análise de gastos
-
-## Camada 7 - Motores de IA
-
-Componentes principais:
-
-- orquestrador de IA
-- construtor de contexto
-- decisão assistida
-
-Responsabilidades:
-
-- gerar insights
-- apoiar análise financeira
-- produzir recomendações
-
-## Camada 8 - Autopilot
-
-Responsabilidades:
-
-- detectar overspending
-- analisar saúde financeira
-- gerar alertas e sinais
-
-## Camada 9 - Agente CFO
-
-Componentes:
-
-- `AICFOAgent`
-- `CFOPlanner`
-- `CFOAdvisor`
-
-Responsabilidades:
-
-- planejamento financeiro
-- orientação de corte e economia
-- apoio a simulações
-
-## Camada 10 - Barramento de eventos
-
-Eventos típicos:
-
-- transação criada
-- transação removida
-- meta criada
-- orçamento alterado
-- tarefa de IA concluída
-
-Objetivo:
-
-- automação
-- reatividade
-- integração entre módulos
-
-## Camada 11 - Fila de IA
-
-Tipos comuns:
-
-- geração de insights
-- análise do Autopilot
-- geração de relatório
-- simulação de fluxo
-
-Objetivo:
-
-- evitar bloqueio de interface
-
-## Camada 12 - Repositórios
-
-Camada responsável por mediar persistência.
+- transacoes e categorias
+- leitura de cashflow e projeções
+- operacao + vinculos com financeiro
+- IA consultiva (gerar sinais e recomendacoes com rastreabilidade)
 
 Regra:
 
-- motores não devem ler ou escrever no banco diretamente
+- o dominio nao deve depender de detalhes de rede ou persistencia
 
-## Camada 13 - Persistência
+## Camada 6 - Persistencia
 
-Estado atual mais relevante:
+Objetivo:
 
-- Firebase como base principal em partes do sistema
+- armazenar dados por workspace com isolamento claro
+- suportar auditoria operacional e rastreabilidade minima
 
-Possibilidades futuras:
+Observacao:
 
-- PostgreSQL
-- outras persistências específicas conforme a necessidade
+- o projeto pode usar implementacoes diferentes por ambiente (dev vs deploy)
 
-## Resumo visual
+## Camada 7 - Integracoes
 
-```text
-Cliente
- |
-Guardas de runtime
- |
-Frontend
- |
-API
- |
-Contexto do usuário
- |
-Domínio
- |
-Motores financeiros
- |
-Motores de IA
- |
-Autopilot
- |
-Agente CFO
- |
-Eventos
- |
-Fila de IA
- |
-Repositórios
- |
-Persistência
-```
+Exemplos:
 
-## Referência principal
+- Stripe (checkout, webhook, portal)
+- Sentry (observabilidade)
+- Providers de IA (chaves e roteamento no backend)
 
-- [docs/ARCHITECTURE.md](E:\app e jogos criados\Flow-Finance\docs\ARCHITECTURE.md)
+Regras:
+
+- integrar sem quebrar runtime quando variaveis nao existirem (bootstrap silencioso quando aplicavel)
+- registrar evidencias e contratos sensiveis quando necessario
+

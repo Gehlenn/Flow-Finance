@@ -67,7 +67,7 @@ Exemplos:
 
 ## Storage e persistencia
 
-O projeto opera com abstractions de persistencia para permitir:
+O projeto opera com abstracoes de persistencia para permitir:
 
 - execucao local com baselines deterministicas
 - execucao backend com stores dedicadas
@@ -113,4 +113,16 @@ A operacao moderna depende de:
 
 ## Leitura correta deste documento
 
-Este texto e um mapa sintetico da arquitetura SaaS. Para estado de release, deploy, evidencias e riscos atuais, consultar os documentos operacionais principais em `README.md`, `docs/ARCHITECTURE.md`, `docs/DEPLOYMENT_STATUS.md` e no vault do projeto.
+Este texto e um mapa sintetico da arquitetura SaaS. Para estado de release, deploy, evidencias e riscos atuais, consultar:
+
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/OPERATIONS_README.md`
+- `docs/DEPLOYMENT_STATUS.md`
+- `docs/AUDIT_AND_EVIDENCE_INDEX.md`
+
+## Referencias tecnicas
+
+- `backend/src/services/saas/`
+- `src/saas/`
+- `docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md`
