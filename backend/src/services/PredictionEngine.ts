@@ -40,7 +40,6 @@ class StatisticsUtils {
     const sumY = points.reduce((sum, p) => sum + p.y, 0);
     const sumXY = points.reduce((sum, p) => sum + p.x * p.y, 0);
     const sumXX = points.reduce((sum, p) => sum + p.x * p.x, 0);
-    const sumYY = points.reduce((sum, p) => sum + p.y * p.y, 0);
 
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
@@ -169,6 +168,9 @@ export class PredictionEngine {
     userId: string,
     prediction: CashFlowPrediction
   ): Promise<ShortfallRisk | null> {
+    // Keep signature stable; some callers may pass userId for correlation/logging.
+    void userId;
+
     const negativeBalances = prediction.dailyPredictions.filter(
       p => p.predictedBalance < 0
     );
@@ -361,6 +363,9 @@ export class PredictionEngine {
     startingBalance: number,
     days: number
   ): DailyPrediction[] {
+    // Signature keeps room for future transaction-level feature extraction.
+    void transactions;
+
     const predictions: DailyPrediction[] = [];
     let currentBalance = startingBalance;
     const now = new Date();

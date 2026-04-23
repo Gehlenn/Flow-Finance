@@ -1,43 +1,36 @@
 /**
  * PredictionChart.tsx
- * AI-powered cash flow prediction visualization
- * Shows predicted vs actual with confidence bands
+ *
+ * Visualização de previsão de fluxo de caixa (IA) usando Recharts.
+ *
+ * Importante:
+ * - Este componente NÃO depende de MUI (@mui/*). A base do projeto é React + Tailwind + Recharts.
+ * - Mantemos o layout simples e auditável para evitar dependências pesadas.
  */
 
 import React, { useMemo, useState } from 'react';
 import {
-  ComposedChart,
-  Line,
   Area,
+  CartesianGrid,
+  ComposedChart,
+  Legend,
+  Line,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-  Legend,
 } from 'recharts';
 import {
-  Box,
-  Paper,
-  Typography,
-  Chip,
-  IconButton,
-  Tooltip as MuiTooltip,
-  useTheme,
-  Skeleton,
-  Alert,
-  Button,
-} from '@mui/material';
-import {
-  Refresh as RefreshIcon,
-  TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
-  TrendingFlat as TrendingFlatIcon,
-  Warning as WarningIcon,
-} from '@mui/icons-material';
+  AlertTriangle,
+  Minus,
+  RefreshCw,
+  TrendingDown,
+  TrendingUp,
+} from 'lucide-react';
+
 import { usePredictions } from '../hooks/usePredictions';
-import { ChartDataPoint, CashFlowPrediction } from '../../shared/types/prediction';
+import type { ChartDataPoint } from '../../shared/types/prediction';
 
 interface PredictionChartProps {
   days?: number;
@@ -46,82 +39,73 @@ interface PredictionChartProps {
   title?: string;
 }
 
-/**
- * Custom tooltip for the chart
- */
+function formatCurrency(value: number): string {
+  return `R$ ${value.toFixed(2)}`;
+}
+
 const CustomTooltip: React.FC<{
   active?: boolean;
   payload?: any[];
-  label?: string;
-}> = ({ active, payload, label }) => {
+}> = ({ active, payload }) => {
   if (!active || !payload || payload.length === 0) return null;
 
   const data = payload[0].payload as ChartDataPoint;
-  const isPrediction = data.isPrediction;
+  const isPrediction = Boolean(data.isPrediction);
 
   return (
-    <Paper sx={{ p: 2, maxWidth: 280 }}>
-      <Typography variant="subtitle2" gutterBottom>
+    <div className="max-w-[320px] rounded-lg border border-slate-200 bg-white p-3 text-slate-900 shadow-sm">
+      <div className="text-xs font-semibold text-slate-700">
         {new Date(data.date).toLocaleDateString('pt-BR', {
           weekday: 'short',
           year: 'numeric',
           month: 'short',
           day: 'numeric',
         })}
-      </Typography>
-      
-      {isPrediction ? (
-        <>
-          <Typography variant="body2" color="primary">
-            <strong>Previsão:</strong> R$ {data.balance.toFixed(2)}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Intervalo: R$ {data.predictedMin.toFixed(2)} - R$ {data.predictedMax.toFixed(2)}
-          </Typography>
-          {data.income > 0 && (
-            <Typography variant="body2" color="success.main">
-              +R$ {data.income.toFixed(2)} (entrada)
-            </Typography>
-          )}
-          {data.expenses > 0 && (
-            <Typography variant="body2" color="error.main">
-              -R$ {data.expenses.toFixed(2)} (saída)
-            </Typography>
-          )}
-        </>
-      ) : (
-        <Typography variant="body2">
-          <strong>Saldo Real:</strong> R$ {data.balance.toFixed(2)}
-        </Typography>
-      )}
-    </Paper>
+      </div>
+
+      <div className="mt-2 space-y-1 text-sm">
+        {isPrediction ? (
+          <>
+            <div className="font-medium text-slate-900">
+              Previsao: {formatCurrency(data.balance)}
+            </div>
+            <div className="text-slate-600">
+              Intervalo: {formatCurrency(data.predictedMin)} -{' '}
+              {formatCurrency(data.predictedMax)}
+            </div>
+            {data.income > 0 ? (
+              <div className="text-emerald-700">
+                +{formatCurrency(data.income)} (entrada)
+              </div>
+            ) : null}
+            {data.expenses > 0 ? (
+              <div className="text-rose-700">
+                -{formatCurrency(data.expenses)} (saida)
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div className="font-medium text-slate-900">
+            Saldo real: {formatCurrency(data.balance)}
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
-/**
- * Get trend icon based on prediction trend
- */
-const TrendIcon: React.FC<{ trend: string }> = ({ trend }) => {
-  switch (trend) {
-    case 'up':
-      return <TrendingUpIcon color="success" />;
-    case 'down':
-      return <TrendingDownIcon color="error" />;
-    default:
-      return <TrendingFlatIcon color="action" />;
-  }
-};
+function TrendIcon({ trend }: { trend: string }) {
+  if (trend === 'up') return <TrendingUp className="h-4 w-4 text-emerald-700" />;
+  if (trend === 'down') return <TrendingDown className="h-4 w-4 text-rose-700" />;
+  return <Minus className="h-4 w-4 text-slate-600" />;
+}
 
-/**
- * Prediction Chart Component
- */
 const PredictionChart: React.FC<PredictionChartProps> = ({
   days = 30,
   showConfidenceBands = true,
   height = 400,
-  title = 'Previsão de Fluxo de Caixa',
+  title = 'Previsao de Fluxo de Caixa',
 }) => {
-  const theme = useTheme();
   const {
     prediction,
     shortfallRisk,
@@ -133,32 +117,24 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
 
   const [refreshing, setRefreshing] = useState(false);
 
-  /**
-   * Handle refresh button click
-   */
   const handleRefresh = async () => {
     setRefreshing(true);
-    await refreshPrediction();
-    setRefreshing(false);
+    try {
+      await refreshPrediction();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  /**
-   * Format currency for display
-   */
-  const formatCurrency = (value: number): string => {
-    return `R$ ${value.toFixed(2)}`;
-  };
-
-  /**
-   * Get summary statistics
-   */
   const summaryStats = useMemo(() => {
     if (!prediction || chartData.length === 0) return null;
 
-    const currentBalance = chartData[0]?.balance || 0;
-    const finalBalance = prediction.dailyPredictions[prediction.dailyPredictions.length - 1]?.predictedBalance || 0;
+    const currentBalance = chartData[0]?.balance ?? 0;
+    const last = prediction.dailyPredictions[prediction.dailyPredictions.length - 1];
+    const finalBalance = last?.predictedBalance ?? 0;
     const change = finalBalance - currentBalance;
-    const changePercent = currentBalance === 0 ? 0 : (change / Math.abs(currentBalance)) * 100;
+    const changePercent =
+      currentBalance === 0 ? 0 : (change / Math.abs(currentBalance)) * 100;
 
     return {
       currentBalance,
@@ -170,255 +146,214 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
     };
   }, [prediction, chartData]);
 
-  // Loading state
   if (loading && chartData.length === 0) {
     return (
-      <Paper sx={{ p: 3 }}>
-        <Box sx={{ mb: 2 }}>
-          <Skeleton variant="text" width={200} height={32} />
-          <Skeleton variant="text" width={300} height={24} />
-        </Box>
-        <Skeleton variant="rectangular" height={height} />
-      </Paper>
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="h-6 w-64 animate-pulse rounded bg-slate-100" />
+        <div className="mt-2 h-4 w-80 animate-pulse rounded bg-slate-100" />
+        <div className="mt-4 animate-pulse rounded bg-slate-100" style={{ height }} />
+      </div>
     );
   }
 
-  // Error state
   if (error) {
     return (
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          {title}
-        </Typography>
-        <Alert 
-          severity="error" 
-          action={
-            <Button color="inherit" size="small" onClick={handleRefresh}>
-              Tentar Novamente
-            </Button>
-          }
-        >
-          {error}
-        </Alert>
-      </Paper>
-    );
-  }
-
-  // No data state
-  if (!prediction || chartData.length === 0) {
-    return (
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          {title}
-        </Typography>
-        <Alert severity="info">
-          Dados insuficientes para gerar previsão. Adicione mais transações para ver análises de fluxo de caixa.
-        </Alert>
-      </Paper>
+      <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-900">
+        <div className="flex items-start gap-2">
+          <AlertTriangle className="mt-0.5 h-5 w-5" />
+          <div>
+            <div className="font-semibold">Falha ao carregar previsoes</div>
+            <div className="mt-1 text-sm text-rose-800">
+              {String(error)}
+            </div>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="mt-3 inline-flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-700"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Tentar novamente
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Paper sx={{ p: 3 }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
-        <Box>
-          <Typography variant="h6" gutterBottom>
-            {title}
-          </Typography>
-          {summaryStats && (
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              <Chip
-                icon={<TrendIcon trend={summaryStats.trend} />}
-                label={`Tendência: ${
-                  summaryStats.trend === 'up' ? 'Alta' : 
-                  summaryStats.trend === 'down' ? 'Queda' : 'Estável'
-                }`}
-                size="small"
-                color={summaryStats.trend === 'up' ? 'success' : summaryStats.trend === 'down' ? 'error' : 'default'}
-              />
-              <Chip
-                label={`Confiança: ${(summaryStats.confidence * 100).toFixed(0)}%`}
-                size="small"
-                variant="outlined"
-              />
-              <Chip
-                label={`${days} dias`}
-                size="small"
-                variant="outlined"
-              />
-            </Box>
-          )}
-        </Box>
-        
-        <MuiTooltip title="Atualizar previsão">
-          <IconButton onClick={handleRefresh} disabled={refreshing}>
-            <RefreshIcon className={refreshing ? 'spin' : ''} />
-          </IconButton>
-        </MuiTooltip>
-      </Box>
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-base font-semibold text-slate-900">{title}</div>
+          <div className="mt-1 text-sm text-slate-600">
+            Janela: {days} dias. Dados historicos a esquerda, previsoes a direita.
+          </div>
+        </div>
 
-      {/* Shortfall Warning */}
-      {shortfallRisk && (
-        <Alert 
-          severity={shortfallRisk.severity === 'high' ? 'error' : shortfallRisk.severity === 'medium' ? 'warning' : 'info'}
-          sx={{ mb: 3 }}
-          icon={<WarningIcon />}
+        <button
+          type="button"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          title="Atualizar previsao"
         >
-          <Typography variant="subtitle2">
-            Alerta de Déficit Previsto
-          </Typography>
-          <Typography variant="body2">
-            Saldo negativo projetado em {shortfallRisk.daysUntil} dias 
-            (R$ {shortfallRisk.projectedDeficit.toFixed(2)})
-          </Typography>
-          {shortfallRisk.suggestions.length > 0 && (
-            <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
-              {shortfallRisk.suggestions.slice(0, 2).map((suggestion, idx) => (
-                <Typography component="li" variant="body2" key={idx}>
-                  {suggestion}
-                </Typography>
-              ))}
-            </Box>
-          )}
-        </Alert>
-      )}
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          Atualizar
+        </button>
+      </div>
 
-      {/* Summary Cards */}
-      {summaryStats && (
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 2, mb: 3 }}>
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            <Typography variant="caption" color="text.secondary" display="block">
-              Saldo Atual
-            </Typography>
-            <Typography variant="h6">
+      {summaryStats ? (
+        <div className="mt-4 grid gap-2 md:grid-cols-3">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Saldo atual
+            </div>
+            <div className="mt-1 text-lg font-semibold text-slate-900">
               {formatCurrency(summaryStats.currentBalance)}
-            </Typography>
-          </Paper>
-          
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            <Typography variant="caption" color="text.secondary" display="block">
-              Projeção Final ({days}d)
-            </Typography>
-            <Typography variant="h6" color={summaryStats.finalBalance >= 0 ? 'success.main' : 'error.main'}>
-              {formatCurrency(summaryStats.finalBalance)}
-            </Typography>
-          </Paper>
-          
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            <Typography variant="caption" color="text.secondary" display="block">
-              Variação
-            </Typography>
-            <Typography 
-              variant="h6" 
-              color={summaryStats.change >= 0 ? 'success.main' : 'error.main'}
-            >
-              {summaryStats.change >= 0 ? '+' : ''}
-              {summaryStats.changePercent.toFixed(1)}%
-            </Typography>
-          </Paper>
-        </Box>
-      )}
+            </div>
+          </div>
 
-      {/* Chart */}
-      <Box sx={{ height }}>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Saldo previsto (fim)
+            </div>
+            <div className="mt-1 text-lg font-semibold text-slate-900">
+              {formatCurrency(summaryStats.finalBalance)}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                Tendencia
+              </div>
+              <TrendIcon trend={summaryStats.trend} />
+            </div>
+            <div className="mt-1 text-sm text-slate-700">
+              Variacao: {formatCurrency(summaryStats.change)} (
+              {summaryStats.changePercent.toFixed(1)}%)
+            </div>
+            <div className="mt-1 text-xs text-slate-600">
+              Confianca: {(summaryStats.confidence * 100).toFixed(0)}%
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {shortfallRisk ? (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-5 w-5" />
+            <div>
+              <div className="font-semibold">Risco de falta de caixa</div>
+              <div className="mt-1 text-sm text-amber-800">
+                Severidade: {shortfallRisk.severity}. Em {shortfallRisk.daysUntil} dia(s): deficit previsto{' '}
+                {formatCurrency(shortfallRisk.projectedDeficit)}.
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-4" style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart
-            data={chartData}
-            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
-            
+          <ComposedChart data={chartData} margin={{ top: 12, right: 12, bottom: 12, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="date"
-              tickFormatter={(value) => {
-                const date = new Date(value);
-                return `${date.getDate()}/${date.getMonth() + 1}`;
-              }}
-              stroke={theme.palette.text.secondary}
-              tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
+              tickFormatter={(value) =>
+                new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+              }
+              minTickGap={16}
             />
-            
-            <YAxis
-              tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`}
-              stroke={theme.palette.text.secondary}
-              tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
-            />
-            
+            <YAxis tickFormatter={(v) => `R$ ${Number(v).toFixed(0)}`} width={80} />
             <Tooltip content={<CustomTooltip />} />
-            
             <Legend />
-            
-            {/* Zero line */}
-            <ReferenceLine y={0} stroke={theme.palette.text.secondary} strokeDasharray="2 2" />
-            
-            {/* Confidence bands (predictions only) */}
-            {showConfidenceBands && (
-              <>
-                <Area
-                  type="monotone"
-                  dataKey="predictedMax"
-                  stroke="none"
-                  fill={theme.palette.primary.main}
-                  fillOpacity={0.1}
-                  name="Intervalo Superior"
-                  connectNulls
-                />
-                <Area
-                  type="monotone"
-                  dataKey="predictedMin"
-                  stroke="none"
-                  fill={theme.palette.background.paper}
-                  fillOpacity={1}
-                  name="Intervalo Inferior"
-                  connectNulls
-                />
-              </>
-            )}
-            
-            {/* Main balance line */}
+
+            <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="4 4" />
+
+            {showConfidenceBands ? (
+              <Area
+                type="monotone"
+                dataKey="predictedMax"
+                stroke="transparent"
+                fill="#93c5fd"
+                fillOpacity={0.25}
+                name="Intervalo (max)"
+                connectNulls
+              />
+            ) : null}
+
+            {showConfidenceBands ? (
+              <Area
+                type="monotone"
+                dataKey="predictedMin"
+                stroke="transparent"
+                fill="#ffffff"
+                fillOpacity={1}
+                name="Intervalo (min)"
+                connectNulls
+              />
+            ) : null}
+
+            <Line
+              type="monotone"
+              dataKey="actual"
+              stroke="#0f172a"
+              strokeWidth={2}
+              dot={false}
+              name="Saldo real"
+              connectNulls
+            />
+
             <Line
               type="monotone"
               dataKey="balance"
-              stroke={theme.palette.primary.main}
+              stroke="#2563eb"
               strokeWidth={2}
               dot={false}
-              name="Saldo Previsto"
+              name="Saldo previsto"
               connectNulls
             />
           </ComposedChart>
         </ResponsiveContainer>
-      </Box>
+      </div>
 
-      {/* Legend note */}
-      <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-        * A área sombreada representa o intervalo de confiança da previsão. 
-        Dados históricos aparecem à esquerda, previsões à direita.
-      </Typography>
+      <div className="mt-2 text-xs text-slate-600">
+        * A area sombreada representa o intervalo de confianca da previsao.
+      </div>
 
-      {/* Factors */}
-      {prediction.factors.length > 0 && (
-        <Box sx={{ mt: 3 }}>
-          <Typography variant="subtitle2" gutterBottom>
-            Fatores da Previsão:
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            {prediction.factors.map((factor, idx) => (
-              <Chip
-                key={idx}
-                label={factor.name}
-                size="small"
-                color={
-                  factor.impact === 'positive' ? 'success' : 
-                  factor.impact === 'negative' ? 'error' : 'default'
-                }
-                variant={factor.weight > 0.5 ? 'filled' : 'outlined'}
-              />
-            ))}
-          </Box>
-        </Box>
-      )}
-    </Paper>
+      {prediction?.factors?.length ? (
+        <div className="mt-4">
+          <div className="text-sm font-semibold text-slate-900">
+            Fatores da previsao
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {prediction.factors.map((factor, idx) => {
+              const color =
+                factor.impact === 'positive'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                  : factor.impact === 'negative'
+                    ? 'border-rose-200 bg-rose-50 text-rose-900'
+                    : 'border-slate-200 bg-slate-50 text-slate-900';
+
+              const weight =
+                factor.weight > 0.5 ? 'font-semibold' : 'font-medium';
+
+              return (
+                <span
+                  key={idx}
+                  className={`inline-flex items-center rounded-full border px-3 py-1 text-xs ${color} ${weight}`}
+                  title={`Peso: ${factor.weight}`}
+                >
+                  {factor.name}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 };
 
