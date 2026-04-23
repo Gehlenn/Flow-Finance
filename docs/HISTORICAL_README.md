@@ -29,6 +29,7 @@ Este arquivo agrupa materiais uteis como evidencia, contexto ou memoria tecnica,
 ## Historico tecnico e curadoria
 
 - [archive/DATABASE_DECISION.md](./archive/DATABASE_DECISION.md)
+- [archive/CHANGELOG_ANTIGO.md](./archive/CHANGELOG_ANTIGO.md)
 - [archive/ROBUSTNESS_OPERATIONAL_v0.9.2.md](./archive/ROBUSTNESS_OPERATIONAL_v0.9.2.md)
 - [archive/SENTRY_SETUP_GUIDE.md](./archive/SENTRY_SETUP_GUIDE.md)
 - [archive/WORKTREE_CURATION_2026-04-02.md](./archive/WORKTREE_CURATION_2026-04-02.md)

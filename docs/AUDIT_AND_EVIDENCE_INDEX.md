@@ -4,6 +4,13 @@ Este documento centraliza auditorias, evidencias operacionais e materiais de com
 
 Ultima revisao estrutural: 2026-04-22
 
+## Entrada recomendada (historico)
+
+Se o objetivo for entender decisoes antigas, auditorias passadas ou diagnosticos encerrados, comece por:
+
+- [HISTORICAL_README.md](./HISTORICAL_README.md)
+- [archive/README.md](./archive/README.md)
+
 ## Evidencias operacionais vivas
 
 - [EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](./EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)
@@ -22,6 +29,16 @@ Ultima revisao estrutural: 2026-04-22
 - [archive/PR_SUMMARY_0.9.5.md](./archive/PR_SUMMARY_0.9.5.md)
 - [archive/RELEASE_SUMMARY_v0.5.2v.md](./archive/RELEASE_SUMMARY_v0.5.2v.md)
 - [archive/PROMPT_FINAL_GO_NO_GO_CROSS_BROWSER_v0.9.x.md](./archive/PROMPT_FINAL_GO_NO_GO_CROSS_BROWSER_v0.9.x.md)
+
+## Auditorias e buglog (historico)
+
+Entrada rapida:
+
+- [archive/BUGLOG.md](./archive/BUGLOG.md)
+- [archive/CHANGELOG_ANTIGO.md](./archive/CHANGELOG_ANTIGO.md)
+- [archive/PRODUCTION_RISK_REVIEW_2026-04-11.md](./archive/PRODUCTION_RISK_REVIEW_2026-04-11.md)
+- [archive/AUDITORIA_THOROUGH_2026-03-11.md](./archive/AUDITORIA_THOROUGH_2026-03-11.md)
+- `archive/AUDIT_REPORT_v0.3.0.md` ate `archive/AUDIT_REPORT_v0.6.1.md` (serie historica)
 
 ## Historico arquivado
 
