@@ -18,6 +18,20 @@ Mudanca aplicada:
 Evidencia:
 - Teste de regressao: `tests/unit/event-engine-orchestrator-routing.test.ts`
 
+### Decisao: padronizar encoding e bloquear mojibake no repo
+
+Motivo:
+- Foram encontrados trechos com texto corrompido (mojibake) em UI/testes/comentarios, causando degradacao de UX e risco de "lixo" entrar em evidencia operacional.
+
+Mudanca aplicada:
+- Strings corrompidas corrigidas em UI e testes.
+- Mensagem de erro de boot (fallback HTML) corrigida.
+- `scripts/check-mojibake.mjs` passou a varrer o repositorio inteiro, ignorando diretorios pesados/gerados, para evitar regressao.
+
+Evidencia:
+- `npm run docs:check-mojibake` (repo inteiro)
+- PR: https://github.com/Gehlenn/Flow-Finance/pull/40
+
 ### Decisao: versao do client no header (observabilidade)
 
 Motivo:

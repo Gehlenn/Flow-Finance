@@ -4,12 +4,12 @@ Aplicação SaaS de gestão financeira com foco em fluxo de caixa, transações,
 
 ## Estado atual
 
-- Versao documental atual: `0.9.6.1v`
-- Data de atualizacao: `2026-04-12`
+- Versão documental atual: `0.9.6.1v`
+- Data de atualização: `2026-04-12`
 - Estado do ciclo: `bloqueado`
-- Suite global: `verde`
+- Suíte global: `verde`
 - Billing Stripe sandbox: `validado localmente`
-- Bloqueio principal remanescente: ambiente alvo do Vercel ainda incompleto para fechamento honesto de observabilidade e validacao externa
+- Bloqueio principal remanescente: ambiente-alvo do Vercel ainda incompleto para fechamento honesto de observabilidade e validação externa
 
 ## Links oficiais do projeto
 
@@ -25,13 +25,13 @@ O Flow Finance está sendo simplificado para operar bem no núcleo de gestão fi
 - transações
 - receitas previstas e realizadas
 - camada consultiva de IA
-- operacao web e mobile como alvos de primeira classe
+- operação web e mobile como alvos de primeira classe
 
 O caso da clínica odontológica continua sendo apenas cenário de validação. Ele não define a identidade do produto.
 
 ## Fonte de verdade documental
 
-Use estes documentos como trilha principal antes de tomar decisoes de produto, arquitetura ou release:
+Use estes documentos como trilha principal antes de tomar decisões de produto, arquitetura ou release:
 
 - Índice da documentação: [docs/README.md](./docs/README.md)
 - Entrada rápida: [docs/COMECE_AQUI.md](./docs/COMECE_AQUI.md)
@@ -62,38 +62,38 @@ Regras operacionais:
 - React + Vite
 - suporte mobile via Capacitor
 - fallback local controlado para desenvolvimento quando Firebase não estiver configurado
-- camadas de sessao, workspace e billing desacopladas
+- camadas de sessão, workspace e billing desacopladas
 
 ### Backend
 
 - Node.js + Express
-- autenticacao via JWT e cookies HttpOnly nos fluxos reais
-- servicos de IA protegidos no backend
-- endpoints de saude e versao com `requestId` e `routeScope`
+- autenticação via JWT e cookies HttpOnly nos fluxos reais
+- serviços de IA protegidos no backend
+- endpoints de saúde e versão com `requestId` e `routeScope`
 - observabilidade com Sentry opcional e silenciosa quando o DSN estiver ausente
 
 ### Billing
 
 - Stripe em sandbox validado localmente
 - checkout, webhook e portal confirmados no backend
-- fechamento no ambiente alvo ainda depende da configuracao correta no Vercel e de acesso real ao deploy
+- fechamento no ambiente-alvo ainda depende da configuração correta no Vercel e de acesso real ao deploy
 
-## Execucao local
+## Execução local
 
 ### Pre-requisitos
 
 - Node.js `18+`
 - npm `8+`
-- dependencias instaladas com `npm ci`
+- dependências instaladas com `npm ci`
 - `backend/.env` preenchido para a trilha backend local
 
-### Nota de seguranca mobile (temporaria)
+### Nota de segurança mobile (temporária)
 
 - O script `resources:generate` foi removido por risco de supply chain na cadeia `cordova-res -> sharp`.
-- Enquanto nao houver versao segura upstream, a geracao de icones/splash deve ser feita por ferramentas nativas:
+- Enquanto não houver versão segura upstream, a geração de ícones/splash deve ser feita por ferramentas nativas:
    - Android Studio (Image Asset)
    - Xcode (Assets.xcassets)
-- Essa medida reduz superficie de ataque no ambiente de desenvolvimento e CI.
+- Essa medida reduz superfície de ataque no ambiente de desenvolvimento e CI.
 
 ### Subir frontend
 
