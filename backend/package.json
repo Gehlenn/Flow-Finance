@@ -17,7 +17,7 @@
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.490.0",
-        "@aws-sdk/s3-request-presigner": "^3.490.0",
+        "@aws-sdk/s3-request-presigner": "^3.1038.0",
         "@capacitor/android": "^8.2.0",
         "@capacitor/core": "^8.2.0",
         "@capacitor/ios": "^8.2.0",
