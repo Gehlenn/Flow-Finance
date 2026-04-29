@@ -93,7 +93,7 @@
     "autoprefixer": "^10.4.27",
     "express": "^5.2.1",
     "firebase-tools": "^15.12.0",
-    "jsdom": "^29.0.1",
+    "jsdom": "^29.1.0",
     "postcss": "^8.5.8",
     "rollup": "^4.60.1",
     "supertest": "^7.2.2",
