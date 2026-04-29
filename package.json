@@ -90,7 +90,7 @@
     "@types/supertest": "^7.2.0",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitest/coverage-v8": "^4.1.4",
-    "autoprefixer": "^10.4.27",
+    "autoprefixer": "^10.5.0",
     "express": "^5.2.1",
     "firebase-tools": "^15.12.0",
     "jsdom": "^29.0.1",
