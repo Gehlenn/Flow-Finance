@@ -102,4 +102,11 @@ const MetricsViewer: React.FC = () => {
   );
 };
 
+export function formatMetricsSnapshotTime(value: unknown): string {
+  if (!value || typeof value !== 'string') return 'Horário inválido';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return 'Horário inválido';
+  return d.toLocaleTimeString('pt-BR');
+}
+
 export default MetricsViewer;

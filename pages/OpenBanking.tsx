@@ -366,7 +366,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
 
       const [connectors, token] = await Promise.all([
         listPluggyConnectors(),
-        createPluggyConnectToken(userId).catch(() => null),
+        createPluggyConnectToken(userId).catch((err) => { console.warn('[OpenBanking] Failed to create Pluggy Connect token:', err); return null; }),
       ]);
 
       if (cancelled) return;

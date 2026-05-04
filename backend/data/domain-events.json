@@ -4,7 +4,7 @@
       "workspaceId": "ws_2",
       "type": "goal_created",
       "occurredAt": "2026-04-01T13:00:00.000Z",
-      "id": "d03d3b31-b7fb-4670-958c-06f10c7035a1"
+      "id": "80aafec4-e418-4aab-89dc-b1e0babd2407"
     },
     {
       "workspaceId": "ws_1",
@@ -18,7 +18,7 @@
         "amount": 100
       },
       "occurredAt": "2026-04-01T12:00:00.000Z",
-      "id": "ea7f76c1-ab6e-48ad-ac53-36b7a9c0ff65"
+      "id": "2d1e3b52-ef72-469f-8c2f-e0c22c292e6f"
     }
   ]
 }

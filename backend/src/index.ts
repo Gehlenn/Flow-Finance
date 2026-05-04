@@ -123,13 +123,14 @@ app.use(requestContextMiddleware);
 // Logging middleware
 app.use((_req: Request, _res: Response, next: NextFunction) => {
   const requestContext = getRequestContext(_req);
+  // Query params are intentionally omitted to avoid logging sensitive values (tokens, IDs).
+  // Add per-route query logging only where needed and after scrubbing sensitive keys.
   logger.info(
     {
       requestId: requestContext.requestId,
       routeScope: requestContext.routeScope,
       method: _req.method,
       path: _req.path,
-      query: _req.query,
       userAgent: _req.get('user-agent')
     },
     'HTTP Request'
@@ -138,13 +139,14 @@ app.use((_req: Request, _res: Response, next: NextFunction) => {
 });
 
 // Body parser
+// Limit kept at 1mb; higher limits increase DoS surface area.
 app.use(express.json({
-  limit: '10mb',
+  limit: '1mb',
   verify: (req: Request, _res: Response, buf: Buffer) => {
     req.rawBody = buf.toString('utf8');
   },
 }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.urlencoded({ limit: '1mb', extended: true }));
 
 // JSON validation middleware (catches malformed JSON)
 app.use(validateJsonMiddleware);
@@ -251,7 +253,7 @@ app.get('/health', async (req: Request, res: Response) => {
     routeScope: requestContext.routeScope,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    version: process.env.APP_VERSION || '0.6.3',
+    version: process.env.APP_VERSION || '0.9.6',
     checks,
   });
 });
@@ -260,7 +262,7 @@ app.get('/health', async (req: Request, res: Response) => {
 app.get('/api/version', (req: Request, res: Response) => {
   const requestContext = getRequestContext(req);
   res.json({
-    version: process.env.APP_VERSION || '0.6.3',
+    version: process.env.APP_VERSION || '0.9.6',
     environment: process.env.NODE_ENV || 'development',
     requestId: requestContext.requestId,
     routeScope: requestContext.routeScope,
@@ -273,7 +275,7 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     service: 'flow-finance-api',
-    version: process.env.APP_VERSION || '0.6.3',
+    version: process.env.APP_VERSION || '0.9.6',
     requestId: requestContext.requestId,
     routeScope: requestContext.routeScope,
     observability: {
@@ -383,8 +385,8 @@ if (shouldStartHttpServer) {
         'Backend API server running'
       );
       logger.info(
-        { version: process.env.APP_VERSION || '0.6.3', build: 'event-listeners+cache+observability' },
-        '[Bootstrap] Flow Finance backend v0.6.3 iniciado'
+        { version: process.env.APP_VERSION || '0.9.6', build: 'event-listeners+cache+observability' },
+        '[Bootstrap] Flow Finance backend v0.9.6 iniciado'
       );
     });
 

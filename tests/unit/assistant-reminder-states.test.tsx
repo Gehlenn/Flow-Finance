@@ -5,16 +5,21 @@ import { describe, expect, it, vi } from 'vitest';
 import Assistant, { classifyReminderOperationalState, isFinancialReminder } from '../../components/Assistant';
 import { ReminderType, type Reminder } from '../../types';
 
-vi.mock('../../src/config/api.config', () => ({
-  API_ENDPOINTS: {
-    AI: {
-      GENERATE_INSIGHTS: '/api/ai/insights',
+vi.mock('../../src/config/api.config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/config/api.config')>();
+  return {
+    ...actual,
+    API_ENDPOINTS: {
+      ...((actual as any).API_ENDPOINTS ?? {}),
+      AI: {
+        GENERATE_INSIGHTS: '/api/ai/insights',
+      },
     },
-  },
-  apiRequest: vi.fn(async () => ({
-    insights: [{ category: 'Negócio', threshold: 900, reason: 'Padrão de gasto recorrente.' }],
-  })),
-}));
+    apiRequest: vi.fn(async () => ({
+      insights: [{ category: 'Negócio', threshold: 900, reason: 'Padrão de gasto recorrente.' }],
+    })),
+  };
+});
 
 describe('isFinancialReminder', () => {
   const makeReminder = (overrides: Partial<Reminder> = {}): Reminder => ({

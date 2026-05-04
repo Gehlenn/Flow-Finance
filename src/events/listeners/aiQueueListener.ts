@@ -31,8 +31,12 @@ export function registerAIQueueListener(): () => void {
       try {
         aiTaskQueue.enqueueTask(taskType, event.payload, 'event-listener');
         console.debug(`[AIQueueListener] Tarefa ${taskType} enfileirada via evento "${event.type}"`);
-      } catch {
-        // AITaskQueue pode não estar inicializado em testes — ignora silenciosamente
+      } catch (err: any) {
+        console.warn('[AIQueueListener] failed to enqueue task from financial event', {
+          eventType: event.type,
+          taskType,
+          error: err?.message || String(err),
+        });
       }
       break;
     }

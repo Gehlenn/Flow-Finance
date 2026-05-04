@@ -1,0 +1,1457 @@
+{
+  "nodes": [
+    {
+      "id": "file_01_product_scope_and_positioning",
+      "label": "01_PRODUCT_SCOPE_AND_POSITIONING.md",
+      "file_type": "document",
+      "source_file": "01_PRODUCT_SCOPE_AND_POSITIONING.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_02_business_integration_model",
+      "label": "02_BUSINESS_INTEGRATION_MODEL.md",
+      "file_type": "document",
+      "source_file": "02_BUSINESS_INTEGRATION_MODEL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_03_ai_and_input_architecture",
+      "label": "03_AI_AND_INPUT_ARCHITECTURE.md",
+      "file_type": "document",
+      "source_file": "03_AI_AND_INPUT_ARCHITECTURE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_04_visual_direction",
+      "label": "04_VISUAL_DIRECTION.md",
+      "file_type": "document",
+      "source_file": "04_VISUAL_DIRECTION.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_05_code_agent_tasks",
+      "label": "05_CODE_AGENT_TASKS.md",
+      "file_type": "document",
+      "source_file": "05_CODE_AGENT_TASKS.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_06_product_and_offer_model",
+      "label": "06_PRODUCT_AND_OFFER_MODEL.md",
+      "file_type": "document",
+      "source_file": "06_PRODUCT_AND_OFFER_MODEL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_07_business_integration_contract",
+      "label": "07_BUSINESS_INTEGRATION_CONTRACT.md",
+      "file_type": "document",
+      "source_file": "07_BUSINESS_INTEGRATION_CONTRACT.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_08_unified_transaction_intake_model",
+      "label": "08_UNIFIED_TRANSACTION_INTAKE_MODEL.md",
+      "file_type": "document",
+      "source_file": "08_UNIFIED_TRANSACTION_INTAKE_MODEL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_09_ai_behavior_criteria",
+      "label": "09_AI_BEHAVIOR_CRITERIA.md",
+      "file_type": "document",
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_10_visual_redesign_checklist_by_screen",
+      "label": "10_VISUAL_REDESIGN_CHECKLIST_BY_SCREEN.md",
+      "file_type": "document",
+      "source_file": "10_VISUAL_REDESIGN_CHECKLIST_BY_SCREEN.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_11_implementation_sequence",
+      "label": "11_IMPLEMENTATION_SEQUENCE.md",
+      "file_type": "document",
+      "source_file": "11_IMPLEMENTATION_SEQUENCE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_12_phase_4_closure",
+      "label": "12_PHASE_4_CLOSURE.md",
+      "file_type": "document",
+      "source_file": "12_PHASE_4_CLOSURE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_2026_04_22_workspaceplan_gating_autopilot_aicfo",
+      "label": "2026-04-22_workspacePlan-gating-autopilot-aicfo.md",
+      "file_type": "document",
+      "source_file": "2026-04-22_workspacePlan-gating-autopilot-aicfo.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_2026_04_23_ai_orchestrator_routing",
+      "label": "2026-04-23_ai-orchestrator-routing.md",
+      "file_type": "document",
+      "source_file": "2026-04-23_ai-orchestrator-routing.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_2026_04_23_session_1_ci_deploy",
+      "label": "2026-04-23_session-1-ci-deploy.md",
+      "file_type": "document",
+      "source_file": "2026-04-23_session-1-ci-deploy.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_2026_04_23_session_2_docs_archive_cleanup",
+      "label": "2026-04-23_session-2-docs-archive-cleanup.md",
+      "file_type": "document",
+      "source_file": "2026-04-23_session-2-docs-archive-cleanup.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_2026_04_23_session_3_encoding_mojibake",
+      "label": "2026-04-23_session-3-encoding-mojibake.md",
+      "file_type": "document",
+      "source_file": "2026-04-23_session-3-encoding-mojibake.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_2026_04_25_receivable_not_cash_evidence",
+      "label": "2026-04-25_receivable-not-cash_evidence.md",
+      "file_type": "document",
+      "source_file": "2026-04-25_receivable-not-cash_evidence.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "file_readme",
+      "label": "README.md",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_flow_focus_2026_04",
+      "label": "Flow Focus 2026-04 Bundle",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_product_scope_positioning",
+      "label": "Product Scope & Positioning",
+      "file_type": "document",
+      "source_file": "01_PRODUCT_SCOPE_AND_POSITIONING.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_business_integration_model",
+      "label": "Business Integration Model",
+      "file_type": "document",
+      "source_file": "02_BUSINESS_INTEGRATION_MODEL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_integration_contract_v1",
+      "label": "Business Integration Contract v1",
+      "file_type": "document",
+      "source_file": "07_BUSINESS_INTEGRATION_CONTRACT.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_unified_transaction_intake",
+      "label": "Unified Transaction Intake Model",
+      "file_type": "document",
+      "source_file": "08_UNIFIED_TRANSACTION_INTAKE_MODEL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_ai_behavior_criteria",
+      "label": "AI Behavior Criteria",
+      "file_type": "document",
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_ai_backend_only_rule",
+      "label": "AI Backend-only Rule",
+      "file_type": "document",
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_provider_policy_gemini_primary",
+      "label": "Provider Policy: Gemini primary",
+      "file_type": "document",
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_provider_policy_openai_fallback",
+      "label": "Provider Policy: OpenAI fallback",
+      "file_type": "document",
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_receivable_not_cash",
+      "label": "Product Safety Rule: receivable ≠ cash",
+      "file_type": "document",
+      "source_file": "02_BUSINESS_INTEGRATION_MODEL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_e2e_matrix_gate",
+      "label": "E2E Matrix Gate (cross-browser/mobile)",
+      "file_type": "document",
+      "source_file": "05_CODE_AGENT_TASKS.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_ci_wiring",
+      "label": "CI Wiring for gates",
+      "file_type": "document",
+      "source_file": "2026-04-23_session-1-ci-deploy.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_workspace_plan_gating",
+      "label": "workspacePlan gating (Autopilot/AICFO)",
+      "file_type": "document",
+      "source_file": "2026-04-22_workspacePlan-gating-autopilot-aicfo.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_ai_orchestrator_routing",
+      "label": "AI Orchestrator Routing (disambiguation)",
+      "file_type": "document",
+      "source_file": "2026-04-23_ai-orchestrator-routing.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_encoding_mojibake_policy",
+      "label": "Encoding / Mojibake Prevention",
+      "file_type": "document",
+      "source_file": "2026-04-23_session-3-encoding-mojibake.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "concept_implementation_sequence",
+      "label": "Implementation Sequence (phases)",
+      "file_type": "document",
+      "source_file": "11_IMPLEMENTATION_SEQUENCE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "file_readme",
+      "target": "concept_flow_focus_2026_04",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_01_product_scope_and_positioning",
+      "target": "concept_product_scope_positioning",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "01_PRODUCT_SCOPE_AND_POSITIONING.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_02_business_integration_model",
+      "target": "concept_business_integration_model",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "02_BUSINESS_INTEGRATION_MODEL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_07_business_integration_contract",
+      "target": "concept_integration_contract_v1",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "07_BUSINESS_INTEGRATION_CONTRACT.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_08_unified_transaction_intake_model",
+      "target": "concept_unified_transaction_intake",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "08_UNIFIED_TRANSACTION_INTAKE_MODEL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_09_ai_behavior_criteria",
+      "target": "concept_ai_behavior_criteria",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_09_ai_behavior_criteria",
+      "target": "concept_ai_backend_only_rule",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_09_ai_behavior_criteria",
+      "target": "concept_provider_policy_gemini_primary",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_09_ai_behavior_criteria",
+      "target": "concept_provider_policy_openai_fallback",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_02_business_integration_model",
+      "target": "concept_receivable_not_cash",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "02_BUSINESS_INTEGRATION_MODEL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_05_code_agent_tasks",
+      "target": "concept_e2e_matrix_gate",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "05_CODE_AGENT_TASKS.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_23_session_1_ci_deploy",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "2026-04-23_session-1-ci-deploy.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_22_workspaceplan_gating_autopilot_aicfo",
+      "target": "concept_workspace_plan_gating",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "2026-04-22_workspacePlan-gating-autopilot-aicfo.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_23_ai_orchestrator_routing",
+      "target": "concept_ai_orchestrator_routing",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "2026-04-23_ai-orchestrator-routing.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_23_session_3_encoding_mojibake",
+      "target": "concept_encoding_mojibake_policy",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "2026-04-23_session-3-encoding-mojibake.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_11_implementation_sequence",
+      "target": "concept_implementation_sequence",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "11_IMPLEMENTATION_SEQUENCE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_01_product_scope_and_positioning",
+      "target": "concept_unified_transaction_intake",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "01_PRODUCT_SCOPE_AND_POSITIONING.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_01_product_scope_and_positioning",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "01_PRODUCT_SCOPE_AND_POSITIONING.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_02_business_integration_model",
+      "target": "concept_unified_transaction_intake",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "02_BUSINESS_INTEGRATION_MODEL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_02_business_integration_model",
+      "target": "concept_ai_behavior_criteria",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "02_BUSINESS_INTEGRATION_MODEL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_02_business_integration_model",
+      "target": "concept_receivable_not_cash",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "02_BUSINESS_INTEGRATION_MODEL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_02_business_integration_model",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "02_BUSINESS_INTEGRATION_MODEL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_03_ai_and_input_architecture",
+      "target": "concept_unified_transaction_intake",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "03_AI_AND_INPUT_ARCHITECTURE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_03_ai_and_input_architecture",
+      "target": "concept_ai_behavior_criteria",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "03_AI_AND_INPUT_ARCHITECTURE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_03_ai_and_input_architecture",
+      "target": "concept_ai_backend_only_rule",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "03_AI_AND_INPUT_ARCHITECTURE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_03_ai_and_input_architecture",
+      "target": "concept_provider_policy_gemini_primary",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "03_AI_AND_INPUT_ARCHITECTURE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_03_ai_and_input_architecture",
+      "target": "concept_provider_policy_openai_fallback",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "03_AI_AND_INPUT_ARCHITECTURE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_03_ai_and_input_architecture",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "03_AI_AND_INPUT_ARCHITECTURE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_04_visual_direction",
+      "target": "concept_unified_transaction_intake",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "04_VISUAL_DIRECTION.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_04_visual_direction",
+      "target": "concept_ai_behavior_criteria",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "04_VISUAL_DIRECTION.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_04_visual_direction",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "04_VISUAL_DIRECTION.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_05_code_agent_tasks",
+      "target": "concept_unified_transaction_intake",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "05_CODE_AGENT_TASKS.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_05_code_agent_tasks",
+      "target": "concept_ai_behavior_criteria",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "05_CODE_AGENT_TASKS.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_05_code_agent_tasks",
+      "target": "concept_ai_backend_only_rule",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "05_CODE_AGENT_TASKS.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_05_code_agent_tasks",
+      "target": "concept_receivable_not_cash",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "05_CODE_AGENT_TASKS.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_05_code_agent_tasks",
+      "target": "concept_e2e_matrix_gate",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "05_CODE_AGENT_TASKS.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_05_code_agent_tasks",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "05_CODE_AGENT_TASKS.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_05_code_agent_tasks",
+      "target": "concept_workspace_plan_gating",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "05_CODE_AGENT_TASKS.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_05_code_agent_tasks",
+      "target": "concept_implementation_sequence",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "05_CODE_AGENT_TASKS.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_06_product_and_offer_model",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "06_PRODUCT_AND_OFFER_MODEL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_06_product_and_offer_model",
+      "target": "concept_workspace_plan_gating",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "06_PRODUCT_AND_OFFER_MODEL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_06_product_and_offer_model",
+      "target": "concept_implementation_sequence",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "06_PRODUCT_AND_OFFER_MODEL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_07_business_integration_contract",
+      "target": "concept_integration_contract_v1",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "07_BUSINESS_INTEGRATION_CONTRACT.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_07_business_integration_contract",
+      "target": "concept_ai_backend_only_rule",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "07_BUSINESS_INTEGRATION_CONTRACT.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_07_business_integration_contract",
+      "target": "concept_receivable_not_cash",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "07_BUSINESS_INTEGRATION_CONTRACT.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_07_business_integration_contract",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "07_BUSINESS_INTEGRATION_CONTRACT.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_07_business_integration_contract",
+      "target": "concept_implementation_sequence",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "07_BUSINESS_INTEGRATION_CONTRACT.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_08_unified_transaction_intake_model",
+      "target": "concept_unified_transaction_intake",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "08_UNIFIED_TRANSACTION_INTAKE_MODEL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_08_unified_transaction_intake_model",
+      "target": "concept_ai_behavior_criteria",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "08_UNIFIED_TRANSACTION_INTAKE_MODEL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_08_unified_transaction_intake_model",
+      "target": "concept_ai_backend_only_rule",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "08_UNIFIED_TRANSACTION_INTAKE_MODEL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_08_unified_transaction_intake_model",
+      "target": "concept_receivable_not_cash",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "08_UNIFIED_TRANSACTION_INTAKE_MODEL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_08_unified_transaction_intake_model",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "08_UNIFIED_TRANSACTION_INTAKE_MODEL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_09_ai_behavior_criteria",
+      "target": "concept_unified_transaction_intake",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_09_ai_behavior_criteria",
+      "target": "concept_ai_behavior_criteria",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_09_ai_behavior_criteria",
+      "target": "concept_ai_backend_only_rule",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_09_ai_behavior_criteria",
+      "target": "concept_provider_policy_gemini_primary",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_09_ai_behavior_criteria",
+      "target": "concept_provider_policy_openai_fallback",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_09_ai_behavior_criteria",
+      "target": "concept_receivable_not_cash",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_09_ai_behavior_criteria",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_10_visual_redesign_checklist_by_screen",
+      "target": "concept_unified_transaction_intake",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "10_VISUAL_REDESIGN_CHECKLIST_BY_SCREEN.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_10_visual_redesign_checklist_by_screen",
+      "target": "concept_ai_behavior_criteria",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "10_VISUAL_REDESIGN_CHECKLIST_BY_SCREEN.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_10_visual_redesign_checklist_by_screen",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "10_VISUAL_REDESIGN_CHECKLIST_BY_SCREEN.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_11_implementation_sequence",
+      "target": "concept_integration_contract_v1",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "11_IMPLEMENTATION_SEQUENCE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_11_implementation_sequence",
+      "target": "concept_unified_transaction_intake",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "11_IMPLEMENTATION_SEQUENCE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_11_implementation_sequence",
+      "target": "concept_ai_behavior_criteria",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "11_IMPLEMENTATION_SEQUENCE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_11_implementation_sequence",
+      "target": "concept_ai_backend_only_rule",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "11_IMPLEMENTATION_SEQUENCE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_11_implementation_sequence",
+      "target": "concept_e2e_matrix_gate",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "11_IMPLEMENTATION_SEQUENCE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_11_implementation_sequence",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "11_IMPLEMENTATION_SEQUENCE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_11_implementation_sequence",
+      "target": "concept_implementation_sequence",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "11_IMPLEMENTATION_SEQUENCE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_12_phase_4_closure",
+      "target": "concept_unified_transaction_intake",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "12_PHASE_4_CLOSURE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_12_phase_4_closure",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "12_PHASE_4_CLOSURE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_22_workspaceplan_gating_autopilot_aicfo",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "2026-04-22_workspacePlan-gating-autopilot-aicfo.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_22_workspaceplan_gating_autopilot_aicfo",
+      "target": "concept_workspace_plan_gating",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "2026-04-22_workspacePlan-gating-autopilot-aicfo.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_23_ai_orchestrator_routing",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "2026-04-23_ai-orchestrator-routing.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_23_ai_orchestrator_routing",
+      "target": "concept_ai_orchestrator_routing",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "2026-04-23_ai-orchestrator-routing.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_23_session_1_ci_deploy",
+      "target": "concept_ai_backend_only_rule",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "2026-04-23_session-1-ci-deploy.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_23_session_1_ci_deploy",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "2026-04-23_session-1-ci-deploy.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_23_session_1_ci_deploy",
+      "target": "concept_ai_orchestrator_routing",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "2026-04-23_session-1-ci-deploy.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_23_session_2_docs_archive_cleanup",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "2026-04-23_session-2-docs-archive-cleanup.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_23_session_2_docs_archive_cleanup",
+      "target": "concept_encoding_mojibake_policy",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "2026-04-23_session-2-docs-archive-cleanup.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_23_session_3_encoding_mojibake",
+      "target": "concept_ai_behavior_criteria",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "2026-04-23_session-3-encoding-mojibake.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_23_session_3_encoding_mojibake",
+      "target": "concept_ai_backend_only_rule",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "2026-04-23_session-3-encoding-mojibake.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_23_session_3_encoding_mojibake",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "2026-04-23_session-3-encoding-mojibake.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_23_session_3_encoding_mojibake",
+      "target": "concept_encoding_mojibake_policy",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "2026-04-23_session-3-encoding-mojibake.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_25_receivable_not_cash_evidence",
+      "target": "concept_receivable_not_cash",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "2026-04-25_receivable-not-cash_evidence.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_2026_04_25_receivable_not_cash_evidence",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "2026-04-25_receivable-not-cash_evidence.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_readme",
+      "target": "concept_unified_transaction_intake",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_readme",
+      "target": "concept_ci_wiring",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_readme",
+      "target": "concept_workspace_plan_gating",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "file_readme",
+      "target": "concept_ai_orchestrator_routing",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "concept_flow_focus_2026_04",
+      "target": "concept_product_scope_positioning",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "concept_flow_focus_2026_04",
+      "target": "concept_business_integration_model",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "concept_flow_focus_2026_04",
+      "target": "concept_integration_contract_v1",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "concept_flow_focus_2026_04",
+      "target": "concept_unified_transaction_intake",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "concept_flow_focus_2026_04",
+      "target": "concept_ai_behavior_criteria",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "concept_business_integration_model",
+      "target": "concept_receivable_not_cash",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "02_BUSINESS_INTEGRATION_MODEL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "concept_ai_behavior_criteria",
+      "target": "concept_ai_backend_only_rule",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "concept_ai_behavior_criteria",
+      "target": "concept_provider_policy_gemini_primary",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "concept_ai_behavior_criteria",
+      "target": "concept_provider_policy_openai_fallback",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "concept_implementation_sequence",
+      "target": "concept_e2e_matrix_gate",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "11_IMPLEMENTATION_SEQUENCE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "concept_e2e_matrix_gate",
+      "target": "concept_ci_wiring",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "05_CODE_AGENT_TASKS.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "concept_ai_orchestrator_routing",
+      "target": "concept_ai_behavior_criteria",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "2026-04-23_ai-orchestrator-routing.md",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "flow_focus_core_notes",
+      "label": "Flow Focus Core Notes",
+      "nodes": [
+        "concept_product_scope_positioning",
+        "concept_business_integration_model",
+        "concept_integration_contract_v1",
+        "concept_unified_transaction_intake",
+        "concept_ai_behavior_criteria"
+      ],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "README.md"
+    },
+    {
+      "id": "ai_reliability_contract",
+      "label": "AI Reliability Contract",
+      "nodes": [
+        "concept_ai_backend_only_rule",
+        "concept_provider_policy_gemini_primary",
+        "concept_provider_policy_openai_fallback",
+        "concept_ai_behavior_criteria"
+      ],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.78,
+      "source_file": "09_AI_BEHAVIOR_CRITERIA.md"
+    },
+    {
+      "id": "delivery_quality_gates",
+      "label": "Delivery Quality Gates",
+      "nodes": [
+        "concept_e2e_matrix_gate",
+        "concept_ci_wiring",
+        "concept_encoding_mojibake_policy"
+      ],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "05_CODE_AGENT_TASKS.md"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

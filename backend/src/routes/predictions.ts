@@ -8,6 +8,86 @@ import { PredictionEngine } from '../services/PredictionEngine';
 import { authMiddleware } from '../middleware/auth';
 import { PredictionApiResponse } from '../types/prediction';
 
+// ─── Normalization helpers ────────────────────────────────────────────────────
+
+export interface NormalizedDailyPrediction {
+  date: Date;
+  predictedBalance: number;
+  confidenceInterval: { min: number; max: number };
+  expectedIncome: number;
+  expectedExpenses: number;
+  riskLevel: string;
+}
+
+export interface NormalizedFactor {
+  name: string;
+  description: string;
+  impact: string;
+  weight: number;
+}
+
+export interface NormalizedPredictionSnapshot {
+  userId: string;
+  confidence: number;
+  trend: string;
+  dateRange: { start: Date; end: Date };
+  generatedAt: Date;
+  dailyPredictions: NormalizedDailyPrediction[];
+  factors: NormalizedFactor[];
+}
+
+export function normalizeDailyPredictions(
+  raw: unknown[],
+): NormalizedDailyPrediction[] {
+  return raw.filter((item): item is Record<string, unknown> => {
+    return !!item && typeof item === 'object' && !Array.isArray(item) && 'date' in (item as object);
+  }).map((item) => {
+    const e = item as Record<string, unknown>;
+    return {
+      date: new Date(e.date as string),
+      predictedBalance: Number(e.predictedBalance ?? 0),
+      confidenceInterval: (e.confidenceInterval as { min: number; max: number }) ?? { min: 0, max: 0 },
+      expectedIncome: Number(e.expectedIncome ?? 0),
+      expectedExpenses: Number(e.expectedExpenses ?? 0),
+      riskLevel: String(e.riskLevel ?? 'low'),
+    };
+  });
+}
+
+export function normalizePredictionFactors(raw: unknown[]): NormalizedFactor[] {
+  return raw.filter((item): item is NormalizedFactor => {
+    if (!item || typeof item !== 'object') return false;
+    const e = item as Record<string, unknown>;
+    return typeof e.name === 'string' && e.name.length > 0 &&
+      typeof e.description === 'string' && e.description.length > 0;
+  }) as NormalizedFactor[];
+}
+
+export function normalizePredictionSnapshot(raw: {
+  userId: string;
+  confidence: number;
+  trend: string;
+  dateRange: { start: string; end: string };
+  generatedAt: string;
+  dailyPredictions: unknown[];
+  factors: unknown[];
+}): NormalizedPredictionSnapshot {
+  return {
+    userId: raw.userId,
+    confidence: raw.confidence,
+    trend: raw.trend,
+    dateRange: {
+      start: new Date(raw.dateRange.start),
+      end: new Date(raw.dateRange.end),
+    },
+    generatedAt: new Date(raw.generatedAt),
+    dailyPredictions: normalizeDailyPredictions(raw.dailyPredictions),
+    factors: normalizePredictionFactors(raw.factors),
+  };
+}
+
+// ─── Router ───────────────────────────────────────────────────────────────────
+
 const router = Router();
 
 // Initialize prediction engine

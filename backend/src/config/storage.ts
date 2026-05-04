@@ -18,8 +18,19 @@ interface CloudStorageConfig {
   endpoint?: string; // Custom endpoint
 }
 
+type CloudStorageProviderKey = 'aws-s3' | 'cloudflare-r2';
+
+const SUPPORTED_PROVIDERS: CloudStorageProviderKey[] = ['aws-s3', 'cloudflare-r2'];
+
+export function resolveCloudStorageProvider(value: string | undefined): CloudStorageProviderKey {
+  if (value && (SUPPORTED_PROVIDERS as string[]).includes(value)) {
+    return value as CloudStorageProviderKey;
+  }
+  return 'aws-s3';
+}
+
 const getStorageConfig = (): CloudStorageConfig => {
-  const provider = (process.env.CLOUD_STORAGE_PROVIDER || 'aws-s3') as 'aws-s3' | 'cloudflare-r2';
+  const provider = resolveCloudStorageProvider(process.env.CLOUD_STORAGE_PROVIDER);
 
   if (provider === 'cloudflare-r2') {
     return {

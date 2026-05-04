@@ -1,50 +1,67 @@
 {
   "tenants": [
     {
-      "tenantId": "7321c51e-0ca9-4bbe-bac0-a8f2183026d5",
-      "name": "Empresa Teste",
-      "plan": "free",
-      "createdAt": "2026-04-12T20:52:15.786Z",
-      "updatedAt": "2026-04-12T20:52:15.786Z"
+      "tenantId": "11499a78-3836-4374-a093-def472c520e2",
+      "name": "Stripe Workspace",
+      "plan": "pro",
+      "createdAt": "2026-05-04T05:02:00.167Z",
+      "updatedAt": "2026-05-04T05:02:00.168Z"
     }
   ],
   "workspaces": [
     {
-      "workspaceId": "1e0adb50-83f0-4005-8aff-c4d5a69008a1",
-      "tenantId": "7321c51e-0ca9-4bbe-bac0-a8f2183026d5",
-      "name": "Empresa Teste",
+      "workspaceId": "d4dff0c5-41b2-4968-a983-5bca0226ba34",
+      "tenantId": "11499a78-3836-4374-a093-def472c520e2",
+      "name": "Stripe Workspace",
       "isDefault": true,
-      "createdAt": "2026-04-12T20:52:15.786Z",
-      "updatedAt": "2026-04-12T20:52:15.786Z",
-      "plan": "free",
+      "createdAt": "2026-05-04T05:02:00.167Z",
+      "updatedAt": "2026-05-04T05:02:00.167Z",
+      "plan": "pro",
       "status": "active",
       "entitlements": {
         "features": [
-          "advancedInsights"
+          "advancedInsights",
+          "multiBankSync",
+          "adminConsole",
+          "prioritySupport",
+          "billingManagement"
         ],
         "limits": {
-          "transactionsPerMonth": 500,
-          "aiQueriesPerMonth": 100,
-          "bankConnections": 1
+          "transactionsPerMonth": 10000,
+          "aiQueriesPerMonth": 5000,
+          "bankConnections": 20
         }
+      },
+      "billingCustomerId": "cus_stripe_123",
+      "subscription": {
+        "subscriptionId": "sub_cc38482d-dc4f-4e2b-a3ac-df5e904fd896",
+        "provider": "stripe",
+        "status": "active",
+        "plan": "pro",
+        "startedAt": "2026-05-04T05:02:00.168Z",
+        "renewsAt": "2026-06-03T05:02:00.168Z",
+        "providerCustomerId": "cus_stripe_123",
+        "providerSubscriptionId": "sub_stripe_123",
+        "providerPriceId": "price_pro_123",
+        "updatedAt": "2026-05-04T05:02:00.168Z"
       }
     }
   ],
   "workspaceUsers": [
     {
-      "userId": "owner-1",
-      "workspaceId": "1e0adb50-83f0-4005-8aff-c4d5a69008a1",
-      "tenantId": "7321c51e-0ca9-4bbe-bac0-a8f2183026d5",
+      "userId": "owner-stripe",
+      "workspaceId": "d4dff0c5-41b2-4968-a983-5bca0226ba34",
+      "tenantId": "11499a78-3836-4374-a093-def472c520e2",
       "role": "owner",
-      "joinedAt": "2026-04-12T20:52:15.786Z",
+      "joinedAt": "2026-05-04T05:02:00.167Z",
       "status": "active"
     }
   ],
   "userPreferences": [
     {
-      "userId": "owner-1",
-      "lastSelectedWorkspaceId": "1e0adb50-83f0-4005-8aff-c4d5a69008a1",
-      "updatedAt": "2026-04-12T20:52:15.789Z"
+      "userId": "owner-stripe",
+      "lastSelectedWorkspaceId": "d4dff0c5-41b2-4968-a983-5bca0226ba34",
+      "updatedAt": "2026-05-04T05:02:00.167Z"
     }
   ]
 }

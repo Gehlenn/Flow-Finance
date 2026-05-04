@@ -7,7 +7,8 @@ import {
   Briefcase, GraduationCap, TrendingUp, Wallet, Check,
   ChevronDown, ChevronUp, AlertTriangle, Sparkles, Loader2
 } from 'lucide-react';
-import { apiRequest, API_ENDPOINTS } from '../src/config/api.config';
+import { runFinancialAutopilot } from '../src/ai/financialAutopilot';
+import { buildCashflowPrediction } from '../src/ai/riskAnalyzer';
 import { calculateAlertProgress } from '../src/engines/finance/analyticsEngine';
 import { ASSISTANT_COPY } from '../src/app/assistantCopy';
 import { canAccessFeature } from '../src/app/monetizationPlan';
@@ -86,7 +87,7 @@ const Assistant: React.FC<AssistantProps> = ({
 
   // Smart Alerts State
   const [isGeneratingAlerts, setIsGeneratingAlerts] = useState(false);
-  const [smartAlerts, setSmartAlerts] = useState<Array<{category: string, threshold: number, reason: string}>>([]);
+  const [smartAlerts, setSmartAlerts] = useState<Array<{category: string; threshold: number; reason: string; title?: string; description?: string}>>([]);
   const [showSmartAlertsModal, setShowSmartAlertsModal] = useState(false);
   const [smartAlertsUpgradeOnly, setSmartAlertsUpgradeOnly] = useState(false);
 
@@ -221,27 +222,15 @@ const Assistant: React.FC<AssistantProps> = ({
     setSmartAlerts([]);
 
     try {
-      const recentTransactions = transactions.slice(0, 50).map(t => ({
-        amount: t.amount,
-        category: t.category,
-        type: t.type,
-        description: t.description
+      const prediction = buildCashflowPrediction(transactions);
+      const actions = runFinancialAutopilot([], transactions, prediction, []);
+      const suggestions = actions.map(a => ({
+        category: (a as any).category ?? 'Geral',
+        threshold: (a as any).value ?? 0,
+        reason: (a as any).description ?? '',
+        title: (a as any).title,
+        description: (a as any).description,
       }));
-
-      const response = await apiRequest<{ insights?: Array<{category: string; threshold: number; reason: string}> } | Array<{category: string; threshold: number; reason: string}>>(
-        API_ENDPOINTS.AI.GENERATE_INSIGHTS,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            transactions: recentTransactions,
-            type: 'daily',
-          }),
-        },
-      );
-
-      const suggestions = Array.isArray(response)
-        ? response
-        : ((response as any).insights ?? []);
       setSmartAlerts(suggestions);
     } catch (error) {
       console.error("Erro ao gerar alertas inteligentes:", error);
@@ -709,7 +698,7 @@ const Assistant: React.FC<AssistantProps> = ({
                     <div key={idx} className="bg-slate-50 dark:bg-slate-900 p-5 rounded-[2rem] border border-slate-100 dark:border-slate-700 space-y-3">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="font-black text-slate-800 dark:text-white text-sm uppercase tracking-tight">{alert.category}</h4>
+                          <h4 className="font-black text-slate-800 dark:text-white text-sm uppercase tracking-tight">{alert.title ?? alert.category}</h4>
                           <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mt-1">Sugestão: {formatVal(alert.threshold)}</p>
                         </div>
                         <button 
@@ -727,7 +716,7 @@ const Assistant: React.FC<AssistantProps> = ({
                         </button>
                       </div>
                       <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 italic">"{alert.reason}"</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 italic">"{alert.description ?? alert.reason}"</p>
                       </div>
                     </div>
                   ))

@@ -359,3 +359,50 @@ Responda de forma consultiva, personalizada e baseada exclusivamente nos dados a
     throw new AppError(500, `Failed to generate CFO response: ${error?.message || 'Unknown error'}`);
   }
 });
+
+/**
+ * Summarizes confidence data from AI interpretation results.
+ * Accepts either an array of `{ confidence: number }` items or an object
+ * with a `fieldConfidences` map of field → number|string.
+ * Returns 'high', 'medium', 'low', or 'unknown'.
+ */
+export function summarizeConfidenceSummary(
+  data: unknown,
+): 'high' | 'medium' | 'low' | 'unknown' {
+  if (Array.isArray(data)) {
+    const numeric = (data as Array<{ confidence?: unknown }>)
+      .map((item) => Number(item?.confidence))
+      .filter((v) => !isNaN(v));
+    if (numeric.length === 0) return 'unknown';
+    const avg = numeric.reduce((a, b) => a + b, 0) / numeric.length;
+    if (avg >= 0.75) return 'high';
+    if (avg >= 0.5) return 'medium';
+    return 'low';
+  }
+
+  if (data && typeof data === 'object') {
+    const obj = data as Record<string, unknown>;
+    if (obj.fieldConfidences && typeof obj.fieldConfidences === 'object') {
+      const values = Object.values(obj.fieldConfidences as Record<string, unknown>);
+      let hasLow = false;
+      let hasHigh = false;
+      for (const v of values) {
+        if (v === 'low' || (typeof v === 'number' && v < 0.5)) hasLow = true;
+        if (v === 'high' || (typeof v === 'number' && v >= 0.75)) hasHigh = true;
+      }
+      if (hasLow) return 'low';
+      if (hasHigh) return 'high';
+      return 'medium';
+    }
+    if (obj.confidence !== undefined) {
+      const v = Number(obj.confidence);
+      if (!isNaN(v)) {
+        if (v >= 0.75) return 'high';
+        if (v >= 0.5) return 'medium';
+        return 'low';
+      }
+    }
+  }
+
+  return 'unknown';
+}

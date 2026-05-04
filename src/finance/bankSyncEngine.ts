@@ -342,6 +342,11 @@ export async function syncSingleBank(
       sync_duration_ms:      Date.now() - t0,
     };
   } catch (err: any) {
+    console.warn('[BankSyncEngine] Single bank sync failed:', {
+      connectionId,
+      bankName: conn.bank_name,
+      error: err?.message ?? 'Erro desconhecido',
+    });
     return {
       connection_id:         connectionId,
       bank_name:             conn.bank_name,

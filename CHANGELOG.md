@@ -1,26 +1,29 @@
 ﻿# CHANGELOG - Flow Finance
 
-## [Unreleased] - 2026-04-13
+## [Unreleased]
 
 ### Corrigido
 
-- **Workspace E2E Deterministico**: O bootstrap de autenticacao para testes end-to-end agora resolve um workspace owner estavel e isolado por usuario de teste
-- **Billing E2E Estabilizado**: O fluxo de billing/admin deixou de falhar por contaminacao de contexto entre execucoes e passou a aceitar corretamente os estados validos de permissao
-- **Recuperacao de Workspace no Cliente**: `apiRequest` agora recompõe headers a cada tentativa e reaplica a requisicao apos recuperar o workspace sem consumir o orcamento de retry
-- **Fallback de Backend em Producao**: O cliente evita fallback indevido para `localhost` quando roda fora de ambiente local
-- **Diagnostico de Firebase**: O app passou a emitir aviso explicito quando Firebase web auth/Firestore nao esta configurado no ambiente
+- **Versão hard-coded no backend**: Fallback de versão corrigido de `0.6.3` → `0.9.6` em `/health`, `/api/version`, `/api/health` e log de bootstrap
+- **Versão hard-coded no frontend**: Fallback de `0.6.1` → `0.9.6` em `versionGuard.ts` e `sentry.ts`
 
-### Validado
+### Melhorado
 
-- `npx playwright test tests/e2e/billing.spec.ts --workers=1`
-- `npx vitest run tests/unit/workspace-session.test.ts`
-- `npx vitest run tests/unit/observability-client.test.ts`
-- `npm run lint`
-- `npm run test:coverage:critical`
+- **Navegação principal**: Tab "Inicio" renomeado para "Caixa" e "Apoio IA" para "Consultor IA" — copy mais direto e alinhado ao posicionamento de produto
+- **Dashboard**: Label da seção "Dashboard" → "Caixa"; botão "Gerenciar contas" → "Consultar saldos"
+- **Documentação de variáveis de ambiente**: `backend/.env.example` agora documenta a seção completa `CLINIC AUTOMATION INTEGRATION` e a variável `APP_VERSION`
+
+### Segurança (auditoria 2026-05-03)
+
+- **SEC-001 (HIGH) — Open Redirect em returnUrl**: `safeReturnUrl()` valida origem contra `FRONTEND_URL`/`ALLOWED_ORIGINS` no schema Stripe
+- **SEC-002 (MEDIUM) — DOM XSS em runtimeGuard/versionGuard**: `escapeHtml()` sanitiza valores antes de interpolação via `innerHTML`
+- **SEC-003 (MEDIUM) — Query params vazando em logs**: `req.query` removido do logging middleware no backend
+- **SEC-004 (LOW) — Body parser sem limite explícito**: Limite reduzido de `10mb` → `1mb`
 
 ---
 
 ## [0.9.6] - 2026-04-12 🚀
+
 
 ### Status: RELEASED
 

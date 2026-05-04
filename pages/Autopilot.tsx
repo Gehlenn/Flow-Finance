@@ -252,7 +252,7 @@ const Autopilot: React.FC<AutopilotProps> = ({ transactions, accounts, userId = 
             onClick={() => { setDismissed(new Set()); setRefreshKey(k => k + 1); }}
             className="mt-2 px-5 py-2.5 bg-indigo-600 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-all"
           >
-            <RefreshCw size={12} /> Nova Análise
+            <RefreshCw size={12} /> Reexibir ações
           </button>
         </div>
       )}

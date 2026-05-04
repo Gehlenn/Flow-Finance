@@ -144,9 +144,20 @@ const GoalCard: React.FC<{
 
           <div className="flex items-center gap-3 mt-2">
             {goal.deadline && (
-              <span className="flex items-center gap-1 text-[8px] text-slate-400 font-bold">
+                  <span className="flex items-center gap-1 text-[8px] text-slate-400 font-bold">
                 <CalendarDays size={8} />
-                {new Date(goal.deadline).toLocaleDateString('pt-BR')}
+                {(() => {
+                  const dateOnlyMatch = goal.deadline?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                  if (dateOnlyMatch) {
+                    const [, y, m, d] = dateOnlyMatch;
+                    const dt = new Date(Number(y), Number(m) - 1, Number(d));
+                    if (isNaN(dt.getTime())) return null;
+                    return dt.toLocaleDateString('pt-BR');
+                  }
+                  const dt = new Date(goal.deadline!);
+                  if (isNaN(dt.getTime())) return null;
+                  return dt.toLocaleDateString('pt-BR');
+                })()}
               </span>
             )}
             {daysRemaining !== null && daysRemaining > 0 && (
@@ -190,6 +201,8 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
   const [formData, setFormData] = useState<GoalFormData>(DEFAULT_FORM);
   const [contributeGoal, setContributeGoal] = useState<Goal | null>(null);
   const [contributeAmount, setContributeAmount] = useState('');
+  const [targetAmountError, setTargetAmountError] = useState<string | null>(null);
+  const [contributeError, setContributeError] = useState<string | null>(null);
 
   const sortedGoals = useMemo(
     () => [...goals].sort((a, b) => getGoalProgress(b) - getGoalProgress(a)),
@@ -203,9 +216,11 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
     const currentAmount = Number(formData.currentAmount.replace(',', '.'));
 
     if (!formData.title.trim() || !Number.isFinite(targetAmount) || targetAmount <= 0) {
+      setTargetAmountError('Informe um valor alvo valido');
       return;
     }
 
+    setTargetAmountError(null);
     onCreateGoal({
       title: formData.title.trim(),
       targetAmount,
@@ -222,8 +237,12 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
     if (!contributeGoal) return;
 
     const amount = Number(contributeAmount.replace(',', '.'));
-    if (!Number.isFinite(amount) || amount <= 0) return;
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setContributeError('Informe um aporte valido');
+      return;
+    }
 
+    setContributeError(null);
     onContributeGoal(contributeGoal.id, amount);
     setContributeGoal(null);
     setContributeAmount('');
@@ -308,7 +327,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
                 type="text"
                 value={formData.title}
                 onChange={(event) => setFormData((current) => ({ ...current, title: event.target.value }))}
-                placeholder="Ex: Reserva de Emergencia"
+                placeholder="Ex: Reserva de Emergência"
                 className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
               />
             </div>
@@ -317,13 +336,14 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
               <div>
                 <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Valor alvo (R$)</label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   value={formData.targetAmount}
-                  onChange={(event) => setFormData((current) => ({ ...current, targetAmount: event.target.value }))}
+                  onChange={(event) => { setFormData((current) => ({ ...current, targetAmount: event.target.value })); setTargetAmountError(null); }}
                   placeholder="0,00"
                   className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
                 />
+                {targetAmountError && <p className="text-[10px] text-rose-500 font-bold mt-1">{targetAmountError}</p>}
               </div>
               <div>
                 <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Valor atual (R$)</label>
@@ -419,7 +439,8 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
                 </p>
               </div>
               <button
-                onClick={() => setContributeGoal(null)}
+                onClick={() => { setContributeAmount(''); setContributeGoal(null); }}
+                aria-label="Fechar"
                 className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
               >
                 <X size={15} />
@@ -427,16 +448,18 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
             </div>
 
             <div>
-              <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Valor do aporte (R$)</label>
+              <label htmlFor="contribute-amount" className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Valor do aporte (R$)</label>
               <input
-                type="number"
-                step="0.01"
+                id="contribute-amount"
+                type="text"
+                inputMode="decimal"
                 autoFocus
                 value={contributeAmount}
-                onChange={(event) => setContributeAmount(event.target.value)}
+                onChange={(event) => { setContributeAmount(event.target.value); setContributeError(null); }}
                 placeholder="0,00"
                 className="w-full mt-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-lg font-black text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
               />
+              {contributeError && <p className="text-[10px] text-rose-500 font-bold mt-1">{contributeError}</p>}
             </div>
 
             <button

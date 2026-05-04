@@ -67,6 +67,10 @@ export async function getWorkspacePlanCatalog(input: {
     });
   } catch (error) {
     if (!(error instanceof ApiRequestError) || error.statusCode >= 500 || error.statusCode === 404) {
+      console.warn('[BillingClient] Falling back to local plan catalog:', {
+        workspaceId: input.workspaceId,
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
       return createFallbackPlanCatalog(input.workspaceId, input.currentPlan);
     }
 

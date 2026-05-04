@@ -57,6 +57,16 @@ const CATEGORY_COLORS: Record<Category, string> = {
   [Category.INVESTIMENTO]:'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10',
 };
 
+export function formatImportedDateLabel(value: unknown): string {
+  if (!value || typeof value !== 'string') return 'Data inválida';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return 'Data inválida';
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const year = d.getUTCFullYear();
+  return `${day}/${month}/${year}`;
+}
+
 export function mapImportedItemsToDraftTransactions(items: ImportedTransaction[]): Partial<Transaction>[] {
   return items
     .filter((item) => item.selected && !item.duplicate)
@@ -72,7 +82,11 @@ export function mapImportedItemsToDraftTransactions(items: ImportedTransaction[]
         source: 'file',
       });
 
-      return draftToTransaction(draft) as Partial<Transaction>;
+      return {
+        ...draftToTransaction(draft),
+        merchant: item.merchant,
+        category: item.category,
+      } as Partial<Transaction>;
     });
 }
 
@@ -122,7 +136,7 @@ const TxRow: React.FC<{
           </p>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-[8px] text-slate-400 font-bold">
-              {new Date(item.raw_date).toLocaleDateString('pt-BR')}
+              {formatImportedDateLabel(item.raw_date)}
             </span>
             {item.category && (
               <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-widest ${catMeta}`}>
@@ -151,6 +165,7 @@ const TxRow: React.FC<{
 
         {/* Expand */}
         <button
+          aria-label={`expandir transação ${item.merchant || item.raw_description}`}
           onClick={() => setExpanded(e => !e)}
           className="shrink-0 p-1 text-slate-300 hover:text-slate-500 transition-colors"
         >
@@ -235,6 +250,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
+    if (fileInputRef.current) fileInputRef.current.value = '';
     if (f) handleFile(f);
   };
 
@@ -263,14 +279,18 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
 
   const handleImport = async () => {
     setPhase('importing');
+    const selectedItems = items.filter(i => i.selected && !i.duplicate);
     const toImport = mapImportedItemsToDraftTransactions(items);
     if (toImport.length === 0) { setPhase('preview'); return; }
 
-    const selectedItems = items.filter(i => i.selected && !i.duplicate);
     await Promise.all(
       selectedItems.map(async (item) => {
         if (!item.merchant || !item.category) return;
-        await saveMerchantCategoryLearning(userId, item.merchant, item.category, 0.95);
+        try {
+          await saveMerchantCategoryLearning(userId, item.merchant, item.category, 0.95);
+        } catch {
+          console.warn('[ImportTransactions] Failed to save merchant learning', { merchant: item.merchant, category: item.category });
+        }
       })
     );
 
@@ -278,12 +298,14 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
     setImportedCount(toImport.length);
 
     // PART 7 — Emitir evento de importação
-    FinancialEventEmitter.transactionsImported({
-      count: toImport.length,
-      format: result?.format,
-      filename: result?.filename,
-      source: 'import',
-    });
+    try {
+      FinancialEventEmitter.transactionsImported({
+        count: toImport.length,
+        format: result?.format,
+        filename: result?.filename,
+        source: 'import',
+      });
+    } catch { /* non-critical */ }
 
     setPhase('done');
   };
@@ -295,6 +317,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
     setProgress({ step: '', pct: 0 });
     setErrorMsg('');
     setImportedCount(0);
+    setFilterDuplicates(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -495,7 +518,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
               ) : (
                 displayItems.map((item, i) => (
                   <TxRow
-                    key={i}
+                    key={`${item.raw_date}-${item.raw_description}-${item.merchant}`}
                     index={items.indexOf(item)}
                     item={item}
                     hideValues={hideValues}

@@ -166,7 +166,7 @@ export function generateFinancialInsights(
           created_at: now(),
         });
       }
-    } catch (_) { /* graph not available — skip graph insights */ }
+    } catch (err) { console.warn('[InsightGenerator] Graph insights unavailable:', err instanceof Error ? err : new Error(String(err))); }
   }
 
   return insights;

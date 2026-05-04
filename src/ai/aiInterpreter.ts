@@ -84,6 +84,22 @@ export async function interpretText(
 
   try {
     const result = await geminiProcessFn(enrichedInput);
+
+    // Normaliza intents inválidos para 'unknown'
+    const validIntents = ['transaction', 'reminder'];
+    if (!validIntents.includes(result.intent)) {
+      return {
+        intent: 'unknown',
+        modality: 'text',
+        data: [],
+        confidence: 0.1,
+        memory_context_used: memories.map(m => m.key),
+        raw_input: input,
+        processing_ms: Date.now() - start,
+        enriched,
+      };
+    }
+
     const confidence = estimateConfidence(result.data, result.intent);
     const processing_ms = Date.now() - start;
 
@@ -111,6 +127,7 @@ export async function interpretText(
     return output;
   } catch (err: any) {
     const processing_ms = Date.now() - start;
+    console.warn('[AI Interpreter] Text interpretation failed:', { userId, inputLength: input.length, error: err });
     logAIDebug({
       input,
       error: err?.message || 'Erro desconhecido no interpretador',
@@ -168,6 +185,7 @@ export async function interpretImage(
       enriched,
     };
   } catch (err: any) {
+    console.warn('[AI Interpreter] Image interpretation failed:', { userId, mimeType, hintLength: hint?.length ?? 0, error: err });
     logAIDebug({ input: '[imagem]', error: err?.message, processing_ms: Date.now() - start });
     return {
       intent: 'unknown', modality: 'image', data: [], confidence: 0,

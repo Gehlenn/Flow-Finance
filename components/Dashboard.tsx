@@ -225,7 +225,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div className="rounded-3xl border border-slate-200 bg-white px-6 py-5 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Dashboard</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Caixa</p>
             <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Leitura rapida do caixa</h2>
             <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-300">
               {userName ? `${userName}, veja o que entrou, saiu e exige acao.` : 'Veja o que entrou, saiu e exige acao no workspace ativo.'}
@@ -403,8 +403,8 @@ const Dashboard: React.FC<DashboardProps> = ({
             onClick={onNavigateToInsights}
           />
           <QuickActionButton
-            title="Gerenciar contas"
-            description="Consulte saldos e contas cadastradas do workspace."
+            title="Consultar saldos"
+            description="Veja os saldos e contas registradas no workspace."
             onClick={onNavigateToAccounts}
           />
         </div>

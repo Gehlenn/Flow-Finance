@@ -30,7 +30,7 @@ describe('dashboard quick actions', () => {
     fireEvent.click(screen.getByRole('button', { name: /ver transacoes/i }));
     fireEvent.click(screen.getByRole('button', { name: /abrir fluxo de caixa/i }));
     fireEvent.click(screen.getByRole('button', { name: /ver insights/i }));
-    fireEvent.click(screen.getByRole('button', { name: /gerenciar contas/i }));
+    fireEvent.click(screen.getByRole('button', { name: /consultar saldos/i }));
 
     expect(onNavigateToHistory).toHaveBeenCalledTimes(1);
     expect(onNavigateToFlow).toHaveBeenCalledTimes(1);

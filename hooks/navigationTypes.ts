@@ -1,0 +1,18 @@
+export type Tab =
+  | 'dashboard'
+  | 'history'
+  | 'assistant'
+  | 'flow'
+  | 'settings'
+  | 'workspaceadmin'
+  | 'workspaceaudit'
+  | 'accounts'
+  | 'insights'
+  | 'cfo'
+  | 'autopilot'
+  | 'goals'
+  | 'scanner'
+  | 'import'
+  | 'aicontrol'
+  | 'analytics'
+  | 'performance';

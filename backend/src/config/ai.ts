@@ -4,69 +4,124 @@ import * as openai from './openai';
 import * as gemini from './gemini';
 
 /**
- * AI Provider Wrapper with automatic fallback
- * Tries Gemini first, falls back to OpenAI when Gemini is unavailable
+ * AI Provider Wrapper with automatic fallback and structured observability
+ * Uses AI_PRIMARY_PROVIDER and AI_FALLBACK_PROVIDER to determine provider order.
  */
+
+type AIRequestContext = {
+  operation?: string;
+  requestId?: string;
+  source?: string;
+};
+
+function categorizeError(err: any): string {
+  if (err?.status === 429 || err?.code === 'rate_limit_exceeded') return 'quota_exceeded';
+  if (err?.status === 404) return 'model_unavailable';
+  if (err?.status === 401) return 'auth_failure';
+  return 'unknown_error';
+}
+
+async function callProvider(provider: string, prompt: string, options?: { responseMimeType?: string; responseSchema?: any }): Promise<string> {
+  if (provider === 'gemini') {
+    return gemini.generateContent(prompt, options);
+  }
+  return openai.generateContent(prompt, options);
+}
 
 export async function generateContent(
   prompt: string,
-  options?: { responseMimeType?: string; responseSchema?: any }
+  options?: { responseMimeType?: string; responseSchema?: any },
+  context?: AIRequestContext
 ): Promise<string> {
   const hasOpenAI = !!env.OPENAI_API_KEY;
   const hasGemini = !!env.GEMINI_API_KEY;
+  const primary = env.AI_PRIMARY_PROVIDER || 'gemini';
+  const fallback = env.AI_FALLBACK_PROVIDER || 'openai';
 
-  logger.info({ hasOpenAI, hasGemini }, 'AI provider availability check');
+  const primaryAvailable = primary === 'gemini' ? hasGemini : hasOpenAI;
+  const fallbackAvailable = fallback === 'gemini' ? hasGemini : hasOpenAI;
+
+  const providerPlan: string[] = [];
+  if (primaryAvailable) providerPlan.push(primary);
+  if (fallbackAvailable && fallback !== primary) providerPlan.push(fallback);
+
+  logger.info(
+    {
+      event: 'ai_request_started',
+      operation: context?.operation,
+      requestId: context?.requestId,
+      source: context?.source,
+      responseMimeType: options?.responseMimeType,
+      providerPlan,
+    },
+    'AI request started',
+  );
 
   if (!hasOpenAI && !hasGemini) {
-    const error = 'No AI provider configured. Set OPENAI_API_KEY or GEMINI_API_KEY in .env';
-    logger.error({}, error);
-    throw new Error(error);
+    const msg = 'No AI provider configured. Set OPENAI_API_KEY or GEMINI_API_KEY in .env';
+    logger.error(
+      { event: 'ai_request_failed', failureCategory: 'no_provider_configured', requestId: context?.requestId },
+      msg,
+    );
+    throw new Error(msg);
   }
 
-  // Try Gemini first if available
-  if (hasGemini) {
+  if (primaryAvailable) {
     try {
-      logger.info({ model: env.GEMINI_MODEL }, 'Attempting Gemini request');
-      return await gemini.generateContent(prompt, options);
-    } catch (error: any) {
-      logger.error({
-        provider: 'Gemini',
-        error: error?.message || String(error),
-        status: error?.status,
-        hasOpenAI,
-      }, 'Gemini failed');
+      const result = await callProvider(primary, prompt, options);
+      logger.info(
+        { event: 'ai_provider_success', provider: primary, operation: context?.operation, requestId: context?.requestId },
+        `${primary} response received successfully`,
+      );
+      return result;
+    } catch (err: any) {
+      const failureCategory = categorizeError(err);
+      logger.error(
+        { event: 'ai_provider_failure', provider: primary, failureCategory, requestId: context?.requestId, error: err?.message },
+        `${primary.charAt(0).toUpperCase() + primary.slice(1)} failed`,
+      );
 
-      // If quota exceeded (429) or model unavailable (404), try OpenAI fallback
-      if (hasOpenAI && (error.status === 429 || error.status === 404)) {
-        logger.warn({ error: error.message, status: error.status }, 'Gemini failed with recoverable error, falling back to OpenAI');
+      const isRecoverable = err?.status === 429 || err?.status === 404;
+      if (fallbackAvailable && isRecoverable) {
+        logger.warn(
+          { event: 'ai_provider_fallback_triggered', fromProvider: primary, toProvider: fallback, failureCategory, requestId: context?.requestId },
+          `Falling back from ${primary.charAt(0).toUpperCase() + primary.slice(1)}`,
+        );
         try {
-          logger.info({ model: env.OPENAI_MODEL }, 'Attempting OpenAI fallback');
-          return await openai.generateContent(prompt, options);
-        } catch (openAiError: any) {
-          logger.error({
-            provider: 'OpenAI',
-            error: openAiError?.message || String(openAiError),
-            originalGeminiError: error?.message,
-          }, 'OpenAI fallback also failed');
-          throw openAiError;
+          const result = await callProvider(fallback, prompt, options);
+          logger.info(
+            { event: 'ai_provider_fallback_success', provider: fallback, operation: context?.operation, requestId: context?.requestId },
+            `${fallback} response received successfully`,
+          );
+          return result;
+        } catch (fallbackErr: any) {
+          logger.error(
+            { event: 'ai_provider_failure', provider: fallback, failureCategory: categorizeError(fallbackErr), requestId: context?.requestId, error: fallbackErr?.message },
+            `${fallback} fallback also failed`,
+          );
+          throw fallbackErr;
         }
       }
-      // For other errors, throw immediately
-      throw error;
+      throw err;
     }
   }
 
-  // Use OpenAI as primary if Gemini is not configured
-  if (hasOpenAI) {
+  // Primary not available, use fallback directly
+  if (fallbackAvailable) {
     try {
-      logger.info({ model: env.OPENAI_MODEL }, 'Using OpenAI as primary AI provider');
-      return await openai.generateContent(prompt, options);
-    } catch (error: any) {
-      logger.error({
-        provider: 'OpenAI',
-        error: error?.message || String(error),
-      }, 'OpenAI primary request failed');
-      throw error;
+      const result = await callProvider(fallback, prompt, options);
+      logger.info(
+        { event: 'ai_provider_success', provider: fallback, operation: context?.operation, requestId: context?.requestId },
+        `${fallback} response received successfully`,
+      );
+      return result;
+    } catch (err: any) {
+      const failureCategory = categorizeError(err);
+      logger.error(
+        { event: 'ai_provider_failure', provider: fallback, failureCategory, requestId: context?.requestId, error: err?.message },
+        `${fallback} primary request failed`,
+      );
+      throw err;
     }
   }
 
@@ -81,3 +136,4 @@ export async function estimateTokens(text: string): Promise<number> {
     return Math.ceil(text.length / 4);
   }
 }
+
