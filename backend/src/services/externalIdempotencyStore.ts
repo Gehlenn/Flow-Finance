@@ -1,92 +1,124 @@
-import fs from 'fs';
-import path from 'path';
+import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app';
+import { Firestore, getFirestore } from 'firebase-admin/firestore';
+import { applyFirestoreSettingsOnce } from './openFinance/bankingConnectionStore';
+import logger from '../config/logger';
 
-type ExternalIdempotencyState = {
-  processed: Record<string, string>;
-};
+const COLLECTION = 'external_idempotency';
+const MAX_DOC_ID_LENGTH = 500;
 
-const STATE_FILE = path.resolve(__dirname, '../../data/external-idempotency.json');
-const EMPTY_STATE: ExternalIdempotencyState = { processed: {} };
-const processedEventStore = new Map<string, string>();
-let loaded = false;
+// In-memory fallback used when Firestore is not configured (local dev / tests)
+const memoryStore = new Map<string, string>();
 
-function ensureStateDirExists(): void {
-  fs.mkdirSync(path.dirname(STATE_FILE), { recursive: true });
+let firestoreInstance: Firestore | null = null;
+let firestoreInitAttempted = false;
+
+function makeDocId(workspaceId: string, externalEventId: string): string {
+  return `${workspaceId}__${externalEventId}`
+    .replace(/\//g, '_')
+    .slice(0, MAX_DOC_ID_LENGTH);
 }
 
-function loadStateFromDisk(): ExternalIdempotencyState {
-  ensureStateDirExists();
+function isFirestoreConfigured(): boolean {
+  return Boolean(
+    (process.env.FIREBASE_PROJECT_ID
+      && process.env.FIREBASE_CLIENT_EMAIL
+      && process.env.FIREBASE_PRIVATE_KEY)
+    || process.env.GOOGLE_APPLICATION_CREDENTIALS,
+  );
+}
 
-  if (!fs.existsSync(STATE_FILE)) {
-    return EMPTY_STATE;
+async function getFirestoreOrNull(): Promise<Firestore | null> {
+  if (firestoreInstance) {
+    return firestoreInstance;
+  }
+
+  if (firestoreInitAttempted) {
+    return null;
+  }
+
+  firestoreInitAttempted = true;
+
+  if (!isFirestoreConfigured()) {
+    return null;
   }
 
   try {
-    const raw = fs.readFileSync(STATE_FILE, 'utf8');
-    if (!raw.trim()) {
-      return EMPTY_STATE;
-    }
+    const existingApp = getApps()[0];
+    const usingServiceAccount = Boolean(
+      process.env.FIREBASE_PROJECT_ID
+      && process.env.FIREBASE_CLIENT_EMAIL
+      && process.env.FIREBASE_PRIVATE_KEY,
+    );
 
-    const parsed = JSON.parse(raw) as Partial<ExternalIdempotencyState>;
-    return {
-      processed: parsed.processed && typeof parsed.processed === 'object'
-        ? parsed.processed
-        : {},
-    };
-  } catch {
-    return EMPTY_STATE;
+    const app = existingApp || initializeApp(
+      usingServiceAccount
+        ? {
+            credential: cert({
+              projectId: String(process.env.FIREBASE_PROJECT_ID),
+              clientEmail: String(process.env.FIREBASE_CLIENT_EMAIL),
+              privateKey: String(process.env.FIREBASE_PRIVATE_KEY).replace(/\\n/g, '\n'),
+            }),
+            projectId: String(process.env.FIREBASE_PROJECT_ID),
+            databaseURL: process.env.FIREBASE_DATABASE_URL,
+          }
+        : {
+            credential: applicationDefault(),
+            projectId: process.env.FIREBASE_PROJECT_ID,
+            databaseURL: process.env.FIREBASE_DATABASE_URL,
+          },
+    );
+
+    const db = getFirestore(app);
+    applyFirestoreSettingsOnce(db);
+    firestoreInstance = db;
+    return db;
+  } catch (error) {
+    logger.error(
+      { error: error instanceof Error ? error.message : error },
+      '[ExternalIdempotency] Failed to initialize Firestore — falling back to memory store',
+    );
+    return null;
   }
 }
 
-function flushStateToDisk(): void {
-  ensureStateDirExists();
+export async function hasProcessedExternalEvent(
+  workspaceId: string,
+  externalEventId: string,
+): Promise<boolean> {
+  const db = await getFirestoreOrNull();
 
-  const state: ExternalIdempotencyState = {
-    processed: Object.fromEntries(processedEventStore),
-  };
+  if (!db) {
+    return memoryStore.has(`${workspaceId}::${externalEventId}`);
+  }
 
-  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), 'utf8');
+  const docId = makeDocId(workspaceId, externalEventId);
+  const snapshot = await db.collection(COLLECTION).doc(docId).get();
+  return snapshot.exists;
 }
 
-function ensureLoaded(): void {
-  if (loaded) {
+export async function markExternalEventProcessed(
+  workspaceId: string,
+  externalEventId: string,
+): Promise<void> {
+  const db = await getFirestoreOrNull();
+  const processedAt = new Date().toISOString();
+
+  if (!db) {
+    memoryStore.set(`${workspaceId}::${externalEventId}`, processedAt);
     return;
   }
 
-  const state = loadStateFromDisk();
-  processedEventStore.clear();
-
-  for (const [key, value] of Object.entries(state.processed)) {
-    processedEventStore.set(key, value);
-  }
-
-  loaded = true;
+  const docId = makeDocId(workspaceId, externalEventId);
+  await db.collection(COLLECTION).doc(docId).set({
+    workspaceId,
+    externalEventId,
+    processedAt,
+  });
 }
 
-function makeKey(workspaceId: string, externalEventId: string): string {
-  return `${workspaceId}::${externalEventId}`;
-}
-
-export function hasProcessedExternalEvent(workspaceId: string, externalEventId: string): boolean {
-  ensureLoaded();
-  return processedEventStore.has(makeKey(workspaceId, externalEventId));
-}
-
-export function markExternalEventProcessed(workspaceId: string, externalEventId: string): void {
-  ensureLoaded();
-  processedEventStore.set(makeKey(workspaceId, externalEventId), new Date().toISOString());
-  flushStateToDisk();
-}
-
+/** Only for use in tests. Clears the in-memory fallback store. */
 export function resetExternalIdempotencyStoreForTests(): void {
-  ensureLoaded();
-  processedEventStore.clear();
-  loaded = false;
-  try {
-    if (fs.existsSync(STATE_FILE)) {
-      fs.rmSync(STATE_FILE, { force: true });
-    }
-  } catch {
-    // no-op for test cleanup
-  }
+  memoryStore.clear();
+  firestoreInstance = null;
+  firestoreInitAttempted = false;
 }

@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
@@ -8,26 +6,28 @@ import {
   resetExternalIdempotencyStoreForTests,
 } from '../../src/services/externalIdempotencyStore';
 
-const stateFile = path.resolve(__dirname, '../../data/external-idempotency.json');
-
 afterEach(() => {
   resetExternalIdempotencyStoreForTests();
-  if (fs.existsSync(stateFile)) {
-    fs.rmSync(stateFile, { force: true });
-  }
 });
 
 describe('external idempotency store', () => {
-  it('treats malformed persisted state as empty instead of throwing', () => {
-    fs.mkdirSync(path.dirname(stateFile), { recursive: true });
-    fs.writeFileSync(stateFile, '{"processed":42}', 'utf8');
-
-    expect(hasProcessedExternalEvent('workspace-1', 'evt-1')).toBe(false);
+  it('returns false for an event that has not been processed', async () => {
+    expect(await hasProcessedExternalEvent('workspace-1', 'evt-unknown')).toBe(false);
   });
 
-  it('persists and detects processed events', () => {
-    markExternalEventProcessed('workspace-1', 'evt-1');
+  it('detects an event after it is marked processed', async () => {
+    await markExternalEventProcessed('workspace-1', 'evt-1');
+    expect(await hasProcessedExternalEvent('workspace-1', 'evt-1')).toBe(true);
+  });
 
-    expect(hasProcessedExternalEvent('workspace-1', 'evt-1')).toBe(true);
+  it('does not leak processed events across workspaces', async () => {
+    await markExternalEventProcessed('workspace-A', 'evt-1');
+    expect(await hasProcessedExternalEvent('workspace-B', 'evt-1')).toBe(false);
+  });
+
+  it('does not leak processed events after reset', async () => {
+    await markExternalEventProcessed('workspace-1', 'evt-2');
+    resetExternalIdempotencyStoreForTests();
+    expect(await hasProcessedExternalEvent('workspace-1', 'evt-2')).toBe(false);
   });
 });

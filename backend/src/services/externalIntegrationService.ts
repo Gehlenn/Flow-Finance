@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+﻿import { randomUUID } from 'crypto';
 import { appendDomainEvent } from './finance/eventStore';
 import { recordAuditEvent } from './admin/auditLog';
 import { getWorkspaceAsync } from './admin/workspaceStore';
@@ -22,7 +22,7 @@ function buildReminderSyncPayload(
     id: event.payload.externalReceivableId,
     title: event.payload.serviceDescription || event.payload.description,
     date: event.payload.dueDate,
-    type: 'Negócio',
+    type: 'Neg├│cio',
     amount: event.payload.outstandingAmount,
     completed: false,
     priority: 'media',
@@ -56,7 +56,7 @@ async function persistTransactionFromPayment(event: PaymentReceivedEvent): Promi
         workspace_id: event.workspaceId,
         amount: event.payload.amount,
         type: 'Receita',
-        category: event.payload.category || 'Trabalho / Consultório',
+        category: event.payload.category || 'Trabalho / Consult├│rio',
         description: event.payload.description,
         date: event.occurredAt,
         source: 'import',
@@ -99,7 +99,7 @@ async function persistTransactionFromExpense(event: ExpenseRecordedEvent): Promi
         workspace_id: event.workspaceId,
         amount: event.payload.amount,
         type: 'Despesa',
-        category: event.payload.category || 'Trabalho / Consultório',
+        category: event.payload.category || 'Trabalho / Consult├│rio',
         description: event.payload.description,
         date: event.occurredAt,
         source: 'import',
@@ -187,7 +187,7 @@ export async function processExternalIntegrationEvent(
     throw new AppError(404, 'Workspace not found for integration event');
   }
 
-  if (hasProcessedExternalEvent(event.workspaceId, event.externalEventId)) {
+  if (await hasProcessedExternalEvent(event.workspaceId, event.externalEventId)) {
     return {
       status: 'duplicate',
       eventType: event.eventType,
@@ -213,7 +213,7 @@ export async function processExternalIntegrationEvent(
     await persistReminderEvent(event);
   }
 
-  markExternalEventProcessed(event.workspaceId, event.externalEventId);
+  await markExternalEventProcessed(event.workspaceId, event.externalEventId);
 
   const operation = event.eventType === 'payment_received'
     ? 'transaction_created'
