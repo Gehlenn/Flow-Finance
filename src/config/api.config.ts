@@ -1,4 +1,4 @@
-import { getEphemeralAccessToken } from '../services/authSessionStore';
+﻿import { getEphemeralAccessToken } from '../services/authSessionStore';
 import { reportError } from './sentry';
 
 /**
@@ -108,6 +108,11 @@ export const API_ENDPOINTS = {
     HEALTH: `${BACKEND_BASE_URL}/api/sync/health`,
     PUSH: `${BACKEND_BASE_URL}/api/sync/push`,
     PULL: `${BACKEND_BASE_URL}/api/sync/pull`,
+  },
+
+  INTEGRATION_KEYS: {
+    ROOT: `${BACKEND_BASE_URL}/api/integrations/keys`,
+    GENERATE: `${BACKEND_BASE_URL}/api/integrations/keys/generate`,
   },
 };
 

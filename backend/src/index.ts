@@ -1,4 +1,4 @@
-import express, { Application, Request, Response, NextFunction } from 'express';
+﻿import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import 'dotenv/config';
@@ -28,6 +28,7 @@ import tenantRoutes from './routes/tenantRoutes';
 import billingRoutes from './routes/billingRoutes';
 import syncRoutes from './routes/sync';
 import externalIntegrationRoutes from './routes/externalIntegration';
+import integrationKeyRoutes from './routes/integrationKeys';
 import clinicIntegrationRoutes from './routes/clinicIntegration';
 import businessIntegrationRoutes from './routes/businessIntegration';
 import { featureGateOpenFinance } from './middleware/featureGate';
@@ -320,6 +321,7 @@ app.use('/api/sync', syncRoutes);
 
 // External integration routes (event contracts from third-party systems)
 app.use('/api/integrations/external', externalIntegrationRoutes);
+app.use('/api/integrations/keys', integrationKeyRoutes);
 
 // Generic business integration routes (lightweight transactions + reminders)
 app.use('/api/integrations', businessIntegrationRoutes);
