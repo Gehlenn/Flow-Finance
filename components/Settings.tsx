@@ -464,21 +464,62 @@ const Settings: React.FC<SettingsProps> = ({
           <details className="group">
             <summary className="text-[8px] font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors list-none flex items-center gap-1">
               <ChevronRight size={10} className="group-open:rotate-90 transition-transform" />
-              Exemplo de payload (n8n / webhook)
+              Como usar — guia rapido
             </summary>
-            <pre className="mt-2 text-[7px] font-mono bg-slate-100 dark:bg-slate-800 p-3 rounded-xl overflow-x-auto text-slate-600 dark:text-slate-300 leading-relaxed">{`{
+            <div className="mt-3 space-y-3">
+              <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 space-y-1.5">
+                <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">1 — Gere a chave acima</p>
+                <p className="text-[8px] text-slate-500 dark:text-slate-400 leading-relaxed">Clique em "Gerar chave". Copie e guarde em local seguro — so aparece uma vez.</p>
+              </div>
+              <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 space-y-1.5">
+                <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">2 — No n8n: nó HTTP Request</p>
+                <p className="text-[8px] text-slate-500 dark:text-slate-400 leading-relaxed">Metodo: POST · URL: seu-backend/api/integrations/external/events</p>
+                <p className="text-[8px] text-slate-500 dark:text-slate-400 leading-relaxed">Header: <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">X-Integration-Key: flw_sua_chave</code></p>
+              </div>
+              <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 space-y-1.5">
+                <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">3 — Categorias aceitas</p>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {(['Pessoal', 'Trabalho / Consultório', 'Negócio', 'Investimento'] as const).map(cat => (
+                    <span key={cat} className="text-[7px] font-mono bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded">{cat}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 space-y-1.5">
+                <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">4 — Tipos de evento</p>
+                <div className="space-y-1">
+                  {[
+                    { type: 'payment_received', label: 'Receita registrada' },
+                    { type: 'expense_recorded', label: 'Despesa registrada' },
+                    { type: 'alert_triggered', label: 'Alerta criado' },
+                    { type: 'receivable_reminder_created', label: 'Lembrete de cobrança' },
+                    { type: 'receivable_reminder_cleared', label: 'Cobrança quitada' },
+                  ].map(({ type, label }) => (
+                    <div key={type} className="flex items-center gap-2">
+                      <code className="text-[7px] font-mono bg-slate-200 dark:bg-slate-700 px-1 rounded text-slate-600 dark:text-slate-300 shrink-0">{type}</code>
+                      <span className="text-[7px] text-slate-400">→ {label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 space-y-1.5">
+                <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">Payload minimo (payment_received)</p>
+                <pre className="text-[7px] font-mono overflow-x-auto text-slate-600 dark:text-slate-300 leading-relaxed">{`{
   "eventType": "payment_received",
   "workspaceId": "SEU_WORKSPACE_ID",
-  "externalEventId": "ID_UNICO_DO_EVENTO",
+  "externalEventId": "ID_UNICO",
   "sourceSystem": "meu-sistema",
+  "occurredAt": "2026-05-04T10:00:00Z",
   "payload": {
-    "paidAt": "2026-05-04T10:00:00Z",
+    "externalCustomerId": "cli-1",
+    "externalReceivableId": "rec-1",
     "amount": 350.00,
     "currency": "BRL",
-    "externalCustomerId": "cliente-123",
+    "category": "Trabalho / Consultório",
     "description": "Consulta - Maria"
   }
 }`}</pre>
+              </div>
+            </div>
           </details>
         </div>
       </div>

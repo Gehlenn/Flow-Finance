@@ -3,7 +3,8 @@ export type ExternalEventType =
   | 'expense_recorded'
   | 'receivable_reminder_created'
   | 'receivable_reminder_updated'
-  | 'receivable_reminder_cleared';
+  | 'receivable_reminder_cleared'
+  | 'alert_triggered';
 
 export interface ExternalBaseEvent<TType extends ExternalEventType, TPayload> {
   eventType: TType;
@@ -63,12 +64,25 @@ export type ReceivableReminderCreatedEvent = ExternalBaseEvent<'receivable_remin
 export type ReceivableReminderUpdatedEvent = ExternalBaseEvent<'receivable_reminder_updated', ReceivableReminderPayload>;
 export type ReceivableReminderClearedEvent = ExternalBaseEvent<'receivable_reminder_cleared', ReceivableReminderClearedPayload>;
 
+export type AppCategory = 'Pessoal' | 'Trabalho / Consultório' | 'Negócio' | 'Investimento';
+
+export interface AlertTriggeredPayload {
+  category: AppCategory | 'Geral';
+  description: string;
+  amount?: number;
+  currency?: 'BRL';
+  notes?: string;
+}
+
+export type AlertTriggeredEvent = ExternalBaseEvent<'alert_triggered', AlertTriggeredPayload>;
+
 export type ExternalIntegrationEvent =
   | PaymentReceivedEvent
   | ExpenseRecordedEvent
   | ReceivableReminderCreatedEvent
   | ReceivableReminderUpdatedEvent
-  | ReceivableReminderClearedEvent;
+  | ReceivableReminderClearedEvent
+  | AlertTriggeredEvent;
 
 export interface ExternalIntegrationResult {
   status: 'applied' | 'duplicate';

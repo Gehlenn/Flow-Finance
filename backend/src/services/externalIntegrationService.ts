@@ -11,6 +11,7 @@ import {
   ReceivableReminderCreatedEvent,
   ReceivableReminderUpdatedEvent,
   ReceivableReminderClearedEvent,
+  AlertTriggeredEvent,
 } from '../types/externalIntegration';
 import { hasProcessedExternalEvent, markExternalEventProcessed } from './externalIdempotencyStore';
 import { AppError } from '../middleware/errorHandler';
@@ -56,7 +57,7 @@ async function persistTransactionFromPayment(event: PaymentReceivedEvent): Promi
         workspace_id: event.workspaceId,
         amount: event.payload.amount,
         type: 'Receita',
-        category: event.payload.category || 'Trabalho / Consult├│rio',
+        category: event.payload.category ?? 'Trabalho / Consultório',
         description: event.payload.description,
         date: event.occurredAt,
         source: 'import',
@@ -99,7 +100,7 @@ async function persistTransactionFromExpense(event: ExpenseRecordedEvent): Promi
         workspace_id: event.workspaceId,
         amount: event.payload.amount,
         type: 'Despesa',
-        category: event.payload.category || 'Trabalho / Consult├│rio',
+        category: event.payload.category ?? 'Trabalho / Consultório',
         description: event.payload.description,
         date: event.occurredAt,
         source: 'import',
@@ -179,6 +180,47 @@ async function persistReminderEvent(
   });
 }
 
+async function persistAlertAsReminder(event: AlertTriggeredEvent): Promise<void> {
+  const integrationUserId = toIntegrationUserId(event.sourceSystem);
+  const reminderId = randomUUID();
+
+  await pushSyncItems(
+    event.workspaceId,
+    'reminders',
+    [{
+      id: reminderId,
+      updatedAt: event.occurredAt,
+      payload: {
+        id: reminderId,
+        title: event.payload.description,
+        date: event.occurredAt,
+        type: 'Negócio',
+        amount: event.payload.amount,
+        completed: false,
+        source: event.sourceSystem,
+        external_event_id: event.externalEventId,
+        notes: event.payload.notes,
+        category: event.payload.category,
+      },
+    }],
+    { userId: integrationUserId, workspaceId: event.workspaceId },
+  );
+
+  await appendDomainEvent({
+    workspaceId: event.workspaceId,
+    type: 'external.alert_triggered',
+    aggregateId: event.externalEventId,
+    aggregateType: 'alert',
+    userId: integrationUserId,
+    payload: {
+      externalEventId: event.externalEventId,
+      sourceSystem: event.sourceSystem,
+      ...event.payload,
+    },
+    occurredAt: event.occurredAt,
+  });
+}
+
 export async function processExternalIntegrationEvent(
   event: ExternalIntegrationEvent,
 ): Promise<ExternalIntegrationResult> {
@@ -197,6 +239,8 @@ export async function processExternalIntegrationEvent(
         ? 'transaction_created'
         : event.eventType === 'expense_recorded'
           ? 'transaction_created'
+          : event.eventType === 'alert_triggered'
+          ? 'reminder_created'
           : event.eventType === 'receivable_reminder_cleared'
             ? 'reminder_cleared'
             : event.eventType === 'receivable_reminder_updated'
@@ -209,6 +253,8 @@ export async function processExternalIntegrationEvent(
     await persistTransactionFromPayment(event);
   } else if (event.eventType === 'expense_recorded') {
     await persistTransactionFromExpense(event);
+  } else if (event.eventType === 'alert_triggered') {
+    await persistAlertAsReminder(event);
   } else {
     await persistReminderEvent(event);
   }
@@ -219,7 +265,9 @@ export async function processExternalIntegrationEvent(
     ? 'transaction_created'
     : event.eventType === 'expense_recorded'
       ? 'transaction_created'
-      : event.eventType === 'receivable_reminder_cleared'
+      : event.eventType === 'alert_triggered'
+        ? 'reminder_created'
+        : event.eventType === 'receivable_reminder_cleared'
         ? 'reminder_cleared'
         : event.eventType === 'receivable_reminder_updated'
           ? 'reminder_updated'

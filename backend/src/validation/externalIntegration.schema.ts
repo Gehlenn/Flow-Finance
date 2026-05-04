@@ -12,7 +12,7 @@ const paymentPayloadSchema = z.object({
   externalReceivableId: z.string().min(2).max(128),
   amount: z.number().positive().max(1_000_000_000),
   currency: z.literal('BRL'),
-  category: z.string().min(2).max(64).optional(),
+  category: z.enum(['Pessoal', 'Trabalho / Consultório', 'Negócio', 'Investimento']).optional(),
   description: z.string().min(3).max(280),
   notes: z.string().min(1).max(1000).optional(),
 }).strict();
@@ -21,7 +21,7 @@ const expensePayloadSchema = z.object({
   externalExpenseId: z.string().min(2).max(128),
   amount: z.number().positive().max(1_000_000_000),
   currency: z.literal('BRL'),
-  category: z.string().min(2).max(64).optional(),
+  category: z.enum(['Pessoal', 'Trabalho / Consultório', 'Negócio', 'Investimento']).optional(),
   description: z.string().min(3).max(280),
   vendor: z.string().min(1).max(280).optional(),
   notes: z.string().min(1).max(1000).optional(),
@@ -50,6 +50,14 @@ const reminderClearedPayloadSchema = z.object({
   reason: z.enum(['paid', 'cancelled', 'written_off']),
 }).strict();
 
+const alertTriggeredPayloadSchema = z.object({
+  category: z.enum(['Pessoal', 'Trabalho / Consultório', 'Negócio', 'Investimento', 'Geral']).default('Geral'),
+  description: z.string().min(3).max(280),
+  amount: z.number().positive().max(1_000_000_000).optional(),
+  currency: z.literal('BRL').optional(),
+  notes: z.string().min(1).max(1000).optional(),
+}).strict();
+
 export const ExternalIntegrationEventSchema = z.discriminatedUnion('eventType', [
   z.object({
     eventType: z.literal('payment_received'),
@@ -75,6 +83,11 @@ export const ExternalIntegrationEventSchema = z.discriminatedUnion('eventType', 
     eventType: z.literal('receivable_reminder_cleared'),
     ...baseEventSchema,
     payload: reminderClearedPayloadSchema,
+  }).strict(),
+  z.object({
+    eventType: z.literal('alert_triggered'),
+    ...baseEventSchema,
+    payload: alertTriggeredPayloadSchema,
   }).strict(),
 ]);
 
