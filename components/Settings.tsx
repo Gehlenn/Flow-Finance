@@ -76,6 +76,8 @@ const Settings: React.FC<SettingsProps> = ({
   const [integrationKeyGenerated, setIntegrationKeyGenerated] = useState<string | null>(null);
   const [integrationKeyError, setIntegrationKeyError] = useState<string | null>(null);
   const [integrationKeyCopied, setIntegrationKeyCopied] = useState(false);
+  const [integrationPayloadCopied, setIntegrationPayloadCopied] = useState(false);
+  const [integrationCurlCopied, setIntegrationCurlCopied] = useState(false);
   const integrationKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -144,6 +146,34 @@ const Settings: React.FC<SettingsProps> = ({
     void navigator.clipboard.writeText(key);
     setIntegrationKeyCopied(true);
     setTimeout(() => setIntegrationKeyCopied(false), 2000);
+  };
+
+  const handleCopyPayload = () => {
+    const payload = JSON.stringify({
+      eventType: 'payment_received',
+      workspaceId: 'SEU_WORKSPACE_ID',
+      externalEventId: 'ID_UNICO',
+      sourceSystem: 'meu-sistema',
+      occurredAt: new Date().toISOString(),
+      payload: {
+        externalCustomerId: 'cli-1',
+        externalReceivableId: 'rec-1',
+        amount: 350.00,
+        currency: 'BRL',
+        category: 'Trabalho / Consultório',
+        description: 'Consulta - Maria',
+      },
+    }, null, 2);
+    void navigator.clipboard.writeText(payload);
+    setIntegrationPayloadCopied(true);
+    setTimeout(() => setIntegrationPayloadCopied(false), 2000);
+  };
+
+  const handleCopyCurl = () => {
+    const curlCmd = `curl -X POST https://SEU_BACKEND.vercel.app/api/integrations/external/events \\\n  -H "Content-Type: application/json" \\\n  -H "X-Integration-Key: ${integrationKeyRef.current ?? 'flw_sua_chave'}" \\\n  -d '{"eventType":"payment_received","workspaceId":"SEU_WORKSPACE_ID","externalEventId":"teste-1","sourceSystem":"curl","occurredAt":"${new Date().toISOString()}","payload":{"externalCustomerId":"cli-1","externalReceivableId":"rec-1","amount":100,"currency":"BRL","category":"Trabalho / Consultório","description":"Teste"}}'`;
+    void navigator.clipboard.writeText(curlCmd);
+    setIntegrationCurlCopied(true);
+    setTimeout(() => setIntegrationCurlCopied(false), 2000);
   };
 
   const handleThemeChange = (nextTheme: 'light' | 'dark') => {
@@ -502,7 +532,16 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
               </div>
               <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 space-y-1.5">
-                <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">Payload minimo (payment_received)</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">Payload minimo (payment_received)</p>
+                  <button
+                    onClick={handleCopyPayload}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 transition-colors text-[7px] font-bold"
+                  >
+                    {integrationPayloadCopied ? <CheckCircle2 size={10} /> : <Copy size={10} />}
+                    {integrationPayloadCopied ? 'Copiado!' : 'Copiar'}
+                  </button>
+                </div>
                 <pre className="text-[7px] font-mono overflow-x-auto text-slate-600 dark:text-slate-300 leading-relaxed">{`{
   "eventType": "payment_received",
   "workspaceId": "SEU_WORKSPACE_ID",
@@ -518,6 +557,21 @@ const Settings: React.FC<SettingsProps> = ({
     "description": "Consulta - Maria"
   }
 }`}</pre>
+              </div>
+              <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">Testar via curl</p>
+                  <button
+                    onClick={handleCopyCurl}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 transition-colors text-[7px] font-bold"
+                  >
+                    {integrationCurlCopied ? <CheckCircle2 size={10} /> : <Copy size={10} />}
+                    {integrationCurlCopied ? 'Copiado!' : 'Copiar curl'}
+                  </button>
+                </div>
+                <pre className="text-[7px] font-mono overflow-x-auto text-slate-500 dark:text-slate-400 leading-relaxed">{`curl -X POST https://SEU_BACKEND.vercel.app/api/integrations/external/events \
+  -H "Content-Type: application/json" \
+  -H "X-Integration-Key: flw_sua_chave"`}</pre>
               </div>
             </div>
           </details>
