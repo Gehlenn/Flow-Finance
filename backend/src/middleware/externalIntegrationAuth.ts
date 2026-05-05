@@ -203,5 +203,7 @@ export async function externalIntegrationAuth(
     return;
   }
 
+  // CR-01: bind the verified workspaceId so downstream cannot be spoofed via body
+  (req as Request & { verifiedWorkspaceId: string }).verifiedWorkspaceId = workspaceId;
   next();
 }

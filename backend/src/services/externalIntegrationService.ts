@@ -23,7 +23,7 @@ function buildReminderSyncPayload(
     id: event.payload.externalReceivableId,
     title: event.payload.serviceDescription || event.payload.description,
     date: event.payload.dueDate,
-    type: 'Neg├│cio',
+    type: 'Negócio',
     amount: event.payload.outstandingAmount,
     completed: false,
     priority: 'media',

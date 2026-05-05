@@ -170,8 +170,14 @@ const Settings: React.FC<SettingsProps> = ({
   };
 
   const handleCopyCurl = () => {
-    const curlCmd = `curl -X POST https://SEU_BACKEND.vercel.app/api/integrations/external/events \\\n  -H "Content-Type: application/json" \\\n  -H "X-Integration-Key: ${integrationKeyRef.current ?? 'flw_sua_chave'}" \\\n  -d '{"eventType":"payment_received","workspaceId":"SEU_WORKSPACE_ID","externalEventId":"teste-1","sourceSystem":"curl","occurredAt":"${new Date().toISOString()}","payload":{"externalCustomerId":"cli-1","externalReceivableId":"rec-1","amount":100,"currency":"BRL","category":"Trabalho / Consultório","description":"Teste"}}'`;
-    void navigator.clipboard.writeText(curlCmd);
+    const keyValue = integrationKeyRef.current ?? integrationKeyGenerated ?? 'flw_sua_chave';
+    const parts = [
+      'curl -X POST https://SEU_BACKEND.vercel.app/api/integrations/external/events',
+      '  -H "Content-Type: application/json"',
+      `  -H "X-Integration-Key: ${keyValue}"`,
+      `  -d '{"eventType":"payment_received","workspaceId":"SEU_WORKSPACE_ID","externalEventId":"teste-1","sourceSystem":"curl","occurredAt":"${new Date().toISOString()}","payload":{"externalCustomerId":"cli-1","externalReceivableId":"rec-1","amount":100,"currency":"BRL","category":"Pessoal","description":"Teste"}}'`,
+    ];
+    void navigator.clipboard.writeText(parts.join(' \\\n'));
     setIntegrationCurlCopied(true);
     setTimeout(() => setIntegrationCurlCopied(false), 2000);
   };
@@ -560,7 +566,12 @@ const Settings: React.FC<SettingsProps> = ({
               </div>
               <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">Testar via curl</p>
+                  <div>
+                    <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">Testar via curl</p>
+                    {!integrationKeyRef.current && !integrationKeyGenerated && (
+                      <p className="text-[7px] text-amber-500 mt-0.5">Gere a chave acima para copiar com valor real</p>
+                    )}
+                  </div>
                   <button
                     onClick={handleCopyCurl}
                     className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 transition-colors text-[7px] font-bold"

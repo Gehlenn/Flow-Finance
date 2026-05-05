@@ -1,10 +1,14 @@
 import { z } from 'zod';
 
 const baseEventSchema = {
-  externalEventId: z.string().min(3).max(128),
-  sourceSystem: z.string().min(2).max(64),
+  externalEventId: z.string().min(3).max(256),
+  sourceSystem: z.string().min(2).max(64).regex(/^[a-zA-Z0-9_\-\.]+$/, 'sourceSystem deve conter apenas letras, numeros, hifens, pontos ou underscores'),
   workspaceId: z.string().min(2).max(128),
-  occurredAt: z.string().datetime(),
+  occurredAt: z.string().datetime().refine(val => {
+    const d = new Date(val).getTime();
+    const now = Date.now();
+    return d > now - 365 * 24 * 3600 * 1000 && d < now + 7 * 24 * 3600 * 1000;
+  }, 'occurredAt fora do intervalo permitido (max 1 ano atras, max 7 dias no futuro)'),
 };
 
 const paymentPayloadSchema = z.object({

@@ -88,6 +88,7 @@ export async function hasProcessedExternalEvent(
   const db = await getFirestoreOrNull();
 
   if (!db) {
+    logger.warn('[ExternalIdempotency] Firestore unavailable — using in-memory fallback. Duplicate detection will NOT survive restarts.');
     return memoryStore.has(`${workspaceId}::${externalEventId}`);
   }
 
@@ -104,6 +105,7 @@ export async function markExternalEventProcessed(
   const processedAt = new Date().toISOString();
 
   if (!db) {
+    logger.warn('[ExternalIdempotency] Firestore unavailable — marking event in-memory only. Events may be reprocessed after restart.');
     memoryStore.set(`${workspaceId}::${externalEventId}`, processedAt);
     return;
   }
