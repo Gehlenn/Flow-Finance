@@ -96,12 +96,9 @@ export class PredictionEngine {
     historicalData: TransactionHistory,
     days: number = this.config.defaultPredictionDays
   ): Promise<CashFlowPrediction> {
-    const startTime = Date.now();
-    
     // Check cache first
     const cached = this.getCachedPrediction(userId);
     if (cached) {
-      console.log(`[PredictionEngine] Cache hit for user ${userId}`);
       return cached;
     }
 
@@ -154,9 +151,6 @@ export class PredictionEngine {
 
     // Cache the prediction
     this.cachePrediction(userId, prediction);
-
-    const calcTime = Date.now() - startTime;
-    console.log(`[PredictionEngine] Generated prediction for ${userId} in ${calcTime}ms`);
 
     return prediction;
   }
@@ -636,7 +630,6 @@ export class PredictionEngine {
     expiresAt.setMinutes(expiresAt.getMinutes() + this.config.cacheDurationMinutes);
     
     this.cache.set(userId, { prediction, expiresAt });
-    console.log(`[PredictionEngine] Cached prediction for ${userId}, expires at ${expiresAt.toISOString()}`);
   }
 
   /**
@@ -645,10 +638,8 @@ export class PredictionEngine {
   clearCache(userId?: string): void {
     if (userId) {
       this.cache.delete(userId);
-      console.log(`[PredictionEngine] Cleared cache for ${userId}`);
     } else {
       this.cache.clear();
-      console.log('[PredictionEngine] Cleared all cache');
     }
   }
 }

@@ -57,6 +57,18 @@ export function safeJsonParse<T = any>(
 }
 
 /**
+ * Safely parse a pagination `limit` query parameter.
+ * Rejects non-numeric, negative, zero, Infinity, and NaN values.
+ * Clamps the result to [1, max].
+ */
+export function parseSafeLimit(value: unknown, defaultVal: number, max = 500): number {
+  if (typeof value !== 'string' || value.trim() === '') return defaultVal;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return defaultVal;
+  return Math.min(parsed, max);
+}
+
+/**
  * Validate that AI response contains expected fields
  */
 export function validateAIResponse(

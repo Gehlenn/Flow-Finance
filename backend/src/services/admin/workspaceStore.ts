@@ -602,6 +602,28 @@ export function updateWorkspaceBilling(
 
   return updatedWorkspace;
 }
+/**
+ * Async variant of updateWorkspaceBilling.
+ * When Postgres is enabled it reads the workspace from the DB instead of
+ * relying on the in-memory cache — safe for serverless cold starts.
+ */
+export async function updateWorkspaceBillingAsync(
+  workspaceId: string,
+  input: {
+    plan?: WorkspacePlan;
+    billingEmail?: string;
+    billingCustomerId?: string;
+    subscription?: WorkspaceSubscription;
+  },
+): Promise<Workspace | undefined> {
+  if (isPostgresStateStoreEnabled()) {
+    const workspace = await queryWorkspaceById(workspaceId);
+    if (!workspace) return undefined;
+    // Write through the sync path so Postgres persistence is triggered.
+    return updateWorkspaceBilling(workspaceId, input);
+  }
+  return updateWorkspaceBilling(workspaceId, input);
+}
 
 export function getWorkspaceEntitlements(workspaceId: string): WorkspaceEntitlements | undefined {
   return getWorkspace(workspaceId)?.entitlements;

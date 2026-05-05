@@ -21,9 +21,9 @@ export function featureGate(
 ): (req: Request, _res: Response, next: NextFunction) => void {
   return (req: Request, _res: Response, next: NextFunction): void => {
     const context: FeatureFlagContext = {
-      userId: (req as any).userId,
-      workspaceId: (req as any).workspaceId,
-      plan: (req as any).userPlan,
+      userId: req.userId,
+      workspaceId: req.workspaceId,
+      plan: req.workspace?.plan,
       environment: (process.env.NODE_ENV === 'production' ? 'production' : process.env.NODE_ENV === 'staging' ? 'staging' : 'development'),
     };
 
@@ -42,7 +42,7 @@ export function featureGate(
 
       logger.warn(`Feature gate blocked: ${feature}`, {
         feature,
-        userId: (req as any).userId,
+        userId: req.userId,
         statusCode,
       });
 

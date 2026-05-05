@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth';
+import { parseSafeLimit } from '../utils/jsonHelpers';
 import { validate } from '../middleware/validate';
 import {
   BillingHookSchema,
@@ -177,7 +178,7 @@ router.get('/metering', asyncHandler(async (req: Request, res: Response) => {
 
   const eventFilters = {
     ...filters,
-    limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : 100,
+    limit: parseSafeLimit(req.query.limit, 100),
   };
 
   res.json({

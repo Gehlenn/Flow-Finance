@@ -100,7 +100,7 @@ const predictionEngine = new PredictionEngine();
  */
 router.get('/cash-flow', authMiddleware, async (req, res): Promise<any> => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.userId;
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -226,7 +226,7 @@ router.get('/cash-flow', authMiddleware, async (req, res): Promise<any> => {
  */
 router.get('/shortfall-risk', authMiddleware, async (req, res): Promise<any> => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.userId;
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -290,7 +290,7 @@ router.get('/shortfall-risk', authMiddleware, async (req, res): Promise<any> => 
  */
 router.get('/seasonality', authMiddleware, async (req, res): Promise<any> => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.userId;
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -344,7 +344,7 @@ router.get('/seasonality', authMiddleware, async (req, res): Promise<any> => {
  */
 router.post('/refresh', authMiddleware, async (req, res): Promise<any> => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.userId;
     if (!userId) {
       return res.status(401).json({
         success: false,

@@ -50,6 +50,19 @@ const shouldStartHttpServer =
   process.env.NODE_ENV !== 'test' &&
   process.env.VITEST !== 'true';
 
+// In serverless (Vercel) the HTTP server is not started but the app is still
+// exported as a handler. Eagerly hydrate the workspace store so the in-memory
+// cache is populated before the first request arrives on a cold start.
+if (process.env.VERCEL === '1') {
+  void Promise.all([
+    initializeWorkspaceStorePersistence(),
+    initializeAuditLogPersistence(),
+    initializeSaasStorePersistence(),
+  ]).catch((error) => {
+    logger.error({ error }, 'Failed to initialize persistence on serverless cold start');
+  });
+}
+
 function getRequestContext(req: Request): { requestId?: string; routeScope?: string } {
   const contextReq = req as Request & { requestId?: string; routeScope?: string };
   return {

@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { AppError } from '../shared/AppError';
 import { Workspace, WorkspacePlan, WorkspaceSubscription } from '../types';
-import { getWorkspaceAsync, updateWorkspaceBilling } from '../services/admin/workspaceStore';
+import { getWorkspaceAsync, updateWorkspaceBillingAsync } from '../services/admin/workspaceStore';
 import { recordAuditEvent } from '../services/admin/auditLog';
 
 function makeRenewalDate(plan: WorkspacePlan): string {
@@ -32,7 +32,7 @@ export class BillingService {
       renewsAt: makeRenewalDate(input.plan),
     };
 
-    const updated = updateWorkspaceBilling(input.workspaceId, {
+    const updated = await updateWorkspaceBillingAsync(input.workspaceId, {
       plan: input.plan,
       billingEmail: input.billingEmail,
       billingCustomerId: workspace.billingCustomerId || `cust_${workspace.workspaceId}`,
@@ -65,11 +65,7 @@ export class BillingService {
       throw new AppError(404, 'Workspace not found');
     }
 
-    const generatedAt = new Date().toISOString();
-    return {
-      url: `https://exports.flow-finance.local/workspaces/${workspace.workspaceId}/export-${generatedAt}.json`,
-      generatedAt,
-    };
+    throw new AppError(501, 'Data export is not yet implemented. This feature is coming soon.');
   }
 
   async syncProviderSubscription(input: {
@@ -106,7 +102,7 @@ export class BillingService {
       updatedAt: new Date().toISOString(),
     };
 
-    const updated = updateWorkspaceBilling(input.workspaceId, {
+    const updated = await updateWorkspaceBillingAsync(input.workspaceId, {
       plan: input.plan,
       billingEmail: input.billingEmail,
       billingCustomerId: input.billingCustomerId,
