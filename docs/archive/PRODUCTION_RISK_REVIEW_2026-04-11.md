@@ -174,6 +174,6 @@ Este material e uma fotografia tecnica do risco em 2026-04-11. Ele deve ser lido
 
 Para o estado atual, usar em conjunto:
 
-- [docs/DEPLOYMENT_STATUS.md](E:\app e jogos criados\Flow-Finance\docs\DEPLOYMENT_STATUS.md)
-- [docs/VERCEL_CONFIG.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_CONFIG.md)
-- [docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](E:\app e jogos criados\Flow-Finance\docs\EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)
+- [docs/DEPLOYMENT_STATUS.md](docs/DEPLOYMENT_STATUS.md)
+- [docs/VERCEL_CONFIG.md](docs/VERCEL_CONFIG.md)
+- [docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)

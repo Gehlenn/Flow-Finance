@@ -111,7 +111,7 @@ Validar:
 
 ## Referencias
 
-- [backend/src/routes/clinicIntegration.ts](E:\app e jogos criados\Flow-Finance\backend\src\routes\clinicIntegration.ts)
-- [backend/src/controllers/clinicController.ts](E:\app e jogos criados\Flow-Finance\backend\src\controllers\clinicController.ts)
-- [backend/src/middleware/externalIntegrationAuth.ts](E:\app e jogos criados\Flow-Finance\backend\src\middleware\externalIntegrationAuth.ts)
+- [backend/src/routes/clinicIntegration.ts](../backend/src/routes/clinicIntegration.ts)
+- [backend/src/controllers/clinicController.ts](../backend/src/controllers/clinicController.ts)
+- [backend/src/middleware/externalIntegrationAuth.ts](../backend/src/middleware/externalIntegrationAuth.ts)
 - [OPERACAO_FLAGS_KILL_SWITCHES_ALERTAS.md](./OPERACAO_FLAGS_KILL_SWITCHES_ALERTAS.md)

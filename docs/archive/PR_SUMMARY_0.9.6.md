@@ -57,6 +57,6 @@ Este documento continua útil como evidência de escopo e intenção de uma PR e
 
 ## Referências atuais
 
-- [docs/archive/UI_SIMPLIFICACAO_CICLO_1.md](E:\app e jogos criados\Flow-Finance\docs\archive\UI_SIMPLIFICACAO_CICLO_1.md)
-- [README.md](E:\app e jogos criados\Flow-Finance\README.md)
-- [docs/ROADMAP.md](E:\app e jogos criados\Flow-Finance\docs\ROADMAP.md)
+- [docs/archive/UI_SIMPLIFICACAO_CICLO_1.md](docs/archive/UI_SIMPLIFICACAO_CICLO_1.md)
+- [README.md](../../README.md)
+- [docs/ROADMAP.md](docs/ROADMAP.md)

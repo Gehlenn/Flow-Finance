@@ -99,7 +99,7 @@ Este documento deve ser interpretado assim:
 
 ## Referências atuais
 
-- [README.md](E:\app e jogos criados\Flow-Finance\README.md)
-- [docs/ROADMAP.md](E:\app e jogos criados\Flow-Finance\docs\ROADMAP.md)
-- [docs/archive/CODE_REALITY_MATRIX_v0.6_to_v0.9_2026-04-11.md](E:\app e jogos criados\Flow-Finance\docs\archive\CODE_REALITY_MATRIX_v0.6_to_v0.9_2026-04-11.md)
-- [docs/archive/CHECKLIST_EXECUCAO_PRIORIZADA_v0.7_v0.9_2026-04-11.md](E:\app e jogos criados\Flow-Finance\docs\archive\CHECKLIST_EXECUCAO_PRIORIZADA_v0.7_v0.9_2026-04-11.md)
+- [README.md](../../README.md)
+- [docs/ROADMAP.md](docs/ROADMAP.md)
+- [docs/archive/CODE_REALITY_MATRIX_v0.6_to_v0.9_2026-04-11.md](docs/archive/CODE_REALITY_MATRIX_v0.6_to_v0.9_2026-04-11.md)
+- [docs/archive/CHECKLIST_EXECUCAO_PRIORIZADA_v0.7_v0.9_2026-04-11.md](docs/archive/CHECKLIST_EXECUCAO_PRIORIZADA_v0.7_v0.9_2026-04-11.md)

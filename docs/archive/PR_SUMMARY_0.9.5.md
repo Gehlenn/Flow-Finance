@@ -53,6 +53,6 @@ Este arquivo continua útil como registro histórico de hardening, mas não subs
 
 ## Referências atuais
 
-- [docs/CHANGELOG.md](E:\app e jogos criados\Flow-Finance\docs\CHANGELOG.md)
-- [docs/ROADMAP.md](E:\app e jogos criados\Flow-Finance\docs\ROADMAP.md)
-- [README.md](E:\app e jogos criados\Flow-Finance\README.md)
+- [docs/CHANGELOG.md](docs/CHANGELOG.md)
+- [docs/ROADMAP.md](docs/ROADMAP.md)
+- [README.md](../../README.md)

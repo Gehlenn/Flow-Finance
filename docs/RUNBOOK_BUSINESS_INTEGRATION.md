@@ -109,4 +109,4 @@ curl -X POST "https://SEU_HOST/api/integrations/transactions" \
 ## Referencias
 
 - [OPENAPI_MULTI_TENANT.yaml](./OPENAPI_MULTI_TENANT.yaml)
-- [backend/src/docs/openapi.ts](E:\app e jogos criados\Flow-Finance\backend\src\docs\openapi.ts)
+- [backend/src/docs/openapi.ts](../backend/src/docs/openapi.ts)

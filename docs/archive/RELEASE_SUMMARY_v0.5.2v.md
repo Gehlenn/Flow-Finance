@@ -44,6 +44,6 @@ Este documento não representa o estado atual do projeto. Ele deve ser lido como
 
 ## Referências atuais
 
-- [README.md](E:\app e jogos criados\Flow-Finance\README.md)
-- [docs/ROADMAP.md](E:\app e jogos criados\Flow-Finance\docs\ROADMAP.md)
-- [docs/CHANGELOG.md](E:\app e jogos criados\Flow-Finance\docs\CHANGELOG.md)
+- [README.md](../../README.md)
+- [docs/ROADMAP.md](docs/ROADMAP.md)
+- [docs/CHANGELOG.md](docs/CHANGELOG.md)
