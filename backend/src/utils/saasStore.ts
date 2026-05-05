@@ -211,14 +211,15 @@ function loadState(): SaasStoreState {
   return stateCache;
 }
 
-function persistState(state: SaasStoreState): void {
+async function persistState(state: SaasStoreState): Promise<void> {
   stateCache = cloneState(state);
   if (!areLegacyStateBlobsDisabled()) {
     const filePath = getStoreFilePath();
     ensureStoreDirExists(filePath);
     fs.writeFileSync(filePath, JSON.stringify(state, null, 2), 'utf8');
   }
-  void saveWorkspaceSaasState({
+  // Postgres is the source of truth for billing — this write is blocking and must succeed.
+  await saveWorkspaceSaasState({
     usageByWorkspace: state.usageByWorkspace,
     usageEventsByWorkspace: state.usageEventsByWorkspace,
     billingHooksByWorkspace: Object.fromEntries(
@@ -237,12 +238,11 @@ function persistState(state: SaasStoreState): void {
         })),
       ]),
     ),
-  }).catch((error) => {
-    logger.warn({ error }, 'Failed to persist normalized SaaS store to Postgres');
   });
+  // Legacy JSON blob — best-effort backup only, not source of truth.
   if (!areLegacyStateBlobsDisabled()) {
     void saveJsonState(POSTGRES_STATE_KEY, state as unknown as Record<string, unknown>).catch((error) => {
-      logger.warn({ error }, 'Failed to persist SaaS store to Postgres');
+      logger.warn({ error }, 'Failed to persist legacy SaaS blob to Postgres');
     });
   }
 }
@@ -298,9 +298,9 @@ export function getUserPlan(userId: string): PlanId {
   return loadState().userPlans[userId] || 'free';
 }
 
-export function setUserPlan(userId: string, plan: PlanId): void {
+export async function setUserPlan(userId: string, plan: PlanId): Promise<void> {
   const state = loadState();
-  persistState({
+  await persistState({
     ...state,
     userPlans: {
       ...state.userPlans,
@@ -333,9 +333,9 @@ export function getUserUsage(userId: string): Record<string, UsageSnapshot> {
   );
 }
 
-export function setUserUsage(userId: string, usage: Record<string, UsageSnapshot>): void {
+export async function setUserUsage(userId: string, usage: Record<string, UsageSnapshot>): Promise<void> {
   const state = loadState();
-  persistState({
+  await persistState({
     ...state,
     usageByUser: setScopedUsage(state.usageByUser, userId, usage),
   });
@@ -351,9 +351,9 @@ export function getWorkspaceUsage(workspaceId: string): Record<string, UsageSnap
   );
 }
 
-export function setWorkspaceUsage(workspaceId: string, usage: Record<string, UsageSnapshot>): void {
+export async function setWorkspaceUsage(workspaceId: string, usage: Record<string, UsageSnapshot>): Promise<void> {
   const state = loadState();
-  persistState({
+  await persistState({
     ...state,
     usageByWorkspace: setScopedUsage(state.usageByWorkspace, workspaceId, usage),
   });
@@ -367,11 +367,11 @@ export function getWorkspaceMonthlyCount(workspaceId: string, resource: Resource
   return getMonthlyUsage(loadState().usageByWorkspace, workspaceId, currentMonthKey())[resource];
 }
 
-export function incrementMonthlyUsage(userId: string, resource: ResourceKind, amount = 1): number {
+export async function incrementMonthlyUsage(userId: string, resource: ResourceKind, amount = 1): Promise<number> {
   const state = loadState();
   const { nextUsageByScope, total } = incrementScopedUsage(state.usageByUser, userId, resource, amount);
 
-  persistState({
+  await persistState({
     ...state,
     usageByUser: nextUsageByScope,
   });
@@ -379,7 +379,7 @@ export function incrementMonthlyUsage(userId: string, resource: ResourceKind, am
   return total;
 }
 
-export function incrementWorkspaceMonthlyUsage(workspaceId: string, resource: ResourceKind, amount = 1): number {
+export async function incrementWorkspaceMonthlyUsage(workspaceId: string, resource: ResourceKind, amount = 1): Promise<number> {
   const state = loadState();
   const { nextUsageByScope, total } = incrementScopedUsage(state.usageByWorkspace, workspaceId, resource, amount);
   const event: WorkspaceUsageEvent = {
@@ -390,7 +390,7 @@ export function incrementWorkspaceMonthlyUsage(workspaceId: string, resource: Re
     at: new Date().toISOString(),
   };
 
-  persistState({
+  await persistState({
     ...state,
     usageByWorkspace: nextUsageByScope,
     usageEventsByWorkspace: {
@@ -402,7 +402,7 @@ export function incrementWorkspaceMonthlyUsage(workspaceId: string, resource: Re
   return total;
 }
 
-export function recordWorkspaceUsage(
+export async function recordWorkspaceUsage(
   workspaceId: string,
   params: {
     resource: ResourceKind;
@@ -411,7 +411,7 @@ export function recordWorkspaceUsage(
     at?: string;
     metadata?: Record<string, unknown>;
   },
-): number {
+): Promise<number> {
   const amount = params.amount ?? 1;
   const state = loadState();
   const { nextUsageByScope, total } = incrementScopedUsage(state.usageByWorkspace, workspaceId, params.resource, amount);
@@ -425,7 +425,7 @@ export function recordWorkspaceUsage(
     metadata: params.metadata,
   };
 
-  persistState({
+  await persistState({
     ...state,
     usageByWorkspace: nextUsageByScope,
     usageEventsByWorkspace: {
@@ -437,7 +437,7 @@ export function recordWorkspaceUsage(
   return total;
 }
 
-export function resetWorkspaceUsage(workspaceId: string, monthKey?: string): void {
+export async function resetWorkspaceUsage(workspaceId: string, monthKey?: string): Promise<void> {
   const state = loadState();
   const nextUsageByWorkspace = { ...state.usageByWorkspace };
 
@@ -453,7 +453,7 @@ export function resetWorkspaceUsage(workspaceId: string, monthKey?: string): voi
     delete nextUsageByWorkspace[workspaceId];
   }
 
-  persistState({
+  await persistState({
     ...state,
     usageByWorkspace: nextUsageByWorkspace,
   });
@@ -481,17 +481,17 @@ export function resetSaasStoreForTests(): void {
   }
 }
 
-export function appendBillingHook(userId: string, payload: BillingHookPayload): void {
+export async function appendBillingHook(userId: string, payload: BillingHookPayload): Promise<void> {
   const state = loadState();
-  persistState({
+  await persistState({
     ...state,
     billingHooksByUser: appendScopedBillingHook(state.billingHooksByUser, userId, payload),
   });
 }
 
-export function appendWorkspaceBillingHook(workspaceId: string, payload: BillingHookPayload): void {
+export async function appendWorkspaceBillingHook(workspaceId: string, payload: BillingHookPayload): Promise<void> {
   const state = loadState();
-  persistState({
+  await persistState({
     ...state,
     billingHooksByWorkspace: appendScopedBillingHook(state.billingHooksByWorkspace, workspaceId, payload),
   });
