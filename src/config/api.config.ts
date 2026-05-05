@@ -131,7 +131,7 @@ export const API_CONFIG = {
 export const CLIENT_APP_VERSION =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APP_VERSION
     ? String(import.meta.env.VITE_APP_VERSION)
-    : '0.9.6');
+    : '0.9.7');
 
 export class ApiRequestError extends Error {
   statusCode: number;

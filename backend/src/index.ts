@@ -267,7 +267,7 @@ app.get('/health', async (req: Request, res: Response) => {
     routeScope: requestContext.routeScope,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    version: process.env.APP_VERSION || '0.9.6',
+    version: process.env.APP_VERSION || '0.9.7',
     checks,
   });
 });
@@ -276,7 +276,7 @@ app.get('/health', async (req: Request, res: Response) => {
 app.get('/api/version', (req: Request, res: Response) => {
   const requestContext = getRequestContext(req);
   res.json({
-    version: process.env.APP_VERSION || '0.9.6',
+    version: process.env.APP_VERSION || '0.9.7',
     environment: process.env.NODE_ENV || 'development',
     requestId: requestContext.requestId,
     routeScope: requestContext.routeScope,
@@ -289,7 +289,7 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     service: 'flow-finance-api',
-    version: process.env.APP_VERSION || '0.9.6',
+    version: process.env.APP_VERSION || '0.9.7',
     requestId: requestContext.requestId,
     routeScope: requestContext.routeScope,
     observability: {
@@ -400,8 +400,8 @@ if (shouldStartHttpServer) {
         'Backend API server running'
       );
       logger.info(
-        { version: process.env.APP_VERSION || '0.9.6', build: 'event-listeners+cache+observability' },
-        '[Bootstrap] Flow Finance backend v0.9.6 iniciado'
+        { version: process.env.APP_VERSION || '0.9.7', build: 'event-listeners+cache+observability' },
+        '[Bootstrap] Flow Finance backend v0.9.7 iniciado'
       );
     });
 

@@ -16,7 +16,7 @@ function escapeHtml(value: unknown): string {
     .replace(/'/g, '&#39;');
 }
 
-const APP_VERSION = import.meta.env.VITE_APP_VERSION || '0.9.6';
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || '0.9.7';
 const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL ||
   import.meta.env.VITE_API_PROD_URL ||

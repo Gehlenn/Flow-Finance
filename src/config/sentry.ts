@@ -57,7 +57,7 @@ export const initSentry = () => {
     Sentry.init({
       dsn,
       environment: import.meta.env.MODE || 'development',
-      release: import.meta.env.VITE_APP_VERSION || '0.9.6',
+      release: import.meta.env.VITE_APP_VERSION || '0.9.7',
       tracesSampleRate: import.meta.env.DEV ? 1.0 : 0.1,
       sampleRate: 1.0,
       beforeSend: (event) => {
