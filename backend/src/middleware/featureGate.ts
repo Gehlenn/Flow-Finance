@@ -24,7 +24,7 @@ export function featureGate(
       userId: (req as any).userId,
       workspaceId: (req as any).workspaceId,
       plan: (req as any).userPlan,
-      environment: (process.env.NODE_ENV as any) || 'development',
+      environment: (process.env.NODE_ENV === 'production' ? 'production' : process.env.NODE_ENV === 'staging' ? 'staging' : 'development'),
     };
 
     const isEnabled = FeatureFlagService.isEnabled(feature, context);

@@ -185,7 +185,8 @@ function parseConnectorMap(): Record<string, number> {
   try {
     const parsed = JSON.parse(env.PLUGGY_BANK_CONNECTORS) as Record<string, number>;
     return parsed || {};
-  } catch {
+  } catch (err) {
+    logger.warn({ err }, 'Failed to parse PLUGGY_BANK_CONNECTORS environment variable');
     return {};
   }
 }
@@ -198,7 +199,8 @@ function parseDefaultCredentials(): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(env.PLUGGY_DEFAULT_CREDENTIALS_JSON) as Record<string, unknown>;
     return parsed || null;
-  } catch {
+  } catch (err) {
+    logger.warn({ err }, 'Failed to parse PLUGGY_DEFAULT_CREDENTIALS_JSON environment variable');
     return null;
   }
 }
@@ -717,7 +719,8 @@ export const pluggyWebhookController = asyncHandler(async (req: Request, res: Re
 
 export const listConnectorsController = asyncHandler(async (_req: Request, res: Response) => {
   if (!isPluggyEnabled() || !env.PLUGGY_CLIENT_ID || !env.PLUGGY_CLIENT_SECRET) {
-    // Return static catalog when Pluggy is not active
+    // Fallback: Return hardcoded bank catalog when Pluggy integration is inactive.
+    // This should be removed once Pluggy becomes mandatory for production.
     res.json(BRAZILIAN_BANKS.map((b) => ({ id: b.id, name: b.name, imageUrl: b.logo, primaryColor: b.color, country: b.country })));
     return;
   }

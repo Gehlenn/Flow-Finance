@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import logger from '../config/logger';
 
 const UsageSnapshotSchema = z.object({
   transactions: z.number().int().min(0),
@@ -63,13 +64,21 @@ function safeReturnUrl() {
         if (frontendUrl) {
           try {
             if (parsed.origin === new URL(frontendUrl).origin) return true;
-          } catch { /* ignore malformed FRONTEND_URL */ }
+          } catch (err) {
+            logger.warn({ err, frontendUrl }, 'Malformed FRONTEND_URL in CORS validation');
+          }
         }
 
         return allowedOrigins.some((origin) => {
-          try { return parsed.origin === new URL(origin).origin; } catch { return false; }
+          try {
+            return parsed.origin === new URL(origin).origin;
+          } catch (err) {
+            logger.debug({ err, origin }, 'Malformed origin in CORS allowlist');
+            return false;
+          }
         });
-      } catch {
+      } catch (err) {
+        logger.warn({ err, urlLength: url.length }, 'CORS origin validation exception — URL may be invalid');
         return false;
       }
     },

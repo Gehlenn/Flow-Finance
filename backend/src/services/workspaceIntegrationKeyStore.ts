@@ -1,10 +1,6 @@
 import crypto from 'crypto';
-import { getApps, initializeApp, cert, applicationDefault } from 'firebase-admin/app';
-import { Firestore, getFirestore } from 'firebase-admin/firestore';
-import { applyFirestoreSettingsOnce } from './openFinance/bankingConnectionStore';
-import logger from '../config/logger';
+import { getFirestoreOrNull } from '../utils/firestoreAdmin';
 
-const COLLECTION = 'workspace_integration_keys';
 const KEY_PREFIX = 'flw_';
 const KEY_RANDOM_BYTES = 24; // 48 hex chars
 
@@ -12,56 +8,7 @@ const KEY_RANDOM_BYTES = 24; // 48 hex chars
 interface KeyMeta { keyHash: string; keyPrefix: string; createdAt: string; }
 const memoryStore = new Map<string, KeyMeta>();
 
-let firestoreInstance: Firestore | null = null;
-let firestoreInitAttempted = false;
-
-function isFirestoreConfigured(): boolean {
-  return Boolean(
-    (process.env.FIREBASE_PROJECT_ID
-      && process.env.FIREBASE_CLIENT_EMAIL
-      && process.env.FIREBASE_PRIVATE_KEY)
-    || process.env.GOOGLE_APPLICATION_CREDENTIALS,
-  );
-}
-
-async function getFirestoreOrNull(): Promise<Firestore | null> {
-  if (firestoreInstance) return firestoreInstance;
-  if (firestoreInitAttempted) return null;
-  firestoreInitAttempted = true;
-  if (!isFirestoreConfigured()) return null;
-  try {
-    const existingApp = getApps()[0];
-    const usingServiceAccount = Boolean(
-      process.env.FIREBASE_PROJECT_ID
-        && process.env.FIREBASE_CLIENT_EMAIL
-        && process.env.FIREBASE_PRIVATE_KEY,
-    );
-    const app = existingApp || initializeApp(
-      usingServiceAccount
-        ? {
-            credential: cert({
-              projectId: String(process.env.FIREBASE_PROJECT_ID),
-              clientEmail: String(process.env.FIREBASE_CLIENT_EMAIL),
-              privateKey: String(process.env.FIREBASE_PRIVATE_KEY).replace(/\\n/g, '\n'),
-            }),
-            projectId: String(process.env.FIREBASE_PROJECT_ID),
-            databaseURL: process.env.FIREBASE_DATABASE_URL,
-          }
-        : {
-            credential: applicationDefault(),
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            databaseURL: process.env.FIREBASE_DATABASE_URL,
-          },
-    );
-    const db = getFirestore(app);
-    applyFirestoreSettingsOnce(db);
-    firestoreInstance = db;
-    return db;
-  } catch (error) {
-    logger.error({ error: error instanceof Error ? error.message : error }, '[IntegrationKeyStore] Firestore init failed — using memory fallback');
-    return null;
-  }
-}
+const COLLECTION = 'workspace_integration_keys';
 
 function hashKey(plaintext: string): string {
   return crypto.createHash('sha256').update(plaintext, 'utf8').digest('hex');
@@ -151,6 +98,4 @@ export async function revokeIntegrationKey(workspaceId: string): Promise<void> {
 /** Test helper only. */
 export function resetIntegrationKeyStoreForTests(): void {
   memoryStore.clear();
-  firestoreInstance = null;
-  firestoreInitAttempted = false;
 }

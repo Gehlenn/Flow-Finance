@@ -183,23 +183,20 @@ export class ClinicAIEnrichmentQueue {
   }
 
   /**
-   * Enriquecer evento com IA.
-   * TODO: Integrar com serviço de IA real (Gemini/OpenAI)
-   * Por enquanto é um stub que sempre sucede para demonstração.
+   * Placeholder: Enrich event with AI.
+   * TODO(#ai-enrichment): Integrate with real IA service (Gemini/OpenAI)
+   * Current: No-op stub. Returns immediately without enrichment.
    */
   private async enrichWithAI(task: ClinicAIEnrichmentTask): Promise<void> {
-    // Simular latência de IA
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // TODO: Chamar serviço de IA real para:
-    // 1. Categorização inteligente da transação
-    // 2. Detecção de duplicatas/inconsistências
-    // 3. Sugestões de ação financeira
-    // 4. Análise de padrão de gasto
+    // TODO(#ai-enrichment): Implement AI enrichment:
+    // 1. Smart transaction categorization
+    // 2. Duplicate/inconsistency detection
+    // 3. Financial action suggestions
+    // 4. Spending pattern analysis
 
     this.logger.debug(
       { taskId: task.id, externalEventId: task.externalEventId },
-      'ClinicAI enrichment processing',
+      '[ClinicAIEnrichment] Placeholder: No enrichment performed (TODO: implement AI integration)',
     );
   }
 

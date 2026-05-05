@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import logger from '../config/logger';
 import { getWorkspaceUsersAsync } from '../services/admin/workspaceStore';
 import { getAuditEvents } from '../services/admin/auditLog';
 import { getWorkspaceMeteringSummary, getWorkspaceUsageEvents, ResourceKind } from '../utils/saasStore';
@@ -222,7 +223,8 @@ function parseCursor(cursor?: string): { at: string; id: string } | null {
       return null;
     }
     return { at: decoded.at, id: decoded.id };
-  } catch {
+  } catch (err) {
+    logger.warn({ err, cursor: cursor.slice(0, 50) }, 'Cursor decode failed');
     return null;
   }
 }

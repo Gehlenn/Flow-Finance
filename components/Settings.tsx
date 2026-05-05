@@ -241,6 +241,24 @@ const Settings: React.FC<SettingsProps> = ({
     if (!supportQuery.trim()) return;
     setIsGeneratingSupport(true);
     setSupportResponse('');
+
+    const q = supportQuery.toLowerCase();
+    let intent = 'monthly_summary';
+    if (/(falta entrar|receber|recebivel|pendente|vencido|a receber)/.test(q)) intent = 'receivables_question';
+    else if (/(gastar|posso gastar|limite|disponivel|sobrou)/.test(q)) intent = 'spending_advice';
+    else if (/(risco|proximo|curto prazo|proximo|semana|dias)/.test(q)) intent = 'risk_question';
+    else if (/(saldo|caixa|quanto tem|posicao)/.test(q)) intent = 'cash_position';
+    else if (/(economiz|cortar|reduzir|poupar|economias)/.test(q)) intent = 'savings_question';
+
+    const SUPPORT_FALLBACKS: Record<string, string> = {
+      receivables_question: 'Trate recebiveis pendentes como fora do caixa ate confirmacao. Acompanhe vencimentos proximos e cobre os atrasados antes de assumir novos compromissos.',
+      spending_advice: 'Para decidir se pode gastar, verifique o saldo confirmado em caixa, desconte compromissos dos proximos 7 dias e so considere o restante como margem disponivel.',
+      risk_question: 'Monitore os proximos 7 dias: vencimentos de contas a pagar, recebimentos previstos e qualquer recebivel ja atrasado. Esses tres pontos definem o risco de curto prazo.',
+      cash_position: 'Saldo disponivel e o total confirmado nas contas menos os compromissos ja assumidos. Valores pendentes ou previstos nao fazem parte do caixa ate entrar de fato.',
+      savings_question: 'Comece cortando despesas recorrentes de baixo impacto operacional. Revise assinaturas, fornecedores secundarios e gastos variaveis que nao afetam a entrega do servico.',
+      monthly_summary: 'Para um resumo do mes, compare entradas confirmadas com saidas registradas, calcule o saldo liquido e identifique os 3 maiores centros de custo. Essa leitura da o ponto de partida para decisoes operacionais.',
+    };
+
     try {
       const response = await apiRequest<{ answer?: string; text?: string }>(
         API_ENDPOINTS.AI.CFO,
@@ -248,13 +266,15 @@ const Settings: React.FC<SettingsProps> = ({
           method: 'POST',
           body: JSON.stringify({
             question: supportQuery,
-            intent: 'monthly_summary',
+            context: '',
+            intent,
           }),
         },
       );
-      setSupportResponse(response.answer ?? response.text ?? 'Nao foi possivel processar sua pergunta agora.');
+      const answer = response.answer ?? response.text ?? '';
+      setSupportResponse(answer.trim().length > 0 ? answer : SUPPORT_FALLBACKS[intent]);
     } catch {
-      setSupportResponse('Suporte IA temporariamente indisponivel.');
+      setSupportResponse(SUPPORT_FALLBACKS[intent]);
     } finally {
       setIsGeneratingSupport(false);
     }

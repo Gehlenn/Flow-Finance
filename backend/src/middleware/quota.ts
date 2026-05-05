@@ -3,6 +3,7 @@ import { asyncHandler } from './errorHandler';
 import logger from '../config/logger';
 import {
   PLAN_LIMITS,
+  ResourceKind,
   getMonthlyCount,
   getUserPlan,
   getWorkspaceLimits,
@@ -15,8 +16,6 @@ import {
 } from '../utils/saasStore';
 import { recordAuditEvent } from '../services/admin/auditLog';
 import { getWorkspaceAsync, isUserInWorkspaceAsync } from '../services/admin/workspaceStore';
-
-type ResourceKind = 'transactions' | 'aiQueries' | 'bankConnections';
 
 export function quotaMiddleware(
   resource: ResourceKind,

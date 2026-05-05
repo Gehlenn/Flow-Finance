@@ -2,6 +2,7 @@ import { query, testConnection } from '../../config/database';
 import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app';
 import { Firestore, getFirestore } from 'firebase-admin/firestore';
 import logger from '../../config/logger';
+import { applyFirestoreSettingsOnce } from '../../utils/firestoreAdmin';
 
 export type StoredConnectionStatus = 'connected' | 'disconnected' | 'syncing' | 'error';
 export type StoredBankProvider = 'mock' | 'pluggy' | 'belvo' | 'truelayer' | 'custom';
@@ -50,20 +51,10 @@ interface FirebaseAdapterStatus {
   reason?: string;
 }
 
-let firestoreSettingsConfigured = false;
-
-export function applyFirestoreSettingsOnce(firestore: { settings: (options: { ignoreUndefinedProperties: boolean }) => void }): void {
-  if (firestoreSettingsConfigured) {
-    return;
-  }
-
-  firestore.settings({ ignoreUndefinedProperties: true });
-  firestoreSettingsConfigured = true;
-}
-
-export function resetFirestoreSettingsForTests(): void {
-  firestoreSettingsConfigured = false;
-}
+export {
+  applyFirestoreSettingsOnce,
+  _resetFirestoreSettingsForTests as resetFirestoreSettingsForTests,
+} from '../../utils/firestoreAdmin';
 
 export interface FirebaseBankingConnectionStoreAdapter {
   getStatus(): Promise<FirebaseAdapterStatus>;

@@ -1,21 +1,21 @@
 {
   "tenants": [
     {
-      "tenantId": "11499a78-3836-4374-a093-def472c520e2",
-      "name": "Stripe Workspace",
+      "tenantId": "106cc6ce-f0a0-4655-9333-074bfae5d601",
+      "name": "Empresa SaaS",
       "plan": "pro",
-      "createdAt": "2026-05-04T05:02:00.167Z",
-      "updatedAt": "2026-05-04T05:02:00.168Z"
+      "createdAt": "2026-05-05T15:11:04.077Z",
+      "updatedAt": "2026-05-05T15:11:04.078Z"
     }
   ],
   "workspaces": [
     {
-      "workspaceId": "d4dff0c5-41b2-4968-a983-5bca0226ba34",
-      "tenantId": "11499a78-3836-4374-a093-def472c520e2",
-      "name": "Stripe Workspace",
+      "workspaceId": "d3bf2360-dcee-410d-9d4c-fd03c9aab970",
+      "tenantId": "106cc6ce-f0a0-4655-9333-074bfae5d601",
+      "name": "Empresa SaaS",
       "isDefault": true,
-      "createdAt": "2026-05-04T05:02:00.167Z",
-      "updatedAt": "2026-05-04T05:02:00.167Z",
+      "createdAt": "2026-05-05T15:11:04.077Z",
+      "updatedAt": "2026-05-05T15:11:04.077Z",
       "plan": "pro",
       "status": "active",
       "entitlements": {
@@ -32,36 +32,31 @@
           "bankConnections": 20
         }
       },
-      "billingCustomerId": "cus_stripe_123",
+      "billingEmail": "billing@empresa.test",
       "subscription": {
-        "subscriptionId": "sub_cc38482d-dc4f-4e2b-a3ac-df5e904fd896",
-        "provider": "stripe",
+        "subscriptionId": "sub_test_1",
+        "provider": "internal",
         "status": "active",
         "plan": "pro",
-        "startedAt": "2026-05-04T05:02:00.168Z",
-        "renewsAt": "2026-06-03T05:02:00.168Z",
-        "providerCustomerId": "cus_stripe_123",
-        "providerSubscriptionId": "sub_stripe_123",
-        "providerPriceId": "price_pro_123",
-        "updatedAt": "2026-05-04T05:02:00.168Z"
+        "startedAt": "2026-05-05T15:11:04.078Z"
       }
     }
   ],
   "workspaceUsers": [
     {
-      "userId": "owner-stripe",
-      "workspaceId": "d4dff0c5-41b2-4968-a983-5bca0226ba34",
-      "tenantId": "11499a78-3836-4374-a093-def472c520e2",
+      "userId": "owner-2",
+      "workspaceId": "d3bf2360-dcee-410d-9d4c-fd03c9aab970",
+      "tenantId": "106cc6ce-f0a0-4655-9333-074bfae5d601",
       "role": "owner",
-      "joinedAt": "2026-05-04T05:02:00.167Z",
+      "joinedAt": "2026-05-05T15:11:04.077Z",
       "status": "active"
     }
   ],
   "userPreferences": [
     {
-      "userId": "owner-stripe",
-      "lastSelectedWorkspaceId": "d4dff0c5-41b2-4968-a983-5bca0226ba34",
-      "updatedAt": "2026-05-04T05:02:00.167Z"
+      "userId": "owner-2",
+      "lastSelectedWorkspaceId": "d3bf2360-dcee-410d-9d4c-fd03c9aab970",
+      "updatedAt": "2026-05-05T15:11:04.077Z"
     }
   ]
 }
