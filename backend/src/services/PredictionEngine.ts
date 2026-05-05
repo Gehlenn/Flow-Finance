@@ -16,6 +16,8 @@ import {
   DEFAULT_PREDICTION_CONFIG,
   AnomalyDetection,
 } from '../types/prediction';
+import { cache as redisCache } from '../config/redis';
+import logger from '../config/logger';
 
 // Simple statistics utilities (no heavy ML deps)
 class StatisticsUtils {
@@ -80,9 +82,12 @@ class StatisticsUtils {
   }
 }
 
+const REDIS_CACHE_PREFIX = 'prediction:v1:';
+
 export class PredictionEngine {
   private config: PredictionConfig;
-  private cache: Map<string, { prediction: CashFlowPrediction; expiresAt: Date }> = new Map();
+  /** In-memory fallback — used when Redis is unavailable (unit tests, local dev without Redis). */
+  private memCache: Map<string, { prediction: CashFlowPrediction; expiresAt: Date }> = new Map();
 
   constructor(config: Partial<PredictionConfig> = {}) {
     this.config = { ...DEFAULT_PREDICTION_CONFIG, ...config };
@@ -96,8 +101,8 @@ export class PredictionEngine {
     historicalData: TransactionHistory,
     days: number = this.config.defaultPredictionDays
   ): Promise<CashFlowPrediction> {
-    // Check cache first
-    const cached = this.getCachedPrediction(userId);
+    // Check Redis cache first (serverless-safe), fall back to memory
+    const cached = await this.getCachedPredictionAsync(userId);
     if (cached) {
       return cached;
     }
@@ -618,28 +623,58 @@ export class PredictionEngine {
   }
 
   private getCachedPrediction(userId: string): CashFlowPrediction | null {
-    const cached = this.cache.get(userId);
+    // Memory-only path (sync) — Redis path is async and handled separately
+    const cached = this.memCache.get(userId);
     if (cached && cached.expiresAt > new Date()) {
       return cached.prediction;
     }
     return null;
   }
 
+  /** Async lookup that checks Redis first, falls back to memory. */
+  private async getCachedPredictionAsync(userId: string): Promise<CashFlowPrediction | null> {
+    try {
+      const raw = await redisCache.get(`${REDIS_CACHE_PREFIX}${userId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { prediction: CashFlowPrediction; expiresAt: string };
+        if (new Date(parsed.expiresAt) > new Date()) {
+          return parsed.prediction;
+        }
+      }
+    } catch (err) {
+      logger.warn({ err, userId }, 'PredictionEngine: Redis cache read failed, falling back to memory');
+    }
+    return this.getCachedPrediction(userId);
+  }
+
   private cachePrediction(userId: string, prediction: CashFlowPrediction): void {
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + this.config.cacheDurationMinutes);
-    
-    this.cache.set(userId, { prediction, expiresAt });
+    const ttlSeconds = this.config.cacheDurationMinutes * 60;
+
+    // Always write to memory as fast fallback
+    this.memCache.set(userId, { prediction, expiresAt });
+
+    // Best-effort write to Redis (non-blocking)
+    redisCache
+      .set(`${REDIS_CACHE_PREFIX}${userId}`, JSON.stringify({ prediction, expiresAt }), ttlSeconds)
+      .catch((err: unknown) => {
+        logger.warn({ err, userId }, 'PredictionEngine: Redis cache write failed, memory-only cache active');
+      });
   }
 
   /**
-   * Clear cache for a user (call when new transactions added)
+   * Clear cache for a user (call when new transactions added).
+   * Clears both Redis and memory.
    */
   clearCache(userId?: string): void {
     if (userId) {
-      this.cache.delete(userId);
+      this.memCache.delete(userId);
+      redisCache.del(`${REDIS_CACHE_PREFIX}${userId}`).catch(() => undefined);
     } else {
-      this.cache.clear();
+      this.memCache.clear();
+      // Cannot enumerate all Redis keys here without pattern scan — acceptable trade-off.
+      // Individual keys expire by TTL.
     }
   }
 }
