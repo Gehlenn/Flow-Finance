@@ -14,14 +14,31 @@ type AIRequestContext = {
   source?: string;
 };
 
-function categorizeError(err: any): string {
-  if (err?.status === 429 || err?.code === 'rate_limit_exceeded') return 'quota_exceeded';
-  if (err?.status === 404) return 'model_unavailable';
-  if (err?.status === 401) return 'auth_failure';
+type AIProviderOptions = {
+  responseMimeType?: string;
+  responseSchema?: Record<string, unknown>;
+};
+
+type AIProviderError = {
+  status?: number;
+  code?: string;
+  message?: string;
+};
+
+function isAIProviderError(err: unknown): err is AIProviderError {
+  return typeof err === 'object' && err !== null;
+}
+
+function categorizeError(err: unknown): string {
+  if (isAIProviderError(err)) {
+    if (err.status === 429 || err.code === 'rate_limit_exceeded') return 'quota_exceeded';
+    if (err.status === 404) return 'model_unavailable';
+    if (err.status === 401) return 'auth_failure';
+  }
   return 'unknown_error';
 }
 
-async function callProvider(provider: string, prompt: string, options?: { responseMimeType?: string; responseSchema?: any }): Promise<string> {
+async function callProvider(provider: string, prompt: string, options?: AIProviderOptions): Promise<string> {
   if (provider === 'gemini') {
     return gemini.generateContent(prompt, options);
   }
@@ -30,7 +47,7 @@ async function callProvider(provider: string, prompt: string, options?: { respon
 
 export async function generateContent(
   prompt: string,
-  options?: { responseMimeType?: string; responseSchema?: any },
+  options?: AIProviderOptions,
   context?: AIRequestContext
 ): Promise<string> {
   const hasOpenAI = !!env.OPENAI_API_KEY;
@@ -74,14 +91,15 @@ export async function generateContent(
         `${primary} response received successfully`,
       );
       return result;
-    } catch (err: any) {
+    } catch (err: unknown) {
       const failureCategory = categorizeError(err);
+      const errObj = isAIProviderError(err) ? err : {};
       logger.error(
-        { event: 'ai_provider_failure', provider: primary, failureCategory, requestId: context?.requestId, error: err?.message },
+        { event: 'ai_provider_failure', provider: primary, failureCategory, requestId: context?.requestId, error: errObj.message },
         `${primary.charAt(0).toUpperCase() + primary.slice(1)} failed`,
       );
 
-      const isRecoverable = err?.status === 429 || err?.status === 404;
+      const isRecoverable = errObj.status === 429 || errObj.status === 404;
       if (fallbackAvailable && isRecoverable) {
         logger.warn(
           { event: 'ai_provider_fallback_triggered', fromProvider: primary, toProvider: fallback, failureCategory, requestId: context?.requestId },
@@ -94,9 +112,10 @@ export async function generateContent(
             `${fallback} response received successfully`,
           );
           return result;
-        } catch (fallbackErr: any) {
+        } catch (fallbackErr: unknown) {
+          const fallbackErrObj = isAIProviderError(fallbackErr) ? fallbackErr : {};
           logger.error(
-            { event: 'ai_provider_failure', provider: fallback, failureCategory: categorizeError(fallbackErr), requestId: context?.requestId, error: fallbackErr?.message },
+            { event: 'ai_provider_failure', provider: fallback, failureCategory: categorizeError(fallbackErr), requestId: context?.requestId, error: fallbackErrObj.message },
             `${fallback} fallback also failed`,
           );
           throw fallbackErr;
@@ -115,10 +134,11 @@ export async function generateContent(
         `${fallback} response received successfully`,
       );
       return result;
-    } catch (err: any) {
+    } catch (err: unknown) {
       const failureCategory = categorizeError(err);
+      const errObj = isAIProviderError(err) ? err : {};
       logger.error(
-        { event: 'ai_provider_failure', provider: fallback, failureCategory, requestId: context?.requestId, error: err?.message },
+        { event: 'ai_provider_failure', provider: fallback, failureCategory, requestId: context?.requestId, error: errObj.message },
         `${fallback} primary request failed`,
       );
       throw err;
