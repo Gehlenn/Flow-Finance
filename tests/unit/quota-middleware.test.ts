@@ -26,6 +26,19 @@ vi.mock('../../backend/src/config/logger', () => ({
   default: { debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
 
+const postgresMocks = vi.hoisted(() => ({
+  saveWorkspaceSaasState: vi.fn().mockResolvedValue(undefined),
+  loadWorkspaceSaasState: vi.fn().mockResolvedValue(null),
+  saveJsonState: vi.fn().mockResolvedValue(undefined),
+  loadJsonState: vi.fn().mockResolvedValue(null),
+  insertAuditEvent: vi.fn().mockResolvedValue(undefined),
+  loadWorkspaceStoreState: vi.fn().mockResolvedValue(null),
+  saveWorkspaceStoreState: vi.fn().mockResolvedValue(undefined),
+  isPostgresStateStoreEnabled: vi.fn().mockReturnValue(false),
+}));
+
+vi.mock('../../backend/src/services/persistence/postgresStateStore', () => postgresMocks);
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function makeReq(userId = 'user-test', workspaceId?: string) {
@@ -90,7 +103,7 @@ describe('quotaMiddleware — plano free', () => {
     const limit = PLAN_LIMITS.free.aiQueries;
 
     // Preenche até o limite
-    incrementMonthlyUsage(userId, 'aiQueries', limit);
+    await incrementMonthlyUsage(userId, 'aiQueries', limit);
 
     const { res, next } = await runMiddleware('aiQueries', userId);
 
@@ -109,7 +122,7 @@ describe('quotaMiddleware — plano free', () => {
     const userId = 'user-free-bank';
     const limit = PLAN_LIMITS.free.bankConnections;
 
-    incrementMonthlyUsage(userId, 'bankConnections', limit);
+    await incrementMonthlyUsage(userId, 'bankConnections', limit);
 
     const { res, next } = await runMiddleware('bankConnections', userId);
 
@@ -129,7 +142,7 @@ describe('quotaMiddleware — plano free', () => {
 
   it('inclui headers X-RateLimit em respostas 429', async () => {
     const userId = 'user-headers-429';
-    incrementMonthlyUsage(userId, 'aiQueries', PLAN_LIMITS.free.aiQueries);
+    await incrementMonthlyUsage(userId, 'aiQueries', PLAN_LIMITS.free.aiQueries);
 
     const { res } = await runMiddleware('aiQueries', userId);
 
@@ -161,10 +174,10 @@ describe('quotaMiddleware — plano pro', () => {
 
   it('permite request quando uso pro está abaixo do limite maior', async () => {
     const userId = 'user-pro-ok';
-    setUserPlan(userId, 'pro');
+    await setUserPlan(userId, 'pro');
 
     // Preenche além do limite free mas abaixo do limite pro
-    incrementMonthlyUsage(userId, 'aiQueries', PLAN_LIMITS.free.aiQueries + 10);
+    await incrementMonthlyUsage(userId, 'aiQueries', PLAN_LIMITS.free.aiQueries + 10);
 
     const { next } = await runMiddleware('aiQueries', userId);
     expect(next).toHaveBeenCalled();
@@ -172,8 +185,8 @@ describe('quotaMiddleware — plano pro', () => {
 
   it('bloqueia pro com 429 apenas quando limite pro é excedido', async () => {
     const userId = 'user-pro-limit';
-    setUserPlan(userId, 'pro');
-    incrementMonthlyUsage(userId, 'aiQueries', PLAN_LIMITS.pro.aiQueries);
+    await setUserPlan(userId, 'pro');
+    await incrementMonthlyUsage(userId, 'aiQueries', PLAN_LIMITS.pro.aiQueries);
 
     const { res, next } = await runMiddleware('aiQueries', userId);
 
@@ -191,7 +204,7 @@ describe('quotaMiddleware — trackOnly', () => {
 
   it('trackOnly passa mesmo com limite excedido', async () => {
     const userId = 'user-track-only';
-    incrementMonthlyUsage(userId, 'transactions', PLAN_LIMITS.free.transactions + 1000);
+    await incrementMonthlyUsage(userId, 'transactions', PLAN_LIMITS.free.transactions + 1000);
 
     const { next } = await runMiddleware('transactions', userId, { trackOnly: true });
     expect(next).toHaveBeenCalled();
@@ -234,21 +247,21 @@ describe('saasStore — funções auxiliares', () => {
     expect(getMonthlyCount('fresh-user', 'aiQueries')).toBe(0);
   });
 
-  it('incrementMonthlyUsage retorna novo total', () => {
-    const total = incrementMonthlyUsage('counter-user', 'aiQueries', 5);
+  it('incrementMonthlyUsage retorna novo total', async () => {
+    const total = await incrementMonthlyUsage('counter-user', 'aiQueries', 5);
     expect(total).toBe(5);
-    const total2 = incrementMonthlyUsage('counter-user', 'aiQueries', 3);
+    const total2 = await incrementMonthlyUsage('counter-user', 'aiQueries', 3);
     expect(total2).toBe(8);
   });
 
-  it('setUserPlan persiste plano e getUserPlan recupera', () => {
-    setUserPlan('plan-user', 'pro');
+  it('setUserPlan persiste plano e getUserPlan recupera', async () => {
+    await setUserPlan('plan-user', 'pro');
     expect(PLAN_LIMITS['pro'].aiQueries).toBe(5000);
   });
 
-  it('resetSaasStoreForTests limpa tudo', () => {
-    incrementMonthlyUsage('r-user', 'aiQueries', 50);
-    setUserPlan('r-user', 'pro');
+  it('resetSaasStoreForTests limpa tudo', async () => {
+    await incrementMonthlyUsage('r-user', 'aiQueries', 50);
+    await setUserPlan('r-user', 'pro');
     resetSaasStoreForTests();
     expect(getMonthlyCount('r-user', 'aiQueries')).toBe(0);
   });
