@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
@@ -81,9 +79,11 @@ export function runPlaywright(args) {
 
 const { dryRun, args } = parseArgs(process.argv.slice(2));
 
-if (dryRun) {
-  printDryRun(args);
-  process.exit(0);
-}
+if (import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}`) {
+  if (dryRun) {
+    printDryRun(args);
+    process.exit(0);
+  }
 
-runPlaywright(args);
+  runPlaywright(args);
+}
