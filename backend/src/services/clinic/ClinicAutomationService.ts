@@ -65,7 +65,7 @@ export class ClinicAutomationService {
     contextOverrides?: Partial<FeatureFlagContext>
   ): Promise<ClinicWebhookResponse> {
     const internalEventId = uuidv4();
-    const externalEventId = (payload as any).externalEventId;
+    const externalEventId = payload.externalEventId;
     const sourceSystem = 'clinic-automation';
     const requestId = getRequestContextValue('requestId') || uuidv4();
 
@@ -84,9 +84,9 @@ export class ClinicAutomationService {
     try {
       // 1. Verificar feature flag de ingestão
       const ingestContext: FeatureFlagContext = {
-        environment: (process.env.NODE_ENV || 'production') as any,
+        environment: process.env.NODE_ENV === 'staging' ? 'staging' : process.env.NODE_ENV === 'development' ? 'development' : 'production',
         sourceSystem,
-        tenantId: (payload as any).externalFacilityId,
+        tenantId: payload.externalFacilityId,
         ...contextOverrides
       };
 
@@ -159,7 +159,7 @@ export class ClinicAutomationService {
       const outcome = await this.monitor.executeClinicWebhookCall(
         'webhook_ingest',
         () => this.routeAndProcessEvent(payload, internalEventId, ingestContext),
-        { requestId, tenantId: (payload as any).externalFacilityId }
+        { requestId, tenantId: payload.externalFacilityId }
       );
 
       if (!outcome.processed) {
@@ -261,19 +261,19 @@ export class ClinicAutomationService {
   ): Promise<{ processed: boolean; message: string }> {
     switch (payload.type) {
       case 'payment_received':
-        return this.handlePaymentReceived(payload as any, internalEventId, context);
+        return this.handlePaymentReceived(payload, internalEventId, context);
 
       case 'expense_recorded':
-        return this.handleExpenseRecorded(payload as any, internalEventId, context);
+        return this.handleExpenseRecorded(payload, internalEventId, context);
 
       case 'receivable_reminder_created':
-        return this.handleReceivableReminderCreated(payload as any, internalEventId, context);
+        return this.handleReceivableReminderCreated(payload, internalEventId, context);
 
       case 'receivable_reminder_updated':
-        return this.handleReceivableReminderUpdated(payload as any, internalEventId, context);
+        return this.handleReceivableReminderUpdated(payload, internalEventId, context);
 
       case 'receivable_reminder_cleared':
-        return this.handleReceivableReminderCleared(payload as any, internalEventId, context);
+        return this.handleReceivableReminderCleared(payload, internalEventId, context);
 
       default:
         const exhaustive: never = payload;
@@ -449,7 +449,7 @@ export class ClinicAutomationService {
         return { event: this.mapReminderClearedEvent(payload, workspaceId, 'BRL') };
       default: {
         const exhaustive: never = payload;
-        return { message: `Unsupported clinic event type: ${(exhaustive as any).type}` };
+        return { message: `Unsupported clinic event type: ${(exhaustive as { type: string }).type}` };
       }
     }
   }
@@ -596,6 +596,7 @@ export class ClinicAutomationService {
       await this.redis.ping();
       details.redis = true;
     } catch (error) {
+      this.logger.warn({ err: error }, 'Redis ping failed during health check');
       details.redis = false;
     }
 

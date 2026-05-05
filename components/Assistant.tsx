@@ -225,11 +225,11 @@ const Assistant: React.FC<AssistantProps> = ({
       const prediction = buildCashflowPrediction(transactions);
       const actions = runFinancialAutopilot([], transactions, prediction, []);
       const suggestions = actions.map(a => ({
-        category: (a as any).category ?? 'Geral',
-        threshold: (a as any).value ?? 0,
-        reason: (a as any).description ?? '',
-        title: (a as any).title,
-        description: (a as any).description,
+        category: a.category ?? 'Geral',
+        threshold: a.value ?? 0,
+        reason: a.description ?? '',
+        title: a.title,
+        description: a.description,
       }));
       setSmartAlerts(suggestions);
     } catch (error) {
@@ -420,7 +420,7 @@ const Assistant: React.FC<AssistantProps> = ({
               <div className="flex gap-2">
                 <select 
                   value={reminderFilter} 
-                  onChange={(e) => setReminderFilter(e.target.value as any)}
+                  onChange={(e) => setReminderFilter(e.target.value as typeof reminderFilter)}
                   className="bg-transparent text-[8px] font-black uppercase tracking-widest text-slate-400 outline-none border-none"
                 >
                   <option value="all">Todos</option>
@@ -704,7 +704,7 @@ const Assistant: React.FC<AssistantProps> = ({
                         <button 
                           onClick={() => {
                             onSaveAlert({
-                              category: alert.category as any,
+                              category: alert.category as Alert['category'],
                               threshold: alert.threshold,
                               timeframe: 'mensal'
                             });
@@ -767,7 +767,7 @@ const Assistant: React.FC<AssistantProps> = ({
                   {['baixa', 'media', 'alta'].map(p => (
                     <button
                       key={p}
-                      onClick={() => setNewReminder({...newReminder, priority: p as any})}
+                      onClick={() => setNewReminder({...newReminder, priority: p as Reminder['priority']})}
                       className={`flex-1 p-3 rounded-2xl border text-[9px] font-black uppercase tracking-widest transition-all ${newReminder.priority === p ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 dark:bg-slate-900 border-transparent text-slate-400'}`}
                     >
                       {p}
@@ -816,7 +816,7 @@ const Assistant: React.FC<AssistantProps> = ({
               <button onClick={() => setIsAddingAlert(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full"><X size={20} /></button>
             </div>
             <div className="space-y-5">
-              <select value={newAlert.category} onChange={e => setNewAlert({...newAlert, category: e.target.value as any})} className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl outline-none font-bold text-sm text-slate-800 dark:text-white border-none appearance-none">
+              <select value={newAlert.category} onChange={e => setNewAlert({...newAlert, category: e.target.value as Alert['category']})} className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl outline-none font-bold text-sm text-slate-800 dark:text-white border-none appearance-none">
                 <option value="Geral">Todas as Categorias</option>
                 {Object.values(Category).map(cat => <option key={cat} value={cat}>{cat}</option>)}
               </select>

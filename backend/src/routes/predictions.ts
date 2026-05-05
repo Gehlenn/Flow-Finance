@@ -4,9 +4,26 @@
  */
 
 import { Router } from 'express';
+import { QueryDocumentSnapshot, DocumentData } from 'firebase-admin/firestore';
 import { PredictionEngine } from '../services/PredictionEngine';
 import { authMiddleware } from '../middleware/auth';
-import { PredictionApiResponse } from '../types/prediction';
+import { PredictionApiResponse, CashFlowPrediction, TransactionHistory } from '../types/prediction';
+
+type HistoricalTransaction = TransactionHistory['transactions'][number];
+
+function docToTransaction(doc: QueryDocumentSnapshot<DocumentData>): HistoricalTransaction {
+  const d = doc.data();
+  return {
+    id: doc.id,
+    amount: Number(d['amount'] ?? 0),
+    type: d['type'] === 'income' ? 'income' : 'expense',
+    category: String(d['category'] ?? 'Uncategorized'),
+    description: String(d['description'] ?? ''),
+    date: d['date'] && typeof (d['date'] as { toDate?: unknown }).toDate === 'function'
+      ? (d['date'] as { toDate(): Date }).toDate()
+      : new Date(String(d['date'] ?? '')),
+  };
+}
 
 // ─── Normalization helpers ────────────────────────────────────────────────────
 
@@ -128,11 +145,7 @@ router.get('/cash-flow', authMiddleware, async (req, res): Promise<any> => {
       .limit(365 * 2) // Last 2 years
       .get();
 
-    const transactions = transactionsSnapshot.docs.map((doc: any) => ({
-      id: doc.id,
-      ...doc.data(),
-      date: doc.data().date?.toDate() || new Date(doc.data().date),
-    }));
+    const transactions: HistoricalTransaction[] = transactionsSnapshot.docs.map(docToTransaction);
 
     if (transactions.length < 10) {
       return res.status(400).json({
@@ -150,11 +163,11 @@ router.get('/cash-flow', authMiddleware, async (req, res): Promise<any> => {
         end: transactions[0]?.date || new Date(),
       },
       totalIncome: transactions
-        .filter((t: any) => t.type === 'income')
-        .reduce((sum: number, t: any) => sum + t.amount, 0),
+        .filter((t) => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0),
       totalExpenses: transactions
-        .filter((t: any) => t.type === 'expense')
-        .reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0),
+        .filter((t) => t.type === 'expense')
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0),
       transactionCount: transactions.length,
     };
 
@@ -260,15 +273,15 @@ router.get('/shortfall-risk', authMiddleware, async (req, res): Promise<any> => 
         start: new Date(predictionData?.dateRange?.start),
         end: new Date(predictionData?.dateRange?.end),
       },
-      dailyPredictions: predictionData?.dailyPredictions?.map((d: any) => ({
+      dailyPredictions: (predictionData?.['dailyPredictions'] as Record<string, unknown>[] | undefined)?.map((d) => ({
         ...d,
-        date: new Date(d.date),
-      })) || [],
+        date: new Date(d['date'] as string),
+      })) ?? [],
       generatedAt: new Date(predictionData?.generatedAt),
     };
 
     // Check for shortfall
-    const shortfallRisk = await predictionEngine.predictShortfall(userId, prediction as any);
+    const shortfallRisk = await predictionEngine.predictShortfall(userId, prediction as CashFlowPrediction);
 
     res.json({
       success: true,
@@ -322,7 +335,7 @@ router.get('/seasonality', authMiddleware, async (req, res): Promise<any> => {
     }
 
     // Detect seasonal patterns
-    const patterns = predictionEngine.detectSeasonality(transactions as any);
+    const patterns = predictionEngine.detectSeasonality(transactions);
 
     res.json({
       success: true,
@@ -365,11 +378,7 @@ router.post('/refresh', authMiddleware, async (req, res): Promise<any> => {
       .limit(365 * 2)
       .get();
 
-    const transactions = transactionsSnapshot.docs.map((doc: any) => ({
-      id: doc.id,
-      ...doc.data(),
-      date: doc.data().date?.toDate() || new Date(doc.data().date),
-    }));
+    const transactions: HistoricalTransaction[] = transactionsSnapshot.docs.map(docToTransaction);
 
     if (transactions.length < 10) {
       return res.status(400).json({
@@ -386,11 +395,11 @@ router.post('/refresh', authMiddleware, async (req, res): Promise<any> => {
         end: transactions[0]?.date || new Date(),
       },
       totalIncome: transactions
-        .filter((t: any) => t.type === 'income')
-        .reduce((sum: number, t: any) => sum + t.amount, 0),
+        .filter((t) => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0),
       totalExpenses: transactions
-        .filter((t: any) => t.type === 'expense')
-        .reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0),
+        .filter((t) => t.type === 'expense')
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0),
       transactionCount: transactions.length,
     };
 
