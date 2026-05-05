@@ -1,4 +1,5 @@
 import { Transaction } from '../../types';
+import { makeId } from '../utils/helpers';
 import { getActiveWorkspaceScopedStorageKey } from '../utils/workspaceStorage';
 
 const STORAGE_KEY = 'flow_ai_debug';
@@ -36,7 +37,7 @@ export function logAIDebug(entry: Omit<AIDebugEntry, 'id' | 'timestamp'>): void 
   const logs = readLogs();
   const newEntry: AIDebugEntry = {
     ...entry,
-    id: Math.random().toString(36).substr(2, 9),
+    id: makeId(),
     timestamp: new Date().toISOString(),
   };
 
@@ -52,3 +53,5 @@ export function getAIDebugLogs(): AIDebugEntry[] {
 export function clearAIDebugLogs(): void {
   localStorage.removeItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY));
 }
+
+

@@ -1,3 +1,4 @@
+import { makeId } from '../utils/helpers';
 import { getActiveWorkspaceScopedStorageKey } from '../utils/workspaceStorage';
 
 const STORAGE_KEY = 'flow_ai_memory';
@@ -73,7 +74,7 @@ export async function learnMemory(
     writeAll(all.map(m => m.id === existing.id ? updated : m));
   } else {
     const newEntry: AIMemory = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: makeId(),
       user_id: userId,
       key,
       value,
@@ -140,3 +141,4 @@ export async function getUserMemoryProfile(userId: string): Promise<{
     merchant_categories: memories.filter((m) => m.key.includes('merchant')),
   };
 }
+

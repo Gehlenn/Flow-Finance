@@ -1,7 +1,10 @@
-/**
+﻿/**
  * AI Task Queue - Task Types
  * Defines all types of AI tasks that can be queued
  */
+
+import { Transaction, Goal } from '../../../types';
+import { Account } from '../../../models/Account';
 
 export enum AITaskType {
   INSIGHT_GENERATION = 'INSIGHT_GENERATION',
@@ -39,7 +42,7 @@ export interface AITask<T = any> {
   createdAt: number;
   startedAt?: number;
   completedAt?: number;
-  result?: any;
+  result?: unknown;
   error?: {
     message: string;
     stack?: string;
@@ -70,34 +73,34 @@ export interface AITaskResult<T = any> {
 // Payload types for each task
 
 export interface InsightGenerationPayload {
-  transactions: any[];
-  accounts: any[];
+  transactions: Transaction[];
+  accounts: Account[];
   dateRange?: { start: Date; end: Date };
 }
 
 export interface CashflowSimulationPayload {
-  transactions: any[];
+  transactions: Transaction[];
   horizon: number; // days
   scenarios?: string[];
 }
 
 export interface FinancialReportPayload {
-  transactions: any[];
+  transactions: Transaction[];
   month: number;
   year: number;
 }
 
 export interface LeakDetectionPayload {
-  transactions: any[];
+  transactions: Transaction[];
 }
 
 export interface AutopilotAnalysisPayload {
-  transactions: any[];
-  accounts: any[];
-  goals?: any[];
+  transactions: Transaction[];
+  accounts: Account[];
+  goals?: Goal[];
 }
 
 export interface RiskAnalysisPayload {
-  transactions: any[];
-  accounts: any[];
+  transactions: Transaction[];
+  accounts: Account[];
 }

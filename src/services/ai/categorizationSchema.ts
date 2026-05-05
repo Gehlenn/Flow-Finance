@@ -1,19 +1,6 @@
-import { Category, TransactionType } from '../../../types';
+﻿import { Category, TransactionType } from '../../../types';
+import { FinanceCategory } from '../../engines/finance/categorization/categoryTypes';
 
-export type FinanceCategory =
-  | 'transporte'
-  | 'alimentacao'
-  | 'assinaturas'
-  | 'moradia'
-  | 'saude'
-  | 'combustivel'
-  | 'educacao'
-  | 'lazer'
-  | 'salario'
-  | 'compras'
-  | 'servicos'
-  | 'banco'
-  | 'outros';
 
 export interface CanonicalCategorizationResult {
   category: Category;
@@ -170,3 +157,5 @@ export function buildCanonicalCategorizationResult(input: {
     erro: input.erro ?? undefined,
   };
 }
+
+

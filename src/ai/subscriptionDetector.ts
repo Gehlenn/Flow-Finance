@@ -1,5 +1,5 @@
-/**
- * SUBSCRIPTION DETECTOR — src/services/ai/subscriptionDetector.ts
+﻿/**
+ * SUBSCRIPTION DETECTOR — src/ai/subscriptionDetector.ts
  *
  * PART 4 — Detecta assinaturas e pagamentos recorrentes nas transações.
  *
@@ -314,3 +314,4 @@ export function formatCycle(cycle: SubscriptionBillingCycle): string {
   };
   return labels[cycle];
 }
+

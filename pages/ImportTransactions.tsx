@@ -584,7 +584,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
             <p className="font-black text-slate-900 dark:text-white text-base">Importação concluída!</p>
             <p className="text-2xl font-black text-emerald-500 mt-1">{importedCount} transações</p>
             <p className="text-[9px] text-slate-400 font-bold mt-1">
-              Insights e Autopilot atualizam automaticamente
+              Insights atualizam automaticamente
             </p>
           </div>
           <div className="flex gap-3">
