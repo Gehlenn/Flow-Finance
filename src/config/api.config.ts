@@ -1,4 +1,4 @@
-import { getEphemeralAccessToken } from '../services/authSessionStore';
+﻿import { getEphemeralAccessToken } from '../services/authSessionStore';
 import { reportError } from './sentry';
 
 /**
@@ -109,6 +109,11 @@ export const API_ENDPOINTS = {
     PUSH: `${BACKEND_BASE_URL}/api/sync/push`,
     PULL: `${BACKEND_BASE_URL}/api/sync/pull`,
   },
+
+  INTEGRATION_KEYS: {
+    ROOT: `${BACKEND_BASE_URL}/api/integrations/keys`,
+    GENERATE: `${BACKEND_BASE_URL}/api/integrations/keys/generate`,
+  },
 };
 
 // Request Configuration
@@ -126,7 +131,7 @@ export const API_CONFIG = {
 export const CLIENT_APP_VERSION =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APP_VERSION
     ? String(import.meta.env.VITE_APP_VERSION)
-    : '0.9.6');
+    : '0.9.7');
 
 export class ApiRequestError extends Error {
   statusCode: number;

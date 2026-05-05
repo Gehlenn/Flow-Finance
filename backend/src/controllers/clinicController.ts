@@ -3,7 +3,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { ClinicAutomationService } from '../services/clinic';
 import { IntegrationTelemetry, IntegrationMonitor } from '../services/observability';
 import { getFeatureFlagService } from '../config/featureFlags';
-import { ClinicWebhookPayload } from '../validation/clinicAutomation.schema';
+import { ClinicWebhookPayload, ClinicWebhookPayloadSchema } from '../validation/clinicAutomation.schema';
 import logger from '../config/logger';
 import redisClient from '../config/redis';
 import type { RedisLike } from '../services/clinic/IdempotentEventStore';
@@ -40,39 +40,21 @@ function buildRedisClient(): RedisLike {
   return createNoOpRedisClient();
 }
 
-function createNoOpRedisClient() {
+function createNoOpRedisClient(): RedisLike {
   const store = new Map<string, string>();
   return {
     get: async (key: string) => store.get(key) ?? null,
-    set: async (...args: any[]) => {
-      const [key, value, optionsOrEx, _maybeTtl, maybeNx] = args;
-
-      let useNx = false;
-      if (optionsOrEx && typeof optionsOrEx === 'object') {
-        useNx = Boolean(optionsOrEx.NX);
-      } else if (
-        typeof optionsOrEx === 'string'
-        && optionsOrEx.toUpperCase() === 'EX'
-        && typeof maybeNx === 'string'
-        && maybeNx.toUpperCase() === 'NX'
-      ) {
-        useNx = true;
-      }
-
-      if (useNx && store.has(String(key))) {
-        return null;
-      }
-
-      store.set(String(key), String(value));
-      return 'OK';
+    set: async (key: string, value: string) => {
+      store.set(key, value);
+      return 'OK' as const;
     },
-    setEx: async (key: string, _ttl: number, value: string) => { store.set(key, value); return 'OK'; },
+    setEx: async (key: string, _ttl: number, value: string) => { store.set(key, value); return 'OK' as const; },
     exists: async (key: string) => (store.has(key) ? 1 : 0),
     del: async (key: string) => { store.delete(key); return 1; },
     keys: async (_pattern: string) => [] as string[],
     ttl: async (_key: string) => -1,
     ping: async () => 'PONG',
-  } as any;
+  };
 }
 
 /**
@@ -86,7 +68,12 @@ function createNoOpRedisClient() {
  * - Telemetria Sentry + logs estruturados Pino
  */
 export const receiveClinicFinancialEvent = asyncHandler(async (req: Request, res: Response) => {
-  const payload = req.body as ClinicWebhookPayload;
+    const parsed = ClinicWebhookPayloadSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ success: false, message: 'Invalid clinic webhook payload', errors: parsed.error.issues });
+      return;
+    }
+    const payload = parsed.data as ClinicWebhookPayload;
   const signature = req.header('x-integration-signature') ?? '';
   const sourceIp = (req.ip ?? req.socket?.remoteAddress ?? 'unknown').replace('::ffff:', '');
 

@@ -1,7 +1,7 @@
-import { initializeApp, getApps } from "firebase/app";
-import { getAuth, GoogleAuthProvider, OAuthProvider, signInWithPopup, onAuthStateChanged, linkWithPopup } from "firebase/auth";
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, writeBatch, onSnapshot } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { initializeApp, getApps, FirebaseApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider, OAuthProvider, signInWithPopup, onAuthStateChanged, linkWithPopup, Auth } from "firebase/auth";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, writeBatch, onSnapshot, Firestore } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, FirebaseStorage } from "firebase/storage";
 
 /**
  * Firebase Configuration - Optimized for Production
@@ -17,10 +17,10 @@ const firebaseConfig = {
 };
 
 // Lazy initialization
-let app: any;
-let auth: any;
-let db: any;
-let storage: any;
+let app: FirebaseApp | undefined;
+let auth: Auth | undefined;
+let db: Firestore | undefined;
+let storage: FirebaseStorage | undefined;
 
 const initializeFirebase = () => {
   if (!app) {
@@ -29,26 +29,26 @@ const initializeFirebase = () => {
   return app;
 };
 
-const getFirebaseAuth = () => {
+const getFirebaseAuth = (): Auth => {
   if (!auth) {
-    initializeFirebase();
-    auth = getAuth(app);
+    const initializedApp = initializeFirebase()!;
+    auth = getAuth(initializedApp);
   }
   return auth;
 };
 
-const getFirebaseDb = () => {
+const getFirebaseDb = (): Firestore => {
   if (!db) {
-    initializeFirebase();
-    db = getFirestore(app);
+    const initializedApp = initializeFirebase()!;
+    db = getFirestore(initializedApp);
   }
   return db;
 };
 
-const getFirebaseStorage = () => {
+const getFirebaseStorage = (): FirebaseStorage => {
   if (!storage) {
-    initializeFirebase();
-    storage = getStorage(app);
+    const initializedApp = initializeFirebase()!;
+    storage = getStorage(initializedApp);
   }
   return storage;
 };

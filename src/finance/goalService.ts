@@ -1,4 +1,5 @@
-import { FinancialGoal, GoalProgress, GoalStatus } from '../../models/FinancialGoal';
+﻿import { FinancialGoal, GoalProgress, GoalStatus } from '../../models/FinancialGoal';
+import { makeId } from '../utils/helpers';
 import { FinancialEventEmitter } from '../events/eventEngine';
 import { pushToCloud } from '../services/localSyncService';
 
@@ -28,7 +29,7 @@ function syncGoalsToCloud(goals: FinancialGoal[]): void {
     updatedAt: g.created_at,
     payload: g as unknown as Record<string, unknown>,
   }));
-  pushToCloud('goals', items).catch(() => {/* erro já tratado no serviço */});
+  void pushToCloud('goals', items);
 }
 
 // ─── CRUD (PART 2) ─────────────────────────────────────────────────────────
@@ -45,7 +46,7 @@ export function createGoal(goal: Omit<FinancialGoal, 'id' | 'created_at'>): Fina
   const all = readAll();
   const newGoal: FinancialGoal = {
     ...goal,
-    id: Math.random().toString(36).substr(2, 9),
+    id: makeId(),
     created_at: new Date().toISOString(),
   };
   const updated = [...all, newGoal];
@@ -70,7 +71,7 @@ export function deleteGoal(goalId: string): void {
   const remaining = readAll().filter(g => g.id !== goalId);
   writeAll(remaining);
   // Envia o item deletado como tombstone para o backend
-  pushToCloud('goals', [{ id: goalId, updatedAt: new Date().toISOString(), deleted: true }]).catch(() => {/* silencioso */});
+  void pushToCloud('goals', [{ id: goalId, updatedAt: new Date().toISOString(), deleted: true }]);
 }
 
 // Adicionar aporte a uma meta existente
@@ -150,3 +151,4 @@ export const GOAL_STATUS_META: Record<GoalStatus, { label: string; color: string
   completed: { label: 'Concluída',  color: 'text-indigo-500' },
   overdue:   { label: 'Atrasada',   color: 'text-rose-500' },
 };
+

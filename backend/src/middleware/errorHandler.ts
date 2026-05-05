@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { AppError } from '../shared/AppError';
+import logger from '../config/logger';
 
 export { AppError } from '../shared/AppError';
 
@@ -28,7 +29,7 @@ export function errorHandler(
     return;
   }
 
-  console.error('Unhandled error:', err);
+  logger.error({ err }, 'Unhandled error');
   const contextReq = req as Request & { requestId?: string; routeScope?: string };
   res.status(500).json({
     message: 'Internal Server Error',

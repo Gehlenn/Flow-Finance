@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
+import logger from '../config/logger';
 import { getWorkspaceUsersAsync } from '../services/admin/workspaceStore';
 import { getAuditEvents } from '../services/admin/auditLog';
 import { getWorkspaceMeteringSummary, getWorkspaceUsageEvents, ResourceKind } from '../utils/saasStore';
 import { AppError, asyncHandler } from '../middleware/errorHandler';
+import { parseSafeLimit } from '../utils/jsonHelpers';
 import {
   isPostgresStateStoreEnabled,
   queryAuditEvents,
@@ -32,7 +34,7 @@ export const listAuditLogs = asyncHandler(async (req: Request, res: Response) =>
     resource: workspaceId,
     resourceType: typeof req.query.resourceType === 'string' ? req.query.resourceType : undefined,
     resourceId: typeof req.query.resourceId === 'string' ? req.query.resourceId : undefined,
-    limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined,
+    limit: parseSafeLimit(req.query.limit, 100),
     since: typeof req.query.since === 'string' ? req.query.since : undefined,
     until: typeof req.query.until === 'string' ? req.query.until : undefined,
   };
@@ -68,7 +70,7 @@ export const listUsageMetering = asyncHandler(async (req: Request, res: Response
 
   const eventFilters = {
     ...filters,
-    limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : 100,
+    limit: parseSafeLimit(req.query.limit, 100),
   };
 
   const summary = isPostgresStateStoreEnabled()
@@ -104,7 +106,7 @@ export const exportAuditLogs = asyncHandler(async (req: Request, res: Response) 
     resourceId: typeof req.query.resourceId === 'string' ? req.query.resourceId : undefined,
     since: typeof req.query.since === 'string' ? req.query.since : undefined,
     until: typeof req.query.until === 'string' ? req.query.until : undefined,
-    limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined,
+    limit: parseSafeLimit(req.query.limit, 1000, 5000),
   };
 
   const logs = isPostgresStateStoreEnabled()
@@ -156,7 +158,7 @@ export const exportUsageMetering = asyncHandler(async (req: Request, res: Respon
 
   const eventFilters = {
     ...filters,
-    limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined,
+    limit: parseSafeLimit(req.query.limit, 1000, 5000),
   };
 
   const summary = isPostgresStateStoreEnabled()
@@ -222,7 +224,8 @@ function parseCursor(cursor?: string): { at: string; id: string } | null {
       return null;
     }
     return { at: decoded.at, id: decoded.id };
-  } catch {
+  } catch (err) {
+    logger.warn({ err, cursor: cursor.slice(0, 50) }, 'Cursor decode failed');
     return null;
   }
 }

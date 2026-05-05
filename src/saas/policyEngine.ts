@@ -16,10 +16,11 @@ const PLAN_LIMITS: Record<PlanName, PlanLimits> = {
 
 const PLAN_FEATURES: Record<PlanName, FeatureKey[]> = {
   free: ['advancedInsights'],
-  pro: ['advancedInsights', 'multiBankSync', 'adminConsole', 'prioritySupport'],
+  pro: ['advancedInsights', 'multiBankSync', 'adminConsole', 'prioritySupport', 'billingManagement'],
 };
 
 const ROLE_PERMISSIONS: Record<UserRole, Set<string>> = {
+  owner: new Set(['*']),
   member: new Set([
     'transactions:create',
     'transactions:update',
@@ -39,6 +40,13 @@ const ROLE_PERMISSIONS: Record<UserRole, Set<string>> = {
     'bankConnections:delete',
     'bankConnections:read',
     'simulations:run',
+  ]),
+  viewer: new Set([
+    'transactions:read',
+    'accounts:read',
+    'goals:read',
+    'subscriptions:read',
+    'bankConnections:read',
   ]),
   admin: new Set(['*']),
 };
@@ -71,7 +79,7 @@ export function getPlanFeatures(plan: PlanName): FeatureKey[] {
 }
 
 export function hasFeature(context: SaaSContext, feature: FeatureKey): boolean {
-  if (context.role === 'admin') {
+  if (context.role === 'owner' || context.role === 'admin') {
     return true;
   }
 

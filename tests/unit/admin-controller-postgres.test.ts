@@ -81,7 +81,7 @@ describe('adminController Postgres read path', () => {
       resourceType: undefined,
       tenantId: undefined,
       workspaceId: 'ws-1',
-      limit: undefined,
+      limit: 100,
       since: undefined,
       until: undefined,
     });

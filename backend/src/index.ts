@@ -1,4 +1,4 @@
-import express, { Application, Request, Response, NextFunction } from 'express';
+﻿import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import 'dotenv/config';
@@ -28,6 +28,7 @@ import tenantRoutes from './routes/tenantRoutes';
 import billingRoutes from './routes/billingRoutes';
 import syncRoutes from './routes/sync';
 import externalIntegrationRoutes from './routes/externalIntegration';
+import integrationKeyRoutes from './routes/integrationKeys';
 import clinicIntegrationRoutes from './routes/clinicIntegration';
 import businessIntegrationRoutes from './routes/businessIntegration';
 import { featureGateOpenFinance } from './middleware/featureGate';
@@ -48,6 +49,19 @@ const shouldStartHttpServer =
   process.env.VERCEL !== '1' &&
   process.env.NODE_ENV !== 'test' &&
   process.env.VITEST !== 'true';
+
+// In serverless (Vercel) the HTTP server is not started but the app is still
+// exported as a handler. Eagerly hydrate the workspace store so the in-memory
+// cache is populated before the first request arrives on a cold start.
+if (process.env.VERCEL === '1') {
+  void Promise.all([
+    initializeWorkspaceStorePersistence(),
+    initializeAuditLogPersistence(),
+    initializeSaasStorePersistence(),
+  ]).catch((error) => {
+    logger.error({ error }, 'Failed to initialize persistence on serverless cold start');
+  });
+}
 
 function getRequestContext(req: Request): { requestId?: string; routeScope?: string } {
   const contextReq = req as Request & { requestId?: string; routeScope?: string };
@@ -123,13 +137,14 @@ app.use(requestContextMiddleware);
 // Logging middleware
 app.use((_req: Request, _res: Response, next: NextFunction) => {
   const requestContext = getRequestContext(_req);
+  // Query params are intentionally omitted to avoid logging sensitive values (tokens, IDs).
+  // Add per-route query logging only where needed and after scrubbing sensitive keys.
   logger.info(
     {
       requestId: requestContext.requestId,
       routeScope: requestContext.routeScope,
       method: _req.method,
       path: _req.path,
-      query: _req.query,
       userAgent: _req.get('user-agent')
     },
     'HTTP Request'
@@ -138,13 +153,14 @@ app.use((_req: Request, _res: Response, next: NextFunction) => {
 });
 
 // Body parser
+// Limit kept at 1mb; higher limits increase DoS surface area.
 app.use(express.json({
-  limit: '10mb',
+  limit: '1mb',
   verify: (req: Request, _res: Response, buf: Buffer) => {
     req.rawBody = buf.toString('utf8');
   },
 }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.urlencoded({ limit: '1mb', extended: true }));
 
 // JSON validation middleware (catches malformed JSON)
 app.use(validateJsonMiddleware);
@@ -251,7 +267,7 @@ app.get('/health', async (req: Request, res: Response) => {
     routeScope: requestContext.routeScope,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    version: process.env.APP_VERSION || '0.6.3',
+    version: process.env.APP_VERSION || '0.9.7',
     checks,
   });
 });
@@ -260,7 +276,7 @@ app.get('/health', async (req: Request, res: Response) => {
 app.get('/api/version', (req: Request, res: Response) => {
   const requestContext = getRequestContext(req);
   res.json({
-    version: process.env.APP_VERSION || '0.6.3',
+    version: process.env.APP_VERSION || '0.9.7',
     environment: process.env.NODE_ENV || 'development',
     requestId: requestContext.requestId,
     routeScope: requestContext.routeScope,
@@ -273,7 +289,7 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     service: 'flow-finance-api',
-    version: process.env.APP_VERSION || '0.6.3',
+    version: process.env.APP_VERSION || '0.9.7',
     requestId: requestContext.requestId,
     routeScope: requestContext.routeScope,
     observability: {
@@ -318,6 +334,7 @@ app.use('/api/sync', syncRoutes);
 
 // External integration routes (event contracts from third-party systems)
 app.use('/api/integrations/external', externalIntegrationRoutes);
+app.use('/api/integrations/keys', integrationKeyRoutes);
 
 // Generic business integration routes (lightweight transactions + reminders)
 app.use('/api/integrations', businessIntegrationRoutes);
@@ -383,8 +400,8 @@ if (shouldStartHttpServer) {
         'Backend API server running'
       );
       logger.info(
-        { version: process.env.APP_VERSION || '0.6.3', build: 'event-listeners+cache+observability' },
-        '[Bootstrap] Flow Finance backend v0.6.3 iniciado'
+        { version: process.env.APP_VERSION || '0.9.7', build: 'event-listeners+cache+observability' },
+        '[Bootstrap] Flow Finance backend v0.9.7 iniciado'
       );
     });
 

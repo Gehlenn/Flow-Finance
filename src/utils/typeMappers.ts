@@ -133,6 +133,4 @@ export function toApiReminder(domain: Reminder): Record<string, any> {
   };
 }
 
-// Adicione outros mappers conforme necessário (User, Goal, etc.)
-// Exemplo de stub para expansão futura:
-// export function toDomainUser(api: any): User { ... }
+// Add more mappers as needed (User, Goal, etc.) when integrating with domain entities.

@@ -53,11 +53,11 @@ describe('externalIntegrationAuth', () => {
     return `sha256=${digest}`;
   }
 
-  it('retorna 503 quando integração externa não está configurada', () => {
-    externalIntegrationAuth(req as Request, res as Response, next);
+  it('retorna 401 quando integração externa não está configurada via env e workspaceId está ausente', async () => {
+    await externalIntegrationAuth(req as Request, res as Response, next);
 
-    expect(statusMock).toHaveBeenCalledWith(503);
-    expect(jsonMock).toHaveBeenCalledWith({ error: 'External integration is not configured' });
+    expect(statusMock).toHaveBeenCalledWith(401);
+    expect(jsonMock).toHaveBeenCalledWith({ error: 'Invalid integration key' });
     expect(next).not.toHaveBeenCalled();
   });
 

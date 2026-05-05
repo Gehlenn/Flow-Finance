@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Transaction } from '../types';
 import { Account } from '../models/Account';
+import { makeId } from '../src/utils/helpers';
 import {
   CFOIntent,
   buildFinancialContext,
@@ -219,7 +220,7 @@ const AICFO: React.FC<AICFOProps> = ({
     if (!question.trim() || isLoading) return;
 
     const userMsg: Message = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: makeId(),
       role: 'user',
       text: question.trim(),
       timestamp: new Date().toISOString(),
@@ -240,7 +241,7 @@ const AICFO: React.FC<AICFOProps> = ({
     try {
       const response = await generateCFOResponse(question, financialContext, intent);
       const cfoMsg: Message = {
-        id: Math.random().toString(36).substr(2, 9),
+        id: makeId(),
         role: 'assistant',
         text: response.answer,
         intent,
@@ -249,7 +250,7 @@ const AICFO: React.FC<AICFOProps> = ({
       setMessages(prev => [...prev, cfoMsg]);
     } catch {
       setMessages(prev => [...prev, {
-        id: Math.random().toString(36).substr(2, 9),
+        id: makeId(),
         role: 'assistant',
         text: 'Com base nos seus dados, não consegui processar esta consulta agora. Tente novamente.',
         timestamp: new Date().toISOString(),

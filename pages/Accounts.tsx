@@ -34,6 +34,7 @@ const ACCOUNT_COLORS: Record<AccountType, string> = {
 const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, activeTenantName, activeWorkspaceRole, accounts, onCreateAccount, onDeleteAccount }) => {
   const [showForm, setShowForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [balanceError, setBalanceError] = useState<string | null>(null);
   const canEdit = activeWorkspaceRole !== 'viewer';
 
   const [form, setForm] = useState({
@@ -42,22 +43,49 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
     balance: '',
   });
 
+  const openForm = () => {
+    setForm({ name: '', type: 'cash', balance: '' });
+    setBalanceError(null);
+    setShowForm(true);
+  };
+
+  const closeForm = () => {
+    setForm({ name: '', type: 'cash', balance: '' });
+    setBalanceError(null);
+    setShowForm(false);
+  };
+
+  const parsePtBRBalance = (val: string): number | null => {
+    if (!val.trim()) return 0;
+    // Aceitar pt-BR: 1.234,56 ou 1234,56 ou 1234.56
+    const normalized = val.replace(/\./g, '').replace(',', '.');
+    const parsed = parseFloat(normalized);
+    if (isNaN(parsed)) return null;
+    return parsed;
+  };
+
   const formatVal = (amt: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amt);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return;
+
+    const parsedBalance = parsePtBRBalance(form.balance);
+    if (parsedBalance === null) {
+      setBalanceError('Saldo inicial invalido');
+      return;
+    }
+    setBalanceError(null);
     setIsSaving(true);
 
     try {
       await onCreateAccount({
         name: form.name.trim(),
         type: form.type,
-        balance: parseFloat(form.balance) || 0,
+        balance: parsedBalance,
       });
-      setForm({ name: '', type: 'cash', balance: '' });
-      setShowForm(false);
+      closeForm();
     } catch (error) {
       console.error('Falha ao criar conta:', error);
     } finally {
@@ -129,8 +157,7 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
       </div>
 
       {!showForm && canEdit ? (
-        <button
-          onClick={() => setShowForm(true)}
+      <button type="button" onClick={openForm}
           className="w-full py-4 rounded-[1.8rem] border-2 border-dashed border-indigo-200 dark:border-indigo-500/30 text-indigo-500 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
         >
           <Plus size={16} /> Nova Conta
@@ -139,7 +166,7 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
         <form onSubmit={handleCreate} className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col gap-4 animate-in slide-in-from-bottom-4 duration-300">
           <div className="flex items-center justify-between mb-1">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nova Conta</p>
-            <button type="button" onClick={() => setShowForm(false)} className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400">
+            <button type="button" onClick={closeForm} aria-label="Fechar" className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400">
               <X size={16} />
             </button>
           </div>
@@ -175,13 +202,14 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
           <div className="space-y-1">
             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Saldo Inicial (R$)</label>
             <input
-              type="number"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               value={form.balance}
-              onChange={e => setForm({ ...form, balance: e.target.value })}
+              onChange={e => { setForm({ ...form, balance: e.target.value }); setBalanceError(null); }}
               placeholder="0,00"
               className="w-full p-4 bg-slate-50 dark:bg-slate-700 rounded-2xl outline-none font-black text-lg text-slate-800 dark:text-white"
             />
+            {balanceError && <p className="text-[10px] text-rose-500 font-bold ml-1">{balanceError}</p>}
           </div>
 
           <button

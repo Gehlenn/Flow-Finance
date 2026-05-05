@@ -96,13 +96,13 @@ export async function getWorkspacePlanCatalog(workspaceId: string): Promise<{
   };
 }
 
-export function changeUserPlan(input: ChangeUserPlanInput): {
+export async function changeUserPlan(input: ChangeUserPlanInput): Promise<{
   userId: string;
   previousPlan: PlanId;
   currentPlan: PlanId;
   changed: boolean;
   source: 'mock_api' | 'billing_hook';
-} {
+}> {
   if (!isMockBillingEnabled()) {
     throw new AppError(403, 'Mock billing updates are disabled in this environment');
   }
@@ -169,7 +169,7 @@ export async function changeWorkspacePlan(input: {
   });
 
   if (!input.skipBillingHookAppend) {
-    appendWorkspaceBillingHook(input.workspaceId, {
+    await appendWorkspaceBillingHook(input.workspaceId, {
       workspaceId: input.workspaceId,
       userId: input.actorUserId,
       plan: input.targetPlan,
@@ -206,13 +206,13 @@ export async function changeWorkspacePlan(input: {
   };
 }
 
-export function applyBillingHook(input: BillingHookInput): {
+export async function applyBillingHook(input: BillingHookInput): Promise<{
   previousPlan: PlanId;
   currentPlan: PlanId;
   changed: boolean;
   event: BillingHookEvent;
-} {
-  appendBillingHook(input.userId, {
+}> {
+  await appendBillingHook(input.userId, {
     userId: input.userId,
     plan: input.plan,
     event: input.event,
@@ -232,7 +232,7 @@ export function applyBillingHook(input: BillingHookInput): {
     };
   }
 
-  const result = applyPlanChange({
+  const result = await applyPlanChange({
     userId: input.userId,
     targetPlan: input.plan,
     ip: input.ip,
@@ -255,7 +255,7 @@ export async function applyWorkspaceBillingHook(input: BillingHookInput & { work
   changed: boolean;
   event: BillingHookEvent;
 }> {
-  appendWorkspaceBillingHook(input.workspaceId, {
+  await appendWorkspaceBillingHook(input.workspaceId, {
     workspaceId: input.workspaceId,
     userId: input.userId,
     plan: input.plan,
@@ -294,20 +294,20 @@ export async function applyWorkspaceBillingHook(input: BillingHookInput & { work
   };
 }
 
-function applyPlanChange(input: {
+async function applyPlanChange(input: {
   userId: string;
   targetPlan: PlanId;
   ip?: string;
   userAgent?: string;
   source: 'mock_api' | 'billing_hook';
   skipBillingHookAppend?: boolean;
-}): {
+}): Promise<{
   userId: string;
   previousPlan: PlanId;
   currentPlan: PlanId;
   changed: boolean;
   source: 'mock_api' | 'billing_hook';
-} {
+}> {
   const previousPlan = getUserPlan(input.userId);
 
   if (previousPlan === input.targetPlan) {
@@ -320,10 +320,10 @@ function applyPlanChange(input: {
     };
   }
 
-  setUserPlan(input.userId, input.targetPlan);
+  await setUserPlan(input.userId, input.targetPlan);
 
   if (!input.skipBillingHookAppend) {
-    appendBillingHook(input.userId, {
+    await appendBillingHook(input.userId, {
       userId: input.userId,
       plan: input.targetPlan,
       event: 'plan_changed',

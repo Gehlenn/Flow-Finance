@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AI Queue Integration Examples
  * Demonstrates how to use the AI Task Queue in different scenarios
  */
@@ -41,7 +41,7 @@ export function useInsightGeneration(userId: string, accounts: Account[], transa
     setTimeout(() => {
       const task = aiTaskQueue.getTask(taskId);
       if (task?.status === 'completed') {
-        setInsights(task.result);
+        setInsights(task.result as Parameters<typeof setInsights>[0]);
       }
       setLoading(false);
     }, 30000);

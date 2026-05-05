@@ -1,92 +1,56 @@
-import fs from 'fs';
-import path from 'path';
+import logger from '../config/logger';
+import { getFirestoreOrNull } from '../utils/firestoreAdmin';
 
-type ExternalIdempotencyState = {
-  processed: Record<string, string>;
-};
+const COLLECTION = 'external_idempotency';
+const MAX_DOC_ID_LENGTH = 500;
 
-const STATE_FILE = path.resolve(__dirname, '../../data/external-idempotency.json');
-const EMPTY_STATE: ExternalIdempotencyState = { processed: {} };
-const processedEventStore = new Map<string, string>();
-let loaded = false;
+// In-memory fallback used when Firestore is not configured (local dev / tests)
+const memoryStore = new Map<string, string>();
 
-function ensureStateDirExists(): void {
-  fs.mkdirSync(path.dirname(STATE_FILE), { recursive: true });
+function makeDocId(workspaceId: string, externalEventId: string): string {
+  return `${workspaceId}__${externalEventId}`
+    .replace(/\//g, '_')
+    .slice(0, MAX_DOC_ID_LENGTH);
 }
 
-function loadStateFromDisk(): ExternalIdempotencyState {
-  ensureStateDirExists();
+export async function hasProcessedExternalEvent(
+  workspaceId: string,
+  externalEventId: string,
+): Promise<boolean> {
+  const db = await getFirestoreOrNull();
 
-  if (!fs.existsSync(STATE_FILE)) {
-    return EMPTY_STATE;
+  if (!db) {
+    logger.warn('[ExternalIdempotency] Firestore unavailable — using in-memory fallback. Duplicate detection will NOT survive restarts.');
+    return memoryStore.has(`${workspaceId}::${externalEventId}`);
   }
 
-  try {
-    const raw = fs.readFileSync(STATE_FILE, 'utf8');
-    if (!raw.trim()) {
-      return EMPTY_STATE;
-    }
-
-    const parsed = JSON.parse(raw) as Partial<ExternalIdempotencyState>;
-    return {
-      processed: parsed.processed && typeof parsed.processed === 'object'
-        ? parsed.processed
-        : {},
-    };
-  } catch {
-    return EMPTY_STATE;
-  }
+  const docId = makeDocId(workspaceId, externalEventId);
+  const snapshot = await db.collection(COLLECTION).doc(docId).get();
+  return snapshot.exists;
 }
 
-function flushStateToDisk(): void {
-  ensureStateDirExists();
+export async function markExternalEventProcessed(
+  workspaceId: string,
+  externalEventId: string,
+): Promise<void> {
+  const db = await getFirestoreOrNull();
+  const processedAt = new Date().toISOString();
 
-  const state: ExternalIdempotencyState = {
-    processed: Object.fromEntries(processedEventStore),
-  };
-
-  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), 'utf8');
-}
-
-function ensureLoaded(): void {
-  if (loaded) {
+  if (!db) {
+    logger.warn('[ExternalIdempotency] Firestore unavailable — marking event in-memory only. Events may be reprocessed after restart.');
+    memoryStore.set(`${workspaceId}::${externalEventId}`, processedAt);
     return;
   }
 
-  const state = loadStateFromDisk();
-  processedEventStore.clear();
-
-  for (const [key, value] of Object.entries(state.processed)) {
-    processedEventStore.set(key, value);
-  }
-
-  loaded = true;
+  const docId = makeDocId(workspaceId, externalEventId);
+  await db.collection(COLLECTION).doc(docId).set({
+    workspaceId,
+    externalEventId,
+    processedAt,
+  });
 }
 
-function makeKey(workspaceId: string, externalEventId: string): string {
-  return `${workspaceId}::${externalEventId}`;
-}
-
-export function hasProcessedExternalEvent(workspaceId: string, externalEventId: string): boolean {
-  ensureLoaded();
-  return processedEventStore.has(makeKey(workspaceId, externalEventId));
-}
-
-export function markExternalEventProcessed(workspaceId: string, externalEventId: string): void {
-  ensureLoaded();
-  processedEventStore.set(makeKey(workspaceId, externalEventId), new Date().toISOString());
-  flushStateToDisk();
-}
-
+/** Only for use in tests. Clears the in-memory fallback store. */
 export function resetExternalIdempotencyStoreForTests(): void {
-  ensureLoaded();
-  processedEventStore.clear();
-  loaded = false;
-  try {
-    if (fs.existsSync(STATE_FILE)) {
-      fs.rmSync(STATE_FILE, { force: true });
-    }
-  } catch {
-    // no-op for test cleanup
-  }
+  memoryStore.clear();
 }

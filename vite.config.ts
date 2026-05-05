@@ -10,7 +10,7 @@ interface VitestConfigExport extends UserConfig {
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
-  const appVersion = env.VITE_APP_VERSION || process.env.npm_package_version || '0.9.6';
+  const appVersion = env.VITE_APP_VERSION || process.env.npm_package_version || '0.9.7';
     const config: VitestConfigExport = {
       server: {
         port: 3078,

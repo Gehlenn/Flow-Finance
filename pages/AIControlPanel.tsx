@@ -8,7 +8,7 @@
  * deliberate brutalist density. Think "NASA mission control meets developer DevTools".
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Transaction, TransactionType } from '../types';
 import { Account } from '../models/Account';
 
@@ -113,7 +113,7 @@ const MemoryTab: React.FC<{ userId: string }> = ({ userId }) => {
 
   const load = useCallback(async () => {
     const mem = await getAIMemory(userId);
-    setEntries(mem.sort((a, b) => b.updated_at.localeCompare(a.updated_at)));
+    setEntries([...mem].sort((a, b) => b.updated_at.localeCompare(a.updated_at)));
   }, [userId]);
 
   useEffect(() => { load(); }, [load]);
@@ -642,16 +642,37 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
     amount: 500,
     description: 'uma viagem de fim de semana'
   });
+  const [amountRaw, setAmountRaw] = useState('500');
   const [result, setResult] = useState<FinancialSimulationResult | null>(null);
+  const hasRunRef = useRef(false);
+
+  const buildScenarioWithParsedAmount = (): SimulationScenario => {
+    if (scenario.type === 'months') return scenario;
+    const parsed = parseFloat(String(amountRaw).replace(',', '.'));
+    const amount = isNaN(parsed) || !isFinite(parsed) ? 0 : parsed;
+    return { ...scenario, amount } as SimulationScenario;
+  };
 
   const runSimulation = () => {
-    const res = simulateFinancialScenario(accounts, transactions, scenario);
+    const finalScenario = buildScenarioWithParsedAmount();
+    const monthsScenario = finalScenario.type === 'months'
+      ? { ...finalScenario, months: (finalScenario as any).months || 1 }
+      : finalScenario;
+    const res = simulateFinancialScenario(accounts, transactions, monthsScenario as SimulationScenario);
     setResult(res);
+    hasRunRef.current = true;
   };
 
   useEffect(() => {
+    if (hasRunRef.current) {
+      runSimulation();
+    }
+  }, [transactions]);
+
+  // Auto-run na montagem
+  useEffect(() => {
     runSimulation();
-  }, [scenario]);
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
@@ -673,10 +694,13 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
 
             {scenario.type === 'extra_spending' && (
               <>
+                <label htmlFor="sim-amount-extra" className="font-mono text-[9px] text-slate-400">Valor do gasto extra (R$)</label>
                 <input
-                  type="number"
-                  value={scenario.amount}
-                  onChange={e => setScenario({ ...scenario, amount: Number(e.target.value) })}
+                  id="sim-amount-extra"
+                  type="text"
+                  inputMode="decimal"
+                  value={amountRaw}
+                  onChange={e => setAmountRaw(e.target.value)}
                   placeholder="Valor"
                   className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-[10px] text-slate-300"
                 />
@@ -708,13 +732,17 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
             )}
 
             {scenario.type === 'months' && (
-              <input
-                type="number"
-                value={(scenario as any).months || 3}
-                onChange={e => setScenario({ ...scenario, months: Number(e.target.value) })}
-                placeholder="Meses"
-                className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-[10px] text-slate-300"
-              />
+              <>
+                <label htmlFor="sim-months" className="font-mono text-[9px] text-slate-400">Meses da projeção</label>
+                <input
+                  id="sim-months"
+                  type="number"
+                  value={(scenario as any).months ?? 3}
+                  onChange={e => setScenario({ ...scenario, months: Number(e.target.value) || 0 } as any)}
+                  placeholder="Meses"
+                  className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-[10px] text-slate-300"
+                />
+              </>
             )}
 
             <button
@@ -852,7 +880,7 @@ const ParserLabTab: React.FC = () => {
         {/* Input */}
         <textarea
           value={input}
-          onChange={e => setInput(e.target.value)}
+          onChange={e => { setInput(e.target.value); setResult(null); setError(null); }}
           placeholder={format === 'ofx' ? '<STMTTRN>\n<DTPOSTED>20260301\n<TRNAMT>-89.90\n<MEMO>iFood\n</STMTTRN>' : 'Data,Descrição,Valor\n01/03/2026,iFood,-89.90\n01/03/2026,Salário,3200.00'}
           rows={8}
           className="w-full bg-black/50 border border-slate-700 rounded font-mono text-[9px] text-slate-300 p-3 resize-none outline-none focus:border-emerald-500/50 placeholder-slate-700"
@@ -1385,6 +1413,7 @@ const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts,
       case 'report':        return <ReportTab transactions={transactions} />;
       case 'simulation':    return <SimulationTab transactions={transactions} accounts={accounts} />;
       case 'audit':         return <AuditTab />;
+      case 'parser':        return <ParserLabTab />;
       case 'metrics':       return <MetricsViewer />;
       case 'health':        return <FinancialHealthTab transactions={transactions} />;
       case 'goals':         return <SmartGoalsTab transactions={transactions} />;
@@ -1448,5 +1477,28 @@ const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts,
     </div>
   );
 };
+
+export function formatPanelDateTime(timestamp: string): string {
+  const dt = new Date(timestamp);
+  if (isNaN(dt.getTime())) return 'Data inválida';
+  return dt.toLocaleString('pt-BR');
+}
+
+export function formatPanelTime(timestamp: string): string {
+  const dt = new Date(timestamp);
+  if (isNaN(dt.getTime())) return 'Horário inválido';
+  return dt.toLocaleTimeString('pt-BR');
+}
+
+export function createDefaultSimulationScenario(type: 'extra_spending' | 'monthly_savings' | 'months'): SimulationScenario {
+  if (type === 'months') {
+    return { type, months: 3, description: 'uma viagem de fim de semana' };
+  }
+  return { type, amount: 500, description: 'uma viagem de fim de semana' } as SimulationScenario;
+}
+
+export function createParserLabState(format: 'ofx' | 'csv'): { format: string; input: string; result: null; error: null } {
+  return { format, input: '', result: null, error: null };
+}
 
 export default AIControlPanel;

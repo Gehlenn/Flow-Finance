@@ -69,6 +69,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
   const [isGenerating, setIsGenerating] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [showCopyToast, setShowCopyToast] = useState(false);
+  const prevTransactionsSigRef = useRef<string>('');
   
   const gemini = useRef(new GeminiService());
   const isDark = theme === 'dark';
@@ -83,9 +84,28 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
     setReport(null);
     const savedReport = localStorage.getItem(reportStorageKey);
     if (savedReport) {
-      setReport(JSON.parse(savedReport));
+      try {
+        const parsed = JSON.parse(savedReport);
+        // Validar shape mínimo
+        if (parsed && typeof parsed === 'object' && Array.isArray(parsed.actionPlan)) {
+          setReport(parsed);
+        }
+      } catch {
+        // relatório inválido – ignora
+      }
     }
   }, [reportStorageKey]);
+
+  // Invalidar relatório quando o recorte financeiro mudar
+  useEffect(() => {
+    const sig = JSON.stringify(transactions.map(t => t.id + t.amount));
+    if (prevTransactionsSigRef.current && prevTransactionsSigRef.current !== sig) {
+      setReport(null);
+      localStorage.removeItem(reportStorageKey);
+    }
+    prevTransactionsSigRef.current = sig;
+  }, [transactions, reportStorageKey]);
+
 
   useEffect(() => {
     if (showCopyToast) {
@@ -123,6 +143,12 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
       localStorage.setItem(reportStorageKey, JSON.stringify(strategicReport));
     } catch (e) {
       console.error(e);
+      const fallback = {
+        executiveSummary: 'IA sem resposta completa',
+        actionPlan: ['A IA estratégica está indisponível no momento', 'A IA estratégica está indisponível no momento'],
+        diagnostic: { kind: 'ai_unavailable', message: 'A IA estratégica está indisponível no momento', suggestion: 'Tente novamente mais tarde' },
+      };
+      setReport(fallback);
     } finally {
       setIsGenerating(false);
     }
@@ -200,7 +226,13 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
       </div>
 
       <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-[0_18px_45px_-24px_rgba(15,23,42,0.3)] overflow-hidden min-h-[220px]">
-        <h3 className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Calendar size={14} /> Evolução de Caixa</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2"><Calendar size={14} /> Caixa realizado</h3>
+          <div className="flex gap-4">
+            <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400"><span>Entradas</span>: {fmt(totalsByPeriod.income)}</span>
+            <span className="text-[9px] font-black text-rose-500 dark:text-rose-400"><span>Saídas</span>: {fmt(totalsByPeriod.expenses)}</span>
+          </div>
+        </div>
         <div className="h-[220px] w-full" style={{ minHeight: '220px' }}>
           <ResponsiveContainer width="100%" height={220} minWidth={0}>
             <AreaChart data={timelineData}>
@@ -256,7 +288,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
                <Target size={28} />
              </div>
              <div>
-               <h4 className="text-sm font-black tracking-tight uppercase text-indigo-400">Prioridade Flow</h4>
+               <h4 className="text-sm font-black tracking-tight uppercase text-indigo-400">Fluxo consultivo</h4>
                <p className="text-[12px] text-slate-200 font-medium leading-relaxed mt-1.5 opacity-90">Diagnóstico estratégico de alto impacto.</p>
              </div>
           </div>
@@ -265,7 +297,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
             className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-2xl flex items-center justify-center gap-3 mt-8 active:scale-95 transition-all relative z-10 group overflow-hidden"
           >
             <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <BrainCircuit size={20} className="group-hover:rotate-12 transition-transform" /> {report ? 'Abrir Relatório' : 'Gerar Relatório'}
+            <BrainCircuit size={20} className="group-hover:rotate-12 transition-transform" /> {report ? 'Abrir diagnóstico' : 'Gerar diagnóstico'}
           </button>
         </div>
       </div>

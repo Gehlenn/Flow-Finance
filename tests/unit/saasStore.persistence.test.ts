@@ -3,6 +3,18 @@ import os from 'os';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const postgresMocks = vi.hoisted(() => ({
+  saveWorkspaceSaasState: vi.fn().mockResolvedValue(undefined),
+  loadWorkspaceSaasState: vi.fn().mockResolvedValue(null),
+  saveJsonState: vi.fn().mockResolvedValue(undefined),
+  loadJsonState: vi.fn().mockResolvedValue(null),
+  insertAuditEvent: vi.fn().mockResolvedValue(undefined),
+  loadWorkspaceStoreState: vi.fn().mockResolvedValue(null),
+  saveWorkspaceStoreState: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../backend/src/services/persistence/postgresStateStore', () => postgresMocks);
+
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-finance-saas-store-'));
 const storeFile = path.join(tempDir, 'saas-store.json');
 
@@ -29,9 +41,9 @@ describe('saasStore persistence', () => {
   it('persists plan, usage and billing hooks across module reloads', async () => {
     const firstInstance = await loadSaasStoreModule();
 
-    firstInstance.setUserPlan('user-1', 'pro');
-    firstInstance.incrementMonthlyUsage('user-1', 'transactions', 3);
-    firstInstance.appendBillingHook('user-1', {
+    await firstInstance.setUserPlan('user-1', 'pro');
+    await firstInstance.incrementMonthlyUsage('user-1', 'transactions', 3);
+    await firstInstance.appendBillingHook('user-1', {
       userId: 'user-1',
       plan: 'pro',
       event: 'usage_recorded',
@@ -50,8 +62,8 @@ describe('saasStore persistence', () => {
   it('persists workspace usage and workspace billing hooks across module reloads', async () => {
     const firstInstance = await loadSaasStoreModule();
 
-    firstInstance.incrementWorkspaceMonthlyUsage('ws-1', 'aiQueries', 7);
-    firstInstance.appendWorkspaceBillingHook('ws-1', {
+    await firstInstance.incrementWorkspaceMonthlyUsage('ws-1', 'aiQueries', 7);
+    await firstInstance.appendWorkspaceBillingHook('ws-1', {
       workspaceId: 'ws-1',
       userId: 'user-owner',
       plan: 'pro',
@@ -70,7 +82,7 @@ describe('saasStore persistence', () => {
   it('reset removes the persisted store file', async () => {
     const saasStore = await loadSaasStoreModule();
 
-    saasStore.setUserPlan('user-2', 'free');
+    await saasStore.setUserPlan('user-2', 'free');
     expect(fs.existsSync(storeFile)).toBe(true);
 
     saasStore.resetSaasStoreForTests();

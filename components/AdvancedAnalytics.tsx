@@ -137,7 +137,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Analytics</p>
-            <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Relatorios Avancados</h2>
+            <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Relatórios Avançados</h2>
           </div>
           <div className="rounded-2xl bg-slate-100 px-4 py-2 text-right dark:bg-slate-700">
             <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Workspace ativo</p>
@@ -334,7 +334,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
             <TrendingUp className="w-5 h-5 text-amber-500" />
           </div>
           <div>
-            <h3 className="text-lg font-black text-slate-800 dark:text-white">Tendência Mensal</h3>
+            <h3 className="text-lg font-black text-slate-800 dark:text-white">Relatório Mensal</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">Receitas e despesas nos últimos 6 meses</p>
           </div>
         </div>
@@ -380,8 +380,8 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
             <FileText className="w-5 h-5 text-indigo-500" />
           </div>
           <div>
-            <h3 className="text-lg font-black text-slate-800 dark:text-white">Relatório Mensal</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Comparativo mês a mês com variação percentual</p>
+            <h3 className="text-lg font-black text-slate-800 dark:text-white">Comparativo Mensal</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Receitas e despesas nos últimos 6 meses</p>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -440,5 +440,20 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
     </div>
   );
 };
+
+export function formatAnalyticsDateLabel(value: unknown): string {
+  if (!value || typeof value !== 'string') return 'Data inválida';
+  // Aceitar formato date-only: YYYY-MM-DD (interpreta como local para evitar off-by-one)
+  const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const [, y, m, d] = dateOnlyMatch;
+    const dt = new Date(Number(y), Number(m) - 1, Number(d));
+    if (isNaN(dt.getTime())) return 'Data inválida';
+    return dt.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }).replace('.', '.');
+  }
+  const dt = new Date(value);
+  if (isNaN(dt.getTime())) return 'Data inválida';
+  return dt.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }).replace('.', '.');
+}
 
 export default AdvancedAnalytics;

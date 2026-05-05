@@ -1,26 +1,73 @@
 ﻿# CHANGELOG - Flow Finance
 
-## [Unreleased] - 2026-04-13
+## [Unreleased]
 
-### Corrigido
+---
 
-- **Workspace E2E Deterministico**: O bootstrap de autenticacao para testes end-to-end agora resolve um workspace owner estavel e isolado por usuario de teste
-- **Billing E2E Estabilizado**: O fluxo de billing/admin deixou de falhar por contaminacao de contexto entre execucoes e passou a aceitar corretamente os estados validos de permissao
-- **Recuperacao de Workspace no Cliente**: `apiRequest` agora recompõe headers a cada tentativa e reaplica a requisicao apos recuperar o workspace sem consumir o orcamento de retry
-- **Fallback de Backend em Producao**: O cliente evita fallback indevido para `localhost` quando roda fora de ambiente local
-- **Diagnostico de Firebase**: O app passou a emitir aviso explicito quando Firebase web auth/Firestore nao esta configurado no ambiente
+## [0.9.7] - 2026-05-05
 
-### Validado
+### Qualidade de Código — Passagem de 7 Trilhas
 
-- `npx playwright test tests/e2e/billing.spec.ts --workers=1`
-- `npx vitest run tests/unit/workspace-session.test.ts`
-- `npx vitest run tests/unit/observability-client.test.ts`
-- `npm run lint`
-- `npm run test:coverage:critical`
+#### Track 1 — Deduplicação de inicialização Firebase Admin
+- `firestoreAdmin.ts` criado como ponto único de inicialização; todos os consumidores atualizados
+
+#### Track 2 — Consolidação de tipos
+- Bug de `UserRole` corrigido; `ResourceKind`, `FeatureKey` e `BillingHookPayload` consolidados
+
+#### Track 3 — Remoção de código morto
+- 3 componentes não utilizados deletados
+
+#### Track 4 — Dependências circulares
+- Validadas e sem ocorrências
+
+#### Track 5 — Fortalecimento de tipos
+- `predictions.ts`: `(doc: any)` / `(t: any)` → tipos explícitos com helper `docToTransaction()`
+- `Assistant.tsx`: 8 ocorrências de `as any` removidas com cast tipado preciso
+- `ClinicAutomationService.ts`: `payload as any` removido; union discriminada resolve via narrowing do TypeScript
+- `firebaseOptimized.ts`, `AIInput.tsx`, `featureGate.ts`: limpeza complementar de `any`
+
+#### Track 6 — Tratamento de erros
+- `adminController.ts`, `bankingController.ts`, `saas.schema.ts`: catch blocks documentados
+- `ClinicAutomationService.ts`: `catch {}` vazio → `logger.warn` com contexto
+- `redis.ts`: tipos `NodeJS.ErrnoException` e `Record<string, unknown>` em callbacks de retry
+
+#### Track 7 — Remoção de AI slop
+- `ClinicAIEnrichmentQueue.ts`, `typeMappers.ts`, `bankingController.ts`: comentários redundantes removidos
+
+### Billing — Postgres como Fonte de Verdade
+
+- **`saasStore.ts`**: `persistState()` virou `async`; `await saveWorkspaceSaasState()` — falha no Postgres propaga para o caller (HTTP 500) em vez de ser silenciada. 9 funções de escrita exportadas tornadas `async Promise<void|number>`: `setUserPlan`, `setUserUsage`, `setWorkspaceUsage`, `incrementMonthlyUsage`, `incrementWorkspaceMonthlyUsage`, `recordWorkspaceUsage`, `resetWorkspaceUsage`, `appendBillingHook`, `appendWorkspaceBillingHook`. Legacy JSON blob continua fire-and-forget com `logger.warn`.
+- **`billingService.ts`**: `applyPlanChange`, `applyBillingHook`, `changeUserPlan` tornadas `async`; todas as chamadas de escrita com `await`
+- **`quota.ts`**: `await incrementWorkspaceMonthlyUsage` / `await incrementMonthlyUsage`
+- **`saas.ts`**: `await setWorkspaceUsage`, `recordWorkspaceUsage`, `resetWorkspaceUsage`
+
+### Testes
+
+- **`billing-service.test.ts`**: mock de Postgres adicionado; 6 testes convertidos para `async`/`await`; `expect().toThrow` → `rejects.toThrow` para funções async
+- **`saasStore.persistence.test.ts`**: mock de Postgres adicionado; `await` em todas as chamadas de escrita
+- **`quota-middleware.test.ts`**: mock de Postgres adicionado; `await` em `incrementMonthlyUsage`/`setUserPlan`; `incrementMonthlyUsage retorna novo total` corrigido
+- **`admin-controller-postgres.test.ts`**: expectativa de `limit` corrigida para `100` (default do controller)
+- **`saasStore.postgres-billing.test.ts` (NOVO)**: 7 testes de integração cobrindo o path Postgres: payload correto em `saveWorkspaceSaasState`, acúmulo de incrementos, shape de billing hook (campo `id`), propagação de erro, absorção de falha do blob legacy (logger.warn), limpeza via `resetWorkspaceUsage`
+
+### Corrigido (do Unreleased anterior)
+
+- **Versão hard-coded no backend**: Fallback corrigido de `0.9.6` → `0.9.7` em `/health`, `/api/version`, `/api/health` e log de bootstrap
+- **Versão hard-coded no frontend**: Fallback corrigido em `versionGuard.ts`, `sentry.ts` e `api.config.ts`
+- **Navegação principal**: Tab "Inicio" → "Caixa"; "Apoio IA" → "Consultor IA"
+- **Dashboard**: Label "Dashboard" → "Caixa"; botão "Gerenciar contas" → "Consultar saldos"
+- **Documentação de variáveis de ambiente**: `backend/.env.example` documenta `CLINIC AUTOMATION INTEGRATION` e `APP_VERSION`
+
+### Segurança (auditoria 2026-05-03)
+
+- **SEC-001 (HIGH) — Open Redirect em returnUrl**: `safeReturnUrl()` valida origem contra `FRONTEND_URL`/`ALLOWED_ORIGINS`
+- **SEC-002 (MEDIUM) — DOM XSS em runtimeGuard/versionGuard**: `escapeHtml()` sanitiza antes de `innerHTML`
+- **SEC-003 (MEDIUM) — Query params vazando em logs**: `req.query` removido do logging middleware
+- **SEC-004 (LOW) — Body parser sem limite explícito**: Limite reduzido de `10mb` → `1mb`
 
 ---
 
 ## [0.9.6] - 2026-04-12 🚀
+
 
 ### Status: RELEASED
 

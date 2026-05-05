@@ -2,7 +2,7 @@ import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin
 import { Firestore, getFirestore } from 'firebase-admin/firestore';
 import { randomUUID } from 'crypto';
 import logger from '../../config/logger';
-import { applyFirestoreSettingsOnce } from '../openFinance/bankingConnectionStore';
+import { applyFirestoreSettingsOnce } from '../../utils/firestoreAdmin';
 import type { SyncEntity, SyncItem } from '../../validation/sync.schema';
 
 export type CloudSyncStoreDriver = 'memory' | 'firebase';

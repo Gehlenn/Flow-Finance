@@ -106,7 +106,14 @@ class AIWorker {
       const executionTime = Date.now() - startTime;
       const errorMessage = error?.message || 'Unknown error';
 
-      console.error(`[AI Worker] Task ${task.id} failed:`, error);
+      console.error('[AI Worker] Task execution failed:', {
+        taskId: task.id,
+        taskType: task.type,
+        userId: task.userId,
+        retryCount: task.retryCount,
+        maxRetries: task.maxRetries,
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
 
       // Check if should retry
       if (task.retryCount < task.maxRetries) {

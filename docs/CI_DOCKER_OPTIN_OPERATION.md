@@ -8,7 +8,7 @@ Este documento registra como o CI trata Docker e deploy externo como trilhas opt
 
 Arquivo relacionado:
 
-- [.github/workflows/build.yml](E:\app e jogos criados\Flow-Finance\.github\workflows\build.yml)
+- [.github/workflows/build.yml](../.github/workflows/build.yml)
 
 Comportamento atual:
 
@@ -21,7 +21,7 @@ Comportamento atual:
 
 Arquivo relacionado:
 
-- [.github/workflows/deploy.yml](E:\app e jogos criados\Flow-Finance\.github\workflows\deploy.yml)
+- [.github/workflows/deploy.yml](../.github/workflows/deploy.yml)
 
 Comportamento atual:
 

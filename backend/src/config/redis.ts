@@ -13,7 +13,7 @@ const redisConfig = {
     connectTimeout: parseInt(process.env.REDIS_CONNECT_TIMEOUT || '60000'),
     lazyConnect: true,
   },
-  retry_strategy: (options: any) => {
+  retry_strategy: (options: { error?: NodeJS.ErrnoException; total_retry_time: number; attempt: number }) => {
     if (options.error && options.error.code === 'ECONNREFUSED') {
       logger.error('Redis connection refused');
       return new Error('Redis server connection refused');
@@ -124,12 +124,12 @@ export const cache = {
 
 // Session operations
 export const session = {
-  async get(sessionId: string): Promise<any> {
+  async get(sessionId: string): Promise<Record<string, unknown> | null> {
     const data = await cache.get(`session:${sessionId}`);
-    return data ? JSON.parse(data) : null;
+    return data ? (JSON.parse(data) as Record<string, unknown>) : null;
   },
 
-  async set(sessionId: string, data: any, ttl: number = 3600): Promise<void> {
+  async set(sessionId: string, data: Record<string, unknown>, ttl: number = 3600): Promise<void> {
     await cache.set(`session:${sessionId}`, JSON.stringify(data), ttl);
   },
 

@@ -10,6 +10,16 @@ import { protectChunkLoading } from './chunkGuard';
 import { validateServiceWorker } from './serviceWorkerGuard';
 import { checkAppVersion } from './versionGuard';
 
+// Prevents DOM XSS when interpolating data from network responses into innerHTML.
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 const DEFAULT_CONFIG: RuntimeConfig = {
   apiHealthCheckInterval: 60000, // 1 minute
   versionCheckInterval: 300000, // 5 minutes
@@ -121,7 +131,7 @@ function showCriticalErrorUI(issues: GuardResult[]): void {
     .map(
       (issue) => `
     <li style="margin-bottom: 8px; padding: 12px; background: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; border-radius: 4px;">
-      <strong>${issue.guard}</strong>: ${issue.message || 'Unknown error'}
+      <strong>${escapeHtml(issue.guard)}</strong>: ${escapeHtml(issue.message || 'Unknown error')}
     </li>
   `
     )

@@ -35,10 +35,10 @@ Responsabilidades:
 
 Entradas principais:
 
-- [App.tsx](E:\app e jogos criados\Flow-Finance\App.tsx)
-- [hooks/useAuthAndWorkspace.ts](E:\app e jogos criados\Flow-Finance\hooks\useAuthAndWorkspace.ts)
-- [hooks/useSyncEngine.ts](E:\app e jogos criados\Flow-Finance\hooks\useSyncEngine.ts)
-- [hooks/useFinancialState.ts](E:\app e jogos criados\Flow-Finance\hooks\useFinancialState.ts)
+- [App.tsx](../App.tsx)
+- [hooks/useAuthAndWorkspace.ts](../hooks/useAuthAndWorkspace.ts)
+- [hooks/useSyncEngine.ts](../hooks/useSyncEngine.ts)
+- [hooks/useFinancialState.ts](../hooks/useFinancialState.ts)
 
 ### Backend
 
@@ -52,7 +52,7 @@ Responsabilidades:
 
 Entrada principal:
 
-- [backend/src/index.ts](E:\app e jogos criados\Flow-Finance\backend\src\index.ts)
+- [backend/src/index.ts](../backend/src/index.ts)
 
 ### Servicos de dominio
 
@@ -60,7 +60,7 @@ O dominio nao deve ficar espalhado em componentes. Regras criticas devem viver e
 
 Arquivo central:
 
-- [src/app/financeService.ts](E:\app e jogos criados\Flow-Finance\src\app\financeService.ts)
+- [src/app/financeService.ts](../src/app/financeService.ts)
 
 Responsabilidades:
 
@@ -81,9 +81,9 @@ O sistema trabalha com dois contextos principais:
 
 Arquivos principais:
 
-- [components/Login.tsx](E:\app e jogos criados\Flow-Finance\components\Login.tsx)
-- [hooks/useAuthAndWorkspace.ts](E:\app e jogos criados\Flow-Finance\hooks\useAuthAndWorkspace.ts)
-- [src/services/backendSession.ts](E:\app e jogos criados\Flow-Finance\src\services\backendSession.ts)
+- [components/Login.tsx](../components/Login.tsx)
+- [hooks/useAuthAndWorkspace.ts](../hooks/useAuthAndWorkspace.ts)
+- [src/services/backendSession.ts](../src/services/backendSession.ts)
 
 ### Workspace e persistencia
 
@@ -97,8 +97,8 @@ Regras ativas:
 
 Arquivos principais:
 
-- [src/services/firestoreWorkspaceStore.ts](E:\app e jogos criados\Flow-Finance\src\services\firestoreWorkspaceStore.ts)
-- [src/services/sync/cloudSyncClient.ts](E:\app e jogos criados\Flow-Finance\src\services\sync\cloudSyncClient.ts)
+- [src/services/firestoreWorkspaceStore.ts](../src/services/firestoreWorkspaceStore.ts)
+- [src/services/sync/cloudSyncClient.ts](../src/services/sync/cloudSyncClient.ts)
 
 ### Billing e SaaS
 
@@ -106,10 +106,10 @@ O backend concentra o fluxo sensivel de billing. O frontend apenas inicia checko
 
 Arquivos principais:
 
-- [src/services/firestoreBillingStore.ts](E:\app e jogos criados\Flow-Finance\src\services\firestoreBillingStore.ts)
-- [src/saas/usageTracker.ts](E:\app e jogos criados\Flow-Finance\src\saas\usageTracker.ts)
-- [pages/WorkspaceAdmin.tsx](E:\app e jogos criados\Flow-Finance\pages\WorkspaceAdmin.tsx)
-- [backend/src/services/saas](E:\app e jogos criados\Flow-Finance\backend\src\services\saas)
+- [src/services/firestoreBillingStore.ts](../src/services/firestoreBillingStore.ts)
+- [src/saas/usageTracker.ts](../src/saas/usageTracker.ts)
+- [pages/WorkspaceAdmin.tsx](../pages/WorkspaceAdmin.tsx)
+- [backend/src/services/saas](../backend/src/services/saas)
 
 Estado arquitetural relevante:
 
@@ -134,9 +134,9 @@ Campos esperados quando aplicavel:
 
 Arquivos principais:
 
-- [src/config/sentry.ts](E:\app e jogos criados\Flow-Finance\src\config\sentry.ts)
-- [backend/src/config/sentry.ts](E:\app e jogos criados\Flow-Finance\backend\src\config\sentry.ts)
-- [backend/src/index.ts](E:\app e jogos criados\Flow-Finance\backend\src\index.ts)
+- [src/config/sentry.ts](../src/config/sentry.ts)
+- [backend/src/config/sentry.ts](../backend/src/config/sentry.ts)
+- [backend/src/index.ts](../backend/src/index.ts)
 
 ## Fluxo resumido de runtime
 

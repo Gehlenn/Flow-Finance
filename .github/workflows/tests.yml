@@ -28,6 +28,9 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=8192
           VITEST_STABLE_CHUNKS: '16'
 
+      - name: Validate E2E matrix
+        run: npm run validate:e2e:matrix
+
       - name: Run E2E tests
         run: npm run test:e2e
         env:
@@ -49,3 +52,33 @@ jobs:
           file: ./coverage/lcov.info
           flags: unittests
           name: codecov-umbrella
+
+  e2e-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser:
+          - chromium
+          - firefox
+          - webkit
+          - Mobile Chrome
+          - Mobile Safari
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests (${{ matrix.browser }})
+        run: npm run test:e2e -- --project="${{ matrix.browser }}"
+        env:
+          CI: true

@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   User, LogOut, Moon, Sliders, Sun, Edit2,
   ChevronRight, Phone, BrainCircuit, X, Loader2, Send,
   Link2, CheckCircle2, AlertCircle, Copyright, Scale, ShieldCheck,
+  Zap, Key, RefreshCw, Trash2, Copy,
 } from 'lucide-react';
 import NamePromptModal from './NamePromptModal';
 import LegalModal from './LegalModal';
@@ -67,9 +68,119 @@ const Settings: React.FC<SettingsProps> = ({
   const [workspaceSwitching, setWorkspaceSwitching] = useState(false);
   const [monthlyUsageSummary, setMonthlyUsageSummary] = useState('0 transacoes - 0 consultas IA');
 
+  // Integration keys state
+  const [integrationKeyConfigured, setIntegrationKeyConfigured] = useState(false);
+  const [integrationKeyPrefix, setIntegrationKeyPrefix] = useState<string | null>(null);
+  const [integrationKeyCreatedAt, setIntegrationKeyCreatedAt] = useState<string | null>(null);
+  const [integrationKeyLoading, setIntegrationKeyLoading] = useState(false);
+  const [integrationKeyGenerated, setIntegrationKeyGenerated] = useState<string | null>(null);
+  const [integrationKeyError, setIntegrationKeyError] = useState<string | null>(null);
+  const [integrationKeyCopied, setIntegrationKeyCopied] = useState(false);
+  const [integrationPayloadCopied, setIntegrationPayloadCopied] = useState(false);
+  const [integrationCurlCopied, setIntegrationCurlCopied] = useState(false);
+  const integrationKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
     void loadBillingOverview();
   }, []);
+
+  useEffect(() => {
+    void loadIntegrationKeyMeta();
+  }, []);
+
+  const loadIntegrationKeyMeta = useCallback(async () => {
+    try {
+      const res = await apiRequest<{ configured: boolean; keyPrefix?: string; createdAt?: string }>(
+        API_ENDPOINTS.INTEGRATION_KEYS.ROOT,
+        { method: 'GET' },
+      );
+      setIntegrationKeyConfigured(res.configured);
+      setIntegrationKeyPrefix(res.keyPrefix ?? null);
+      setIntegrationKeyCreatedAt(res.createdAt ?? null);
+    } catch {
+      // Silently ignore — feature may not be provisioned yet
+    }
+  }, []);
+
+  const handleGenerateIntegrationKey = async () => {
+    setIntegrationKeyLoading(true);
+    setIntegrationKeyError(null);
+    setIntegrationKeyGenerated(null);
+    try {
+      const res = await apiRequest<{ key: string; keyPrefix: string; createdAt: string; warning: string }>(
+        API_ENDPOINTS.INTEGRATION_KEYS.GENERATE,
+        { method: 'POST' },
+      );
+      setIntegrationKeyGenerated(res.key);
+      integrationKeyRef.current = res.key;
+      setIntegrationKeyConfigured(true);
+      setIntegrationKeyPrefix(res.keyPrefix);
+      setIntegrationKeyCreatedAt(res.createdAt);
+    } catch {
+      setIntegrationKeyError('Nao foi possivel gerar a chave. Tente novamente.');
+    } finally {
+      setIntegrationKeyLoading(false);
+    }
+  };
+
+  const handleRevokeIntegrationKey = async () => {
+    setIntegrationKeyLoading(true);
+    setIntegrationKeyError(null);
+    try {
+      await apiRequest(API_ENDPOINTS.INTEGRATION_KEYS.ROOT, { method: 'DELETE' });
+      setIntegrationKeyConfigured(false);
+      setIntegrationKeyPrefix(null);
+      setIntegrationKeyCreatedAt(null);
+      setIntegrationKeyGenerated(null);
+      integrationKeyRef.current = null;
+    } catch {
+      setIntegrationKeyError('Nao foi possivel revogar a chave.');
+    } finally {
+      setIntegrationKeyLoading(false);
+    }
+  };
+
+  const handleCopyKey = () => {
+    const key = integrationKeyRef.current ?? integrationKeyGenerated;
+    if (!key) return;
+    void navigator.clipboard.writeText(key);
+    setIntegrationKeyCopied(true);
+    setTimeout(() => setIntegrationKeyCopied(false), 2000);
+  };
+
+  const handleCopyPayload = () => {
+    const payload = JSON.stringify({
+      eventType: 'payment_received',
+      workspaceId: 'SEU_WORKSPACE_ID',
+      externalEventId: 'ID_UNICO',
+      sourceSystem: 'meu-sistema',
+      occurredAt: new Date().toISOString(),
+      payload: {
+        externalCustomerId: 'cli-1',
+        externalReceivableId: 'rec-1',
+        amount: 350.00,
+        currency: 'BRL',
+        category: 'Trabalho / Consultório',
+        description: 'Consulta - Maria',
+      },
+    }, null, 2);
+    void navigator.clipboard.writeText(payload);
+    setIntegrationPayloadCopied(true);
+    setTimeout(() => setIntegrationPayloadCopied(false), 2000);
+  };
+
+  const handleCopyCurl = () => {
+    const keyValue = integrationKeyRef.current ?? integrationKeyGenerated ?? 'flw_sua_chave';
+    const parts = [
+      'curl -X POST https://SEU_BACKEND.vercel.app/api/integrations/external/events',
+      '  -H "Content-Type: application/json"',
+      `  -H "X-Integration-Key: ${keyValue}"`,
+      `  -d '{"eventType":"payment_received","workspaceId":"SEU_WORKSPACE_ID","externalEventId":"teste-1","sourceSystem":"curl","occurredAt":"${new Date().toISOString()}","payload":{"externalCustomerId":"cli-1","externalReceivableId":"rec-1","amount":100,"currency":"BRL","category":"Pessoal","description":"Teste"}}'`,
+    ];
+    void navigator.clipboard.writeText(parts.join(' \\\n'));
+    setIntegrationCurlCopied(true);
+    setTimeout(() => setIntegrationCurlCopied(false), 2000);
+  };
 
   const handleThemeChange = (nextTheme: 'light' | 'dark') => {
     setIsAnimatingTheme(true);
@@ -130,6 +241,24 @@ const Settings: React.FC<SettingsProps> = ({
     if (!supportQuery.trim()) return;
     setIsGeneratingSupport(true);
     setSupportResponse('');
+
+    const q = supportQuery.toLowerCase();
+    let intent = 'monthly_summary';
+    if (/(falta entrar|receber|recebivel|pendente|vencido|a receber)/.test(q)) intent = 'receivables_question';
+    else if (/(gastar|posso gastar|limite|disponivel|sobrou)/.test(q)) intent = 'spending_advice';
+    else if (/(risco|proximo|curto prazo|proximo|semana|dias)/.test(q)) intent = 'risk_question';
+    else if (/(saldo|caixa|quanto tem|posicao)/.test(q)) intent = 'cash_position';
+    else if (/(economiz|cortar|reduzir|poupar|economias)/.test(q)) intent = 'savings_question';
+
+    const SUPPORT_FALLBACKS: Record<string, string> = {
+      receivables_question: 'Trate recebiveis pendentes como fora do caixa ate confirmacao. Acompanhe vencimentos proximos e cobre os atrasados antes de assumir novos compromissos.',
+      spending_advice: 'Para decidir se pode gastar, verifique o saldo confirmado em caixa, desconte compromissos dos proximos 7 dias e so considere o restante como margem disponivel.',
+      risk_question: 'Monitore os proximos 7 dias: vencimentos de contas a pagar, recebimentos previstos e qualquer recebivel ja atrasado. Esses tres pontos definem o risco de curto prazo.',
+      cash_position: 'Saldo disponivel e o total confirmado nas contas menos os compromissos ja assumidos. Valores pendentes ou previstos nao fazem parte do caixa ate entrar de fato.',
+      savings_question: 'Comece cortando despesas recorrentes de baixo impacto operacional. Revise assinaturas, fornecedores secundarios e gastos variaveis que nao afetam a entrega do servico.',
+      monthly_summary: 'Para um resumo do mes, compare entradas confirmadas com saidas registradas, calcule o saldo liquido e identifique os 3 maiores centros de custo. Essa leitura da o ponto de partida para decisoes operacionais.',
+    };
+
     try {
       const response = await apiRequest<{ answer?: string; text?: string }>(
         API_ENDPOINTS.AI.CFO,
@@ -137,13 +266,15 @@ const Settings: React.FC<SettingsProps> = ({
           method: 'POST',
           body: JSON.stringify({
             question: supportQuery,
-            intent: 'monthly_summary',
+            context: '',
+            intent,
           }),
         },
       );
-      setSupportResponse(response.answer ?? response.text ?? 'Nao foi possivel processar sua pergunta agora.');
+      const answer = response.answer ?? response.text ?? '';
+      setSupportResponse(answer.trim().length > 0 ? answer : SUPPORT_FALLBACKS[intent]);
     } catch {
-      setSupportResponse('Suporte IA temporariamente indisponivel.');
+      setSupportResponse(SUPPORT_FALLBACKS[intent]);
     } finally {
       setIsGeneratingSupport(false);
     }
@@ -315,6 +446,167 @@ const Settings: React.FC<SettingsProps> = ({
         <button onClick={onLogout} className="w-full py-5 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-3xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-all border border-rose-100 dark:border-rose-500/20">
           <LogOut size={18} /> Sair
         </button>
+      </div>
+
+      <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm space-y-4">
+        <div className="flex items-center gap-3 border-b border-slate-50 dark:border-slate-700 pb-2">
+          <Zap size={14} className="text-indigo-600 dark:text-indigo-400" />
+          <h4 className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-widest">Integracoes</h4>
+        </div>
+
+        <div className="p-5 bg-slate-50 dark:bg-slate-900 rounded-2xl space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 bg-indigo-100 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+              <Key size={16} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h5 className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-tight">Chave de API</h5>
+              <p className="text-[9px] text-slate-400 font-medium mt-0.5">Use para enviar eventos do seu sistema via webhook</p>
+              {integrationKeyConfigured && integrationKeyPrefix && (
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <code className="text-[9px] font-mono bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300">
+                    {integrationKeyPrefix}••••••••••••••••••••••••
+                  </code>
+                  {integrationKeyCreatedAt && (
+                    <span className="text-[8px] text-slate-400">desde {new Date(integrationKeyCreatedAt).toLocaleDateString('pt-BR')}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {integrationKeyGenerated && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-3 space-y-2">
+              <p className="text-[8px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest">
+                Guarde agora — esta chave nao sera exibida novamente
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="text-[8px] font-mono text-amber-800 dark:text-amber-300 break-all flex-1">{integrationKeyGenerated}</code>
+                <button
+                  onClick={handleCopyKey}
+                  className="shrink-0 p-1.5 rounded-lg bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-200 transition-colors"
+                >
+                  {integrationKeyCopied ? <CheckCircle2 size={12} /> : <Copy size={12} />}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {integrationKeyError && (
+            <p className="text-[9px] text-rose-500 font-bold">{integrationKeyError}</p>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => void handleGenerateIntegrationKey()}
+              disabled={integrationKeyLoading}
+              className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors disabled:opacity-50"
+            >
+              {integrationKeyLoading ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+              {integrationKeyConfigured ? 'Rotacionar' : 'Gerar chave'}
+            </button>
+            {integrationKeyConfigured && (
+              <button
+                onClick={() => void handleRevokeIntegrationKey()}
+                disabled={integrationKeyLoading}
+                className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-100 transition-colors disabled:opacity-50"
+              >
+                <Trash2 size={11} />
+                Revogar
+              </button>
+            )}
+          </div>
+
+          <details className="group">
+            <summary className="text-[8px] font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors list-none flex items-center gap-1">
+              <ChevronRight size={10} className="group-open:rotate-90 transition-transform" />
+              Como usar — guia rapido
+            </summary>
+            <div className="mt-3 space-y-3">
+              <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 space-y-1.5">
+                <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">1 — Gere a chave acima</p>
+                <p className="text-[8px] text-slate-500 dark:text-slate-400 leading-relaxed">Clique em "Gerar chave". Copie e guarde em local seguro — so aparece uma vez.</p>
+              </div>
+              <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 space-y-1.5">
+                <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">2 — No n8n: nó HTTP Request</p>
+                <p className="text-[8px] text-slate-500 dark:text-slate-400 leading-relaxed">Metodo: POST · URL: seu-backend/api/integrations/external/events</p>
+                <p className="text-[8px] text-slate-500 dark:text-slate-400 leading-relaxed">Header: <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">X-Integration-Key: flw_sua_chave</code></p>
+              </div>
+              <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 space-y-1.5">
+                <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">3 — Categorias aceitas</p>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {(['Pessoal', 'Trabalho / Consultório', 'Negócio', 'Investimento'] as const).map(cat => (
+                    <span key={cat} className="text-[7px] font-mono bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded">{cat}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 space-y-1.5">
+                <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">4 — Tipos de evento</p>
+                <div className="space-y-1">
+                  {[
+                    { type: 'payment_received', label: 'Receita registrada' },
+                    { type: 'expense_recorded', label: 'Despesa registrada' },
+                    { type: 'alert_triggered', label: 'Alerta criado' },
+                    { type: 'receivable_reminder_created', label: 'Lembrete de cobrança' },
+                    { type: 'receivable_reminder_cleared', label: 'Cobrança quitada' },
+                  ].map(({ type, label }) => (
+                    <div key={type} className="flex items-center gap-2">
+                      <code className="text-[7px] font-mono bg-slate-200 dark:bg-slate-700 px-1 rounded text-slate-600 dark:text-slate-300 shrink-0">{type}</code>
+                      <span className="text-[7px] text-slate-400">→ {label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">Payload minimo (payment_received)</p>
+                  <button
+                    onClick={handleCopyPayload}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 transition-colors text-[7px] font-bold"
+                  >
+                    {integrationPayloadCopied ? <CheckCircle2 size={10} /> : <Copy size={10} />}
+                    {integrationPayloadCopied ? 'Copiado!' : 'Copiar'}
+                  </button>
+                </div>
+                <pre className="text-[7px] font-mono overflow-x-auto text-slate-600 dark:text-slate-300 leading-relaxed">{`{
+  "eventType": "payment_received",
+  "workspaceId": "SEU_WORKSPACE_ID",
+  "externalEventId": "ID_UNICO",
+  "sourceSystem": "meu-sistema",
+  "occurredAt": "2026-05-04T10:00:00Z",
+  "payload": {
+    "externalCustomerId": "cli-1",
+    "externalReceivableId": "rec-1",
+    "amount": 350.00,
+    "currency": "BRL",
+    "category": "Trabalho / Consultório",
+    "description": "Consulta - Maria"
+  }
+}`}</pre>
+              </div>
+              <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">Testar via curl</p>
+                    {!integrationKeyRef.current && !integrationKeyGenerated && (
+                      <p className="text-[7px] text-amber-500 mt-0.5">Gere a chave acima para copiar com valor real</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleCopyCurl}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 transition-colors text-[7px] font-bold"
+                  >
+                    {integrationCurlCopied ? <CheckCircle2 size={10} /> : <Copy size={10} />}
+                    {integrationCurlCopied ? 'Copiado!' : 'Copiar curl'}
+                  </button>
+                </div>
+                <pre className="text-[7px] font-mono overflow-x-auto text-slate-500 dark:text-slate-400 leading-relaxed">{`curl -X POST https://SEU_BACKEND.vercel.app/api/integrations/external/events \
+  -H "Content-Type: application/json" \
+  -H "X-Integration-Key: flw_sua_chave"`}</pre>
+              </div>
+            </div>
+          </details>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm space-y-4">

@@ -1,0 +1,202 @@
+{
+  "communities": {
+    "0": [
+      "concept_ai_orchestrator_routing",
+      "concept_ci_wiring",
+      "concept_encoding_mojibake_policy",
+      "concept_workspace_plan_gating",
+      "file_06_product_and_offer_model",
+      "file_2026_04_22_workspaceplan_gating_autopilot_aicfo",
+      "file_2026_04_23_ai_orchestrator_routing",
+      "file_2026_04_23_session_1_ci_deploy",
+      "file_2026_04_23_session_2_docs_archive_cleanup",
+      "file_readme"
+    ],
+    "1": [
+      "concept_ai_backend_only_rule",
+      "concept_ai_behavior_criteria",
+      "concept_provider_policy_gemini_primary",
+      "concept_provider_policy_openai_fallback",
+      "file_03_ai_and_input_architecture",
+      "file_08_unified_transaction_intake_model",
+      "file_09_ai_behavior_criteria",
+      "file_2026_04_23_session_3_encoding_mojibake"
+    ],
+    "2": [
+      "concept_flow_focus_2026_04",
+      "concept_product_scope_positioning",
+      "concept_unified_transaction_intake",
+      "file_01_product_scope_and_positioning",
+      "file_04_visual_direction",
+      "file_10_visual_redesign_checklist_by_screen",
+      "file_12_phase_4_closure"
+    ],
+    "3": [
+      "concept_e2e_matrix_gate",
+      "concept_implementation_sequence",
+      "concept_integration_contract_v1",
+      "file_05_code_agent_tasks",
+      "file_07_business_integration_contract",
+      "file_11_implementation_sequence"
+    ],
+    "4": [
+      "concept_business_integration_model",
+      "concept_receivable_not_cash",
+      "file_02_business_integration_model",
+      "file_2026_04_25_receivable_not_cash_evidence"
+    ]
+  },
+  "cohesion": {
+    "0": 0.29,
+    "1": 0.54,
+    "2": 0.33,
+    "3": 0.53,
+    "4": 0.67
+  },
+  "gods": [
+    {
+      "id": "concept_ci_wiring",
+      "label": "CI Wiring for gates",
+      "edges": 20
+    },
+    {
+      "id": "concept_ai_behavior_criteria",
+      "label": "AI Behavior Criteria",
+      "edges": 14
+    },
+    {
+      "id": "concept_unified_transaction_intake",
+      "label": "Unified Transaction Intake Model",
+      "edges": 12
+    },
+    {
+      "id": "concept_ai_backend_only_rule",
+      "label": "AI Backend-only Rule",
+      "edges": 9
+    },
+    {
+      "id": "concept_receivable_not_cash",
+      "label": "Product Safety Rule: receivable ≠ cash",
+      "edges": 7
+    },
+    {
+      "id": "concept_flow_focus_2026_04",
+      "label": "Flow Focus 2026-04 Bundle",
+      "edges": 6
+    },
+    {
+      "id": "concept_implementation_sequence",
+      "label": "Implementation Sequence (phases)",
+      "edges": 5
+    },
+    {
+      "id": "concept_e2e_matrix_gate",
+      "label": "E2E Matrix Gate (cross-browser/mobile)",
+      "edges": 4
+    },
+    {
+      "id": "concept_workspace_plan_gating",
+      "label": "workspacePlan gating (Autopilot/AICFO)",
+      "edges": 4
+    },
+    {
+      "id": "concept_ai_orchestrator_routing",
+      "label": "AI Orchestrator Routing (disambiguation)",
+      "edges": 4
+    }
+  ],
+  "surprises": [
+    {
+      "source": "Flow Focus 2026-04 Bundle",
+      "target": "Product Scope & Positioning",
+      "source_files": [
+        "README.md",
+        "01_PRODUCT_SCOPE_AND_POSITIONING.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "conceptually_related_to",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; peripheral node `Product Scope & Positioning` unexpectedly reaches hub `Flow Focus 2026-04 Bundle`"
+    },
+    {
+      "source": "Flow Focus 2026-04 Bundle",
+      "target": "Business Integration Model",
+      "source_files": [
+        "README.md",
+        "02_BUSINESS_INTEGRATION_MODEL.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "conceptually_related_to",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "Flow Focus 2026-04 Bundle",
+      "target": "Business Integration Contract v1",
+      "source_files": [
+        "README.md",
+        "07_BUSINESS_INTEGRATION_CONTRACT.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "conceptually_related_to",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "Flow Focus 2026-04 Bundle",
+      "target": "AI Behavior Criteria",
+      "source_files": [
+        "README.md",
+        "09_AI_BEHAVIOR_CRITERIA.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "conceptually_related_to",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "AI Orchestrator Routing (disambiguation)",
+      "target": "AI Behavior Criteria",
+      "source_files": [
+        "2026-04-23_ai-orchestrator-routing.md",
+        "09_AI_BEHAVIOR_CRITERIA.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "conceptually_related_to",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `CI Wiring for gates` connect `Community 0` to `Community 1`, `Community 2`, `Community 3`, `Community 4`?",
+      "why": "High betweenness centrality (0.429) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `AI Behavior Criteria` connect `Community 1` to `Community 0`, `Community 2`, `Community 3`, `Community 4`?",
+      "why": "High betweenness centrality (0.156) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `Unified Transaction Intake Model` connect `Community 2` to `Community 0`, `Community 1`, `Community 3`, `Community 4`?",
+      "why": "High betweenness centrality (0.087) - this node is a cross-community bridge."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 20 inferred relationships involving `CI Wiring for gates` (e.g. with `2026-04-23_session-1-ci-deploy.md` and `01_PRODUCT_SCOPE_AND_POSITIONING.md`) actually correct?",
+      "why": "`CI Wiring for gates` has 20 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 14 inferred relationships involving `AI Behavior Criteria` (e.g. with `09_AI_BEHAVIOR_CRITERIA.md` and `02_BUSINESS_INTEGRATION_MODEL.md`) actually correct?",
+      "why": "`AI Behavior Criteria` has 14 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 12 inferred relationships involving `Unified Transaction Intake Model` (e.g. with `08_UNIFIED_TRANSACTION_INTAKE_MODEL.md` and `01_PRODUCT_SCOPE_AND_POSITIONING.md`) actually correct?",
+      "why": "`Unified Transaction Intake Model` has 12 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 9 inferred relationships involving `AI Backend-only Rule` (e.g. with `09_AI_BEHAVIOR_CRITERIA.md` and `03_AI_AND_INPUT_ARCHITECTURE.md`) actually correct?",
+      "why": "`AI Backend-only Rule` has 9 INFERRED edges - model-reasoned connections that need verification."
+    }
+  ]
+}

@@ -31,6 +31,6 @@ Este arquivo permanece útil para justificar por que PostgreSQL foi considerado 
 
 ## Referências atuais
 
-- [docs/ARCHITECTURE.md](E:\app e jogos criados\Flow-Finance\docs\ARCHITECTURE.md)
-- [backend/README.md](E:\app e jogos criados\Flow-Finance\backend\README.md)
-- [README.md](E:\app e jogos criados\Flow-Finance\README.md)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [backend/README.md](../../backend/README.md)
+- [README.md](../../README.md)

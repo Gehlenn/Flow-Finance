@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
 import { randomUUID } from 'crypto';
+import { parseSafeLimit } from '../utils/jsonHelpers';
 import { authMiddleware } from '../middleware/auth';
 import { authz, requireFeature } from '../middleware/authz';
 import { workspaceContextMiddleware } from '../middleware/workspaceContext';
@@ -92,7 +93,7 @@ router.get('/events', authz('finance:read'), asyncHandler(async (req: Request, r
     userId: typeof req.query.userId === 'string' ? req.query.userId : undefined,
     since: typeof req.query.since === 'string' ? req.query.since : undefined,
     until: typeof req.query.until === 'string' ? req.query.until : undefined,
-    limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined,
+    limit: parseSafeLimit(req.query.limit, 100),
   });
 
   res.json({ events });

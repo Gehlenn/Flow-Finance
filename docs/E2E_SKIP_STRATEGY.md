@@ -46,5 +46,5 @@ Um skip invalido:
 
 ## Referencias
 
-- [playwright.config.ts](E:\app e jogos criados\Flow-Finance\playwright.config.ts)
-- [tests/e2e/helpers](E:\app e jogos criados\Flow-Finance\tests\e2e\helpers)
+- [playwright.config.ts](../playwright.config.ts)
+- [tests/e2e/helpers](../tests/e2e/helpers)

@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import crypto from 'crypto';
+import { verifyIntegrationKey } from '../services/workspaceIntegrationKeyStore';
 
 const DEFAULT_MAX_TIMESTAMP_SKEW_SECONDS = 300;
 const MAX_HEADER_VALUE_LENGTH = 512;
@@ -160,26 +161,49 @@ export function authorizeExternalIntegrationRequest(req: Request): ExternalInteg
   return { ok: true };
 }
 
-export function externalIntegrationAuth(
+export async function externalIntegrationAuth(
   req: Request,
   res: Response,
   next: NextFunction,
-): void {
-  const result = authorizeExternalIntegrationRequest(req);
-  if (!result.ok) {
-    if (result.reason === 'not_configured') {
-      res.status(503).json({ error: 'External integration is not configured' });
+): Promise<void> {
+  const allowedEnvKeys = getAllowedIntegrationKeys();
+  const providedKey = sanitizeIntegrationHeaderValue(req.header('x-integration-key'));
+
+  // Path A: env-var global keys (existing behaviour)
+  if (allowedEnvKeys.length > 0) {
+    const result = authorizeExternalIntegrationRequest(req);
+    if (!result.ok) {
+      if (result.reason === 'invalid_key') {
+        res.status(401).json({ error: 'Invalid integration key' });
+        return;
+      }
+      res.status(401).json({ error: 'Invalid integration signature' });
       return;
     }
+    next();
+    return;
+  }
 
-    if (result.reason === 'invalid_key') {
-      res.status(401).json({ error: 'Invalid integration key' });
-      return;
-    }
+  // Path B: per-workspace Firestore key
+  const workspaceId = typeof req.body?.workspaceId === 'string' ? req.body.workspaceId : '';
+  if (!workspaceId || !providedKey) {
+    res.status(401).json({ error: 'Invalid integration key' });
+    return;
+  }
 
+  const keyValid = await verifyIntegrationKey(workspaceId, providedKey);
+  if (!keyValid) {
+    res.status(401).json({ error: 'Invalid integration key' });
+    return;
+  }
+
+  const allowedHmacSecrets = getAllowedHmacSecrets();
+  if (!verifyHmacSignature(req, allowedHmacSecrets)) {
     res.status(401).json({ error: 'Invalid integration signature' });
     return;
   }
 
+  // CR-01: bind the verified workspaceId so downstream cannot be spoofed via body
+  (req as Request & { verifiedWorkspaceId: string }).verifiedWorkspaceId = workspaceId;
   next();
 }

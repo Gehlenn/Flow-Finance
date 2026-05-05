@@ -47,7 +47,7 @@ export async function encryptData<T>(data: T): Promise<string> {
     const iv = crypto.getRandomValues(new Uint8Array(12));
 
     // Encrypt
-    const encrypted = await crypto.subtle.encrypt(ALGORITHM, key, new TextEncoder().encode(serialized));
+    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(serialized));
 
     // Combine IV + encrypted data + version
     const combined = new Uint8Array(iv.length + encrypted.byteLength + 1);
@@ -81,7 +81,7 @@ export async function decryptData<T>(encrypted: string): Promise<T | null> {
     const encryptedData = combined.slice(13);
 
     // Decrypt
-    const decrypted = await crypto.subtle.decrypt(ALGORITHM, key, encryptedData);
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, encryptedData);
 
     // Deserialize
     const serialized = new TextDecoder().decode(decrypted);
@@ -105,7 +105,7 @@ export async function setEncryptedLocalStorage<T>(key: string, value: T): Promis
     console.error(`[Encryption] Failed to store encrypted data for key "${key}":`, error);
     // Fallback to unencrypted (for development only)
     if (import.meta.env.MODE === 'development') {
-      localStorage.setItem(key, JSON.stringify(value));
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}${key}`, JSON.stringify(value));
     }
   }
 }
@@ -115,10 +115,21 @@ export async function setEncryptedLocalStorage<T>(key: string, value: T): Promis
  */
 export async function getEncryptedLocalStorage<T>(key: string): Promise<T | null> {
   try {
-    const encrypted = localStorage.getItem(`${STORAGE_KEY_PREFIX}${key}`);
-    if (!encrypted) return null;
+    const stored = localStorage.getItem(`${STORAGE_KEY_PREFIX}${key}`);
+    if (!stored) return null;
 
-    return await decryptData<T>(encrypted);
+    // Try to decrypt; if it fails and we're in development, attempt plain JSON parse
+    const result = await decryptData<T>(stored);
+    if (result !== null) return result;
+
+    if (import.meta.env.MODE === 'development') {
+      try {
+        return JSON.parse(stored) as T;
+      } catch {
+        return null;
+      }
+    }
+    return null;
   } catch (error) {
     console.error(`[Encryption] Failed to retrieve encrypted data for key "${key}":`, error);
     return null;

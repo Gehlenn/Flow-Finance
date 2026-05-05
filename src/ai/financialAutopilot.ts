@@ -408,7 +408,7 @@ export function runFinancialAutopilot(
         created_at: now(),
       });
     }
-  } catch (_) { /* graph unavailable — skip */ }
+  } catch (err) { console.warn('[Autopilot] Graph context unavailable:', err instanceof Error ? err : new Error(String(err))); }
 
   // ─── AI MEMORY SYSTEM 2.0 — Behavioral actions ────────────────────────────
   try {

@@ -10,6 +10,25 @@ import {
   draftToTransaction,
 } from '../src/domain/intakeNormalizer';
 import { TransactionDraft, getUncertainFields } from '../src/domain/transactionDraft';
+
+// Web Speech API — not in all browsers/typings
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+}
+interface SpeechRecognitionInstance extends EventTarget {
+  continuous: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+}
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognitionInstance;
+}
+declare const SpeechRecognition: SpeechRecognitionConstructor | undefined;
+
 import { 
   X, Mic, Send, Sparkles, Loader2, Check, 
   ImageIcon, Briefcase, TrendingUp, AlertTriangle,
@@ -80,7 +99,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
 
   const gemini = useRef(new GeminiService());
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -90,12 +109,14 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
   }, []);
 
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
+    const SpeechRecognitionClass: SpeechRecognitionConstructor | undefined =
+      (window as Window & { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor }).SpeechRecognition ||
+      (window as Window & { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor }).webkitSpeechRecognition;
+    if (SpeechRecognitionClass) {
+      recognitionRef.current = new SpeechRecognitionClass();
       recognitionRef.current.continuous = false;
       recognitionRef.current.lang = 'pt-BR';
-      recognitionRef.current.onresult = (event: any) => {
+      recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
         const transcript = event.results[0][0].transcript;
         setInputText(prev => prev + (prev ? ' ' : '') + transcript);
         setIsListening(false);

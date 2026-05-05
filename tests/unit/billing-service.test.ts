@@ -1,4 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const postgresMocks = vi.hoisted(() => ({
+  saveWorkspaceSaasState: vi.fn().mockResolvedValue(undefined),
+  loadWorkspaceSaasState: vi.fn().mockResolvedValue(null),
+  saveJsonState: vi.fn().mockResolvedValue(undefined),
+  loadJsonState: vi.fn().mockResolvedValue(null),
+  insertAuditEvent: vi.fn().mockResolvedValue(undefined),
+  loadWorkspaceStoreState: vi.fn().mockResolvedValue(null),
+  saveWorkspaceStoreState: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../backend/src/services/persistence/postgresStateStore', () => postgresMocks);
 import { AppError } from '../../backend/src/middleware/errorHandler';
 import { getAuditEvents, resetAuditLogForTests } from '../../backend/src/services/admin/auditLog';
 import {
@@ -63,8 +75,8 @@ describe('billingService', () => {
     }
   });
 
-  it('retorna catalogo com plano atual e limites por plano', () => {
-    incrementMonthlyUsage('user-free', 'aiQueries', 3);
+  it('retorna catalogo com plano atual e limites por plano', async () => {
+    await incrementMonthlyUsage('user-free', 'aiQueries', 3);
 
     const catalog = getPlanCatalog('user-free');
 
@@ -99,8 +111,8 @@ describe('billingService', () => {
     expect(catalog.plans.find((plan) => plan.id === 'pro')?.priceMonthlyCents).toBe(4990);
   });
 
-  it('permite trocar plano via API mock quando habilitado', () => {
-    const result = changeUserPlan({
+  it('permite trocar plano via API mock quando habilitado', async () => {
+    const result = await changeUserPlan({
       userId: 'user-upgrade',
       targetPlan: 'pro',
       ip: '127.0.0.1',
@@ -118,26 +130,26 @@ describe('billingService', () => {
     expect(getAuditEvents({ action: 'billing.plan_changed' })).toHaveLength(1);
   });
 
-  it('nao gera hook nem audit quando a troca de plano e no-op', () => {
-    const result = changeUserPlan({ userId: 'user-noop', targetPlan: 'free' });
+  it('nao gera hook nem audit quando a troca de plano e no-op', async () => {
+    const result = await changeUserPlan({ userId: 'user-noop', targetPlan: 'free' });
 
     expect(result.changed).toBe(false);
     expect(getBillingHookCount('user-noop')).toBe(0);
     expect(getAuditEvents({ action: 'billing.plan_changed' })).toHaveLength(0);
   });
 
-  it('bloqueia troca mock quando a flag esta desabilitada fora de teste', () => {
+  it('bloqueia troca mock quando a flag esta desabilitada fora de teste', async () => {
     process.env.NODE_ENV = 'production';
     delete process.env.ALLOW_MOCK_BILLING_UPDATES;
 
-    expect(() => changeUserPlan({ userId: 'user-prod', targetPlan: 'pro' })).toThrow(AppError);
-    expect(() => changeUserPlan({ userId: 'user-prod', targetPlan: 'pro' })).toThrow(
+    await expect(changeUserPlan({ userId: 'user-prod', targetPlan: 'pro' })).rejects.toThrow(AppError);
+    await expect(changeUserPlan({ userId: 'user-prod', targetPlan: 'pro' })).rejects.toThrow(
       'Mock billing updates are disabled in this environment',
     );
   });
 
-  it('sincroniza plano via billing hook plan_changed', () => {
-    const result = applyBillingHook({
+  it('sincroniza plano via billing hook plan_changed', async () => {
+    const result = await applyBillingHook({
       userId: 'user-hook',
       plan: 'pro',
       event: 'plan_changed',
@@ -156,8 +168,8 @@ describe('billingService', () => {
     expect(getAuditEvents({ action: 'billing.plan_changed' })).toHaveLength(1);
   });
 
-  it('nao altera plano em eventos de billing sem troca de plano', () => {
-    const result = applyBillingHook({
+  it('nao altera plano em eventos de billing sem troca de plano', async () => {
+    const result = await applyBillingHook({
       userId: 'user-usage',
       plan: 'free',
       event: 'limit_reached',

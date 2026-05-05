@@ -41,6 +41,7 @@ const PLAN_FEATURES: Record<PlanName, FeatureKey[]> = {
 const ROLE_PERMISSIONS: Record<UserRole, Set<string>> = {
   owner: new Set(['*']),
   viewer: new Set([
+    'ai:use',
     'transactions:read',
     'accounts:read',
     'goals:read',

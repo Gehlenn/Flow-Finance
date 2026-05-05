@@ -10,17 +10,17 @@ describe('externalIdempotencyStore', () => {
     resetExternalIdempotencyStoreForTests();
   });
 
-  it('marks and checks processed events', () => {
-    expect(hasProcessedExternalEvent('ws_1', 'evt_1')).toBe(false);
+  it('marks and checks processed events', async () => {
+    expect(await hasProcessedExternalEvent('ws_1', 'evt_1')).toBe(false);
 
-    markExternalEventProcessed('ws_1', 'evt_1');
+    await markExternalEventProcessed('ws_1', 'evt_1');
 
-    expect(hasProcessedExternalEvent('ws_1', 'evt_1')).toBe(true);
+    expect(await hasProcessedExternalEvent('ws_1', 'evt_1')).toBe(true);
   });
 
-  it('isolates by workspace id', () => {
-    markExternalEventProcessed('ws_1', 'evt_1');
+  it('isolates by workspace id', async () => {
+    await markExternalEventProcessed('ws_1', 'evt_1');
 
-    expect(hasProcessedExternalEvent('ws_2', 'evt_1')).toBe(false);
+    expect(await hasProcessedExternalEvent('ws_2', 'evt_1')).toBe(false);
   });
 });

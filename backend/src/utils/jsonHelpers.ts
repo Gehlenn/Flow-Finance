@@ -2,22 +2,40 @@ import logger from '../config/logger';
 import { AppError } from '../middleware/errorHandler';
 
 /**
+ * Attempts to extract a raw JSON string from an LLM response that may contain
+ * markdown code fences or preamble/trailing text.
+ */
+function extractJsonString(raw: string): string {
+  // Strip markdown code fences (```json ... ``` or ``` ... ```)
+  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) return fenceMatch[1].trim();
+
+  // Find the first JSON object or array in the string
+  const objectMatch = raw.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+  if (objectMatch) return objectMatch[1].trim();
+
+  return raw.trim();
+}
+
+/**
  * Safe JSON parse with detailed error logging
- * Prevents SyntaxError from crashing the API
+ * Prevents SyntaxError from crashing the API.
+ * Handles LLM responses that wrap JSON in markdown code fences or preamble text.
  */
 export function safeJsonParse<T = any>(
   jsonString: string,
   context: string = 'unknown'
 ): T {
+  const candidate = extractJsonString(jsonString);
   try {
-    return JSON.parse(jsonString);
+    return JSON.parse(candidate);
   } catch (error) {
     logger.error(
       {
         error: error instanceof Error ? error.message : String(error),
         context,
-        jsonPreview: jsonString.substring(0, 200), // First 200 chars for debugging
-        jsonLength: jsonString.length,
+        jsonPreview: candidate.substring(0, 200),
+        jsonLength: candidate.length,
       },
       'JSON parse error'
     );
@@ -29,13 +47,25 @@ export function safeJsonParse<T = any>(
         {
           code: 'INVALID_AI_RESPONSE',
           syntaxError: error.message,
-          preview: jsonString.substring(0, 100),
+          preview: candidate.substring(0, 100),
         }
       );
     }
 
     throw error;
   }
+}
+
+/**
+ * Safely parse a pagination `limit` query parameter.
+ * Rejects non-numeric, negative, zero, Infinity, and NaN values.
+ * Clamps the result to [1, max].
+ */
+export function parseSafeLimit(value: unknown, defaultVal: number, max = 500): number {
+  if (typeof value !== 'string' || value.trim() === '') return defaultVal;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return defaultVal;
+  return Math.min(parsed, max);
 }
 
 /**

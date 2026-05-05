@@ -1,4 +1,5 @@
 import { Transaction, TransactionType } from '../../types';
+import { makeId } from '../utils/helpers';
 
 // ─── Model (PART 4) ───────────────────────────────────────────────────────────
 
@@ -65,7 +66,7 @@ export function detectFinancialRisks(prediction: CashflowPrediction): FinancialR
   // ── 1. Previsão negativa em 30 dias ──────────────────────────────────────
   if (prediction.balance_30_days < 0) {
     alerts.push({
-      id: Math.random().toString(36).substr(2, 9),
+      id: makeId(),
       type: 'negative_forecast',
       message: `Seu saldo pode ficar negativo nos próximos 30 dias (projeção: ${fmt(prediction.balance_30_days)}).`,
       severity: 'high',
@@ -79,7 +80,7 @@ export function detectFinancialRisks(prediction: CashflowPrediction): FinancialR
     prediction.projected_expenses > prediction.projected_income * 1.3
   ) {
     alerts.push({
-      id: Math.random().toString(36).substr(2, 9),
+      id: makeId(),
       type: 'spending_acceleration',
       message: `Seus gastos projetados (${fmt(prediction.projected_expenses)}) excedem significativamente suas receitas.`,
       severity: 'medium',
@@ -92,7 +93,7 @@ export function detectFinancialRisks(prediction: CashflowPrediction): FinancialR
     prediction.balance_7_days < prediction.current_balance * 0.2
   ) {
     alerts.push({
-      id: Math.random().toString(36).substr(2, 9),
+      id: makeId(),
       type: 'low_balance',
       message: `Em 7 dias seu saldo pode cair para ${fmt(prediction.balance_7_days)} — abaixo de 20% do atual.`,
       severity: 'medium',
@@ -101,3 +102,4 @@ export function detectFinancialRisks(prediction: CashflowPrediction): FinancialR
 
   return alerts;
 }
+

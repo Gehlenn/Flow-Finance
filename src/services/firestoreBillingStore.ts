@@ -296,11 +296,13 @@ export async function getWorkspaceBillingOverview(input: {
   ]);
 
   const currentMonthKey = getCurrentMonthKey();
+  const usageForCurrentMonth = usage[currentMonthKey]
+    ?? (Object.keys(usage).sort().pop() ? usage[Object.keys(usage).sort().pop()!] : undefined);
 
   return {
     currentPlan: billingState.plan,
     usage,
-    currentMonthUsage: normalizeUsageSnapshot(usage[currentMonthKey] || DEFAULT_USAGE),
+    currentMonthUsage: normalizeUsageSnapshot(usageForCurrentMonth || DEFAULT_USAGE),
     billingState,
     billingHooks,
   };

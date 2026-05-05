@@ -6,7 +6,17 @@
 import { GuardResult } from './types';
 import { isBenchmarkBrowserSession } from './benchmarkMode';
 
-const APP_VERSION = import.meta.env.VITE_APP_VERSION || '0.6.1';
+// Prevents DOM XSS when interpolating version strings from backend responses into innerHTML.
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || '0.9.7';
 const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL ||
   import.meta.env.VITE_API_PROD_URL ||
@@ -166,8 +176,8 @@ function showVersionMismatchNotification(localVersion: string, backendVersion: s
       <div style="flex: 1;">
         <strong style="display: block; margin-bottom: 8px;">Nova versao disponivel</strong>
         <p style="margin: 0 0 12px 0; opacity: 0.95; font-size: 13px;">
-          Frontend: v${localVersion}<br/>
-          Backend: v${backendVersion}
+          Frontend: v${escapeHtml(localVersion)}<br/>
+          Backend: v${escapeHtml(backendVersion)}
         </p>
         <button 
           onclick="window.location.reload()" 

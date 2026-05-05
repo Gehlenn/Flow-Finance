@@ -1,6 +1,6 @@
 export type PlanName = 'free' | 'pro';
 
-export type UserRole = 'member' | 'admin';
+export type UserRole = 'owner' | 'admin' | 'member' | 'viewer';
 
 export type ResourceKind = 'transactions' | 'aiQueries' | 'bankConnections';
 
@@ -8,7 +8,8 @@ export type FeatureKey =
   | 'advancedInsights'
   | 'multiBankSync'
   | 'adminConsole'
-  | 'prioritySupport';
+  | 'prioritySupport'
+  | 'billingManagement';
 
 export interface SaaSContext {
   userId: string;

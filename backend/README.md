@@ -190,7 +190,7 @@ O que ainda não está fechado:
 
 ## Referências
 
-- [README.md](E:\app e jogos criados\Flow-Finance\README.md)
-- [docs/ARCHITECTURE.md](E:\app e jogos criados\Flow-Finance\docs\ARCHITECTURE.md)
-- [docs/VERCEL_CONFIG.md](E:\app e jogos criados\Flow-Finance\docs\VERCEL_CONFIG.md)
-- [docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](E:\app e jogos criados\Flow-Finance\docs\EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)
+- [README.md](README.md)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/VERCEL_CONFIG.md](docs/VERCEL_CONFIG.md)
+- [docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)

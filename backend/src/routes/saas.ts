@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth';
+import { parseSafeLimit } from '../utils/jsonHelpers';
 import { validate } from '../middleware/validate';
 import {
   BillingHookSchema,
@@ -124,7 +125,7 @@ router.put('/usage', validate(UsageUpsertSchema), asyncHandler(async (req: Reque
   };
   const workspaceId = await requireAuthorizedWorkspace(req);
 
-  setWorkspaceUsage(workspaceId, payload.usage);
+  await setWorkspaceUsage(workspaceId, payload.usage);
   res.json({ success: true, scope: 'workspace', workspaceId });
 }));
 
@@ -136,7 +137,7 @@ router.post('/usage/increment', validate(UsageIncrementSchema), asyncHandler(asy
     metadata?: Record<string, unknown>;
   };
   const workspaceId = await requireAuthorizedWorkspace(req);
-  const total = recordWorkspaceUsage(workspaceId, {
+  const total = await recordWorkspaceUsage(workspaceId, {
     resource: payload.resource,
     amount: payload.amount ?? 1,
     at: payload.at,
@@ -156,7 +157,7 @@ router.post('/usage/increment', validate(UsageIncrementSchema), asyncHandler(asy
 router.post('/usage/reset', validate(UsageResetSchema), asyncHandler(async (req: Request, res: Response) => {
   const payload = req.body as { monthKey?: string };
   const workspaceId = await requireAuthorizedWorkspace(req);
-  resetWorkspaceUsage(workspaceId, payload.monthKey);
+  await resetWorkspaceUsage(workspaceId, payload.monthKey);
   res.json({ success: true, scope: 'workspace', workspaceId, monthKey: payload.monthKey || null });
 }));
 
@@ -177,7 +178,7 @@ router.get('/metering', asyncHandler(async (req: Request, res: Response) => {
 
   const eventFilters = {
     ...filters,
-    limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : 100,
+    limit: parseSafeLimit(req.query.limit, 100),
   };
 
   res.json({

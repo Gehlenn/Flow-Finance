@@ -156,7 +156,7 @@ export function buildFinancialContext(
   try {
     const graph = buildFinancialGraph('local', accounts, transactions);
     graphContext = '\n\n' + graphToAIContext(graph, 6);
-  } catch (_) { /* graph unavailable */ }
+} catch (err) { console.warn('[buildFinancialContext] Graph context unavailable:', err instanceof Error ? err : new Error(String(err))); }
 
   // AI MEMORY SYSTEM 2.0 — Behavioral context
   let behaviorContext = '';
@@ -214,7 +214,7 @@ export function buildFinancialContext(
 CONTAS:
 ${accountLines}
 
-SALDO CALCULADO: ${fmt(prediction.current_balance)}
+CAIXA OPERACIONAL CALCULADO: ${fmt(prediction.current_balance)}
 SALDO DAS CONTAS: ${fmt(totalAccountBalance)}
 
 MÊS ATUAL:
