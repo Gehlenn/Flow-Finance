@@ -203,7 +203,7 @@ const App: React.FC = () => {
     return (
       <div className="h-screen w-full bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center gap-4">
         <Loader2 className="animate-spin text-indigo-600" size={40} />
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Iniciando Flow Financas...</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-400">Iniciando Flow Financas...</p>
       </div>
     );
   }
@@ -235,19 +235,19 @@ const App: React.FC = () => {
           {syncEngine.syncStatus === 'syncing' && (
             <div className="flow-status-pill px-4 py-2 rounded-full flex items-center gap-2 animate-in slide-in-from-top-4">
               <Loader2 size={12} className="text-indigo-400 animate-spin" />
-              <span className="text-[8px] font-black uppercase tracking-widest text-white">Gravando na Nuvem...</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-white">Gravando na Nuvem...</span>
             </div>
           )}
           {syncEngine.syncStatus === 'synced' && (
             <div className="flow-status-pill bg-emerald-500/90 px-4 py-2 rounded-full flex items-center gap-2 animate-in zoom-in-95">
               <CloudCheck size={12} className="text-white" />
-              <span className="text-[8px] font-black uppercase tracking-widest text-white">Sincronizado</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-white">Sincronizado</span>
             </div>
           )}
           {syncEngine.syncStatus === 'error' && (
             <div className="flow-status-pill bg-rose-500/95 px-4 py-2 rounded-full flex items-center gap-2 animate-pulse">
               <CloudOff size={12} className="text-white" />
-              <span className="text-[8px] font-black uppercase tracking-widest text-white">Erro de Conexao</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-white">Erro de Conexao</span>
             </div>
           )}
         </div>
@@ -299,7 +299,7 @@ const NAV_BUTTON_CLASS_MAP = {
   inactive: 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300',
   iconActive: 'flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 shadow-sm dark:bg-indigo-500/15',
   iconInactive: 'flex h-10 w-10 items-center justify-center rounded-2xl',
-  label: 'text-[10px] font-black uppercase tracking-[0.22em]',
+  label: 'text-xs font-semibold uppercase tracking-[0.08em]',
 };
 
 function renderTabIcon(tab: string): React.ReactNode {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { PluggyConnect } from 'react-pluggy-connect';
 import { Transaction } from '../types';
 import { Account } from '../models/Account';
@@ -71,7 +71,7 @@ function buildOpenBankingDiagnostic(message: string): { title: string; message: 
   };
 }
 
-// ─── Status pill ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Status pill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const StatusPill: React.FC<{ status: BankConnection['connection_status'] }> = ({ status }) => {
   const map = {
@@ -82,14 +82,14 @@ const StatusPill: React.FC<{ status: BankConnection['connection_status'] }> = ({
   };
   const m = map[status];
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${m.cls}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[8px] font-semibold uppercase tracking-[0.08em] ${m.cls}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} />
       {m.label}
     </span>
   );
 };
 
-// ─── Bank logo circle ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Bank logo circle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const BankLogo: React.FC<{ bank: BankOption | BankConnection; size?: 'sm' | 'md' | 'lg' }> = ({ bank, size = 'md' }) => {
   const logo = 'bank_name' in bank ? bank.bank_logo : bank.logo;
@@ -100,12 +100,12 @@ const BankLogo: React.FC<{ bank: BankOption | BankConnection; size?: 'sm' | 'md'
       className={`${sizes[size]} rounded-2xl flex items-center justify-center shrink-0 shadow-sm`}
       style={{ backgroundColor: color ? `${color}18` : '#6366f118', border: `1.5px solid ${color ?? '#6366f1'}30` }}
     >
-      <span>{logo ?? '🏦'}</span>
+      <span>{logo ?? 'ðŸ¦'}</span>
     </div>
   );
 };
 
-// ─── Connected bank card ──────────────────────────────────────────────────────
+// â”€â”€â”€ Connected bank card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const BankCard: React.FC<{
   conn: BankConnection;
@@ -129,28 +129,28 @@ const BankCard: React.FC<{
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-black text-slate-900 dark:text-white text-sm leading-none">{conn.bank_name}</p>
+            <p className="font-semibold text-slate-900 dark:text-white text-sm leading-none">{conn.bank_name}</p>
             <StatusPill status={isSyncing ? 'syncing' : conn.connection_status} />
           </div>
 
           <div className="flex items-center gap-1.5 mt-1.5">
             <Clock size={9} className="text-slate-400" />
-            <p className="text-[9px] text-slate-400 font-bold">
-              Última sync: {formatLastSync(conn.last_sync)}
+            <p className="text-[9px] text-slate-400 font-medium">
+              Ãšltima sync: {formatLastSync(conn.last_sync)}
             </p>
           </div>
 
           {lastResult && lastResult.transactions_imported > 0 && (
             <div className="flex items-center gap-1.5 mt-1">
               <Sparkles size={9} className="text-emerald-500" />
-              <p className="text-[8px] text-emerald-600 dark:text-emerald-400 font-black">
-                +{lastResult.transactions_imported} transações importadas
+              <p className="text-[8px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                +{lastResult.transactions_imported} transaÃ§Ãµes importadas
               </p>
             </div>
           )}
 
           {conn.connection_status === 'error' && conn.error_message && (
-            <p className="text-[8px] text-rose-500 font-bold mt-1 truncate">{conn.error_message}</p>
+            <p className="text-[8px] text-rose-500 font-medium mt-1 truncate">{conn.error_message}</p>
           )}
         </div>
       </div>
@@ -160,13 +160,13 @@ const BankCard: React.FC<{
         <button
           onClick={() => onSync(conn.id)}
           disabled={isSyncing}
-          className="flex-1 flex items-center justify-center gap-2 py-3.5 text-[9px] font-black text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors disabled:opacity-40"
+          className="flex-1 flex items-center justify-center gap-2 py-3.5 text-[9px] font-semibold text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors disabled:opacity-40"
         >
           {isSyncing
             ? <Loader2 size={13} className="animate-spin" />
             : <RefreshCw size={13} />
           }
-          {isSyncing ? 'Sincronizando…' : 'Sincronizar agora'}
+          {isSyncing ? 'Sincronizandoâ€¦' : 'Sincronizar agora'}
         </button>
 
         <div className="w-px bg-slate-100 dark:bg-slate-700" />
@@ -175,7 +175,7 @@ const BankCard: React.FC<{
           <button
             aria-label={`Desconectar ${conn.bank_name}`}
             onClick={() => setConfirmDisconnect(true)}
-            className="px-5 flex items-center justify-center gap-1.5 text-[9px] font-black text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+            className="px-5 flex items-center justify-center gap-1.5 text-[9px] font-semibold text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
           >
             <Unplug size={13} />
           </button>
@@ -183,13 +183,13 @@ const BankCard: React.FC<{
           <div className="flex items-center">
             <button
               onClick={() => onDisconnect(conn.id)}
-              className="px-3 flex items-center gap-1 text-[8px] font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors py-3.5"
+              className="px-3 flex items-center gap-1 text-[8px] font-semibold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors py-3.5"
             >
               <X size={11} /> Desconectar
             </button>
             <button
               onClick={() => setConfirmDisconnect(false)}
-              className="px-2 text-[8px] font-black text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors py-3.5"
+              className="px-2 text-[8px] font-semibold text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors py-3.5"
             >
               Cancelar
             </button>
@@ -200,7 +200,7 @@ const BankCard: React.FC<{
   );
 };
 
-// ─── Bank picker grid ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Bank picker grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const BankPicker: React.FC<{
   connectedIds: Set<string>;
@@ -234,8 +234,8 @@ const BankPicker: React.FC<{
         <ChevronRight size={16} className="rotate-180" />
       </button>
       <div>
-        <p className="font-black text-slate-900 dark:text-white text-sm leading-none">Conectar Banco</p>
-        <p className="text-[8px] text-slate-400 font-bold mt-0.5">Escolha seu banco para sincronizar</p>
+        <p className="font-semibold text-slate-900 dark:text-white text-sm leading-none">Conectar Banco</p>
+        <p className="text-[8px] text-slate-400 font-medium mt-0.5">Escolha seu banco para sincronizar</p>
       </div>
     </div>
 
@@ -243,27 +243,27 @@ const BankPicker: React.FC<{
     <div className="flex items-start gap-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl border border-emerald-100 dark:border-emerald-500/20">
       <ShieldCheck size={14} className="text-emerald-500 shrink-0 mt-0.5" />
       <div>
-        <p className="text-[9px] font-black text-emerald-700 dark:text-emerald-300">
+        <p className="text-[9px] font-semibold text-emerald-700 dark:text-emerald-300">
           {pluggyEnabled
-            ? 'Conexão segura Pluggy ativa'
+            ? 'ConexÃ£o segura Pluggy ativa'
             : manualConnectDisabled
-            ? 'Backend em modo simulado (bloqueado em produção)'
-            : 'Conexão segura simulada'}
+            ? 'Backend em modo simulado (bloqueado em produÃ§Ã£o)'
+            : 'ConexÃ£o segura simulada'}
         </p>
-        <p className="text-[8px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5 leading-relaxed">
+        <p className="text-[8px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5 leading-relaxed">
           {pluggyEnabled
-            ? 'Token gerado no backend e credenciais protegidas no servidor. Nenhum CLIENT_ID/SECRET é exposto no navegador.'
+            ? 'Token gerado no backend e credenciais protegidas no servidor. Nenhum CLIENT_ID/SECRET Ã© exposto no navegador.'
             : manualConnectDisabled
-            ? 'Para evitar dados fictícios em produção, conexão manual está desabilitada até o backend voltar para providerMode=pluggy.'
-            : 'Ambiente de demonstração com dados fictícios. Nenhuma credencial bancária real é solicitada.'}
+            ? 'Para evitar dados fictÃ­cios em produÃ§Ã£o, conexÃ£o manual estÃ¡ desabilitada atÃ© o backend voltar para providerMode=pluggy.'
+            : 'Ambiente de demonstraÃ§Ã£o com dados fictÃ­cios. Nenhuma credencial bancÃ¡ria real Ã© solicitada.'}
         </p>
       </div>
     </div>
 
     {pluggyEnabled && pluggyConnectToken && (
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-4">
-        <p className="text-[9px] font-black text-slate-700 dark:text-slate-200 mb-2">Conectar com Pluggy Connect</p>
-        <div className="w-full [&>button]:w-full [&>button]:rounded-xl [&>button]:bg-indigo-600 [&>button]:hover:bg-indigo-700 [&>button]:text-white [&>button]:font-black [&>button]:text-xs [&>button]:py-3 [&>button]:transition-colors">
+        <p className="text-[9px] font-semibold text-slate-700 dark:text-slate-200 mb-2">Conectar com Pluggy Connect</p>
+        <div className="w-full [&>button]:w-full [&>button]:rounded-xl [&>button]:bg-indigo-600 [&>button]:hover:bg-indigo-700 [&>button]:text-white [&>button]:font-semibold [&>button]:text-xs [&>button]:py-3 [&>button]:transition-colors">
           <PluggyConnect
             connectToken={pluggyConnectToken}
             includeSandbox
@@ -302,7 +302,7 @@ const BankPicker: React.FC<{
             >
               {bank.logo}
             </div>
-            <p className="text-[9px] font-black text-slate-700 dark:text-slate-200 text-center leading-tight">{bank.name}</p>
+            <p className="text-[9px] font-semibold text-slate-700 dark:text-slate-200 text-center leading-tight">{bank.name}</p>
 
             {/* Status overlay */}
             {isConnected && (
@@ -322,27 +322,27 @@ const BankPicker: React.FC<{
 
     {/* Future providers */}
     <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700 p-4">
-      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">Conectores disponíveis</p>
+      <p className="text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em] mb-3">Conectores disponÃ­veis</p>
       <div className="flex gap-2 flex-wrap">
         {(pluggyConnectors.length
           ? pluggyConnectors.slice(0, 10).map((c) => c.name)
           : ['Pluggy', 'Belvo', 'TrueLayer'])
           .map(p => (
-          <span key={p} className="px-3 py-1.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-[8px] font-black text-slate-400 uppercase tracking-widest">
+          <span key={p} className="px-3 py-1.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">
             {p}
           </span>
           ))}
       </div>
-      <p className="text-[8px] text-slate-400 font-bold mt-2 leading-relaxed">
+      <p className="text-[8px] text-slate-400 font-medium mt-2 leading-relaxed">
         {pluggyEnabled
-          ? 'Fluxo real Pluggy ativo: o widget gera Item e o backend registra a conexão com segurança.'
-          : 'A arquitetura provider permite integrar qualquer API Open Banking sem reescrever o código.'}
+          ? 'Fluxo real Pluggy ativo: o widget gera Item e o backend registra a conexÃ£o com seguranÃ§a.'
+          : 'A arquitetura provider permite integrar qualquer API Open Banking sem reescrever o cÃ³digo.'}
       </p>
     </div>
   </div>
 );
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const OpenBankingPage: React.FC<OpenBankingProps> = ({
   userId,
@@ -371,23 +371,23 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
   const [pluggyLoadRetry, setPluggyLoadRetry] = useState(0);
   const pluggyRecoveryVisible = bankingHealth?.providerMode === 'mock' || bankingHealth?.pluggyConfigured === false;
   const pluggyRecoveryHint = bankingHealth?.providerMode === 'mock'
-    ? 'O backend está em modo mock. Para liberar o fluxo real, volte o provider para pluggy.'
+    ? 'O backend estÃ¡ em modo mock. Para liberar o fluxo real, volte o provider para pluggy.'
     : bankingHealth?.pluggyConfigured === false
-      ? 'O backend respondeu sem configuração Pluggy. Verifique a credencial e recarregue a tela.'
+      ? 'O backend respondeu sem configuraÃ§Ã£o Pluggy. Verifique a credencial e recarregue a tela.'
       : 'Recarregue o status do backend e tente novamente.';
   const reloadRecoveryHint = pluggyRecoveryVisible ? pluggyRecoveryHint : null;
   const reloadDiagnostic = reloadError ? buildOpenBankingDiagnostic(reloadError) : null;
   const actionRecoveryHint = actionError
     ? (
-      /modo simulado|providerMode=pluggy|backend está em modo simulado/i.test(actionError)
-        ? 'Volte o provider para pluggy e recarregue a página antes de tentar novamente.'
-        : /login\/token|sessão|token/i.test(actionError)
-          ? 'Confirme a sessão do usuário e o token do backend antes de repetir a ação.'
+      /modo simulado|providerMode=pluggy|backend estÃ¡ em modo simulado/i.test(actionError)
+        ? 'Volte o provider para pluggy e recarregue a pÃ¡gina antes de tentar novamente.'
+        : /login\/token|sessÃ£o|token/i.test(actionError)
+          ? 'Confirme a sessÃ£o do usuÃ¡rio e o token do backend antes de repetir a aÃ§Ã£o.'
           : /desconectar/i.test(actionError)
-            ? 'Recarregue a lista de conexões e tente desconectar novamente.'
+            ? 'Recarregue a lista de conexÃµes e tente desconectar novamente.'
             : /sincronizar/i.test(actionError)
               ? 'Recarregue o status do backend e tente sincronizar novamente.'
-              : /Nenhuma conexão apta/i.test(actionError)
+              : /Nenhuma conexÃ£o apta/i.test(actionError)
                 ? 'Resolva um banco em erro ou reconecte uma conta para liberar o sync.'
                 : 'Recarregue o status do backend e tente novamente.'
     )
@@ -404,7 +404,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
         error,
         fallback: 'open-banking-reload-connections-failed',
       });
-      setReloadError('Não foi possível carregar as conexões bancárias. Atualize a tela ou tente novamente.');
+      setReloadError('NÃ£o foi possÃ­vel carregar as conexÃµes bancÃ¡rias. Atualize a tela ou tente novamente.');
     }
   }, [userId]);
 
@@ -449,7 +449,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
           error: err,
           fallback: 'open-banking-load-pluggy-connectors-failed',
         });
-          setPluggyLoadError('Conectores Pluggy indisponíveis. O widget pode abrir sem lista de bancos atualizada.');
+          setPluggyLoadError('Conectores Pluggy indisponÃ­veis. O widget pode abrir sem lista de bancos atualizada.');
           return [];
         }),
         createPluggyConnectToken(userId).catch((err) => {
@@ -457,7 +457,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
           error: err,
           fallback: 'open-banking-create-pluggy-token-failed',
         });
-          setPluggyLoadError('Token Pluggy indisponível. Atualize a tela ou tente novamente em alguns instantes.');
+          setPluggyLoadError('Token Pluggy indisponÃ­vel. Atualize a tela ou tente novamente em alguns instantes.');
           return null;
         }),
       ]);
@@ -474,7 +474,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
           fallback: 'open-banking-load-pluggy-status-failed',
         });
         if (!cancelled) {
-          setPluggyLoadError('Não foi possível carregar o status do Open Banking. Verifique o backend antes de conectar.');
+          setPluggyLoadError('NÃ£o foi possÃ­vel carregar o status do Open Banking. Verifique o backend antes de conectar.');
         }
       });
     }
@@ -541,11 +541,11 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
     }
   };
 
-  // ── Connect ────────────────────────────────────────────────────────────────
+  // â”€â”€ Connect â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handleConnect = async (bank: BankOption) => {
     if (simulatedBackendBlocked) {
-      setActionError('Open Banking real indisponível: backend está em modo simulado. Aguarde providerMode=pluggy.');
+      setActionError('Open Banking real indisponÃ­vel: backend estÃ¡ em modo simulado. Aguarde providerMode=pluggy.');
       return;
     }
 
@@ -556,7 +556,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
       await reload();
       setView('list');
     } catch (err: any) {
-      setActionError('Não foi possível conectar no banco real. Verifique login/token e tente novamente.');
+      setActionError('NÃ£o foi possÃ­vel conectar no banco real. Verifique login/token e tente novamente.');
       logWarn('[OpenBanking] Connect failed', {
         error: err,
         fallback: 'open-banking-connect-failed',
@@ -566,7 +566,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
     }
   };
 
-  // ── Disconnect ─────────────────────────────────────────────────────────────
+  // â”€â”€ Disconnect â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handleDisconnect = async (id: string) => {
     try {
@@ -578,15 +578,15 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
         error,
         fallback: 'open-banking-disconnect-failed',
       });
-      setActionError('Não foi possível desconectar o banco. Atualize a lista e tente novamente.');
+      setActionError('NÃ£o foi possÃ­vel desconectar o banco. Atualize a lista e tente novamente.');
     }
   };
 
-  // ── Sync single ────────────────────────────────────────────────────────────
+  // â”€â”€ Sync single â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handleSync = async (id: string) => {
     if (simulatedBackendBlocked) {
-      setActionError('Sincronização real bloqueada: backend está em modo simulado (mock).');
+      setActionError('SincronizaÃ§Ã£o real bloqueada: backend estÃ¡ em modo simulado (mock).');
       return;
     }
 
@@ -612,24 +612,24 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
         error,
         fallback: 'open-banking-sync-failed',
       });
-      setActionError('Não foi possível sincronizar este banco. Verifique o backend e tente novamente.');
+      setActionError('NÃ£o foi possÃ­vel sincronizar este banco. Verifique o backend e tente novamente.');
     } finally {
       setSyncingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
       await reload();
     }
   };
 
-  // ── Sync all ───────────────────────────────────────────────────────────────
+  // â”€â”€ Sync all â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handleSyncAll = async () => {
     if (simulatedBackendBlocked) {
-      setActionError('Sincronização real bloqueada: backend está em modo simulado (mock).');
+      setActionError('SincronizaÃ§Ã£o real bloqueada: backend estÃ¡ em modo simulado (mock).');
       return;
     }
 
     const connected = connections.filter(c => c.connection_status !== 'error');
     if (!connected.length) {
-      setActionError('Nenhuma conexão apta para sincronizar. Resolva os bancos em erro ou reconecte a conta.');
+      setActionError('Nenhuma conexÃ£o apta para sincronizar. Resolva os bancos em erro ou reconecte a conta.');
       return;
     }
     setSyncAllLoading(true);
@@ -640,7 +640,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
     }
   };
 
-  // ── Derived ────────────────────────────────────────────────────────────────
+  // â”€â”€ Derived â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const connectedIds = new Set(connections.map(c => {
     // Extract bank id from bank_name for the picker
@@ -651,7 +651,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
   const totalImported = Object.values(lastResults).reduce((s, r) => (s as number) + (r as SyncResult).transactions_imported, 0) as number;
   const anyConnected = connections.length > 0;
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   return (
     <div className="flex flex-col gap-4 pb-8">
@@ -662,8 +662,8 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
           backgroundImage: 'radial-gradient(circle at 80% 20%, #6366f1 0%, transparent 50%), radial-gradient(circle at 20% 80%, #8b5cf6 0%, transparent 50%)'
         }} />
         <div className="relative z-10">
-          <h2 className="text-2xl font-black text-white tracking-tight leading-none">Open Banking</h2>
-          <p className="text-[8px] font-black text-white/50 uppercase tracking-widest mt-1.5">
+          <h2 className="text-2xl font-semibold text-white tracking-tight leading-none">Open Banking</h2>
+          <p className="text-[8px] font-semibold text-white/50 uppercase tracking-[0.08em] mt-1.5">
             {connections.length} banco{connections.length !== 1 ? 's' : ''} conectado{connections.length !== 1 ? 's' : ''}
           </p>
         </div>
@@ -676,24 +676,24 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
         <div role="alert" className="flex items-start gap-2 px-4 py-3 rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
           <AlertCircle size={14} className="shrink-0 mt-0.5" />
           <div className="flex flex-col gap-2 flex-1">
-            <p className="text-[10px] font-bold leading-relaxed">{reloadError}</p>
+            <p className="text-[10px] font-medium leading-relaxed">{reloadError}</p>
             {reloadRecoveryHint && (
-              <p className="text-[9px] font-black uppercase tracking-widest opacity-80">{reloadRecoveryHint}</p>
+              <p className="text-[9px] font-semibold uppercase tracking-[0.08em] opacity-80">{reloadRecoveryHint}</p>
             )}
             {reloadDiagnostic && (
               <div role="status" className="rounded-2xl border border-rose-200 bg-white/70 dark:bg-slate-900/60 p-3 space-y-1">
-                <p className="text-[9px] font-black uppercase tracking-widest">{reloadDiagnostic.title}</p>
-                <p className="text-[10px] font-bold leading-relaxed">{reloadDiagnostic.message}</p>
-                <p className="text-[8px] font-black uppercase tracking-widest">Próximo passo: {reloadDiagnostic.suggestion}</p>
+                <p className="text-[9px] font-semibold uppercase tracking-[0.08em]">{reloadDiagnostic.title}</p>
+                <p className="text-[10px] font-medium leading-relaxed">{reloadDiagnostic.message}</p>
+                <p className="text-[8px] font-semibold uppercase tracking-[0.08em]">PrÃ³ximo passo: {reloadDiagnostic.suggestion}</p>
               </div>
             )}
             <button
               type="button"
               onClick={() => void reload()}
-              className="self-start inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-600 text-white text-[9px] font-black uppercase tracking-widest hover:bg-rose-700 transition-colors"
+              className="self-start inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-600 text-white text-[9px] font-semibold uppercase tracking-[0.08em] hover:bg-rose-700 transition-colors"
             >
               <RefreshCw size={11} />
-              Recarregar conexões
+              Recarregar conexÃµes
             </button>
           </div>
         </div>
@@ -703,15 +703,15 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
         <div role="alert" className="flex items-start gap-2 px-4 py-3 rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
           <AlertCircle size={14} className="shrink-0 mt-0.5" />
           <div className="flex flex-col gap-1">
-            <p className="text-[10px] font-bold leading-relaxed">{actionError}</p>
+            <p className="text-[10px] font-medium leading-relaxed">{actionError}</p>
             {actionRecoveryHint && (
-              <p className="text-[9px] font-black uppercase tracking-widest opacity-80">{actionRecoveryHint}</p>
+              <p className="text-[9px] font-semibold uppercase tracking-[0.08em] opacity-80">{actionRecoveryHint}</p>
             )}
             {actionDiagnostic && (
               <div role="status" className="rounded-2xl border border-rose-200 bg-white/70 dark:bg-slate-900/60 p-3 space-y-1 mt-1">
-                <p className="text-[9px] font-black uppercase tracking-widest">{actionDiagnostic.title}</p>
-                <p className="text-[10px] font-bold leading-relaxed">{actionDiagnostic.message}</p>
-                <p className="text-[8px] font-black uppercase tracking-widest">Próximo passo: {actionDiagnostic.suggestion}</p>
+                <p className="text-[9px] font-semibold uppercase tracking-[0.08em]">{actionDiagnostic.title}</p>
+                <p className="text-[10px] font-medium leading-relaxed">{actionDiagnostic.message}</p>
+                <p className="text-[8px] font-semibold uppercase tracking-[0.08em]">PrÃ³ximo passo: {actionDiagnostic.suggestion}</p>
               </div>
             )}
           </div>
@@ -723,13 +723,13 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
           <AlertCircle size={14} className="shrink-0 mt-0.5" />
           <div className="flex flex-col gap-2 flex-1">
             <div className="flex flex-col gap-1">
-              <p className="text-[10px] font-bold leading-relaxed">{pluggyLoadError}</p>
-              <p className="text-[9px] font-black uppercase tracking-widest opacity-80">{pluggyRecoveryHint}</p>
+              <p className="text-[10px] font-medium leading-relaxed">{pluggyLoadError}</p>
+              <p className="text-[9px] font-semibold uppercase tracking-[0.08em] opacity-80">{pluggyRecoveryHint}</p>
             </div>
             <button
               type="button"
               onClick={() => setPluggyLoadRetry((current) => current + 1)}
-              className="self-start inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-600 text-white text-[9px] font-black uppercase tracking-widest hover:bg-amber-700 transition-colors"
+              className="self-start inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-600 text-white text-[9px] font-semibold uppercase tracking-[0.08em] hover:bg-amber-700 transition-colors"
             >
               <RefreshCw size={11} />
               Tentar novamente
@@ -742,10 +742,10 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
         <div role="status" className="flex items-start gap-2 px-4 py-3 rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
           <AlertCircle size={14} className="shrink-0 mt-0.5" />
           <div className="flex flex-col gap-1">
-            <p className="text-[10px] font-bold leading-relaxed">
-              Ambiente em modo simulado detectado ({bankingHealth?.providerMode || 'desconhecido'}). Em produção, conexões e sync reais ficam bloqueados para evitar dados fictícios.
+            <p className="text-[10px] font-medium leading-relaxed">
+              Ambiente em modo simulado detectado ({bankingHealth?.providerMode || 'desconhecido'}). Em produÃ§Ã£o, conexÃµes e sync reais ficam bloqueados para evitar dados fictÃ­cios.
             </p>
-            <p className="text-[9px] font-black uppercase tracking-widest opacity-80">{pluggyRecoveryHint}</p>
+            <p className="text-[9px] font-semibold uppercase tracking-[0.08em] opacity-80">{pluggyRecoveryHint}</p>
           </div>
         </div>
       )}
@@ -754,10 +754,10 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
         <div className="flex items-start gap-2 px-4 py-3 rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
           <AlertCircle size={14} className="shrink-0 mt-0.5" />
           <div className="flex flex-col gap-1">
-            <p className="text-[10px] font-bold leading-relaxed">
-              Ambiente em modo simulado detectado ({bankingHealth?.providerMode || 'desconhecido'}). Em produção, conexões e sync reais ficam bloqueados para evitar dados fictícios.
+            <p className="text-[10px] font-medium leading-relaxed">
+              Ambiente em modo simulado detectado ({bankingHealth?.providerMode || 'desconhecido'}). Em produÃ§Ã£o, conexÃµes e sync reais ficam bloqueados para evitar dados fictÃ­cios.
             </p>
-            <p className="text-[9px] font-black uppercase tracking-widest opacity-80">{pluggyRecoveryHint}</p>
+            <p className="text-[9px] font-semibold uppercase tracking-[0.08em] opacity-80">{pluggyRecoveryHint}</p>
           </div>
         </div>
       )}
@@ -781,7 +781,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
       {/* View: List */}
       {view === 'list' && (
         <>
-          {/* Stats bar — shown when at least one bank is connected */}
+          {/* Stats bar â€” shown when at least one bank is connected */}
           {anyConnected && (
             <div className="grid grid-cols-3 gap-3">
               {[
@@ -791,8 +791,8 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
               ].map(({ label, value, icon, bg }) => (
                 <div key={label} className={`flex flex-col items-center gap-1.5 p-3 ${bg} rounded-2xl`}>
                   {icon}
-                  <p className="text-base font-black text-slate-900 dark:text-white leading-none">{value}</p>
-                  <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+                  <p className="text-base font-semibold text-slate-900 dark:text-white leading-none">{value}</p>
+                  <p className="text-[7px] font-semibold text-slate-400 uppercase tracking-[0.08em]">{label}</p>
                 </div>
               ))}
             </div>
@@ -803,7 +803,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
             <button
               onClick={handleSyncAll}
               disabled={simulatedBackendBlocked || syncAllLoading || syncingIds.size > 0}
-              className="w-full flex items-center justify-center gap-3 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm shadow-lg shadow-indigo-500/25 transition-all active:scale-[0.98] disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-3 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-indigo-500/25 transition-all active:scale-[0.98] disabled:opacity-50"
             >
               {syncAllLoading
                 ? <Loader2 size={17} className="animate-spin" />
@@ -812,7 +812,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
               {simulatedBackendBlocked
                 ? 'Backend em modo simulado'
                 : syncAllLoading
-                ? 'Sincronizando todos…'
+                ? 'Sincronizando todosâ€¦'
                 : 'Sincronizar Todos os Bancos'}
             </button>
           )}
@@ -836,15 +836,15 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
                 <Building2 size={28} className="text-indigo-500" />
               </div>
               <div className="text-center px-6">
-                <p className="font-black text-slate-800 dark:text-white text-sm">Nenhum banco conectado</p>
-                <p className="text-[10px] text-slate-400 font-bold mt-1 leading-relaxed">
-                  Conecte sua conta para sincronizar transações automaticamente com classificação por IA
+                <p className="font-semibold text-slate-800 dark:text-white text-sm">Nenhum banco conectado</p>
+                <p className="text-[10px] text-slate-400 font-medium mt-1 leading-relaxed">
+                  Conecte sua conta para sincronizar transaÃ§Ãµes automaticamente com classificaÃ§Ã£o por IA
                 </p>
               </div>
               <button
                 onClick={openAddView}
                 disabled={simulatedBackendBlocked}
-                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-indigo-500/25"
+                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-indigo-500/25"
               >
                 <Plus size={16} /> Conectar Banco
               </button>
@@ -861,7 +861,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
               <div className="w-9 h-9 border-2 border-dashed border-current rounded-xl flex items-center justify-center">
                 <Plus size={16} />
               </div>
-              <p className="font-black text-[11px] uppercase tracking-widest">Adicionar banco</p>
+              <p className="font-semibold text-[11px] uppercase tracking-[0.08em]">Adicionar banco</p>
             </button>
           )}
 
@@ -869,10 +869,10 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
           <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700 p-4">
             <div className="flex items-center gap-2 mb-2">
               <Link2 size={12} className="text-slate-400" />
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Arquitetura modular</p>
+              <p className="text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Arquitetura modular</p>
             </div>
-            <p className="text-[9px] text-slate-500 dark:text-slate-400 font-bold leading-relaxed">
-              Cada banco usa um <span className="text-indigo-500">IBankProvider</span> independente. Para integrar Pluggy, Belvo ou TrueLayer, basta implementar a interface e registrá-la — zero mudanças na UI.
+            <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+              Cada banco usa um <span className="text-indigo-500">IBankProvider</span> independente. Para integrar Pluggy, Belvo ou TrueLayer, basta implementar a interface e registrÃ¡-la â€” zero mudanÃ§as na UI.
             </p>
             <div className="flex gap-2 mt-3 flex-wrap">
               {[
@@ -883,7 +883,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
               ].map(p => (
                 <div key={p.name} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl ${p.color}`}>
                   <Activity size={8} />
-                  <span className="text-[7px] font-black uppercase tracking-widest">{p.name}</span>
+                  <span className="text-[7px] font-semibold uppercase tracking-[0.08em]">{p.name}</span>
                 </div>
               ))}
             </div>
@@ -895,4 +895,8 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
 };
 
 export default OpenBankingPage;
+
+
+
+
 

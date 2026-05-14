@@ -249,6 +249,8 @@ export function useNavigationTabs() {
               userId={context.userId ?? 'local'}
               workspacePlan={context.activeWorkspacePlan}
               hideValues={context.hideValues}
+              onNavigateToTab={context.onNavigateToTab}
+              onCreateReminder={context.onAddReminder}
             />
           </Suspense>
         );
@@ -358,8 +360,8 @@ export function useNavigationTabs() {
             <div className="bg-gradient-to-r from-[#f59e0b] to-[#d97706] p-6 rounded-[2rem] flex justify-between items-center shadow-lg shadow-amber-500/20 shrink-0 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 blur-3xl -mr-16 -mt-16 pointer-events-none" />
               <div className="relative z-10">
-                <h2 className="text-2xl font-black text-white tracking-tight leading-none">Performance</h2>
-                <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mt-1.5">Monitoramento em Tempo Real</p>
+                <h2 className="text-2xl font-semibold text-white tracking-tight leading-none">Performance</h2>
+                <p className="text-[8px] font-semibold text-white/70 uppercase tracking-[0.08em] mt-1.5">Monitoramento em Tempo Real</p>
               </div>
               <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center text-white relative z-10">
                 <Activity size={20} />
@@ -379,6 +381,10 @@ export function useNavigationTabs() {
     renderActiveTab,
   };
 }
+
+
+
+
 
 
 

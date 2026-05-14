@@ -1394,3 +1394,134 @@ O fluxo de IA no app local agora depende do login de desenvolvimento habilitado 
 ## Tela de receitas com tipografia mais contida
 
 - `components/CashFlow.tsx` reduziu a densidade tipografica na faixa superior, cards de estado, seletor de período, modais de exportação e bloco de diagnóstico.
+
+## Settings com densidade tipografica reduzida
+
+- `components/Settings.tsx` suavizou a tipografia nos blocos de perfil, resumo do workspace, integrações e suporte operacional.
+
+## AICFO com densidade tipografica reduzida
+
+- `pages/AICFO.tsx` reduziu a agressividade tipografica nos baloes, diagnosticos, estado de carregamento, tela de boas-vindas, snapshot financeiro, modo Free, badges de contexto e atalhos rápidos.
+
+## Autopilot com densidade tipografica reduzida
+
+- `pages/Autopilot.tsx` reduziu a densidade tipografica nos cards, badges, cabecalho, estado vazio, aprendizado em segundo plano e aviso de seguranca.
+
+## WorkspaceAdmin com densidade tipografica reduzida
+
+- `pages/WorkspaceAdmin.tsx` suavizou a tipografia nos estados de carregamento, leitura, faturamento, membros, auditoria e prontidão do workspace.
+
+## ReceiptScanner com densidade tipografica reduzida
+
+- `pages/ReceiptScanner.tsx` reduziu a agressividade tipografica nos estados idle, preview, scanning, review, done, error e dicas finais.
+
+## AdvancedAnalytics com densidade tipografica reduzida
+
+- `components/AdvancedAnalytics.tsx` suavizou a tipografia dos titulos, resumo do workspace, badges dos graficos e tabela comparativa mensal.
+
+## Assistant com densidade tipografica reduzida
+
+- `components/Assistant.tsx` reduziu a densidade tipografica nos atalhos, timeline financeira, metas, limites, formulários e modais de confirmação.
+
+## AIInput com densidade tipografica reduzida
+
+- `components/AIInput.tsx` reduziu a densidade tipografica nos estados de revisão, diagnóstico, seletores de conta, modo AI/manual, entradas e confirmações.
+
+## WorkspaceAudit com densidade tipografica reduzida
+
+- `pages/WorkspaceAudit.tsx` reduziu a densidade tipografica nos estados de acesso, filtros, carregamento, erro, lista de eventos e resumo da auditoria.
+
+## Dashboard com densidade tipografica reduzida
+
+- `components/Dashboard.tsx` suavizou a tipografia da leitura rapida, saldos, alertas e chamadas principais do painel.
+
+## Insights com densidade tipografica reduzida
+
+- `pages/Insights.tsx` reduziu a densidade tipografica nas leituras, badges, resumo de saude do caixa, contexto avancado, sinais e riscos do caixa.
+
+## OpenBanking com densidade tipografica reduzida
+
+- `pages/OpenBanking.tsx` reduziu a densidade tipografica nos estados de conexão, ações, erros, métricas, conectores e rodapé operacional.
+## Sweep de densidade tipografica em fluxo principal e auth
+- Reduzi hierarquia visual em `components/LegalModal.tsx`, `pages/ImportTransactions.tsx`, `components/CashFlow.tsx`, `hooks/useNavigationTabs.tsx`, `components/UpgradePromptCard.tsx`, `components/NamePromptModal.tsx`, `components/Logo.tsx`, `src/components/ErrorBoundary.tsx`, `pages/AIControlPanel.tsx`, `components/Login.tsx`, `components/Settings.tsx`, `components/PerformanceMonitor.tsx`, `components/MetricsViewer.tsx`, `components/TransactionList.tsx`, `pages/Goals.tsx` e `pages/Accounts.tsx`.
+- Reparei a regressao de sintaxe em `src/ai/aiCFO.ts` e mantive a explicabilidade no retorno consultivo.
+- Validei com `rtk npm run test -- --run tests/unit/login.test.tsx tests/unit/settings-workspace-admin.test.tsx tests/unit/settings-clipboard-diagnostic.test.tsx tests/unit/import-transactions-session.test.tsx tests/unit/import-transactions-date-label.test.ts tests/unit/import-transactions-draft-path.test.ts tests/unit/transaction-list-states.test.tsx tests/unit/transaction-list-clipboard-diagnostic.test.tsx tests/unit/transaction-list-suggestion-diagnostic.test.tsx tests/unit/transaction-list-category-learning-diagnostic.test.tsx tests/unit/cashflow-clarity.test.tsx tests/unit/cashflow-clipboard-diagnostic.test.tsx tests/unit/ai-control-panel-parser-lab-ui.test.tsx tests/unit/ai-control-panel-memory-error.test.tsx tests/unit/ai-control-panel-snapshots.test.tsx tests/unit/ai-control-panel-simulation.test.tsx tests/unit/ai-control-panel-date-fallback.test.ts tests/unit/aicfo-plan-render.test.tsx tests/unit/ai-cfo-observability.test.ts --pool=threads --maxWorkers=1` e `rtk npm run type-check:app`.
+## Sweep final de hierarquia visual e selectors de teste
+- Removi `font-black` e `font-bold` dos painéis de dev `components/dev/AIDebugPanel.tsx` e `components/dev/AITaskQueueMonitor.tsx`.
+- Troquei o selector frágil `h4.font-bold` por `h4` no teste E2E `tests/e2e/transaction-edit-category.spec.ts`.
+- Busca final em `components`, `pages`, `hooks`, `src` e `tests` voltou limpa para `font-black|font-bold`.
+- Validado com `rtk npm run type-check:app`.
+## Sweep adicional de tracking reduzido
+
+- Normalizei `tracking-widest` e pesos monoespaçados muito agressivos em `pages/Autopilot.tsx`, `pages/ReceiptScanner.tsx`, `pages/Accounts.tsx`, `components/MetricsViewer.tsx`, `components/AIInput.tsx`, `pages/ImportTransactions.tsx`, `pages/OpenBanking.tsx`, `pages/AICFO.tsx`, `pages/Insights.tsx`, `components/AdvancedAnalytics.tsx`, `components/LegalModal.tsx`, `components/NamePromptModal.tsx`, `components/UpgradePromptCard.tsx`, `hooks/useNavigationTabs.tsx`, `components/Assistant.tsx`, `components/TransactionList.tsx`, `pages/AIControlPanel.tsx` e `components/Login.tsx`.
+- Busca final em `components`, `pages`, `hooks` e `src` voltou limpa para `tracking-widest|font-black|font-bold|font-mono text-[9px]|font-mono text-[10px]` fora de `components/dev`.
+- Validado com `rtk npm run type-check:app` e a suíte já executada nesta rodada.
+## Sweep de dev panels com densidade reduzida
+
+- `components/dev/AIDebugPanel.tsx` e `components/dev/AITaskQueueMonitor.tsx` tiveram a microtipografia reduzida para versões menos agressivas.
+- A busca final em `components/dev` voltou limpa para `tracking-widest|font-black|font-bold|text-[7px]|text-[8px]|text-[9px]|text-[10px]`.
+- Validado com `rtk npm run type-check:app`.
+## Sweep final de tracking e pesos monoespaçados em produto
+
+- Reduzi a última camada de microtipografia em `pages/Autopilot.tsx`, `pages/ReceiptScanner.tsx`, `pages/Accounts.tsx`, `components/MetricsViewer.tsx`, `components/AIInput.tsx`, `pages/ImportTransactions.tsx`, `pages/OpenBanking.tsx`, `pages/AICFO.tsx`, `pages/Insights.tsx`, `components/AdvancedAnalytics.tsx`, `components/LegalModal.tsx`, `components/NamePromptModal.tsx`, `components/UpgradePromptCard.tsx`, `hooks/useNavigationTabs.tsx`, `components/Assistant.tsx`, `components/TransactionList.tsx`, `pages/AIControlPanel.tsx`, `components/Login.tsx`, `pages/Goals.tsx`, `pages/WorkspaceAdmin.tsx` e `pages/WorkspaceAudit.tsx`.
+- A busca final em `components`, `pages`, `hooks` e `src` voltou limpa para `tracking-widest|tracking-wider|font-black|font-bold|font-mono text-[7px]|font-mono text-[8px]|font-mono text-[9px]|font-mono text-[10px]` fora de `components/dev`.
+- Validado com `rtk npm run type-check:app`.
+## Insights com CTA operacional
+
+- `pages/Insights.tsx` agora expõe ações diretas para abrir o assistente e ver metas a partir da leitura de caixa.
+- `hooks/useNavigationTabs.tsx` repassa o callback de navegação para a tela de insights.
+- `App.tsx` teve o último ruído de `font-black` suavizado no bootstrap e no status de sincronização.
+- `tests/unit/insights-plan-render.test.tsx` cobre os CTAs operacionais.
+- Validado com `rtk npm run test -- --run tests/unit/insights-plan-render.test.tsx --pool=threads --maxWorkers=1` e `rtk npm run type-check:app`.
+## Insights com CTA operacional
+
+- `pages/Insights.tsx` agora expõe ações diretas para abrir o assistente e ver metas a partir da leitura de caixa.
+- `hooks/useNavigationTabs.tsx` repassa o callback de navegação para a tela de insights.
+- `tests/unit/insights-plan-render.test.tsx` cobre os CTAs operacionais.
+- Validado com `rtk npm run test -- --run tests/unit/insights-plan-render.test.tsx --pool=threads --maxWorkers=1` e `rtk npm run type-check:app`.
+## Governanca de memoria no painel de IA
+
+- `pages/AIControlPanel.tsx` agora permite excluir uma memoria individual e limpar todas as memorias da sessao atual, com confirmacao e diagnostico visivel em caso de falha.
+- A aba de memoria agora exibe um resumo operacional com total, alta confianca, confianca media, baixa confianca e ultima atualizacao.
+- O mesmo resumo expõe um recorte por padrões, perfil de gasto e comerciantes para leitura rápida antes de qualquer exclusao.
+- A mesma aba agora filtra a lista por qualidade e funcao, incluindo alta, media, baixa confianca, padrões, perfil e comerciantes.
+- A aba de memoria agora pode limpar apenas o subconjunto filtrado, sem apagar o restante da sessao.
+- `tests/unit/ai-control-panel-memory-governance.test.tsx` cobre exclusao individual e limpeza total da memoria da sessao.
+- Validado com `rtk npm run test -- --run tests/unit/ai-control-panel-memory-governance.test.tsx tests/unit/ai-control-panel-memory-sort.test.tsx tests/unit/ai-control-panel-memory-error.test.tsx --pool=threads --maxWorkers=1` e `rtk npm run type-check:app`.
+## CFO com explicabilidade contratual
+
+- `src/ai/aiCFO.ts` expõe `buildCFOExplainability` para teste direto do shape de resposta auditavel.
+- `tests/unit/ai-cfo-context.test.ts` valida evidencias objetivas, nivel de confianca alto e fallback forcado em baixo.
+- Validado com `rtk npm run test -- --run tests/unit/ai-cfo-context.test.ts tests/unit/ai-cfo-observability.test.ts --pool=threads --maxWorkers=1` e `rtk npm run type-check:app`.
+## Harness continuo de avaliacao do CFO
+
+- `src/ai/cfoEvaluation.ts` centraliza traits canonicos para score de respostas do CFO.
+- `tests/fixtures/ai/cfoEvaluationFixtures.ts` concentra o dataset canonico por dominio e tipo de resposta.
+- `tests/health/ai-cfo-evaluation.health.test.ts` executa o gate continuo com score medio minimo e sem casos falhos.
+- `tests/unit/ai-cfo-evaluation.test.ts` valida um caso de caixa confirmado e um fallback real do gerador com score automatizado.
+- O harness verifica resposta prudente, uso de caixa confirmado, mencao de risco, ausencia de promessa absoluta e fallback explicito.
+- Validado com `rtk npm run test -- --run tests/health/ai-cfo-evaluation.health.test.ts tests/unit/ai-cfo-evaluation.test.ts tests/unit/ai-cfo-context.test.ts tests/unit/ai-cfo-observability.test.ts --pool=threads --maxWorkers=1` e `rtk npm run type-check:app`.
+
+## Insights com lembrete operacional
+- `pages/Insights.tsx` agora oferece um CTA para criar um lembrete operacional a partir da proxima acao do caixa.
+- `hooks/useNavigationTabs.tsx` passa `onAddReminder` para `Insights`, mantendo o contrato de navega??o simples e reutilizando o fluxo de lembretes existente.
+- O lembrete gerado deriva titulo, prioridade e tipo Negocio da proje??o e da sa?de do caixa.
+- `tests/unit/insights-plan-render.test.tsx` cobre o CTA de criar lembrete nos planos free e pro.
+- Validado com `rtk npm run test -- --run tests/unit/insights-plan-render.test.tsx --pool=threads --maxWorkers=1` e `rtk npm run type-check:app`.
+
+## Governanca de memoria com perfil estruturado
+- `pages/AIControlPanel.tsx` agora mostra um recorte estruturado por padr?es, perfil e comerciantes na aba de mem?ria.
+- `tests/unit/ai-control-panel-memory-governance.test.tsx` cobre a presen?a desse perfil estruturado junto da governan?a existente.
+- Validado com `rtk npm run test -- --run tests/unit/ai-control-panel-memory-governance.test.tsx --pool=threads --maxWorkers=1` e `rtk npm run type-check:app`.
+
+## Insights com CTA por risco
+- `pages/Insights.tsx` agora mostra um CTA operacional por risco para criar um lembrete de acompanhamento.
+- O lembrete usa prioridade derivada da severidade e fecha o ciclo de leitura para acao futura.
+- O mesmo card de risco agora abre o fluxo de caixa para navegação direta ao contexto operacional.
+- `tests/unit/insights-plan-render.test.tsx` cobre o CTA por risco nos planos free e pro.
+- Validado com `rtk npm run test -- --run tests/unit/insights-plan-render.test.tsx --pool=threads --maxWorkers=1` e `rtk npm run type-check:app`.
+
+## Governanca de memoria com perfil estruturado
+- `pages/AIControlPanel.tsx` agora mostra um recorte estruturado por padr?es, perfil e comerciantes na aba de mem?ria.
+- `tests/unit/ai-control-panel-memory-governance.test.tsx` cobre a presen?a desse perfil estruturado junto da governan?a existente.
+- Validado com `rtk npm run test -- --run tests/unit/ai-control-panel-memory-governance.test.tsx --pool=threads --maxWorkers=1` e `rtk npm run type-check:app`.

@@ -1,16 +1,16 @@
-/**
- * Assistente Financeiro IA — Apoio consultivo do Flow Finance
+﻿/**
+ * Assistente Financeiro IA ��� Apoio consultivo do Flow Finance
  *
  * Pipeline:
- *   Pergunta do usuário
- *       ↓
- *   analyzeFinancialQuestion  → detecta intent
- *       ↓
- *   buildFinancialContext     → monta contexto dos dados do usuário
- *       ↓
- *   generateCFOResponse       → chama LLM com contexto + pergunta
- *       ↓
- *   AICFOResponse             → exibe para o usuário
+ *   Pergunta do usu+�rio
+ *       ���
+ *   analyzeFinancialQuestion  ��� detecta intent
+ *       ���
+ *   buildFinancialContext     ��� monta contexto dos dados do usu+�rio
+ *       ���
+ *   generateCFOResponse       ��� chama LLM com contexto + pergunta
+ *       ���
+ *   AICFOResponse             ��� exibe para o usu+�rio
  */
 
 import { Transaction, TransactionType } from '../../types';
@@ -40,9 +40,24 @@ function parseCfoDate(value: string): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-// ─── PART 2 — Response Model ──────────────────────────────────────────────────
+// ��������� PART 2 ��� Response Model ������������������������������������������������������������������������������������������������������������������������������������������������������
+
+export type AICFOConfidenceBand = 'low' | 'medium' | 'high';
+
+export interface AICFOExplainability {
+  reasons_used: string[];
+  evidence: {
+    confirmed_cash?: string;
+    forecast_30d?: string;
+    month_result?: string;
+    data_quality_note?: string;
+    base_sufficiency: 'strong' | 'limited';
+  };
+  confidence_band: AICFOConfidenceBand;
+}
 
 export interface AICFOResponse {
+  explainability: AICFOExplainability;
   question: string;
   answer: string;
   context_summary?: string;
@@ -55,7 +70,7 @@ export interface AICFOResponse {
   };
 }
 
-// ─── PART 4 — Intent Types ────────────────────────────────────────────────────
+// ��������� PART 4 ��� Intent Types ������������������������������������������������������������������������������������������������������������������������������������������������������������
 
 export type CFOIntent =
   | 'spending_advice'
@@ -77,23 +92,23 @@ const INTENT_PATTERNS: IntentPattern[] = [
   },
   {
     intent: 'cash_position',
-    keywords: ['saldo', 'disponível', 'caixa hoje', 'quanto tenho', 'quanto sobra', 'caixa confirmado'],
+    keywords: ['saldo', 'dispon+�vel', 'caixa hoje', 'quanto tenho', 'quanto sobra', 'caixa confirmado'],
   },
   {
     intent: 'risk_question',
-    keywords: ['risco', 'perigo', 'dívida', 'negativo', 'prejudicar', 'alerta', 'problema', 'curto prazo', 'próximos dias'],
+    keywords: ['risco', 'perigo', 'd+�vida', 'negativo', 'prejudicar', 'alerta', 'problema', 'curto prazo', 'pr+�ximos dias'],
   },
   {
     intent: 'receivables_question',
-    keywords: ['previsão', 'previsao', 'prever', 'próximos 7 dias', 'proximos 7 dias', 'próximos 30 dias', 'proximos 30 dias', 'entrada prevista', 'saida prevista', 'saída prevista', 'projeção', 'projecao', 'pendência', 'pendencias', 'pendências', 'vencido', 'vencidos', 'recebível', 'recebiveis'],
+    keywords: ['previs+�o', 'previsao', 'prever', 'pr+�ximos 7 dias', 'proximos 7 dias', 'pr+�ximos 30 dias', 'proximos 30 dias', 'entrada prevista', 'saida prevista', 'sa+�da prevista', 'proje+�+�o', 'projecao', 'pend+�ncia', 'pendencias', 'pend+�ncias', 'vencido', 'vencidos', 'receb+�vel', 'recebiveis'],
   },
   {
     intent: 'savings_question',
-    keywords: ['economizar', 'poupar', 'guardar', 'reserva', 'poupança', 'reduzir gastos', 'cortar gastos', 'economia'],
+    keywords: ['economizar', 'poupar', 'guardar', 'reserva', 'poupan+�a', 'reduzir gastos', 'cortar gastos', 'economia'],
   },
   {
     intent: 'monthly_summary',
-    keywords: ['resumo do mês', 'fechamento do mês', 'resumo mensal', 'como foi o mês'],
+    keywords: ['resumo do m+�s', 'fechamento do m+�s', 'resumo mensal', 'como foi o m+�s'],
   },
 ];
 
@@ -105,7 +120,7 @@ export function analyzeFinancialQuestion(question: string): CFOIntent {
   return 'monthly_summary';
 }
 
-// ─── PART 3 — Financial Context Builder ──────────────────────────────────────
+// ��������� PART 3 ��� Financial Context Builder ������������������������������������������������������������������������������������������������������������������
 
 export function buildFinancialContext(
   accounts: Account[],
@@ -130,7 +145,7 @@ export function buildFinancialContext(
   }
   const topCat = Object.entries(catMap).sort((a, b) => b[1] - a[1])[0];
 
-  // Receita e despesa do mês atual
+  // Receita e despesa do m+�s atual
   const now = new Date();
   const currentMonthTxs = baseTxs.filter(t => {
     const d = parseCfoDate(t.date);
@@ -152,7 +167,7 @@ export function buildFinancialContext(
   // Insights resumidos
   const insightLines = insights.length > 0
     ? insights.slice(0, 3).map(i => `  - [${i.type}] ${i.message}`).join('\n')
-    : '  - Nenhum insight disponível';
+    : '  - Nenhum insight dispon+�vel';
 
   const advancedForecast = intelligence?.context.cashflowForecast;
   const advancedProfile = intelligence?.context.base.financialProfile;
@@ -173,7 +188,7 @@ export function buildFinancialContext(
       ].join('\n')
     : '';
 
-  // PART 5 — Graph context
+  // PART 5 ��� Graph context
   let graphContext = '';
   try {
     const graph = buildFinancialGraph('local', accounts, transactions);
@@ -185,7 +200,7 @@ export function buildFinancialContext(
     });
   }
 
-  // AI MEMORY SYSTEM 2.0 — Behavioral context
+  // AI MEMORY SYSTEM 2.0 ��� Behavioral context
   let behaviorContext = '';
   try {
     const spendingPatterns = getSpendingPatterns(userId);
@@ -194,17 +209,17 @@ export function buildFinancialContext(
     const merchants = getMerchantCategories(userId);
 
     if (spendingPatterns.length > 0 || behaviors.length > 0 || profile) {
-      behaviorContext += '\n\n=== PADRÕES COMPORTAMENTAIS APRENDIDOS ===\n';
+      behaviorContext += '\n\n=== PADR+�ES COMPORTAMENTAIS APRENDIDOS ===\n';
       
       if (profile) {
         behaviorContext += `\nPERFIL FINANCEIRO: ${profile.profile.toUpperCase()}\n`;
-        behaviorContext += `  - Taxa de poupança: ${profile.savingsRate.toFixed(1)}%\n`;
-        behaviorContext += `  - Renda média mensal: ${fmt(profile.averageMonthlyIncome)}\n`;
-        behaviorContext += `  - Despesas média mensal: ${fmt(profile.averageMonthlyExpenses)}\n`;
+        behaviorContext += `  - Taxa de poupan+�a: ${profile.savingsRate.toFixed(1)}%\n`;
+        behaviorContext += `  - Renda m+�dia mensal: ${fmt(profile.averageMonthlyIncome)}\n`;
+        behaviorContext += `  - Despesas m+�dia mensal: ${fmt(profile.averageMonthlyExpenses)}\n`;
       }
 
       if (spendingPatterns.length > 0) {
-        behaviorContext += '\nPADRÕES DE GASTOS:\n';
+        behaviorContext += '\nPADR+�ES DE GASTOS:\n';
         spendingPatterns.slice(0, 3).forEach(pattern => {
           behaviorContext += `  - ${pattern.description}\n`;
         });
@@ -215,19 +230,19 @@ export function buildFinancialContext(
         behaviors.slice(0, 3).forEach(behavior => {
           const behaviorLabels: Record<string, string> = {
             impulsive_spending: 'Gastos impulsivos',
-            budget_conscious: 'Consciente do orçamento',
+            budget_conscious: 'Consciente do or+�amento',
             weekend_spender: 'Gasta mais aos finais de semana',
             online_shopper: 'Comprador online',
           };
           const label = behaviorLabels[behavior.behavior] || behavior.behavior;
-          behaviorContext += `  - ${label} (${behavior.score.toFixed(0)}% de confiança)\n`;
+          behaviorContext += `  - ${label} (${behavior.score.toFixed(0)}% de confian+�a)\n`;
         });
       }
 
       if (merchants.length > 0) {
         behaviorContext += '\nCOMERCIANTES FREQUENTES:\n';
         merchants.slice(0, 3).forEach(merchant => {
-          behaviorContext += `  - ${merchant.merchantName}: ${merchant.frequency.toFixed(1)} visitas/mês, ${fmt(merchant.avgAmount)} média\n`;
+          behaviorContext += `  - ${merchant.merchantName}: ${merchant.frequency.toFixed(1)} visitas/m+�s, ${fmt(merchant.avgAmount)} m+�dia\n`;
         });
       }
     }
@@ -239,7 +254,7 @@ export function buildFinancialContext(
   }
 
   return `
-=== DADOS FINANCEIROS DO USUÁRIO ===
+=== DADOS FINANCEIROS DO USU+�RIO ===
 
 CONTAS:
 ${accountLines}
@@ -247,17 +262,17 @@ ${accountLines}
 CAIXA OPERACIONAL CALCULADO: ${fmt(prediction.current_balance)}
 SALDO DAS CONTAS: ${fmt(totalAccountBalance)}
 
-MÊS ATUAL:
+M+�S ATUAL:
   - Receitas: ${fmt(monthIncome)}
   - Despesas: ${fmt(monthExpenses)}
   - Resultado: ${fmt(monthIncome - monthExpenses)}
 
-PROJEÇÕES:
+PROJE+�+�ES:
   - Em 7 dias: ${fmt(advancedForecast?.in7Days ?? prediction.balance_7_days)}
   - Em 30 dias: ${fmt(advancedForecast?.in30Days ?? prediction.balance_30_days)}
   - Em 90 dias: ${fmt(advancedForecast?.in90Days ?? prediction.balance_30_days)}
-  - Receita projetada/mês: ${fmt(prediction.projected_income)}
-  - Despesa projetada/mês: ${fmt(prediction.projected_expenses)}
+  - Receita projetada/m+�s: ${fmt(prediction.projected_income)}
+  - Despesa projetada/m+�s: ${fmt(prediction.projected_expenses)}
 
 MAIOR CATEGORIA DE GASTOS:
   - ${topCat ? `${topCat[0]}: ${fmt(topCat[1])}` : 'Sem dados'}
@@ -274,29 +289,84 @@ CLASSIFICACAO DE CAIXA:
 REGRA OPERACIONAL:
   - Nunca considerar pendente como dinheiro disponivel.
 
-TOTAL DE TRANSAÇÕES REGISTRADAS: ${baseTxs.length}${advancedLines ? `\n\n${advancedLines}` : ''}${graphContext}
+TOTAL DE TRANSA+�+�ES REGISTRADAS: ${baseTxs.length}${advancedLines ? `\n\n${advancedLines}` : ''}${graphContext}
 `.trim();
 }
 
-// ─── PART 5 — Response Generation ────────────────────────────────────────────
+// ��������� PART 5 ��� Response Generation ������������������������������������������������������������������������������������������������������������������������������������
 
 const SAFETY_PREAMBLE = `
-Você é o Assistente Financeiro do Flow Finance.
+Voc+� +� o Assistente Financeiro do Flow Finance.
 
-REGRAS OBRIGATÓRIAS:
-1. Nunca faça garantias financeiras absolutas.
-2. Responda como apoio consultivo prático de caixa de curto prazo, não como agente autônomo.
-3. Seja direto, objetivo e em português brasileiro.
+REGRAS OBRIGAT+�RIAS:
+1. Nunca fa+�a garantias financeiras absolutas.
+2. Responda como apoio consultivo pr+�tico de caixa de curto prazo, n+�o como agente aut+�nomo.
+3. Seja direto, objetivo e em portugu+�s brasileiro.
 4. Responda em 2 a 4 blocos curtos, com foco operacional.
 5. Quando houver risco, avise com clareza mas sem alarmismo.
-6. Nunca invente dados — use APENAS o contexto fornecido.
-7. Se não houver dados suficientes, diga isso de forma explícita e curta.
+6. Nunca invente dados ��� use APENAS o contexto fornecido.
+7. Se n+�o houver dados suficientes, diga isso de forma expl+�cita e curta.
 8. Diferencie claramente: caixa confirmado, previsto, pendente e vencido.
-9. Recebível pendente NÃO é dinheiro disponível.
-10. Não proponha automação externa, integrações novas nem ações automáticas fora do produto.
-11. Não faça recomendação de investimento e não trate investimento como foco da resposta.
+9. Receb+�vel pendente N+�O +� dinheiro dispon+�vel.
+10. N+�o proponha automa+�+�o externa, integra+�+�es novas nem a+�+�es autom+�ticas fora do produto.
+11. N+�o fa+�a recomenda+�+�o de investimento e n+�o trate investimento como foco da resposta.
 `.trim();
+function extractContextValue(context: string, label: string): string | undefined {
+  const matchedLine = context.split('\n').find((line) => line.trim().startsWith(`${label}:`));
+  if (!matchedLine) return undefined;
+  return matchedLine.split(':').slice(1).join(':').trim();
+}
 
+export function buildCFOExplainability(
+  context: string,
+  intent: CFOIntent,
+  options?: { forceLowConfidence?: boolean }
+): AICFOExplainability {
+  const confirmedCash = extractContextValue(context, 'Confirmado (disponivel hoje)');
+  const forecast30Days = extractContextValue(context, 'Em 30 dias');
+  const monthResult = extractContextValue(context, '- Resultado');
+  const dataQuality = extractContextValue(context, 'QUALIDADE DOS DADOS (merchant coverage)');
+  const totalTransactions = Number((context.match(/TOTAL DE TRANSA\S+ REGISTRADAS:\s*(\d+)/i) || [])[1] || 0);
+
+  const reasonsUsed = [
+    'Classificacao de caixa confirmado vs previsto.',
+    'Projecao de 30 dias para risco de curto prazo.',
+    intent === 'risk_question' || intent === 'spending_advice'
+      ? 'Leitura conservadora para evitar usar recebivel pendente como caixa disponivel.'
+      : 'Leitura operacional com base em contexto financeiro real do workspace.',
+  ];
+
+  const evidence: AICFOExplainability['evidence'] = {
+    confirmed_cash: confirmedCash,
+    forecast_30d: forecast30Days,
+    month_result: monthResult,
+    data_quality_note: dataQuality,
+    base_sufficiency: totalTransactions >= 5 ? 'strong' : 'limited',
+  };
+
+  if (options?.forceLowConfidence) {
+    return {
+      reasons_used: reasonsUsed,
+      evidence,
+      confidence_band: 'low',
+    };
+  }
+
+  let score = 0;
+  if (confirmedCash) score += 1;
+  if (forecast30Days) score += 1;
+  if (monthResult) score += 1;
+  if (dataQuality) score += 1;
+  if (evidence.base_sufficiency === 'strong') score += 1;
+
+  const confidenceBand: AICFOConfidenceBand = score >= 4 ? 'high' : score >= 2 ? 'medium' : 'low';
+
+  return {
+    reasons_used: reasonsUsed,
+    evidence,
+    confidence_band: confidenceBand,
+  };
+}
 export async function generateCFOResponse(
   question: string,
   context: string,
@@ -304,12 +374,12 @@ export async function generateCFOResponse(
 ): Promise<AICFOResponse> {
   // note: environment variables / model selection are handled server-side
   const intentGuide: Record<CFOIntent, string> = {
-    spending_advice:  'O usuário quer saber se pode gastar agora. Traga impacto no caixa confirmado e risco de curto prazo.',
-    cash_position: 'O usuário quer leitura de saldo e caixa disponível. Diferencie confirmado de previsto.',
-    risk_question:    'O usuário quer risco de curto prazo. Destaque sinais de atenção sem exagero.',
-    savings_question: 'O usuário quer economia prática. Sugira cortes concretos e de curto prazo.',
-    monthly_summary:  'O usuário quer resumo do mês com foco em decisão operacional.',
-    receivables_question:'O usuário quer leitura de recebíveis, pendências e vencidos. Separe claramente o que está apenas previsto/pendente do que está confirmado.',
+    spending_advice:  'O usu+�rio quer saber se pode gastar agora. Traga impacto no caixa confirmado e risco de curto prazo.',
+    cash_position: 'O usu+�rio quer leitura de saldo e caixa dispon+�vel. Diferencie confirmado de previsto.',
+    risk_question:    'O usu+�rio quer risco de curto prazo. Destaque sinais de aten+�+�o sem exagero.',
+    savings_question: 'O usu+�rio quer economia pr+�tica. Sugira cortes concretos e de curto prazo.',
+    monthly_summary:  'O usu+�rio quer resumo do m+�s com foco em decis+�o operacional.',
+    receivables_question:'O usu+�rio quer leitura de receb+�veis, pend+�ncias e vencidos. Separe claramente o que est+� apenas previsto/pendente do que est+� confirmado.',
   };
 
   const prompt = `
@@ -320,13 +390,13 @@ ${context}
 
 TIPO DE PERGUNTA: ${intentGuide[intent]}
 
-PERGUNTA DO USUÁRIO: "${question}"
+PERGUNTA DO USU+�RIO: "${question}"
 
 Responda de forma consultiva, curta e baseada exclusivamente nos dados acima.
 `;
 
   try {
-    // proxy the request to backend, which will call GPT‑4 or Gemini as configured
+    // proxy the request to backend, which will call GPT���4 or Gemini as configured
     const gemini = new GeminiService();
     const result = await gemini.generateCFO(question, context, intent);
     const answer = result.answer?.trim();
@@ -335,6 +405,7 @@ Responda de forma consultiva, curta e baseada exclusivamente nos dados acima.
       message: 'Nao foi possivel gerar uma resposta no momento.',
       suggestion: 'Tente novamente em alguns instantes ou verifique a sessao do workspace.',
     };
+    const explainability = buildCFOExplainability(context, intent);
     logAIDebug({
       input: question,
       intent,
@@ -350,10 +421,14 @@ Responda de forma consultiva, curta e baseada exclusivamente nos dados acima.
     return {
       question,
       answer: answer && answer.length > 0 ? answer : fallbackDiagnostic.message,
-      context_summary: 'Resposta ancorada em dados reais do workspace quando disponíveis.',
+      context_summary: 'Resposta ancorada em dados reais do workspace quando dispon+�veis.',
       intent,
       timestamp: new Date().toISOString(),
       diagnostic: answer && answer.length > 0 ? undefined : fallbackDiagnostic,
+      explainability:
+        answer && answer.length > 0
+          ? explainability
+          : buildCFOExplainability(context, intent, { forceLowConfidence: true }),
     };
   } catch (err: any) {
     logWarn('[AI CFO] Failed to generate CFO response; returning fallback diagnostic', {
@@ -368,19 +443,20 @@ Responda de forma consultiva, curta e baseada exclusivamente nos dados acima.
     });
     return {
       question,
-      answer: 'Com base nos seus dados, não consegui processar a consulta agora. Verifique sua conexão e tente novamente.',
+      answer: 'Com base nos seus dados, nao consegui processar a consulta agora. Verifique sua conexao e tente novamente.',
       intent,
       timestamp: new Date().toISOString(),
       diagnostic: {
         kind: 'ai_unavailable',
-        message: 'Com base nos seus dados, não consegui processar a consulta agora.',
-        suggestion: 'Verifique sua conexão, recarregue a sessão do workspace e tente novamente.',
+        message: 'Com base nos seus dados, nao consegui processar a consulta agora.',
+        suggestion: 'Verifique sua conexao, recarregue a sessao do workspace e tente novamente.',
       },
+      explainability: buildCFOExplainability(context, intent, { forceLowConfidence: true }),
     };
   }
 }
 
-// ─── PART 8 — Memory Learning from conversation ───────────────────────────────
+// ─── PART 8 — Memory Learning from conversation ─────────────────────────────── ��� Memory Learning from conversation ���������������������������������������������������������������������������������������������
 
 export async function learnFromConversation(
   userId: string,
@@ -392,7 +468,7 @@ export async function learnFromConversation(
   if (intent === 'savings_question') {
     await learnMemory(userId, 'user_budget_goal', 'save_money', 0.7);
   }
-  if (lower.includes('salário') || lower.includes('salario')) {
+  if (lower.includes('sal+�rio') || lower.includes('salario')) {
     const match = lower.match(/(\d+)/);
     if (match) await learnMemory(userId, 'mentioned_salary', match[1], 0.6);
   }
@@ -403,3 +479,9 @@ export async function learnFromConversation(
     await learnMemory(userId, 'asks_before_spending', 'true', 0.8);
   }
 }
+
+
+
+
+
+

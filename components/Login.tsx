@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Mail, ArrowRight, Lock, AlertCircle, FlaskConical, UserPlus, ChevronLeft, CheckCircle2, ShieldCheck } from 'lucide-react';
 import Logo from './Logo';
 import { 
@@ -38,10 +38,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
   const getFirebaseErrorMessage = (code: string) => {
     switch (code) {
       case 'auth/configuration-not-found': return 'Autenticacao Firebase indisponivel neste ambiente. Configure as variaveis do frontend para habilitar login real.';
-      case 'auth/email-already-in-use': return 'Este e-mail já está sendo utilizado.';
+      case 'auth/email-already-in-use': return 'Este e-mail jÃ¡ estÃ¡ sendo utilizado.';
       case 'auth/weak-password': return 'A senha deve ter pelo menos 6 caracteres.';
-      case 'auth/invalid-email': return 'O e-mail informado não é válido.';
-      case 'auth/user-not-found': return 'Usuário não localizado.';
+      case 'auth/invalid-email': return 'O e-mail informado nÃ£o Ã© vÃ¡lido.';
+      case 'auth/user-not-found': return 'UsuÃ¡rio nÃ£o localizado.';
       case 'auth/wrong-password': return 'Senha incorreta. Tente novamente.';
       default: return 'Ocorreu um erro inesperado. Verifique os dados.';
     }
@@ -51,21 +51,21 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
     switch (code) {
       case 'auth/configuration-not-found':
         return {
-          title: 'Diagnóstico de autenticação',
-          message: 'O login real depende das variáveis do Firebase no frontend ou do login local de desenvolvimento.',
+          title: 'DiagnÃ³stico de autenticaÃ§Ã£o',
+          message: 'O login real depende das variÃ¡veis do Firebase no frontend ou do login local de desenvolvimento.',
           suggestion: 'Verifique VITE_FIREBASE_* no frontend ou habilite VITE_AUTH_ALLOW_INSECURE_LOCAL_LOGIN no ambiente local.',
         };
       case 'auth/local-login-failed':
         return {
-          title: 'Diagnóstico de sessão local',
-          message: 'O backend local rejeitou a autenticação insegura de desenvolvimento.',
-          suggestion: 'Confirme se o backend está ativo, se a sessão dev foi carregada e se o login local está liberado.',
+          title: 'DiagnÃ³stico de sessÃ£o local',
+          message: 'O backend local rejeitou a autenticaÃ§Ã£o insegura de desenvolvimento.',
+          suggestion: 'Confirme se o backend estÃ¡ ativo, se a sessÃ£o dev foi carregada e se o login local estÃ¡ liberado.',
         };
       case 'auth/unauthorized-domain':
         return {
-          title: 'Diagnóstico de domínio',
-          message: 'O domínio atual não está autorizado no Firebase.',
-          suggestion: 'Adicione o domínio na lista de Authorized Domains do projeto Firebase.',
+          title: 'DiagnÃ³stico de domÃ­nio',
+          message: 'O domÃ­nio atual nÃ£o estÃ¡ autorizado no Firebase.',
+          suggestion: 'Adicione o domÃ­nio na lista de Authorized Domains do projeto Firebase.',
         };
       default:
         return null;
@@ -140,7 +140,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
       return;
     }
     if (password.length < 6) {
-      setError({ code: 'local/short-password', message: "A senha precisa de no mínimo 6 caracteres." });
+      setError({ code: 'local/short-password', message: "A senha precisa de no mÃ­nimo 6 caracteres." });
       return;
     }
     setIsLoading(true);
@@ -189,10 +189,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
             <Logo size="md" showText={false} />
           </div>
           <div className="flex flex-col items-center mt-2">
-            <h1 className="text-6xl font-black tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-b from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
+            <h1 className="text-6xl font-semibold tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-b from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
               Flow
             </h1>
-            <p className="text-[14px] font-black text-indigo-500 uppercase tracking-[0.6em] mt-2">Finance</p>
+            <p className="text-[14px] font-semibold text-indigo-500 uppercase tracking-[0.1em] mt-2">Finance</p>
             <p className="text-xs text-slate-400 mt-1">Flow Finance</p>
           </div>
         </div>
@@ -204,8 +204,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
             <div className="animate-in slide-in-from-top-4 duration-500 space-y-3">
               <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-[2rem] space-y-2 text-center">
                 <FlaskConical size={24} className="mx-auto text-indigo-500" />
-                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 leading-tight">
-                  OAuth restrito. Adicione este domínio nos domínios autorizados do Firebase para continuar.
+                <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 leading-tight">
+                  OAuth restrito. Adicione este domÃ­nio nos domÃ­nios autorizados do Firebase para continuar.
                 </p>
               </div>
             </div>
@@ -214,15 +214,15 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
               {error && (
                 <div role="alert" aria-live="polite" className="p-2.5 bg-rose-500/5 border border-rose-500/20 rounded-xl flex items-center gap-2 text-rose-500 animate-in shake">
                   <AlertCircle size={14} className="shrink-0" />
-                  <p className="text-[9px] font-bold">{error.message}</p>
+                  <p className="text-xs font-medium">{error.message}</p>
                 </div>
               )}
               {error && getAuthDiagnostic(error.code) && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
-                  <p className="text-[8px] font-black uppercase tracking-widest">{getAuthDiagnostic(error.code)?.title}</p>
-                  <p className="mt-1 text-[10px] font-bold leading-relaxed">{getAuthDiagnostic(error.code)?.message}</p>
-                  <p className="mt-1 text-[9px] font-black uppercase tracking-widest opacity-90">
-                    Próximo passo: {getAuthDiagnostic(error.code)?.suggestion}
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em]">{getAuthDiagnostic(error.code)?.title}</p>
+                  <p className="mt-1 text-[10px] font-medium leading-relaxed">{getAuthDiagnostic(error.code)?.message}</p>
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] opacity-90">
+                    PrÃ³ximo passo: {getAuthDiagnostic(error.code)?.suggestion}
                   </p>
                 </div>
               )}
@@ -241,7 +241,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
                           autoComplete="email"
                           placeholder="E-mail"
                           data-testid="email"
-                          className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent focus:border-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 text-xs font-bold outline-none transition-all shadow-inner"
+                          className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent focus:border-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 text-xs font-medium outline-none transition-all shadow-inner"
                         />
                       </div>
                       <div className="relative group">
@@ -254,27 +254,27 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
                           autoComplete="current-password"
                           placeholder="Senha"
                           data-testid="password"
-                          className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent focus:border-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 text-xs font-bold outline-none transition-all shadow-inner"
+                          className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent focus:border-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 text-xs font-medium outline-none transition-all shadow-inner"
                         />
                       </div>
-                      <button type="button" onClick={() => setView('recover')} className="block w-full text-right text-[9px] font-black text-indigo-500 uppercase tracking-widest px-1">Esqueci a senha</button>
+                      <button type="button" onClick={() => setView('recover')} className="block w-full text-right text-xs font-semibold text-indigo-500 uppercase tracking-[0.08em] px-1">Esqueci a senha</button>
                     </div>
-                    <button type="submit" disabled={isLoading} data-testid="login-button" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-600/30 active:scale-95 disabled:opacity-50 transition-all">
+                    <button type="submit" disabled={isLoading} data-testid="login-button" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-semibold text-[10px] uppercase tracking-[0.08em] shadow-xl shadow-indigo-600/30 active:scale-95 disabled:opacity-50 transition-all">
                       {isLoading ? 'Autenticando...' : 'Acessar Conta'} <ArrowRight size={14} className="inline ml-1" />
                     </button>
                   </form>
                   
                   <div className="flex items-center gap-3 py-1">
                     <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>
-                    <span className="text-[7px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-widest">OU</span>
+                    <span className="text-[10px] font-semibold text-slate-300 dark:text-slate-600 uppercase tracking-[0.08em]">OU</span>
                     <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>
                   </div>
 
-                  <button onClick={() => handleSocialLogin(googleProvider)} className="w-full py-3.5 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200 active:scale-95 transition-all shadow-sm">
+                  <button onClick={() => handleSocialLogin(googleProvider)} className="w-full py-3.5 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl flex items-center justify-center gap-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-700 dark:text-slate-200 active:scale-95 transition-all shadow-sm">
                     <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-4 h-4" /> Entrar com Google
                   </button>
 
-                  <button onClick={() => setView('signup')} className="w-full text-center text-[9px] font-black text-slate-400 uppercase tracking-widest pt-1.5 group">
+                  <button onClick={() => setView('signup')} className="w-full text-center text-xs font-semibold text-slate-400 uppercase tracking-[0.08em] pt-1.5 group">
                     Novo por aqui? <span className="text-indigo-600 group-hover:underline">Cadastre-se</span>
                   </button>
                 </>
@@ -282,13 +282,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
 
               {view === 'signup' && (
                 <form onSubmit={handleSignup} className="space-y-3 animate-in slide-in-from-right-4 duration-500">
-                  <button type="button" onClick={() => setView('login')} className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase mb-1"><ChevronLeft size={14} /> Voltar</button>
+                  <button type="button" onClick={() => setView('login')} className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase mb-1"><ChevronLeft size={14} /> Voltar</button>
                   <div className="space-y-2">
-                    <input type="text" required aria-label="Nome completo" autoComplete="name" placeholder="Seu nome" value={name} onChange={e => setName(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
-                    <input type="email" required aria-label="E-mail para cadastro" autoComplete="email" placeholder="Seu e-mail" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
-                    <input type="password" required aria-label="Senha para cadastro" autoComplete="new-password" placeholder="Senha (min 6 car.)" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
+                    <input type="text" required aria-label="Nome completo" autoComplete="name" placeholder="Seu nome" value={name} onChange={e => setName(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-medium outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
+                    <input type="email" required aria-label="E-mail para cadastro" autoComplete="email" placeholder="Seu e-mail" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-medium outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
+                    <input type="password" required aria-label="Senha para cadastro" autoComplete="new-password" placeholder="Senha (min 6 car.)" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-medium outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
                   </div>
-                  <button type="submit" disabled={isLoading} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-xl active:scale-95 transition-all">
+                  <button type="submit" disabled={isLoading} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-semibold text-[10px] uppercase shadow-xl active:scale-95 transition-all">
                     Criar meu Acesso <UserPlus size={16} className="ml-2 inline" />
                   </button>
                 </form>
@@ -296,12 +296,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
 
               {view === 'recover' && (
                 <form onSubmit={handleRecoverPassword} className="space-y-4 animate-in slide-in-from-right-4 duration-500">
-                  <button type="button" onClick={() => setView('login')} className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase mb-1"><ChevronLeft size={14} /> Voltar</button>
+                  <button type="button" onClick={() => setView('login')} className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase mb-1"><ChevronLeft size={14} /> Voltar</button>
                   <div className="space-y-3">
-                    <p className="text-[10px] font-bold text-slate-500 text-center leading-relaxed px-2">Enviaremos um link de recuperação para o e-mail cadastrado.</p>
-                    <input type="email" required aria-label="E-mail para recuperar senha" autoComplete="email" placeholder="E-mail cadastrado" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-4 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
+                    <p className="text-[10px] font-medium text-slate-500 text-center leading-relaxed px-2">Enviaremos um link de recuperaÃ§Ã£o para o e-mail cadastrado.</p>
+                    <input type="email" required aria-label="E-mail para recuperar senha" autoComplete="email" placeholder="E-mail cadastrado" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-4 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-medium outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
                   </div>
-                  <button type="submit" className="w-full py-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all">Recuperar Senha</button>
+                  <button type="submit" className="w-full py-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-2xl font-semibold text-[10px] uppercase active:scale-95 transition-all">Recuperar Senha</button>
                 </form>
               )}
 
@@ -310,8 +310,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
                   <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto shadow-inner border border-emerald-500/20">
                     <CheckCircle2 size={36} />
                   </div>
-                  <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 px-2 leading-relaxed">{successMessage}</p>
-                  <button onClick={() => setView('login')} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all">Voltar ao Login</button>
+                  <p className="text-[10px] font-medium text-slate-600 dark:text-slate-300 px-2 leading-relaxed">{successMessage}</p>
+                  <button onClick={() => setView('login')} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-semibold text-[10px] uppercase active:scale-95 transition-all">Voltar ao Login</button>
                 </div>
               )}
             </div>
@@ -320,12 +320,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
         
         {/* Footer */}
         <div className="flex flex-col items-center gap-3 mb-4">
-          <div className="flex items-center gap-2 px-5 py-2 bg-white/40 dark:bg-slate-900/40 rounded-full border border-slate-200/50 dark:border-slate-800/50 text-[10px] font-black uppercase tracking-widest opacity-60">
+          <div className="flex items-center gap-2 px-5 py-2 bg-white/40 dark:bg-slate-900/40 rounded-full border border-slate-200/50 dark:border-slate-800/50 text-[10px] font-semibold uppercase tracking-[0.08em] opacity-60">
             <ShieldCheck size={14} className="text-emerald-500" /> AES-256 Secured
           </div>
           <div className="text-center opacity-30">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">© Komodo Flow Finance</p>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Build v1.0.0 Stable</p>
+            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.08em]">Â© Komodo Flow Finance</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">Build v1.0.0 Stable</p>
           </div>
         </div>
       </div>
@@ -334,3 +334,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
 };
 
 export default Login;
+
+
+
+
+
+

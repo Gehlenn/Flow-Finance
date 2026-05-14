@@ -142,7 +142,7 @@ const STATE_TONE_CLASS_MAP: Record<'confirmed' | 'projected' | 'pending' | 'over
 const StateMetricCard: React.FC<{ label: string; value: string; tone: 'confirmed' | 'projected' | 'pending' | 'overdue' }> = ({ label, value, tone }) => (
   <div className={`rounded-2xl border px-4 py-3 ${STATE_TONE_CLASS_MAP[tone]}`}>
     <p className="text-sm font-semibold uppercase tracking-[0.16em] opacity-80">{label}</p>
-    <p className="mt-1 text-xl font-bold tracking-tight">{value}</p>
+    <p className="mt-1 text-xl font-medium tracking-tight">{value}</p>
   </div>
 );
 const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceName, transactions, hideValues, theme }) => {
@@ -304,7 +304,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
     <div className="w-full space-y-6 animate-in fade-in duration-700 pb-20 overflow-visible relative">
       <div className="bg-gradient-to-r from-indigo-600 to-sky-500 p-6 rounded-3xl flex justify-between items-center shadow-lg shadow-indigo-500/20 shrink-0">
         <div>
-          <h2 className="text-2xl font-black text-white tracking-tight leading-none">Receitas</h2>
+          <h2 className="text-2xl font-semibold text-white tracking-tight leading-none">Receitas</h2>
           <p className="text-sm font-semibold text-white/80 uppercase tracking-[0.16em] mt-2">
             Workspace: {activeWorkspaceName || 'Carregando workspace'}
           </p>
@@ -442,9 +442,9 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
             <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-800">
                <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.16em] mb-2">Resumo Incluído</p>
                <div className="space-y-1">
-                 <p className="text-xs font-bold text-slate-600 dark:text-slate-300">• Dados de Entradas/Saídas</p>
-                 <p className="text-xs font-bold text-slate-600 dark:text-slate-300">• Divisão por Categorias</p>
-                 {report && <p className="text-xs font-bold text-slate-600 dark:text-slate-300">• Prioridade Flow (Análise IA)</p>}
+                 <p className="text-xs font-medium text-slate-600 dark:text-slate-300">• Dados de Entradas/Saídas</p>
+                 <p className="text-xs font-medium text-slate-600 dark:text-slate-300">• Divisão por Categorias</p>
+                 {report && <p className="text-xs font-medium text-slate-600 dark:text-slate-300">• Prioridade Flow (Análise IA)</p>}
                </div>
             </div>
 
@@ -550,6 +550,8 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
 };
 
 export default CashFlow;
+
+
 
 
 

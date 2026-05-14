@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+﻿import React, { useMemo, useState, useEffect } from 'react';
 import { Transaction } from '../types';
 import { Account } from '../models/Account';
 import { runFinancialAutopilot, AutopilotAction, learnAutopilotPatterns } from '../src/ai/financialAutopilot';
@@ -93,21 +93,21 @@ const ActionCard: React.FC<{ action: AutopilotAction; onDismiss: (id: string) =>
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-1">
-          <p className="font-black text-slate-900 dark:text-white text-sm">{action.title}</p>
+          <p className="text-sm font-semibold text-slate-900 dark:text-white">{action.title}</p>
           {action.severity && (
-            <span className={`text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${SEV_BADGE[action.severity]}`}>
+            <span className={`text-[7px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded-full ${SEV_BADGE[action.severity]}`}>
               {SEV_LABEL[action.severity]}
             </span>
           )}
         </div>
-        <p className="text-xs text-slate-600 dark:text-slate-400 font-bold leading-relaxed">{action.description}</p>
+        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{action.description}</p>
         <div className="flex items-center gap-2 mt-3">
-          <span className={`text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${meta.iconBg}`}>
+          <span className={`text-[7px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded-full ${meta.iconBg}`}>
             {meta.label}
           </span>
           <button
             onClick={handleDismiss}
-            className="ml-auto text-[8px] font-black text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 uppercase tracking-widest flex items-center gap-1 transition-colors"
+            className="ml-auto text-[8px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 uppercase tracking-[0.08em] flex items-center gap-1 transition-colors"
           >
             <CheckCircle2 size={10} /> Dispensar
           </button>
@@ -131,8 +131,8 @@ const Section: React.FC<{
     <section>
       <div className="flex items-center gap-2 mb-3">
         <span className={accent}>{icon}</span>
-        <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{title}</h3>
-        <span className={`ml-auto text-[8px] font-black px-2 py-0.5 rounded-full ${accent.replace('text-', 'bg-').replace('-500', '-50')} ${accent}`}>
+        <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">{title}</h3>
+        <span className={`ml-auto text-[8px] font-semibold px-2 py-0.5 rounded-full ${accent.replace('text-', 'bg-').replace('-500', '-50')} ${accent}`}>
           {actions.length}
         </span>
       </div>
@@ -214,8 +214,8 @@ const Autopilot: React.FC<AutopilotProps> = ({ transactions, accounts, userId = 
       <div className="bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] p-6 rounded-[2rem] flex justify-between items-center shadow-lg shadow-indigo-500/20 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 blur-3xl -mr-16 -mt-16 pointer-events-none" />
         <div className="relative z-10">
-          <h2 className="text-2xl font-black text-white tracking-tight leading-none">Autopilot</h2>
-          <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mt-1.5">Análise Financeira Proativa</p>
+          <h2 className="text-2xl font-semibold text-white tracking-tight leading-none">Autopilot</h2>
+          <p className="text-[8px] font-semibold text-white/70 uppercase tracking-[0.08em] mt-1.5">Análise Financeira Proativa</p>
         </div>
         <div className="flex items-center gap-2 relative z-10">
           <button
@@ -235,18 +235,18 @@ const Autopilot: React.FC<AutopilotProps> = ({ transactions, accounts, userId = 
       <div className="bg-white dark:bg-slate-800 rounded-[1.8rem] p-4 border border-slate-100 dark:border-slate-700 flex items-center gap-4">
         <div className={`w-3 h-3 rounded-full shrink-0 ${warnings.length > 0 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`} />
         <div className="flex-1">
-          <p className="text-xs font-black text-slate-900 dark:text-white">
+          <p className="text-xs font-semibold text-slate-900 dark:text-white">
             {warnings.length > 0
               ? `${warnings.length} alerta${warnings.length > 1 ? 's' : ''} ativo${warnings.length > 1 ? 's' : ''}`
               : 'Tudo sob controle'}
           </p>
-          <p className="text-[8px] text-slate-400 font-bold">
+          <p className="text-[8px] text-slate-400">
             {visible.length} ação{visible.length !== 1 ? 'ões' : ''} · Atualizado agora
           </p>
         </div>
         <div className="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1.5 rounded-xl">
           <Settings2 size={10} className="text-indigo-500" />
-          <span className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">Autopilot On</span>
+          <span className="text-[8px] font-semibold text-indigo-500 uppercase tracking-[0.08em]">Autopilot On</span>
         </div>
       </div>
 
@@ -254,7 +254,7 @@ const Autopilot: React.FC<AutopilotProps> = ({ transactions, accounts, userId = 
       {isEmpty && (
         <div className="flex flex-col items-center py-16 gap-4 text-slate-300 dark:text-slate-600">
           <Bot size={44} />
-          <p className="text-[10px] font-black uppercase tracking-widest text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-center">
             Adicione transações para ativar o autopilot
           </p>
         </div>
@@ -264,10 +264,10 @@ const Autopilot: React.FC<AutopilotProps> = ({ transactions, accounts, userId = 
       {!isEmpty && allDismissed && (
         <div className="flex flex-col items-center py-12 gap-3">
           <CheckCircle2 size={40} className="text-emerald-400" />
-          <p className="text-sm font-black text-slate-700 dark:text-white">Todas as ações dispensadas!</p>
+          <p className="text-sm font-semibold text-slate-700 dark:text-white">Todas as ações dispensadas!</p>
           <button
             onClick={handleRefresh}
-            className="mt-2 px-5 py-2.5 bg-indigo-600 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-all"
+            className="mt-2 px-5 py-2.5 bg-indigo-600 text-white rounded-2xl text-[9px] font-semibold uppercase tracking-[0.08em] flex items-center gap-2 active:scale-95 transition-all"
           >
             <RefreshCw size={12} /> Reexibir ações
           </button>
@@ -282,9 +282,9 @@ const Autopilot: React.FC<AutopilotProps> = ({ transactions, accounts, userId = 
               <AlertTriangle size={15} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[9px] font-black uppercase tracking-widest text-amber-600">{learningDiagnostic.title}</p>
-              <p className="mt-1 text-xs font-bold text-slate-600 dark:text-slate-300">{learningDiagnostic.message}</p>
-              <p className="mt-1 text-[10px] font-bold text-amber-500">{learningDiagnostic.suggestion}</p>
+              <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-amber-600">{learningDiagnostic.title}</p>
+              <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{learningDiagnostic.message}</p>
+              <p className="mt-1 text-[10px] font-semibold text-amber-500">{learningDiagnostic.suggestion}</p>
             </div>
           </div>
         </div>
@@ -325,7 +325,7 @@ const Autopilot: React.FC<AutopilotProps> = ({ transactions, accounts, userId = 
           {/* Safety disclaimer */}
           <div className="flex items-start gap-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
             <ShieldCheck size={13} className="text-emerald-500 shrink-0 mt-0.5" />
-            <p className="text-[8px] text-slate-400 font-bold leading-relaxed">
+            <p className="text-[8px] text-slate-400 leading-relaxed">
               O Autopilot apenas sugere ações. Nenhum dado financeiro é alterado automaticamente. Todas as decisões são suas.
             </p>
           </div>
@@ -336,3 +336,5 @@ const Autopilot: React.FC<AutopilotProps> = ({ transactions, accounts, userId = 
 };
 
 export default Autopilot;
+
+

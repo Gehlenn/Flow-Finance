@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AI Task Queue Monitor
  * Development component for monitoring task execution
  */
@@ -151,7 +151,7 @@ const AITaskQueueMonitor: React.FC = () => {
         <div className="flex items-center gap-2">
           <span className="text-xl">🤖</span>
           <div>
-            <h3 className="font-bold text-sm">AI Task Queue Monitor</h3>
+            <h3 className="font-medium text-sm">AI Task Queue Monitor</h3>
             <div className="text-xs opacity-90">
               {stats.pending} Pendentes • {stats.processing} Processando
             </div>
@@ -165,19 +165,19 @@ const AITaskQueueMonitor: React.FC = () => {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-2 p-3 bg-gray-800 text-center text-xs">
         <div>
-          <div className="text-yellow-400 font-bold">{stats.pending}</div>
+          <div className="text-yellow-400 font-medium">{stats.pending}</div>
           <div className="text-gray-400">Pendentes</div>
         </div>
         <div>
-          <div className="text-blue-400 font-bold">{stats.processing}</div>
+          <div className="text-blue-400 font-medium">{stats.processing}</div>
           <div className="text-gray-400">Processando</div>
         </div>
         <div>
-          <div className="text-green-400 font-bold">{stats.completed}</div>
+          <div className="text-green-400 font-medium">{stats.completed}</div>
           <div className="text-gray-400">Concluídas</div>
         </div>
         <div>
-          <div className="text-red-400 font-bold">{stats.failed}</div>
+          <div className="text-red-400 font-medium">{stats.failed}</div>
           <div className="text-gray-400">Falhas</div>
         </div>
       </div>
@@ -241,7 +241,7 @@ const AITaskQueueMonitor: React.FC = () => {
                 )}
               </div>
               {task.error && (
-                <div className="text-red-400 mt-1 text-[10px]">{task.error.message}</div>
+                <div className="text-red-400 mt-1 text-xs">{task.error.message}</div>
               )}
             </div>
           ))
@@ -262,3 +262,5 @@ const AITaskQueueMonitor: React.FC = () => {
 };
 
 export default AITaskQueueMonitor;
+
+

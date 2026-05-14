@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Sparkles, TrendingUp } from 'lucide-react';
 
 interface UpgradePromptCardProps {
@@ -21,8 +21,8 @@ const UpgradePromptCard: React.FC<UpgradePromptCardProps> = ({
           {compact ? <Sparkles size={14} /> : <TrendingUp size={16} />}
         </div>
         <div>
-          <p className="text-[8px] font-black uppercase tracking-widest text-indigo-500">Plano Pro</p>
-          <h3 className="mt-1 text-lg font-black tracking-tight text-slate-900 dark:text-white">{title}</h3>
+          <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-indigo-500">Plano Pro</p>
+          <h3 className="mt-1 text-lg font-semibold tracking-tight text-slate-900 dark:text-white">{title}</h3>
           <p className="mt-1 text-sm font-semibold text-slate-600 dark:text-slate-300">{description}</p>
         </div>
       </div>
@@ -30,7 +30,7 @@ const UpgradePromptCard: React.FC<UpgradePromptCardProps> = ({
       <ul className="mt-4 space-y-2">
         {bullets.map((bullet) => (
           <li key={bullet} className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-            • {bullet}
+            â€¢ {bullet}
           </li>
         ))}
       </ul>
@@ -39,3 +39,7 @@ const UpgradePromptCard: React.FC<UpgradePromptCardProps> = ({
 };
 
 export default UpgradePromptCard;
+
+
+
+

@@ -1,10 +1,10 @@
-import { makeId } from '../utils/helpers';
+﻿import { makeId } from '../utils/helpers';
 import { getActiveWorkspaceScopedStorageKey } from '../utils/workspaceStorage';
 import { logWarn } from '../utils/logger';
 
 const STORAGE_KEY = 'flow_ai_memory';
 
-// ─── Model ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Model â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface AIMemory {
   id: string;
@@ -15,11 +15,19 @@ export interface AIMemory {
   updated_at: string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function readAll(): AIMemory[] {
   try {
-    return JSON.parse(localStorage.getItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY)) || '[]');
+    const parsed = JSON.parse(localStorage.getItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY)) || '[]');
+    if (!Array.isArray(parsed)) {
+      logWarn('[AIMemory] Memory storage has invalid shape; returning empty set', {
+        storageKey: getActiveWorkspaceScopedStorageKey(STORAGE_KEY),
+        fallback: 'ai-memory-invalid-shape',
+      });
+      return [];
+    }
+    return parsed;
   } catch (error) {
     logWarn('[AIMemory] Failed to parse memory storage; returning empty set', {
       storageKey: getActiveWorkspaceScopedStorageKey(STORAGE_KEY),
@@ -49,7 +57,7 @@ export function getAIMemorySnapshot(userId: string): AIMemory[] {
   return readAll().filter((memory) => memory.user_id === userId);
 }
 
-// ─── CRUD ─────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function getAIMemory(userId: string): Promise<AIMemory[]> {
   return getAIMemorySnapshot(userId);
@@ -70,7 +78,7 @@ export async function deleteMemory(memoryId: string): Promise<void> {
   writeAll(readAll().filter(m => m.id !== memoryId));
 }
 
-// ─── PART 3: learnMemory helper ───────────────────────────────────────────────
+// â”€â”€â”€ PART 3: learnMemory helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function learnMemory(
   userId: string,
@@ -103,7 +111,7 @@ export async function learnMemory(
   }
 }
 
-// ─── PART 9: Pattern detection helper ────────────────────────────────────────
+// â”€â”€â”€ PART 9: Pattern detection helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 import { Transaction, TransactionType } from '../../types';
 
@@ -158,4 +166,5 @@ export async function getUserMemoryProfile(userId: string): Promise<{
     merchant_categories: memories.filter((m) => m.key.includes('merchant')),
   };
 }
+
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AI Task Store
  * Manages task persistence and retrieval
  */
@@ -38,11 +38,13 @@ class TaskStore {
       if (stored) {
         const parsed = JSON.parse(stored);
         this.tasks = new Map(Object.entries(parsed));
+        // Mark initialized before cleanup to avoid re-entrant reload during save.
+        this.initialized = true;
         this.cleanExpiredTasks();
       } else {
         this.tasks = new Map();
+        this.initialized = true;
       }
-      this.initialized = true;
     } catch (error) {
       logWarn('[TaskStore] Failed to load from storage; using empty queue', {
         storageKey: this.activeStorageKey,
@@ -247,3 +249,4 @@ export function getNextTaskForUser(userId: string): AITask | null {
 export function updateTaskStatus(id: string, status: AITaskStatus): void {
   taskStore.updateTaskStatus(id, status);
 }
+

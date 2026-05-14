@@ -159,7 +159,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
                 : pct >= 50 ? 'text-amber-500 bg-amber-50 dark:bg-amber-500/10'
                 :             'text-rose-500 bg-rose-50 dark:bg-rose-500/10';
     return (
-      <span className={`text-xs font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${color}`}>
+      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full uppercase tracking-[0.08em] ${color}`}>
         {pct}% confiança
       </span>
     );
@@ -176,10 +176,10 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
           <Receipt size={20} className="text-white" />
         </div>
         <div>
-          <h1 className="text-lg font-black text-slate-900 dark:text-white leading-none">
+          <h1 className="text-lg font-semibold text-slate-900 dark:text-white leading-none">
             {SECONDARY_FLOWS_COPY.scanner.title}
           </h1>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em] mt-0.5">
             {SECONDARY_FLOWS_COPY.scanner.subtitle}
           </p>
         </div>
@@ -202,15 +202,15 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
             <ScanLine size={28} className="text-indigo-500" />
           </div>
           <div className="text-center">
-            <p className="font-black text-slate-800 dark:text-white text-sm">
+            <p className="text-sm font-semibold text-slate-800 dark:text-white">
               {SECONDARY_FLOWS_COPY.scanner.idleTitle}
             </p>
-            <p className="text-xs text-slate-400 font-bold mt-1">
+            <p className="text-xs text-slate-400 mt-1">
               {SECONDARY_FLOWS_COPY.scanner.idleFormats}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5 text-xs font-black text-slate-400 uppercase tracking-widest">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">
               <ShieldCheck size={10} className="text-emerald-500" /> Processado no dispositivo
             </span>
           </div>
@@ -241,19 +241,19 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
               <X size={14} />
             </button>
             <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl">
-              <p className="text-xs font-black text-white uppercase tracking-widest">
+              <p className="text-xs font-semibold text-white uppercase tracking-[0.08em]">
                 {imageFile?.name?.slice(0, 28) ?? 'imagem selecionada'}
               </p>
             </div>
           </div>
           <button
             onClick={handleScan}
-            className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl p-4 flex items-center justify-center gap-3 font-black text-sm shadow-xl shadow-indigo-500/25 hover:shadow-indigo-500/40 active:scale-[0.98] transition-all"
+            className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl p-4 flex items-center justify-center gap-3 font-semibold text-sm shadow-xl shadow-indigo-500/25 hover:shadow-indigo-500/40 active:scale-[0.98] transition-all"
           >
             <ScanLine size={18} />
             {SECONDARY_FLOWS_COPY.scanner.scanCta}
           </button>
-          <button onClick={handleReset} className="text-xs text-slate-400 font-bold text-center py-1">
+          <button onClick={handleReset} className="text-xs text-slate-400 text-center py-1">
             Escolher outra imagem
           </button>
         </div>
@@ -278,8 +278,8 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
           <div className="flex items-center gap-3">
             <Loader2 size={18} className="text-indigo-500 animate-spin" />
             <div>
-              <p className="font-black text-slate-800 dark:text-white text-sm">Lendo recibo para o caixa…</p>
-              <p className="text-xs text-slate-400 font-bold">Gemini Vision extraindo dados</p>
+              <p className="text-sm font-semibold text-slate-800 dark:text-white">Lendo recibo para o caixa…</p>
+              <p className="text-xs text-slate-400">Gemini Vision extraindo dados</p>
             </div>
           </div>
           <style>{`
@@ -307,9 +307,9 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Resultado da análise</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">Resultado da análise</p>
               {scanData && <ConfidenceBadge v={scanData.confidence} />}
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-1 leading-relaxed">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                 Revise os campos abaixo e confirme para registrar o movimento.
               </p>
             </div>
@@ -324,13 +324,13 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
                 <DollarSign size={14} className="text-emerald-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Valor</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">Valor</p>
                 <input
                   type="number"
                   step="0.01"
                   value={editData.amount ?? ''}
                   onChange={e => setEditData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))}
-                  className="w-full bg-transparent font-black text-slate-900 dark:text-white text-sm outline-none mt-0.5"
+                  className="w-full bg-transparent font-semibold text-slate-900 dark:text-white text-sm outline-none mt-0.5"
                   placeholder="0,00"
                 />
               </div>
@@ -342,12 +342,12 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
                 <Store size={14} className="text-indigo-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Estabelecimento</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">Estabelecimento</p>
                 <input
                   type="text"
                   value={editData.merchant ?? ''}
                   onChange={e => setEditData(d => ({ ...d, merchant: e.target.value }))}
-                  className="w-full bg-transparent font-bold text-slate-900 dark:text-white text-sm outline-none mt-0.5"
+                  className="w-full bg-transparent font-medium text-slate-900 dark:text-white text-sm outline-none mt-0.5"
                   placeholder="Nome do estabelecimento"
                 />
               </div>
@@ -359,12 +359,12 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
                 <CalendarDays size={14} className="text-amber-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Data</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">Data</p>
                 <input
                   type="date"
                   value={editData.date ? editData.date.slice(0, 10) : ''}
                   onChange={e => setEditData(d => ({ ...d, date: new Date(e.target.value).toISOString() }))}
-                  className="w-full bg-transparent font-bold text-slate-900 dark:text-white text-sm outline-none mt-0.5"
+                  className="w-full bg-transparent font-medium text-slate-900 dark:text-white text-sm outline-none mt-0.5"
                 />
               </div>
             </div>
@@ -375,11 +375,11 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
                 <Zap size={14} className="text-rose-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Tipo</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">Tipo</p>
                 <select
                   value={editData.type ?? TransactionType.DESPESA}
                   onChange={e => setEditData(d => ({ ...d, type: e.target.value as TransactionType }))}
-                  className="w-full bg-transparent font-bold text-slate-900 dark:text-white text-sm outline-none mt-0.5"
+                  className="w-full bg-transparent font-medium text-slate-900 dark:text-white text-sm outline-none mt-0.5"
                 >
                   <option value={TransactionType.DESPESA}>Despesa</option>
                   <option value={TransactionType.RECEITA}>Receita</option>
@@ -393,11 +393,11 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
                 <FileImage size={14} className="text-violet-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Categoria</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">Categoria</p>
                 <select
                   value={editData.category ?? Category.PESSOAL}
                   onChange={e => setEditData(d => ({ ...d, category: e.target.value as Category }))}
-                  className="w-full bg-transparent font-bold text-slate-900 dark:text-white text-sm outline-none mt-0.5"
+                  className="w-full bg-transparent font-medium text-slate-900 dark:text-white text-sm outline-none mt-0.5"
                 >
                   {Object.values(Category).map(c => (
                     <option key={c} value={c}>{c}</option>
@@ -412,11 +412,11 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
                 <CreditCard size={14} className="text-sky-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Forma de pagamento</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">Forma de pagamento</p>
                 <select
                   value={editData.payment_method ?? ''}
                   onChange={e => setEditData(d => ({ ...d, payment_method: e.target.value as Transaction['payment_method'] }))}
-                  className="w-full bg-transparent font-bold text-slate-900 dark:text-white text-sm outline-none mt-0.5"
+                  className="w-full bg-transparent font-medium text-slate-900 dark:text-white text-sm outline-none mt-0.5"
                 >
                   <option value="">Não informado</option>
                   {Object.entries(PAYMENT_LABELS).map(([v, l]) => (
@@ -431,12 +431,12 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
           <button
             onClick={handleConfirm}
             disabled={!editData.amount}
-            className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl p-4 flex items-center justify-center gap-3 font-black text-sm shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl p-4 flex items-center justify-center gap-3 font-semibold text-sm shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Check size={18} />
             Confirmar e Registrar Transação
           </button>
-          <button onClick={handleReset} className="w-full flex items-center justify-center gap-2 py-2 text-xs text-slate-400 font-bold">
+          <button onClick={handleReset} className="w-full flex items-center justify-center gap-2 py-2 text-xs text-slate-400">
             <RotateCcw size={12} /> Ler outro recibo
           </button>
         </div>
@@ -449,19 +449,19 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
             <Check size={28} className="text-white" />
           </div>
           <div className="text-center">
-            <p className="font-black text-slate-900 dark:text-white text-base">Transação registrada!</p>
+            <p className="font-semibold text-slate-900 dark:text-white text-base">Transação registrada!</p>
             {editData.amount && (
-              <p className="text-2xl font-black text-emerald-500 mt-1">
+              <p className="text-2xl font-semibold text-emerald-500 mt-1">
                 {hideValues ? '••••' : fmt(editData.amount)}
               </p>
             )}
             {editData.merchant && (
-              <p className="text-xs text-slate-400 font-bold mt-1">{editData.merchant}</p>
+              <p className="text-xs text-slate-400 mt-1">{editData.merchant}</p>
             )}
           </div>
           <button
             onClick={handleReset}
-            className="flex items-center gap-2 px-6 py-3 bg-slate-100 dark:bg-slate-700 rounded-2xl font-black text-slate-700 dark:text-white text-sm hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+            className="flex items-center gap-2 px-6 py-3 bg-slate-100 dark:bg-slate-700 rounded-2xl font-semibold text-slate-700 dark:text-white text-sm hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
           >
             <Camera size={15} /> Escanear outro
           </button>
@@ -475,19 +475,19 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
             <AlertCircle size={22} className="text-rose-500" />
           </div>
           <div className="text-center px-4">
-            <p className="font-black text-rose-700 dark:text-rose-400 text-sm">Falha na leitura</p>
-            <p className="text-xs text-rose-500 font-bold mt-1">{errorMsg}</p>
+            <p className="font-semibold text-rose-700 dark:text-rose-400 text-sm">Falha na leitura</p>
+            <p className="text-xs text-rose-500 mt-1">{errorMsg}</p>
             {errorDiagnostic && (
               <div role="status" className="mt-3 rounded-2xl border border-rose-200 bg-white/70 dark:bg-slate-900/60 p-3 text-left">
-                <p className="text-xs font-black uppercase tracking-widest text-rose-600 dark:text-rose-300">{errorDiagnostic.title}</p>
-                <p className="mt-1 text-xs font-bold leading-relaxed text-rose-700 dark:text-rose-200">{errorDiagnostic.message}</p>
-                <p className="mt-2 text-xs font-black uppercase tracking-widest text-rose-500 dark:text-rose-300">Proximo passo: {errorDiagnostic.suggestion}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-rose-600 dark:text-rose-300">{errorDiagnostic.title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-rose-700 dark:text-rose-200">{errorDiagnostic.message}</p>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-rose-500 dark:text-rose-300">Proximo passo: {errorDiagnostic.suggestion}</p>
               </div>
             )}
           </div>
           <button
             onClick={handleReset}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 rounded-2xl font-black text-slate-700 dark:text-white text-sm shadow-sm"
+            className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 rounded-2xl font-semibold text-slate-700 dark:text-white text-sm shadow-sm"
           >
             <RotateCcw size={13} /> Tentar novamente
           </button>
@@ -497,7 +497,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
       {/* Tips */}
       {phase === 'idle' && (
         <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 p-5">
-          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Dicas para melhor resultado</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em] mb-3">Dicas para melhor resultado</p>
           <div className="flex flex-col gap-2">
             {[
               { icon: '📸', text: 'Foto nítida e bem iluminada' },
@@ -507,7 +507,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
             ].map(({ icon, text }) => (
               <div key={text} className="flex items-center gap-2.5">
                 <span className="text-sm">{icon}</span>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">{text}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{text}</p>
               </div>
             ))}
           </div>
@@ -518,4 +518,6 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
 };
 
 export default ReceiptScannerPage;
+
+
 

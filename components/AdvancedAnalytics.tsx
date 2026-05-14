@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+﻿import React, { useMemo } from 'react';
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart
@@ -136,12 +136,12 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
       <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Analytics</p>
-            <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Relatórios Avançados</h2>
+            <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400">Analytics</p>
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Relatórios Avançados</h2>
           </div>
           <div className="rounded-2xl bg-slate-100 px-4 py-2 text-right dark:bg-slate-700">
-            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Workspace ativo</p>
-            <p className="text-sm font-black text-slate-700 dark:text-slate-100">
+            <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-slate-400">Workspace ativo</p>
+            <p className="text-sm text-slate-700 dark:text-slate-100">
               {activeWorkspaceName || 'Carregando workspace'}
             </p>
           </div>
@@ -157,7 +157,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
             </svg>
           </div>
           <div>
-            <h3 className="text-lg font-black text-slate-800 dark:text-white">Tendência de Saldo</h3>
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Tendência de Saldo</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">Evolução do seu patrimônio ao longo do tempo</p>
           </div>
         </div>
@@ -205,7 +205,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
             </svg>
           </div>
           <div>
-            <h3 className="text-lg font-black text-slate-800 dark:text-white">Gastos por Categoria</h3>
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Gastos por Categoria</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">Principais categorias de despesa</p>
           </div>
         </div>
@@ -241,7 +241,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
             </svg>
           </div>
           <div>
-            <h3 className="text-lg font-black text-slate-800 dark:text-white">Receitas vs Despesas</h3>
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Receitas vs Despesas</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">Distribuição geral do fluxo financeiro</p>
           </div>
         </div>
@@ -289,7 +289,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
             </svg>
           </div>
           <div>
-            <h3 className="text-lg font-black text-slate-800 dark:text-white">Projeção de Fluxo de Caixa</h3>
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Projeção de Fluxo de Caixa</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">Previsão baseada nos últimos 30 dias</p>
           </div>
         </div>
@@ -334,7 +334,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
             <TrendingUp className="w-5 h-5 text-amber-500" />
           </div>
           <div>
-            <h3 className="text-lg font-black text-slate-800 dark:text-white">Relatório Mensal</h3>
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Relatório Mensal</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">Receitas e despesas nos últimos 6 meses</p>
           </div>
         </div>
@@ -360,15 +360,15 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
         <div className="flex items-center justify-center gap-6 mt-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.income }} />
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Receitas</span>
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Receitas</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.expenses }} />
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Despesas</span>
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Despesas</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-0.5 rounded" style={{ backgroundColor: COLORS.balance }} />
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saldo</span>
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Saldo</span>
           </div>
         </div>
       </div>
@@ -380,7 +380,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
             <FileText className="w-5 h-5 text-indigo-500" />
           </div>
           <div>
-            <h3 className="text-lg font-black text-slate-800 dark:text-white">Comparativo Mensal</h3>
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Comparativo Mensal</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">Receitas e despesas nos últimos 6 meses</p>
           </div>
         </div>
@@ -388,29 +388,29 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-100 dark:border-slate-700">
-                <th className="text-left pb-3 text-[8px] font-black text-slate-400 uppercase tracking-widest">Mês</th>
-                <th className="text-right pb-3 text-[8px] font-black text-slate-400 uppercase tracking-widest">Receitas</th>
-                <th className="text-right pb-3 text-[8px] font-black text-slate-400 uppercase tracking-widest">Despesas</th>
-                <th className="text-right pb-3 text-[8px] font-black text-slate-400 uppercase tracking-widest">Saldo</th>
-                <th className="text-right pb-3 text-[8px] font-black text-slate-400 uppercase tracking-widest">Var. Desp.</th>
+                <th className="text-left pb-3 text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Mês</th>
+                <th className="text-right pb-3 text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Receitas</th>
+                <th className="text-right pb-3 text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Despesas</th>
+                <th className="text-right pb-3 text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Saldo</th>
+                <th className="text-right pb-3 text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Var. Desp.</th>
               </tr>
             </thead>
             <tbody>
               {monthlyReport.map((row, i) => (
                 <tr key={i} className="border-b border-slate-50 dark:border-slate-800 last:border-0">
-                  <td className="py-3 text-xs font-black text-slate-700 dark:text-slate-300 capitalize">{row.label}</td>
-                  <td className="py-3 text-right text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  <td className="py-3 text-xs font-semibold text-slate-700 dark:text-slate-300 capitalize">{row.label}</td>
+                  <td className="py-3 text-right text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                     {hideValues ? '••••' : formatCurrency(row.receitas)}
                   </td>
-                  <td className="py-3 text-right text-xs font-bold text-rose-500">
+                  <td className="py-3 text-right text-xs font-semibold text-rose-500">
                     {hideValues ? '••••' : formatCurrency(row.despesas)}
                   </td>
-                  <td className={`py-3 text-right text-xs font-black ${row.saldo >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-500'}`}>
+                  <td className={`py-3 text-right text-xs font-semibold ${row.saldo >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-500'}`}>
                     {hideValues ? '••••' : formatCurrency(row.saldo)}
                   </td>
                   <td className="py-3 text-right">
                     {row.despesaChange !== null ? (
-                      <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full ${
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                         row.despesaChange > 5
                           ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500'
                           : row.despesaChange < -5
@@ -428,7 +428,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
               ))}
               {monthlyReport.every(r => r.receitas === 0 && r.despesas === 0) && (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-[10px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-widest">
+                  <td colSpan={5} className="py-8 text-center text-[10px] font-semibold text-slate-300 dark:text-slate-600 uppercase tracking-[0.08em]">
                     Sem dados nos últimos 6 meses
                   </td>
                 </tr>
@@ -457,3 +457,6 @@ export function formatAnalyticsDateLabel(value: unknown): string {
 }
 
 export default AdvancedAnalytics;
+
+
+

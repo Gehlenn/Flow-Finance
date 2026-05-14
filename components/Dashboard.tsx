@@ -231,14 +231,14 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Caixa</p>
-            <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Leitura rapida do caixa</h2>
+            <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">Leitura rapida do caixa</h2>
             <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-300">
               {userName ? `${userName}, veja o que entrou, saiu e exige acao.` : 'Veja o que entrou, saiu e exige acao no workspace ativo.'}
             </p>
           </div>
           <div className="rounded-2xl bg-slate-100 px-4 py-2 text-right dark:bg-slate-700">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Workspace ativo</p>
-            <p className="text-sm font-black text-slate-700 dark:text-slate-100">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-100">
               {activeWorkspaceName || 'Carregando workspace'}
             </p>
           </div>
@@ -250,7 +250,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Saldo atual</p>
-              <h3 className="mt-2 text-4xl font-black tracking-tight text-slate-950 dark:text-white ">
+              <h3 className="mt-2 text-4xl font-semibold tracking-tight text-slate-950 dark:text-white ">
                 {valueOrHidden(metrics.currentBalance)}
               </h3>
               <p className="mt-2 max-w-md text-sm font-semibold text-slate-500 dark:text-slate-300">
@@ -294,7 +294,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Estados financeiros</p>
-              <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">O que ja entrou, o que ainda nao entrou e o que esta atrasado</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">O que ja entrou, o que ainda nao entrou e o que esta atrasado</p>
             </div>
           </div>
 
@@ -329,7 +329,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">O que pede atencao</p>
-              <p className="mt-1 text-xl font-black tracking-tight text-slate-900 dark:text-white">{focusNote.title}</p>
+              <p className="mt-1 text-xl font-semibold tracking-tight text-slate-900 dark:text-white">{focusNote.title}</p>
               <p className="mt-2 text-sm font-semibold text-slate-600 dark:text-slate-300">{focusNote.description}</p>
             </div>
             <div className="rounded-2xl bg-amber-100 p-2.5 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
@@ -359,7 +359,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           {reminderSummary.pendingCount > 0 && (
-            <p className="mt-4 text-sm font-black text-amber-800 dark:text-amber-200">
+            <p className="mt-4 text-sm font-semibold text-amber-800 dark:text-amber-200">
               Recebiveis pendentes no curto prazo: {reminderSummary.pendingCount} · {valueOrHidden(reminderSummary.pendingAmount)}
             </p>
           )}
@@ -391,7 +391,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Acoes principais</p>
-            <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">Siga para as telas que mudam a decisao do dia</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">Siga para as telas que mudam a decisao do dia</p>
           </div>
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -457,7 +457,7 @@ const ComparisonMetricCard: React.FC<{ label: string; value: string; icon: React
       <p className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">{label}</p>
       <span className="rounded-lg p-1.5">{icon}</span>
     </div>
-    <p className="mt-2 text-xl font-black tracking-tight text-slate-900 dark:text-white">{value}</p>
+    <p className="mt-2 text-xl font-semibold tracking-tight text-slate-900 dark:text-white">{value}</p>
   </div>
 );
 
@@ -478,11 +478,11 @@ const StateRow: React.FC<{
     <div className="flex min-w-0 items-start gap-3">
       <span className="mt-0.5 rounded-xl p-2">{icon}</span>
       <div className="min-w-0">
-        <p className="text-sm font-black tracking-tight">{label}</p>
+        <p className="text-sm font-semibold tracking-tight">{label}</p>
         <p className="mt-1 text-sm font-medium opacity-80">{description}</p>
       </div>
     </div>
-    <p className="text-right text-xl font-black tracking-tight">{value}</p>
+    <p className="text-right text-xl font-semibold tracking-tight">{value}</p>
   </div>
 );
 
@@ -499,7 +499,7 @@ const UrgencyCard: React.FC<{
 }) => (
   <div className={`rounded-2xl border p-4 ${URGENCY_TONE_CLASS_MAP[tone]}`}>
     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{label}</p>
-    <p className="mt-2 text-xl font-black tracking-tight text-slate-950 dark:text-white">{value}</p>
+    <p className="mt-2 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">{value}</p>
     <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-300">{description}</p>
   </div>
 );
@@ -517,7 +517,7 @@ const MiniSummaryRow: React.FC<{
 }) => (
   <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 px-4 py-3 dark:border-slate-700">
     <div>
-      <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white">{label}</p>
+      <p className="text-sm font-semibold tracking-tight text-slate-900 dark:text-white">{label}</p>
       <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-300">{count} item{count === 1 ? '' : 's'}</p>
     </div>
     <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${MINI_SUMMARY_TONE_CLASS_MAP[tone]}`}>
@@ -537,7 +537,7 @@ const PrimaryActionButton: React.FC<{ title: string; description: string; onClic
     className="flex items-center justify-between rounded-2xl border border-slate-900 bg-slate-900 px-5 py-4 text-left text-white shadow-[0_20px_40px_-24px_rgba(15,23,42,0.5)] transition-colors hover:bg-slate-800 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
   >
     <span>
-      <span className="block text-sm font-black tracking-tight">{title}</span>
+      <span className="block text-sm font-semibold tracking-tight">{title}</span>
       <span className="mt-1 block text-sm font-medium text-slate-200 dark:text-slate-700">{description}</span>
     </span>
     <ChevronRight size={16} className="text-current" />
@@ -555,7 +555,7 @@ const QuickActionButton: React.FC<{ title: string; description: string; onClick?
     className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/40 dark:hover:border-slate-500 dark:hover:bg-slate-900/70"
   >
     <span>
-      <span className="block text-sm font-black tracking-tight text-slate-900 dark:text-white">{title}</span>
+      <span className="block text-sm font-semibold tracking-tight text-slate-900 dark:text-white">{title}</span>
       <span className="mt-1 block text-sm font-medium text-slate-500 dark:text-slate-300">{description}</span>
     </span>
     <ChevronRight size={16} className="text-slate-400" />

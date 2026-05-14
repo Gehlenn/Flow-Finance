@@ -1,10 +1,10 @@
-/**
- * AI CONTROL PANEL — src/pages/AIControlPanel.tsx
+﻿/**
+ * AI CONTROL PANEL â€” src/pages/AIControlPanel.tsx
  *
- * PART 6 — Painel de controle para o sistema de IA do Flow Finance.
- * PART 7 — Visível apenas em modo desenvolvimento (IS_DEV).
+ * PART 6 â€” Painel de controle para o sistema de IA do Flow Finance.
+ * PART 7 â€” VisÃ­vel apenas em modo desenvolvimento (IS_DEV).
  *
- * Design: dark terminal / command-center — monospace, scanline aesthetic,
+ * Design: dark terminal / command-center â€” monospace, scanline aesthetic,
  * deliberate brutalist density. Think "NASA mission control meets developer DevTools".
  */
 
@@ -14,7 +14,7 @@ import { Account } from '../models/Account';
 import { logWarn } from '../src/utils/logger';
 
 // Services
-import { getAIMemory, AIMemory }              from '../src/ai/aiMemory';
+import { getAIMemory, deleteMemory, AIMemory }              from '../src/ai/aiMemory';
 import { getAIDebugLogs, clearAIDebugLogs, AIDebugEntry } from '../src/ai/aiDebugService';
 import { generateFinancialInsights, AIInsight } from '../src/ai/insightGenerator';
 import { buildCashflowPrediction }             from '../src/ai/riskAnalyzer';
@@ -48,14 +48,14 @@ import {
   ArrowRight, X, Info, Bot, Target, Repeat2, Map, Network
 } from 'lucide-react';
 
-// ─── Dev guard ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Dev guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const IS_DEV = import.meta.env.DEV;
 
-// ─── Shared primitives ────────────────────────────────────────────────────────
+// â”€â”€â”€ Shared primitives â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const TermBadge: React.FC<{ children: React.ReactNode; color?: string }> = ({ children, color = 'text-emerald-400' }) => (
-  <span className={`font-mono text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 bg-black/40 border border-current/20 rounded ${color}`}>
+  <span className={`font-mono text-xs font-medium uppercase tracking-[0.08em] px-2 py-0.5 bg-black/40 border border-current/20 rounded ${color}`}>
     {children}
   </span>
 );
@@ -68,7 +68,7 @@ const ConfBar: React.FC<{ value: number }> = ({ value }) => {
       <div className="h-1 w-20 bg-slate-800 rounded-full overflow-hidden">
         <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
-      <span className="font-mono text-[9px]" style={{ color }}>{pct}%</span>
+      <span className="font-mono text-xs" style={{ color }}>{pct}%</span>
     </div>
   );
 };
@@ -79,9 +79,9 @@ const SectionHeader: React.FC<{ icon: React.ReactNode; title: string; count?: nu
   <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-700/60 bg-slate-900/50">
     <div className="flex items-center gap-2">
       <span className="text-emerald-400">{icon}</span>
-      <span className="font-mono text-[9px] font-bold uppercase tracking-[0.15em] text-slate-300">{title}</span>
+      <span className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-slate-300">{title}</span>
       {count !== undefined && (
-        <span className="bg-slate-700 text-slate-400 font-mono text-[8px] px-1.5 py-0.5 rounded">{count}</span>
+        <span className="bg-slate-700 text-slate-400 font-mono text-xs px-1.5 py-0.5 rounded">{count}</span>
       )}
     </div>
     <div className="flex gap-1">
@@ -102,17 +102,19 @@ const SectionHeader: React.FC<{ icon: React.ReactNode; title: string; count?: nu
 const EmptyState: React.FC<{ icon: React.ReactNode; message: string }> = ({ icon, message }) => (
   <div className="flex flex-col items-center justify-center py-12 gap-3 text-slate-600">
     <span className="opacity-40">{icon}</span>
-    <p className="font-mono text-[9px] uppercase tracking-widest">{message}</p>
+    <p className="font-mono text-xs uppercase tracking-[0.08em]">{message}</p>
   </div>
 );
 
-// ─── TAB: Memory ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ TAB: Memory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const MemoryTab: React.FC<{ userId: string }> = ({ userId }) => {
   const [entries, setEntries] = useState<AIMemory[]>([]);
   const [filter, setFilter] = useState('');
+  const [qualityFilter, setQualityFilter] = useState<'all' | 'high' | 'medium' | 'low' | 'patterns' | 'profile' | 'merchants'>('all');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadDiagnostic, setLoadDiagnostic] = useState<{ title: string; message: string; suggestion: string } | null>(null);
+  const [isMutating, setIsMutating] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -138,41 +140,281 @@ const MemoryTab: React.FC<{ userId: string }> = ({ userId }) => {
 
   useEffect(() => { load(); }, [load]);
 
+  const handleDeleteMemory = useCallback(async (entry: AIMemory) => {
+    if (!window.confirm(`Excluir memoria ${entry.key}?`)) {
+      return;
+    }
+
+    setIsMutating(true);
+    try {
+      await deleteMemory(entry.id);
+      await load();
+    } catch (error) {
+      logWarn('[AIControlPanel] Failed to delete AI memory', {
+        userId,
+        memoryId: entry.id,
+        error,
+        fallback: 'ai-control-panel-memory-delete-failed',
+      });
+      setLoadError('Nao foi possivel excluir a memoria agora.');
+      setLoadDiagnostic({
+        title: 'Falha ao excluir memoria',
+        message: 'A operacao de exclusao nao concluiu agora.',
+        suggestion: 'Recarregue a tela e tente novamente com a mesma sessao.',
+      });
+    } finally {
+      setIsMutating(false);
+    }
+  }, [load, userId]);
+
+  const handleClearMemories = useCallback(async () => {
+    if (entries.length === 0) {
+      return;
+    }
+
+    if (!window.confirm('Limpar todas as memorias desta sessao?')) {
+      return;
+    }
+
+    setIsMutating(true);
+    try {
+      await Promise.all(entries.map((entry) => deleteMemory(entry.id)));
+      await load();
+    } catch (error) {
+      logWarn('[AIControlPanel] Failed to clear AI memory', {
+        userId,
+        error,
+        fallback: 'ai-control-panel-memory-clear-failed',
+      });
+      setLoadError('Nao foi possivel limpar as memorias agora.');
+      setLoadDiagnostic({
+        title: 'Falha ao limpar memorias',
+        message: 'A exclusao em massa nao concluiu agora.',
+        suggestion: 'Atualize a tela e tente novamente com a mesma sessao.',
+      });
+    } finally {
+      setIsMutating(false);
+    }
+  }, [entries, load, userId]);
+
   const filtered = useMemo(() =>
-    entries.filter(e =>
-      !filter || e.key.includes(filter) || e.value.includes(filter)
-    ), [entries, filter]);
+    entries.filter((entry) => {
+      const matchesText = !filter || entry.key.includes(filter) || entry.value.includes(filter);
+      if (!matchesText) return false;
+
+      switch (qualityFilter) {
+        case 'high':
+          return entry.confidence >= 0.75;
+        case 'medium':
+          return entry.confidence >= 0.5 && entry.confidence < 0.75;
+        case 'low':
+          return entry.confidence < 0.5;
+        case 'patterns':
+          return entry.key.includes('pattern') || entry.key.includes('weekend');
+        case 'profile':
+          return entry.key.includes('profile') || entry.key.includes('recurring');
+        case 'merchants':
+          return entry.key.includes('merchant');
+        case 'all':
+        default:
+          return true;
+      }
+    }), [entries, filter, qualityFilter]);
+
+  const handleClearFilteredMemories = useCallback(async () => {
+    if (filtered.length === 0) {
+      return;
+    }
+
+    if (!window.confirm(`Limpar ${filtered.length} memorias filtradas desta sessao?`)) {
+      return;
+    }
+
+    setIsMutating(true);
+    try {
+      await Promise.all(filtered.map((entry) => deleteMemory(entry.id)));
+      await load();
+    } catch (error) {
+      logWarn('[AIControlPanel] Failed to clear filtered AI memory', {
+        userId,
+        error,
+        fallback: 'ai-control-panel-filtered-memory-clear-failed',
+      });
+      setLoadError('Nao foi possivel limpar as memorias filtradas agora.');
+      setLoadDiagnostic({
+        title: 'Falha ao limpar memorias filtradas',
+        message: 'A exclusao do subconjunto filtrado nao concluiu agora.',
+        suggestion: 'Recarregue a tela e tente novamente com a mesma sessao.',
+      });
+    } finally {
+      setIsMutating(false);
+    }
+  }, [filtered, load, userId]);
+
+  const memorySummary = useMemo(() => {
+    const highConfidence = entries.filter((entry) => entry.confidence >= 0.75).length;
+    const mediumConfidence = entries.filter((entry) => entry.confidence >= 0.5 && entry.confidence < 0.75).length;
+    const lowConfidence = entries.filter((entry) => entry.confidence < 0.5).length;
+    const patternEntries = entries.filter((entry) => entry.key.includes('pattern') || entry.key.includes('weekend'));
+    const profileEntries = entries.filter((entry) => entry.key.includes('profile') || entry.key.includes('recurring'));
+    const merchantEntries = entries.filter((entry) => entry.key.includes('merchant'));
+
+    return {
+      total: entries.length,
+      highConfidence,
+      mediumConfidence,
+      lowConfidence,
+      patternCount: patternEntries.length,
+      profileCount: profileEntries.length,
+      merchantCount: merchantEntries.length,
+      patternEntries,
+      profileEntries,
+      merchantEntries,
+      latestUpdatedAt: entries[0]?.updated_at ?? null,
+    };
+  }, [entries]);
 
   return (
     <div className="flex flex-col h-full">
       <SectionHeader icon={<Database size={11} />} title="AI Memory" count={entries.length} onRefresh={load} />
 
+      <div className="px-4 pt-3">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <div className="rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-slate-500">Total</p>
+            <p className="font-mono text-sm text-slate-100">{memorySummary.total}</p>
+          </div>
+          <div className="rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-emerald-400">Alta confianca</p>
+            <p className="font-mono text-sm text-emerald-300">{memorySummary.highConfidence}</p>
+          </div>
+          <div className="rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-amber-400">Confianca media</p>
+            <p className="font-mono text-sm text-amber-300">{memorySummary.mediumConfidence}</p>
+          </div>
+          <div className="rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-rose-400">Baixa confianca</p>
+            <p className="font-mono text-sm text-rose-300">{memorySummary.lowConfidence}</p>
+          </div>
+        </div>
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          <div className="rounded-lg border border-slate-700/60 bg-black/30 px-3 py-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-slate-500">Padrões</p>
+            <p className="font-mono text-sm text-slate-200">{memorySummary.patternCount}</p>
+          </div>
+          <div className="rounded-lg border border-slate-700/60 bg-black/30 px-3 py-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-slate-500">Perfil</p>
+            <p className="font-mono text-sm text-slate-200">{memorySummary.profileCount}</p>
+          </div>
+          <div className="rounded-lg border border-slate-700/60 bg-black/30 px-3 py-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-slate-500">Comerciantes</p>
+            <p className="font-mono text-sm text-slate-200">{memorySummary.merchantCount}</p>
+          </div>
+        </div>
+        {memorySummary.latestUpdatedAt && (
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.08em] text-slate-500">
+            Atualizado em {new Date(memorySummary.latestUpdatedAt).toLocaleString('pt-BR')}
+          </p>
+        )}
+        <div className="mt-3 grid gap-2 md:grid-cols-3">
+          {[
+            { label: 'Padr?es', items: memorySummary.patternEntries },
+            { label: 'Perfil financeiro', items: memorySummary.profileEntries },
+            { label: 'Comerciantes', items: memorySummary.merchantEntries },
+          ].map((group) => (
+            <div key={group.label} className="rounded-xl border border-slate-700/60 bg-slate-950/50 p-3">
+              <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-slate-400">{group.label}</p>
+              <div className="mt-2 space-y-2">
+                {group.items.length > 0 ? (
+                  group.items.slice(0, 3).map((entry) => (
+                    <div key={entry.id} className="rounded-lg border border-slate-800 bg-black/20 px-2.5 py-2">
+                      <p className="font-mono text-[10px] text-emerald-300 truncate">{entry.key}</p>
+                      <p className="font-mono text-[10px] text-slate-400 truncate">{entry.value}</p>
+                      <p className="font-mono text-[10px] text-slate-500">Confian?a {Math.round(entry.confidence * 100)}%</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="font-mono text-[10px] text-slate-500">Nenhuma mem?ria neste grupo</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="px-4 pt-3">
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: 'all', label: 'Todas' },
+            { id: 'high', label: 'Alta confiança' },
+            { id: 'medium', label: 'Confiança média' },
+            { id: 'low', label: 'Baixa confiança' },
+            { id: 'patterns', label: 'Padrões' },
+            { id: 'profile', label: 'Perfil' },
+            { id: 'merchants', label: 'Comerciantes' },
+          ].map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              onClick={() => setQualityFilter(chip.id as typeof qualityFilter)}
+              className={`rounded-full border px-3 py-1 font-mono text-[10px] uppercase tracking-[0.08em] transition-colors ${
+                qualityFilter === chip.id
+                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                  : 'border-slate-700 bg-slate-900/60 text-slate-400 hover:border-slate-500 hover:text-slate-200'
+              }`}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Search */}
       <div className="px-4 py-2 border-b border-slate-700/40">
-        <div className="flex items-center gap-2 bg-black/40 border border-slate-700 rounded px-3 py-1.5">
-          <Search size={10} className="text-slate-500" />
-          <input
-            value={filter}
-            onChange={e => setFilter(e.target.value)}
-            placeholder="Filtrar por chave ou valor..."
-            className="flex-1 bg-transparent font-mono text-[10px] text-slate-300 placeholder-slate-600 outline-none"
-          />
+        <div className="flex items-center gap-2">
+          <div className="flex flex-1 items-center gap-2 bg-black/40 border border-slate-700 rounded px-3 py-1.5">
+            <Search size={10} className="text-slate-500" />
+            <input
+              value={filter}
+              onChange={e => setFilter(e.target.value)}
+              placeholder="Filtrar por chave ou valor..."
+              className="flex-1 bg-transparent font-mono text-xs text-slate-300 placeholder-slate-600 outline-none"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleClearMemories()}
+            disabled={isMutating || entries.length === 0}
+            className="inline-flex items-center gap-1 rounded border border-slate-700 bg-slate-900/70 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-slate-400 transition-colors hover:border-rose-500/40 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Trash2 size={10} />
+            Limpar memorias
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleClearFilteredMemories()}
+            disabled={isMutating || filtered.length === 0 || filtered.length === entries.length}
+            className="inline-flex items-center gap-1 rounded border border-slate-700 bg-slate-900/70 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-slate-400 transition-colors hover:border-amber-500/40 hover:text-amber-300 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Trash2 size={10} />
+            Limpar filtradas
+          </button>
         </div>
       </div>
 
       {loadError && loadDiagnostic && (
         <div className="px-4 pt-3">
           <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-1">
-            <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-amber-400">{loadDiagnostic.title}</p>
-            <p className="font-mono text-[10px] text-amber-100">{loadDiagnostic.message}</p>
-            <p className="font-mono text-[8px] font-black uppercase tracking-widest text-amber-300">Proximo passo: {loadDiagnostic.suggestion}</p>
+            <p className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-amber-400">{loadDiagnostic.title}</p>
+            <p className="font-mono text-xs text-amber-100">{loadDiagnostic.message}</p>
+            <p className="font-mono text-xs font-semibold uppercase tracking-[0.08em] text-amber-300">Proximo passo: {loadDiagnostic.suggestion}</p>
           </div>
         </div>
       )}
 
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 && !loadError ? (
-          <EmptyState icon={<Brain size={32} />} message="Nenhuma memória encontrada" />
+          <EmptyState icon={<Brain size={32} />} message="Nenhuma memÃ³ria encontrada" />
         ) : (
           <div className="divide-y divide-slate-800">
             {filtered.map(entry => (
@@ -181,13 +423,26 @@ const MemoryTab: React.FC<{ userId: string }> = ({ userId }) => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <Hash size={9} className="text-emerald-500 shrink-0" />
-                      <span className="font-mono text-[10px] text-emerald-300 truncate">{entry.key}</span>
+                      <span className="font-mono text-xs text-emerald-300 truncate">{entry.key}</span>
                     </div>
-                    <p className="font-mono text-[10px] text-slate-400 ml-3.5 truncate">→ {entry.value}</p>
+                    <p className="font-mono text-xs text-slate-400 ml-3.5 truncate">â†’ {entry.value}</p>
                   </div>
-                  <ConfBar value={entry.confidence} />
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <ConfBar value={entry.confidence} />
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteMemory(entry)}
+                      disabled={isMutating}
+                      aria-label={`Excluir memoria ${entry.key}`}
+                      title={`Excluir memoria ${entry.key}`}
+                      className="inline-flex items-center gap-1 rounded border border-slate-700/60 bg-slate-900/70 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-slate-400 transition-colors hover:border-rose-500/40 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Trash2 size={9} />
+                      Excluir
+                    </button>
+                  </div>
                 </div>
-                <p className="font-mono text-[8px] text-slate-600 mt-1.5 ml-3.5 flex items-center gap-1">
+                <p className="font-mono text-xs text-slate-600 mt-1.5 ml-3.5 flex items-center gap-1">
                   <Clock size={7} /> {new Date(entry.updated_at).toLocaleString('pt-BR')}
                 </p>
               </div>
@@ -199,7 +454,7 @@ const MemoryTab: React.FC<{ userId: string }> = ({ userId }) => {
   );
 };
 
-// ─── TAB: Insights ────────────────────────────────────────────────────────────
+// â”€â”€â”€ TAB: Insights â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const InsightsTab: React.FC<{ transactions: Transaction[]; userId: string }> = ({ transactions, userId }) => {
   const insights = useMemo(() => generateFinancialInsights(transactions, userId), [transactions, userId]);
@@ -225,7 +480,7 @@ const InsightsTab: React.FC<{ transactions: Transaction[]; userId: string }> = (
       <SectionHeader icon={<Sparkles size={11} />} title="Financial Insights" count={insights.length} />
       <div className="flex-1 overflow-y-auto">
         {insights.length === 0 ? (
-          <EmptyState icon={<Sparkles size={32} />} message="Sem insights — adicione transações" />
+          <EmptyState icon={<Sparkles size={32} />} message="Sem insights â€” adicione transaÃ§Ãµes" />
         ) : (
           <div className="p-3 flex flex-col gap-2">
             {insights.map(insight => (
@@ -238,13 +493,13 @@ const InsightsTab: React.FC<{ transactions: Transaction[]; userId: string }> = (
                     </TermBadge>
                   </div>
                   {insight.severity && (
-                    <span className={`font-mono text-[8px] font-bold uppercase ${severityColor[insight.severity]}`}>
+                    <span className={`font-mono text-xs font-medium uppercase ${severityColor[insight.severity]}`}>
                       {insight.severity}
                     </span>
                   )}
                 </div>
-                <p className="font-mono text-[10px] text-slate-300 leading-relaxed">{insight.message}</p>
-                <p className="font-mono text-[8px] text-slate-600 mt-2 flex items-center gap-1">
+                <p className="font-mono text-xs text-slate-300 leading-relaxed">{insight.message}</p>
+                <p className="font-mono text-xs text-slate-600 mt-2 flex items-center gap-1">
                   <Clock size={7} /> {new Date(insight.created_at).toLocaleString('pt-BR')}
                 </p>
               </div>
@@ -256,7 +511,7 @@ const InsightsTab: React.FC<{ transactions: Transaction[]; userId: string }> = (
   );
 };
 
-// ─── TAB: Autopilot ──────────────────────────────────────────────────────────
+// â”€â”€â”€ TAB: Autopilot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const AutopilotTab: React.FC<{ transactions: Transaction[]; accounts: Account[] }> = ({ transactions, accounts }) => {
   const actions = useMemo(() => {
@@ -277,7 +532,7 @@ const AutopilotTab: React.FC<{ transactions: Transaction[]; accounts: Account[] 
       <SectionHeader icon={<Bot size={11} />} title="Autopilot Actions" count={actions.length} />
       <div className="flex-1 overflow-y-auto">
         {actions.length === 0 ? (
-          <EmptyState icon={<Bot size={32} />} message="Nenhuma ação — dados insuficientes" />
+          <EmptyState icon={<Bot size={32} />} message="Nenhuma aÃ§Ã£o â€” dados insuficientes" />
         ) : (
           <div className="p-3 flex flex-col gap-2">
             {actions.map(action => {
@@ -288,13 +543,13 @@ const AutopilotTab: React.FC<{ transactions: Transaction[]; accounts: Account[] 
                     {style.icon}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <p className="font-mono text-[10px] text-slate-200 font-bold leading-tight">{action.title}</p>
+                        <p className="font-mono text-xs text-slate-200 font-medium leading-tight">{action.title}</p>
                         <TermBadge>{style.label}</TermBadge>
                       </div>
-                      <p className="font-mono text-[9px] text-slate-400 leading-relaxed">{action.description}</p>
+                      <p className="font-mono text-xs text-slate-400 leading-relaxed">{action.description}</p>
                       {action.value !== undefined && (
-                        <p className="font-mono text-[9px] text-emerald-400 mt-1.5">
-                          ↗ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(action.value)}
+                        <p className="font-mono text-xs text-emerald-400 mt-1.5">
+                          â†— {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(action.value)}
                         </p>
                       )}
                     </div>
@@ -309,7 +564,7 @@ const AutopilotTab: React.FC<{ transactions: Transaction[]; accounts: Account[] 
   );
 };
 
-// ─── TAB: Events ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ TAB: Events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const EventsTab: React.FC = () => {
   const [events, setEvents] = useState<FinancialEvent[]>([]);
@@ -352,17 +607,17 @@ const EventsTab: React.FC = () => {
                   onClick={() => setExpanded(expanded === ev.id ? null : ev.id)}
                   className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-800/30 transition-colors text-left"
                 >
-                  <span className={`font-mono text-[8px] font-bold uppercase tracking-wider ${eventColor[ev.type] ?? 'text-slate-400'}`}>
+                  <span className={`font-mono text-xs font-medium uppercase tracking-[0.08em] ${eventColor[ev.type] ?? 'text-slate-400'}`}>
                     {ev.type}
                   </span>
-                  <span className="flex-1 font-mono text-[8px] text-slate-600 truncate">
+                  <span className="flex-1 font-mono text-xs text-slate-600 truncate">
                     {new Date(ev.created_at).toLocaleTimeString('pt-BR')}
                   </span>
                   {expanded === ev.id ? <ChevronDown size={10} className="text-slate-500" /> : <ChevronRight size={10} className="text-slate-600" />}
                 </button>
                 {expanded === ev.id && (
                   <div className="px-4 pb-3">
-                    <pre className="font-mono text-[8px] text-slate-400 bg-black/40 p-3 rounded overflow-x-auto whitespace-pre-wrap border border-slate-700/40">
+                    <pre className="font-mono text-xs text-slate-400 bg-black/40 p-3 rounded overflow-x-auto whitespace-pre-wrap border border-slate-700/40">
                       {JSON.stringify(ev.payload, null, 2)}
                     </pre>
                   </div>
@@ -376,7 +631,7 @@ const EventsTab: React.FC = () => {
   );
 };
 
-// ─── TAB: AI Logs ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ TAB: AI Logs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const AILogsTab: React.FC = () => {
   const [logs, setLogs] = useState<AIDebugEntry[]>([]);
@@ -406,21 +661,21 @@ const AILogsTab: React.FC = () => {
                   className="w-full flex items-start gap-3 px-4 py-2.5 hover:bg-slate-800/30 transition-colors text-left"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="font-mono text-[9px] text-slate-300 truncate">{log.input}</p>
+                    <p className="font-mono text-xs text-slate-300 truncate">{log.input}</p>
                     {log.predicted_category && (
-                      <p className="font-mono text-[8px] text-emerald-500 mt-0.5">→ {log.predicted_category}</p>
+                      <p className="font-mono text-xs text-emerald-500 mt-0.5">â†’ {log.predicted_category}</p>
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     {log.confidence !== undefined && <ConfBar value={log.confidence} />}
                     {log.processing_ms && (
-                      <span className="font-mono text-[7px] text-slate-600">{log.processing_ms}ms</span>
+                      <span className="font-mono text-xs text-slate-600">{log.processing_ms}ms</span>
                     )}
                   </div>
                 </button>
                 {expanded === log.id && (
                   <div className="px-4 pb-3">
-                    <pre className="font-mono text-[8px] text-slate-400 bg-black/40 p-3 rounded overflow-x-auto whitespace-pre-wrap border border-slate-700/40">
+                    <pre className="font-mono text-xs text-slate-400 bg-black/40 p-3 rounded overflow-x-auto whitespace-pre-wrap border border-slate-700/40">
                       {JSON.stringify({ ...log, input: undefined }, null, 2)}
                     </pre>
                   </div>
@@ -434,7 +689,7 @@ const AILogsTab: React.FC = () => {
   );
 };
 
-// ─── TAB: Subscriptions ──────────────────────────────────────────────────────
+// â”€â”€â”€ TAB: Subscriptions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const SubscriptionsTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }) => {
   const summary = useMemo(() => detectSubscriptions(transactions), [transactions]);
@@ -451,8 +706,8 @@ const SubscriptionsTab: React.FC<{ transactions: Transaction[] }> = ({ transacti
             { label: 'Anual',   value: fmt(summary.total_annual),   color: 'text-amber-400' },
           ].map(({ label, value, color }) => (
             <div key={label} className="px-4 py-3 border-r border-slate-700/40 last:border-r-0">
-              <p className="font-mono text-[7px] text-slate-500 uppercase tracking-widest">{label}</p>
-              <p className={`font-mono text-sm font-bold ${color} mt-0.5`}>{value}</p>
+              <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em]">{label}</p>
+              <p className={`font-mono text-sm font-medium ${color} mt-0.5`}>{value}</p>
             </div>
           ))}
         </div>
@@ -467,20 +722,20 @@ const SubscriptionsTab: React.FC<{ transactions: Transaction[] }> = ({ transacti
                   <span className="text-xl leading-none mt-0.5">{sub.logo}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <p className="font-mono text-[10px] text-slate-200 font-bold">{sub.name}</p>
-                      <span className="font-mono text-[10px] text-rose-400 font-bold">{fmt(sub.amount)}</span>
+                      <p className="font-mono text-xs text-slate-200 font-medium">{sub.name}</p>
+                      <span className="font-mono text-xs text-rose-400 font-medium">{fmt(sub.amount)}</span>
                     </div>
                     <div className="flex items-center gap-3 flex-wrap">
                       <TermBadge color="text-sky-400">{formatCycle(sub.cycle)}</TermBadge>
                       <TermBadge color="text-slate-400">{sub.category}</TermBadge>
-                      <TermBadge color="text-violet-400">{sub.occurrences}× detectado</TermBadge>
+                      <TermBadge color="text-violet-400">{sub.occurrences}Ã— detectado</TermBadge>
                     </div>
                     <div className="flex items-center gap-1.5 mt-1.5">
                       <Calendar size={8} className="text-slate-500" />
-                      <span className="font-mono text-[8px] text-slate-500">
-                        Próxima: {formatNextCharge(sub.next_expected)}
+                      <span className="font-mono text-xs text-slate-500">
+                        PrÃ³xima: {formatNextCharge(sub.next_expected)}
                       </span>
-                      <span className="font-mono text-[8px] text-slate-600 ml-auto">
+                      <span className="font-mono text-xs text-slate-600 ml-auto">
                         Total: {fmt(sub.total_spent)}
                       </span>
                     </div>
@@ -496,7 +751,7 @@ const SubscriptionsTab: React.FC<{ transactions: Transaction[] }> = ({ transacti
   );
 };
 
-// ─── TAB: Money Map ──────────────────────────────────────────────────────────
+// â”€â”€â”€ TAB: Money Map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const MoneyMapTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }) => {
   const [period, setPeriod] = useState(30);
@@ -513,7 +768,7 @@ const MoneyMapTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }
           <button
             key={d}
             onClick={() => setPeriod(d)}
-            className={`flex-1 py-2 font-mono text-[8px] uppercase tracking-widest transition-colors
+            className={`flex-1 py-2 font-mono text-xs uppercase tracking-[0.08em] transition-colors
               ${period === d ? 'bg-emerald-500/10 text-emerald-400 border-b-2 border-emerald-500' : 'text-slate-500 hover:text-slate-300'}`}
           >
             {d}d
@@ -530,8 +785,8 @@ const MoneyMapTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }
             { label: 'Saldo',     value: fmt(map.net),            color: map.net >= 0 ? 'text-emerald-400' : 'text-rose-400' },
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-black/30 border border-slate-700/50 rounded-lg p-2.5">
-              <p className="font-mono text-[7px] text-slate-500 uppercase tracking-widest">{label}</p>
-              <p className={`font-mono text-xs font-bold ${color} mt-0.5 truncate`}>{value}</p>
+              <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em]">{label}</p>
+              <p className={`font-mono text-xs font-medium ${color} mt-0.5 truncate`}>{value}</p>
             </div>
           ))}
         </div>
@@ -539,7 +794,7 @@ const MoneyMapTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }
         {/* Segmented bar */}
         {map.distribution.length > 0 && (
           <div className="mb-4">
-            <p className="font-mono text-[7px] text-slate-500 uppercase tracking-widest mb-2">Distribuição</p>
+            <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em] mb-2">DistribuiÃ§Ã£o</p>
             <div className="flex h-3 rounded overflow-hidden gap-px">
               {map.distribution.slice(0, 6).map(item => (
                 <div
@@ -555,20 +810,20 @@ const MoneyMapTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }
 
         {/* Category table */}
         {map.distribution.length === 0 ? (
-          <EmptyState icon={<BarChart3 size={32} />} message="Sem despesas no período" />
+          <EmptyState icon={<BarChart3 size={32} />} message="Sem despesas no perÃ­odo" />
         ) : (
           <div className="flex flex-col gap-1.5">
             {map.distribution.map(item => (
               <div key={item.category} className="flex items-center gap-3">
                 <div className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: item.color }} />
-                <span className="font-mono text-[9px] text-slate-300 flex-1 truncate">{item.category}</span>
-                <span className="font-mono text-[9px] text-slate-500">{item.count}×</span>
+                <span className="font-mono text-xs text-slate-300 flex-1 truncate">{item.category}</span>
+                <span className="font-mono text-xs text-slate-500">{item.count}Ã—</span>
                 <div className="flex items-center gap-1">
                   {item.trend === 'up'   && <TrendingUp  size={8} className="text-rose-400"    />}
                   {item.trend === 'down' && <TrendingDown size={8} className="text-emerald-400" />}
                 </div>
-                <span className="font-mono text-[9px] text-slate-400 w-12 text-right">{item.percentage.toFixed(1)}%</span>
-                <span className="font-mono text-[9px] text-slate-200 w-20 text-right">{fmt(item.amount)}</span>
+                <span className="font-mono text-xs text-slate-400 w-12 text-right">{item.percentage.toFixed(1)}%</span>
+                <span className="font-mono text-xs text-slate-200 w-20 text-right">{fmt(item.amount)}</span>
               </div>
             ))}
           </div>
@@ -578,7 +833,7 @@ const MoneyMapTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }
   );
 };
 
-// ─── TAB: Leaks ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ TAB: Leaks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const LeaksTab: React.FC<{ transactions: Transaction[]; leaks?: FinancialLeak[] }> = ({ transactions, leaks }) => {
   const computedLeaks = useMemo(() => detectFinancialLeaks(transactions), [transactions]);
@@ -599,10 +854,10 @@ const LeaksTab: React.FC<{ transactions: Transaction[]; leaks?: FinancialLeak[] 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <AlertTriangle size={9} className="text-rose-500 shrink-0" />
-                      <span className="font-mono text-[10px] text-rose-300 truncate">{leak.merchant}</span>
+                      <span className="font-mono text-xs text-rose-300 truncate">{leak.merchant}</span>
                     </div>
-                    <p className="font-mono text-[9px] text-slate-400 ml-3.5">R$ {leak.monthly_cost.toFixed(2)}/mês - {leak.occurrences} ocorrências</p>
-                    <p className="font-mono text-[8px] text-slate-500 ml-3.5 mt-1">{leak.suggestion}</p>
+                    <p className="font-mono text-xs text-slate-400 ml-3.5">R$ {leak.monthly_cost.toFixed(2)}/mÃªs - {leak.occurrences} ocorrÃªncias</p>
+                    <p className="font-mono text-xs text-slate-500 ml-3.5 mt-1">{leak.suggestion}</p>
                   </div>
                 </div>
               </div>
@@ -614,7 +869,7 @@ const LeaksTab: React.FC<{ transactions: Transaction[]; leaks?: FinancialLeak[] 
   );
 };
 
-// ─── TAB: Report ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ TAB: Report â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const ReportTab: React.FC<{ transactions: Transaction[]; report?: FinancialReport | null }> = ({ transactions, report }) => {
   const computedReport = useMemo(() => generateMonthlyReport(transactions), [transactions]);
@@ -626,26 +881,26 @@ const ReportTab: React.FC<{ transactions: Transaction[]; report?: FinancialRepor
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <div className="bg-slate-800/50 rounded p-4">
-          <h3 className="font-mono text-[10px] text-emerald-400 mb-3">{reportSnapshot.month}</h3>
+          <h3 className="font-mono text-xs text-emerald-400 mb-3">{reportSnapshot.month}</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="font-mono text-[8px] text-slate-500">Receitas</p>
+              <p className="font-mono text-xs text-slate-500">Receitas</p>
               <p className="font-mono text-[12px] text-emerald-400">R$ {reportSnapshot.total_income.toFixed(2)}</p>
             </div>
             <div>
-              <p className="font-mono text-[8px] text-slate-500">Despesas</p>
+              <p className="font-mono text-xs text-slate-500">Despesas</p>
               <p className="font-mono text-[12px] text-rose-400">R$ {reportSnapshot.total_expenses.toFixed(2)}</p>
             </div>
           </div>
         </div>
 
         <div className="bg-slate-800/50 rounded p-4">
-          <h4 className="font-mono text-[9px] text-slate-300 mb-2">Top Categorias</h4>
+          <h4 className="font-mono text-xs text-slate-300 mb-2">Top Categorias</h4>
           <div className="space-y-2">
             {reportSnapshot.top_categories.map(cat => (
               <div key={cat.category} className="flex items-center justify-between">
-                <span className="font-mono text-[9px] text-slate-400">{cat.category}</span>
-                <span className="font-mono text-[9px] text-emerald-400">{cat.percentage}%</span>
+                <span className="font-mono text-xs text-slate-400">{cat.category}</span>
+                <span className="font-mono text-xs text-emerald-400">{cat.percentage}%</span>
               </div>
             ))}
           </div>
@@ -653,10 +908,10 @@ const ReportTab: React.FC<{ transactions: Transaction[]; report?: FinancialRepor
 
         {reportSnapshot.insights.length > 0 && (
           <div className="bg-slate-800/50 rounded p-4">
-            <h4 className="font-mono text-[9px] text-slate-300 mb-2">Insights</h4>
+            <h4 className="font-mono text-xs text-slate-300 mb-2">Insights</h4>
             <div className="space-y-1">
               {reportSnapshot.insights.map((insight, idx) => (
-                <p key={idx} className="font-mono text-[8px] text-slate-400">{insight}</p>
+                <p key={idx} className="font-mono text-xs text-slate-400">{insight}</p>
               ))}
             </div>
           </div>
@@ -666,7 +921,7 @@ const ReportTab: React.FC<{ transactions: Transaction[]; report?: FinancialRepor
   );
 };
 
-// ─── TAB: Simulation ─────────────────────────────────────────────────────────
+// â”€â”€â”€ TAB: Simulation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[] }> = ({ transactions, accounts }) => {
   const [scenario, setScenario] = useState<SimulationScenario>({
@@ -712,21 +967,21 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <div className="bg-slate-800/50 rounded p-4">
-          <h4 className="font-mono text-[9px] text-slate-300 mb-3">Configurar Cenário</h4>
+          <h4 className="font-mono text-xs text-slate-300 mb-3">Configurar CenÃ¡rio</h4>
           <div className="space-y-3">
             <select
               value={scenario.type}
               onChange={e => setScenario({ ...scenario, type: e.target.value as any })}
-              className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-[10px] text-slate-300"
+              className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-xs text-slate-300"
             >
               <option value="extra_spending">Gasto Extra</option>
               <option value="monthly_savings">Economia Mensal</option>
-              <option value="months">Projeção por Meses</option>
+              <option value="months">ProjeÃ§Ã£o por Meses</option>
             </select>
 
             {scenario.type === 'extra_spending' && (
               <>
-                <label htmlFor="sim-amount-extra" className="font-mono text-[9px] text-slate-400">Valor do gasto extra (R$)</label>
+                <label htmlFor="sim-amount-extra" className="font-mono text-xs text-slate-400">Valor do gasto extra (R$)</label>
                 <input
                   id="sim-amount-extra"
                   type="text"
@@ -734,13 +989,13 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
                   value={amountRaw}
                   onChange={e => setAmountRaw(e.target.value)}
                   placeholder="Valor"
-                  className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-[10px] text-slate-300"
+                  className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-xs text-slate-300"
                 />
                 <input
                   value={scenario.description}
                   onChange={e => setScenario({ ...scenario, description: e.target.value })}
-                  placeholder="Descrição"
-                  className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-[10px] text-slate-300"
+                  placeholder="DescriÃ§Ã£o"
+                  className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-xs text-slate-300"
                 />
               </>
             )}
@@ -752,34 +1007,34 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
                   value={scenario.amount}
                   onChange={e => setScenario({ ...scenario, amount: Number(e.target.value) })}
                   placeholder="Valor mensal"
-                  className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-[10px] text-slate-300"
+                  className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-xs text-slate-300"
                 />
                 <input
                   value={scenario.description}
                   onChange={e => setScenario({ ...scenario, description: e.target.value })}
-                  placeholder="Descrição"
-                  className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-[10px] text-slate-300"
+                  placeholder="DescriÃ§Ã£o"
+                  className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-xs text-slate-300"
                 />
               </>
             )}
 
             {scenario.type === 'months' && (
               <>
-                <label htmlFor="sim-months" className="font-mono text-[9px] text-slate-400">Meses da projeção</label>
+                <label htmlFor="sim-months" className="font-mono text-xs text-slate-400">Meses da projeÃ§Ã£o</label>
                 <input
                   id="sim-months"
                   type="number"
                   value={(scenario as any).months ?? 3}
                   onChange={e => setScenario({ ...scenario, months: Number(e.target.value) || 0 } as any)}
                   placeholder="Meses"
-                  className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-[10px] text-slate-300"
+                  className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-xs text-slate-300"
                 />
               </>
             )}
 
             <button
               onClick={runSimulation}
-              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-[10px] py-2 rounded transition-colors"
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs py-2 rounded transition-colors"
             >
               Simular
             </button>
@@ -788,15 +1043,15 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
 
         {result && (
           <div className="bg-slate-800/50 rounded p-4">
-            <h4 className="font-mono text-[9px] text-emerald-400 mb-3">Resultado</h4>
-            <p className="font-mono text-[10px] text-slate-300 mb-3">{result.summary}</p>
+            <h4 className="font-mono text-xs text-emerald-400 mb-3">Resultado</h4>
+            <p className="font-mono text-xs text-slate-300 mb-3">{result.summary}</p>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="font-mono text-[8px] text-slate-500">Saldo Projetado</p>
+                <p className="font-mono text-xs text-slate-500">Saldo Projetado</p>
                 <p className="font-mono text-[12px] text-emerald-400">R$ {result.projected_balance.toFixed(2)}</p>
               </div>
               <div>
-                <p className="font-mono text-[8px] text-slate-500">Período</p>
+                <p className="font-mono text-xs text-slate-500">PerÃ­odo</p>
                 <p className="font-mono text-[12px] text-slate-300">{result.simulation_period} meses</p>
               </div>
             </div>
@@ -807,7 +1062,7 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
   );
 };
 
-// ─── TAB: Audit ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ TAB: Audit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const AuditTab: React.FC = () => {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
@@ -836,7 +1091,7 @@ const AuditTab: React.FC = () => {
             value={filter}
             onChange={e => setFilter(e.target.value)}
             placeholder="Filtrar por evento ou entidade..."
-            className="flex-1 bg-transparent font-mono text-[10px] text-slate-300 placeholder-slate-600 outline-none"
+            className="flex-1 bg-transparent font-mono text-xs text-slate-300 placeholder-slate-600 outline-none"
           />
         </div>
       </div>
@@ -851,13 +1106,13 @@ const AuditTab: React.FC = () => {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono text-[9px] text-emerald-400">{log.event_type}</span>
-                      <span className="font-mono text-[8px] text-slate-500">→</span>
-                      <span className="font-mono text-[9px] text-slate-300">{log.entity}:{log.entity_id}</span>
+                      <span className="font-mono text-xs text-emerald-400">{log.event_type}</span>
+                      <span className="font-mono text-xs text-slate-500">â†’</span>
+                      <span className="font-mono text-xs text-slate-300">{log.entity}:{log.entity_id}</span>
                     </div>
-                    <p className="font-mono text-[8px] text-slate-500">{new Date(log.timestamp).toLocaleString()}</p>
+                    <p className="font-mono text-xs text-slate-500">{new Date(log.timestamp).toLocaleString()}</p>
                     {log.metadata && Object.keys(log.metadata).length > 0 && (
-                      <pre className="font-mono text-[7px] text-slate-600 mt-1 overflow-x-auto">
+                      <pre className="font-mono text-xs text-slate-600 mt-1 overflow-x-auto">
                         {JSON.stringify(log.metadata, null, 2)}
                       </pre>
                     )}
@@ -872,7 +1127,7 @@ const AuditTab: React.FC = () => {
   );
 };
 
-// ─── TAB: Parser Lab ─────────────────────────────────────────────────────────
+// â”€â”€â”€ TAB: Parser Lab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const ParserLabTab: React.FC = () => {
   const [input, setInput] = useState('');
@@ -935,7 +1190,7 @@ const ParserLabTab: React.FC = () => {
             <button
               key={f}
               onClick={() => { setFormat(f); setError(null); setDiagnostic(null); setResult(null); }}
-              className={`px-3 py-1.5 font-mono text-[9px] uppercase tracking-widest rounded transition-colors
+              className={`px-3 py-1.5 font-mono text-xs uppercase tracking-[0.08em] rounded transition-colors
                 ${format === f ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'text-slate-500 hover:text-slate-300 border border-slate-700'}`}
             >
               {f.toUpperCase()}
@@ -949,34 +1204,34 @@ const ParserLabTab: React.FC = () => {
           onChange={e => { setInput(e.target.value); setResult(null); setError(null); setDiagnostic(null); }}
           placeholder={format === 'ofx' ? '<STMTTRN>\n<DTPOSTED>20260301\n<TRNAMT>-89.90\n<MEMO>iFood\n</STMTTRN>' : 'Data,Descricao,Valor\n01/03/2026,iFood,-89.90\n01/03/2026,Salario,3200.00'}
           rows={8}
-          className="w-full bg-black/50 border border-slate-700 rounded font-mono text-[9px] text-slate-300 p-3 resize-none outline-none focus:border-emerald-500/50 placeholder-slate-700"
+          className="w-full bg-black/50 border border-slate-700 rounded font-mono text-xs text-slate-300 p-3 resize-none outline-none focus:border-emerald-500/50 placeholder-slate-700"
         />
 
         <button
           onClick={run}
-          className="flex items-center justify-center gap-2 py-2.5 bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 rounded font-mono text-[9px] uppercase tracking-widest hover:bg-emerald-500/20 transition-colors"
+          className="flex items-center justify-center gap-2 py-2.5 bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 rounded font-mono text-xs uppercase tracking-[0.08em] hover:bg-emerald-500/20 transition-colors"
         >
           <Terminal size={11} /> Executar Parser
         </button>
 
         {error && (
           <div className="bg-rose-500/10 border border-rose-500/30 rounded p-3">
-            <p className="font-mono text-[9px] text-rose-400">{error}</p>
+            <p className="font-mono text-xs text-rose-400">{error}</p>
           </div>
         )}
 
         {diagnostic && (
           <div role="status" className="bg-amber-500/10 border border-amber-500/30 rounded p-3">
-            <p className="font-mono text-[9px] text-amber-300 uppercase tracking-widest">{diagnostic.title}</p>
-            <p className="font-mono text-[9px] text-amber-200 mt-1 leading-relaxed">{diagnostic.message}</p>
-            <p className="font-mono text-[8px] text-amber-100 mt-2 uppercase tracking-widest">Proximo passo: {diagnostic.suggestion}</p>
+            <p className="font-mono text-xs text-amber-300 uppercase tracking-[0.08em]">{diagnostic.title}</p>
+            <p className="font-mono text-xs text-amber-200 mt-1 leading-relaxed">{diagnostic.message}</p>
+            <p className="font-mono text-xs text-amber-100 mt-2 uppercase tracking-[0.08em]">Proximo passo: {diagnostic.suggestion}</p>
           </div>
         )}
 
         {result && (
           <div>
-            <p className="font-mono text-[8px] text-slate-500 mb-2 uppercase tracking-widest">{result.length} transacoes parseadas</p>
-            <pre className="font-mono text-[8px] text-slate-400 bg-black/40 p-3 rounded overflow-x-auto whitespace-pre-wrap border border-slate-700/40 max-h-64">
+            <p className="font-mono text-xs text-slate-500 mb-2 uppercase tracking-[0.08em]">{result.length} transacoes parseadas</p>
+            <pre className="font-mono text-xs text-slate-400 bg-black/40 p-3 rounded overflow-x-auto whitespace-pre-wrap border border-slate-700/40 max-h-64">
               {JSON.stringify(result.slice(0, 5), null, 2)}
             </pre>
           </div>
@@ -985,7 +1240,7 @@ const ParserLabTab: React.FC = () => {
     </div>
   );
 };
-// ─── PART 7 — Graph Visualization Tab ─────────────────────────────────────── — Graph Visualization Tab ────────────────────────────────────────
+// â”€â”€â”€ PART 7 â€” Graph Visualization Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â€” Graph Visualization Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type GraphViewMode = 'overview' | 'merchants' | 'categories' | 'subscriptions' | 'edges';
 
@@ -1039,8 +1294,8 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
           { label: 'Subs.',    value: graph.stats.subscription_count,color: 'text-emerald-400' },
         ].map(s => (
           <div key={s.label} className="py-2 text-center border-r border-slate-700/40 last:border-r-0">
-            <p className={`font-mono text-xs font-bold ${s.color}`}>{s.value}</p>
-            <p className="font-mono text-[6px] text-slate-600 uppercase tracking-widest">{s.label}</p>
+            <p className={`font-mono text-xs font-medium ${s.color}`}>{s.value}</p>
+            <p className="font-mono text-xs text-slate-600 uppercase tracking-[0.08em]">{s.label}</p>
           </div>
         ))}
       </div>
@@ -1051,7 +1306,7 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
           <button
             key={btn.id}
             onClick={() => setView(btn.id)}
-            className={`px-3 py-1.5 shrink-0 font-mono text-[7px] uppercase tracking-widest transition-colors border-b-2
+            className={`px-3 py-1.5 shrink-0 font-mono text-xs uppercase tracking-[0.08em] transition-colors border-b-2
               ${view === btn.id ? 'border-amber-400 text-amber-300' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
           >
             {btn.label}
@@ -1061,37 +1316,37 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
 
       <div className="flex-1 overflow-y-auto">
 
-        {/* OVERVIEW — node type distribution + graph schema */}
+        {/* OVERVIEW â€” node type distribution + graph schema */}
         {view === 'overview' && (
           <div className="p-3 flex flex-col gap-3">
             {/* Schema legend */}
             <div>
-              <p className="font-mono text-[7px] text-slate-500 uppercase tracking-widest mb-2">Schema</p>
+              <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em] mb-2">Schema</p>
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(nodeTypeColor).map(([type, cls]) => (
-                  <span key={type} className={`font-mono text-[8px] px-2 py-0.5 rounded border ${cls}`}>{type}</span>
+                  <span key={type} className={`font-mono text-xs px-2 py-0.5 rounded border ${cls}`}>{type}</span>
                 ))}
               </div>
             </div>
 
             {/* Edge relation legend */}
             <div>
-              <p className="font-mono text-[7px] text-slate-500 uppercase tracking-widest mb-2">Relations</p>
+              <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em] mb-2">Relations</p>
               <div className="grid grid-cols-2 gap-1">
                 {[
-                  ['owns',            'user → account'],
-                  ['has_transaction', 'account → tx'],
-                  ['paid_to',         'tx → merchant'],
-                  ['belongs_to',      'tx → category'],
-                  ['same_category',   'merchant → category'],
-                  ['is_subscription', 'merchant → sub'],
-                  ['co_occurs',       'merchant ↔ merchant'],
-                  ['recurring_from',  'sub → merchant'],
+                  ['owns',            'user â†’ account'],
+                  ['has_transaction', 'account â†’ tx'],
+                  ['paid_to',         'tx â†’ merchant'],
+                  ['belongs_to',      'tx â†’ category'],
+                  ['same_category',   'merchant â†’ category'],
+                  ['is_subscription', 'merchant â†’ sub'],
+                  ['co_occurs',       'merchant â†” merchant'],
+                  ['recurring_from',  'sub â†’ merchant'],
                 ].map(([rel, desc]) => (
                   <div key={rel} className="flex items-center gap-1.5">
                     <ArrowRight size={7} className="text-slate-600 shrink-0" />
-                    <span className="font-mono text-[7px] text-emerald-400">{rel}</span>
-                    <span className="font-mono text-[7px] text-slate-600 truncate">{desc}</span>
+                    <span className="font-mono text-xs text-emerald-400">{rel}</span>
+                    <span className="font-mono text-xs text-slate-600 truncate">{desc}</span>
                   </div>
                 ))}
               </div>
@@ -1100,7 +1355,7 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
             {/* Built at */}
             <div className="flex items-center gap-2 bg-black/30 border border-slate-700/50 rounded-lg px-3 py-2">
               <Clock size={9} className="text-slate-500" />
-              <span className="font-mono text-[8px] text-slate-400">
+              <span className="font-mono text-xs text-slate-400">
                 Rebuilt: {new Date(graph.built_at).toLocaleTimeString('pt-BR')}
               </span>
             </div>
@@ -1116,8 +1371,8 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  placeholder="Buscar merchant…"
-                  className="flex-1 bg-transparent font-mono text-[9px] text-slate-300 placeholder-slate-600 outline-none"
+                  placeholder="Buscar merchantâ€¦"
+                  className="flex-1 bg-transparent font-mono text-xs text-slate-300 placeholder-slate-600 outline-none"
                 />
               </div>
             </div>
@@ -1133,12 +1388,12 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
                         className="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-800/30 cursor-pointer"
                         onClick={() => setSelectedNode(selectedNode === m.merchant_id ? null : m.merchant_id)}
                       >
-                        <span className="font-mono text-[8px] text-slate-600 w-4 shrink-0">#{i + 1}</span>
+                        <span className="font-mono text-xs text-slate-600 w-4 shrink-0">#{i + 1}</span>
                         <div className="flex-1 min-w-0">
-                          <p className="font-mono text-[9px] text-amber-300 truncate">{m.name}</p>
-                          <p className="font-mono text-[7px] text-slate-500 mt-0.5">{m.visit_count}× · avg {fmt(m.avg_amount)}</p>
+                          <p className="font-mono text-xs text-amber-300 truncate">{m.name}</p>
+                          <p className="font-mono text-xs text-slate-500 mt-0.5">{m.visit_count}Ã— Â· avg {fmt(m.avg_amount)}</p>
                         </div>
-                        <span className="font-mono text-[9px] text-slate-200 font-bold">{fmt(m.total_spent)}</span>
+                        <span className="font-mono text-xs text-slate-200 font-medium">{fmt(m.total_spent)}</span>
                         {selectedNode === m.merchant_id
                           ? <ChevronDown size={9} className="text-slate-500 shrink-0" />
                           : <ChevronRight size={9} className="text-slate-600 shrink-0" />}
@@ -1160,22 +1415,22 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-violet-400" />
-                      <span className="font-mono text-[9px] text-violet-300 font-bold">{cat.name}</span>
+                      <span className="font-mono text-xs text-violet-300 font-medium">{cat.name}</span>
                       <TermBadge color={
                         cat.trend === 'up' ? 'text-rose-400' :
                         cat.trend === 'down' ? 'text-emerald-400' : 'text-slate-400'
                       }>{cat.trend}</TermBadge>
                     </div>
-                    <span className="font-mono text-[9px] text-slate-200 font-bold">{fmt(cat.total)}</span>
+                    <span className="font-mono text-xs text-slate-200 font-medium">{fmt(cat.total)}</span>
                   </div>
                   {/* progress bar */}
                   <div className="h-1 bg-slate-800 rounded-full overflow-hidden mb-1.5">
                     <div className="h-full bg-violet-500 rounded-full" style={{ width: `${Math.min(100, cat.percentage)}%` }} />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-[7px] text-slate-500">{cat.count} transações · {cat.percentage.toFixed(1)}%</span>
+                    <span className="font-mono text-xs text-slate-500">{cat.count} transaÃ§Ãµes Â· {cat.percentage.toFixed(1)}%</span>
                     {cat.top_merchants.length > 0 && (
-                      <span className="font-mono text-[7px] text-slate-500 truncate max-w-[120px]">{cat.top_merchants.join(', ')}</span>
+                      <span className="font-mono text-xs text-slate-500 truncate max-w-[120px]">{cat.top_merchants.join(', ')}</span>
                     )}
                   </div>
                 </div>
@@ -1193,12 +1448,12 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
                 <div key={sub.merchant_id} className="px-4 py-3 flex items-center gap-3">
                   <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${sub.is_confirmed_subscription ? 'bg-emerald-400' : 'bg-amber-400'}`} />
                   <div className="flex-1 min-w-0">
-                    <p className="font-mono text-[9px] text-slate-200 truncate">{sub.name}</p>
-                    <p className="font-mono text-[7px] text-slate-500 mt-0.5">
-                      {sub.visit_count}× · {sub.is_confirmed_subscription ? '✓ confirmada' : '? candidata'}
+                    <p className="font-mono text-xs text-slate-200 truncate">{sub.name}</p>
+                    <p className="font-mono text-xs text-slate-500 mt-0.5">
+                      {sub.visit_count}Ã— Â· {sub.is_confirmed_subscription ? 'âœ“ confirmada' : '? candidata'}
                     </p>
                   </div>
-                  <span className={`font-mono text-[9px] font-bold ${sub.is_confirmed_subscription ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  <span className={`font-mono text-xs font-medium ${sub.is_confirmed_subscription ? 'text-emerald-400' : 'text-amber-400'}`}>
                     {fmt(sub.estimated_amount)}
                   </span>
                 </div>
@@ -1212,7 +1467,7 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
           <div>
             {/* Relation type breakdown */}
             <div className="p-3 border-b border-slate-700/40">
-              <p className="font-mono text-[7px] text-slate-500 uppercase tracking-widest mb-2">Relation counts</p>
+              <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em] mb-2">Relation counts</p>
               {(() => {
                 const counts: Record<string, number> = {};
                 for (const e of graph.edges) {
@@ -1221,14 +1476,14 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
                 return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([rel, cnt]) => (
                   <div key={rel} className="flex items-center gap-2 mb-1.5">
                     <ArrowRight size={8} className="text-emerald-500 shrink-0" />
-                    <span className="font-mono text-[8px] text-emerald-300 w-32 shrink-0">{rel}</span>
+                    <span className="font-mono text-xs text-emerald-300 w-32 shrink-0">{rel}</span>
                     <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-emerald-500/60 rounded-full"
                         style={{ width: `${Math.min(100, (cnt / graph.edges.length) * 100 * 5)}%` }}
                       />
                     </div>
-                    <span className="font-mono text-[8px] text-slate-400 w-8 text-right">{cnt}</span>
+                    <span className="font-mono text-xs text-slate-400 w-8 text-right">{cnt}</span>
                   </div>
                 ));
               })()}
@@ -1236,7 +1491,7 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
 
             {/* Co-occurrence edges (interesting pairs) */}
             <div className="p-3">
-              <p className="font-mono text-[7px] text-slate-500 uppercase tracking-widest mb-2">Co-occurrence pairs</p>
+              <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em] mb-2">Co-occurrence pairs</p>
               {graph.edges
                 .filter(e => e.relation === 'co_occurs')
                 .sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0))
@@ -1246,15 +1501,15 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
                   const toLabel   = graph.nodes.get(e.to)?.label   ?? e.to;
                   return (
                     <div key={i} className="flex items-center gap-2 mb-1.5 px-1">
-                      <span className="font-mono text-[7px] text-slate-600 w-3">{e.weight}×</span>
-                      <span className="font-mono text-[8px] text-amber-400 truncate max-w-[90px]">{fromLabel}</span>
+                      <span className="font-mono text-xs text-slate-600 w-3">{e.weight}Ã—</span>
+                      <span className="font-mono text-xs text-amber-400 truncate max-w-[90px]">{fromLabel}</span>
                       <ArrowRight size={7} className="text-slate-600 shrink-0" />
-                      <span className="font-mono text-[8px] text-amber-300 truncate max-w-[90px]">{toLabel}</span>
+                      <span className="font-mono text-xs text-amber-300 truncate max-w-[90px]">{toLabel}</span>
                     </div>
                   );
                 })}
               {graph.edges.filter(e => e.relation === 'co_occurs').length === 0 && (
-                <p className="font-mono text-[8px] text-slate-600">Sem co-ocorrências</p>
+                <p className="font-mono text-xs text-slate-600">Sem co-ocorrÃªncias</p>
               )}
             </div>
           </div>
@@ -1264,7 +1519,7 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
   );
 };
 
-// ─── PART 7 — System Stats (quick read at a glance) ──────────────────────────
+// â”€â”€â”€ PART 7 â€” System Stats (quick read at a glance) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const SystemStats: React.FC<{ transactions: Transaction[]; accounts: Account[]; userId: string }> = ({
   transactions, accounts, userId
@@ -1275,18 +1530,18 @@ const SystemStats: React.FC<{ transactions: Transaction[]; accounts: Account[]; 
   return (
     <div className="grid grid-cols-2 gap-2 px-3 pb-3">
       {[
-        { label: 'Transações',     value: transactions.length,       icon: <ArrowRight size={9} />, color: 'text-indigo-400' },
+        { label: 'TransaÃ§Ãµes',     value: transactions.length,       icon: <ArrowRight size={9} />, color: 'text-indigo-400' },
         { label: 'Contas',         value: accounts.length,           icon: <Database size={9} />,   color: 'text-sky-400' },
-        { label: 'Memórias',       value: stats.memory_count,        icon: <Brain size={9} />,      color: 'text-violet-400' },
-        { label: 'Padrões',        value: stats.pattern_count,       icon: <GitBranch size={9} />,  color: 'text-amber-400' },
+        { label: 'MemÃ³rias',       value: stats.memory_count,        icon: <Brain size={9} />,      color: 'text-violet-400' },
+        { label: 'PadrÃµes',        value: stats.pattern_count,       icon: <GitBranch size={9} />,  color: 'text-amber-400' },
         { label: 'Eventos',        value: events.length,             icon: <Activity size={9} />,   color: 'text-emerald-400' },
         { label: 'Insights+',      value: stats.is_learning ? stats.pattern_count : 0, icon: <Sparkles size={9} />,   color: 'text-rose-400' },
       ].map(({ label, value, icon, color }) => (
         <div key={label} className="flex items-center gap-2 px-3 py-2 bg-black/30 border border-slate-700/40 rounded-lg">
           <span className={color}>{icon}</span>
           <div>
-            <p className={`font-mono text-sm font-bold leading-none ${color}`}>{value}</p>
-            <p className="font-mono text-[7px] text-slate-500 uppercase tracking-widest mt-0.5">{label}</p>
+            <p className={`font-mono text-sm font-medium leading-none ${color}`}>{value}</p>
+            <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em] mt-0.5">{label}</p>
           </div>
         </div>
       ))}
@@ -1326,17 +1581,17 @@ const FinancialHealthTab: React.FC<{ transactions: Transaction[] }> = ({ transac
       <SectionHeader icon={<Shield size={11} />} title="Financial Health" />
       <div className="p-4 space-y-3 overflow-y-auto">
         <div className="bg-slate-800/40 border border-slate-700/50 rounded p-4">
-          <p className="font-mono text-[9px] text-slate-400 uppercase tracking-widest">Score</p>
-          <p className="font-mono text-[22px] font-bold text-emerald-400">{score.score} / 100</p>
-          <p className="font-mono text-[9px] text-slate-300 uppercase tracking-wider mt-1">{score.status}</p>
+          <p className="font-mono text-xs text-slate-400 uppercase tracking-[0.08em]">Score</p>
+          <p className="font-mono text-[22px] font-medium text-emerald-400">{score.score} / 100</p>
+          <p className="font-mono text-xs text-slate-300 uppercase tracking-[0.08em] mt-1">{score.status}</p>
         </div>
 
         <div className="bg-slate-900/40 border border-slate-700/50 rounded p-3">
-          <p className="font-mono text-[8px] text-slate-500 uppercase tracking-widest mb-2">Alertas</p>
+          <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em] mb-2">Alertas</p>
           {score.alerts.length === 0
-            ? <p className="font-mono text-[9px] text-emerald-400">Nenhum alerta crítico detectado.</p>
+            ? <p className="font-mono text-xs text-emerald-400">Nenhum alerta crÃ­tico detectado.</p>
             : score.alerts.map((alert, idx) => (
-              <p key={idx} className="font-mono text-[9px] text-amber-300 mb-1">• {alert}</p>
+              <p key={idx} className="font-mono text-xs text-amber-300 mb-1">â€¢ {alert}</p>
             ))}
         </div>
       </div>
@@ -1371,11 +1626,11 @@ const SmartGoalsTab: React.FC<{ transactions: Transaction[] }> = ({ transactions
       <div className="p-4 space-y-3 overflow-y-auto">
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-slate-800/40 rounded p-3">
-            <p className="font-mono text-[8px] text-slate-500">Restante</p>
+            <p className="font-mono text-xs text-slate-500">Restante</p>
             <p className="font-mono text-[12px] text-emerald-400">R$ {goalPlan.remaining.toFixed(2)}</p>
           </div>
           <div className="bg-slate-800/40 rounded p-3">
-            <p className="font-mono text-[8px] text-slate-500">Economia mensal</p>
+            <p className="font-mono text-xs text-slate-500">Economia mensal</p>
             <p className="font-mono text-[12px] text-amber-400">
               {goalPlan.recommendedMonthlySavings === null
                 ? 'N/A'
@@ -1385,8 +1640,8 @@ const SmartGoalsTab: React.FC<{ transactions: Transaction[] }> = ({ transactions
         </div>
 
         <div className="bg-slate-900/40 border border-slate-700/50 rounded p-3">
-          <p className="font-mono text-[8px] text-slate-500 uppercase tracking-widest mb-1">Recomendação IA</p>
-          <p className="font-mono text-[9px] text-slate-200">{recommendation}</p>
+          <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em] mb-1">RecomendaÃ§Ã£o IA</p>
+          <p className="font-mono text-xs text-slate-200">{recommendation}</p>
         </div>
       </div>
     </div>
@@ -1409,11 +1664,11 @@ const FinancialTimelineTab: React.FC<{ transactions: Transaction[] }> = ({ trans
       <div className="overflow-y-auto divide-y divide-slate-800/60">
         {timeline.map((item) => (
           <div key={item.month} className="px-4 py-3">
-            <p className="font-mono text-[9px] text-sky-300 font-bold">{item.month}</p>
+            <p className="font-mono text-xs text-sky-300 font-medium">{item.month}</p>
             <div className="grid grid-cols-3 gap-2 mt-2">
-              <p className="font-mono text-[8px] text-emerald-400">+ R$ {item.income.toFixed(2)}</p>
-              <p className="font-mono text-[8px] text-rose-400">- R$ {item.expenses.toFixed(2)}</p>
-              <p className={`font-mono text-[8px] ${item.balance >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+              <p className="font-mono text-xs text-emerald-400">+ R$ {item.income.toFixed(2)}</p>
+              <p className="font-mono text-xs text-rose-400">- R$ {item.expenses.toFixed(2)}</p>
+              <p className={`font-mono text-xs ${item.balance >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
                 Saldo: R$ {item.balance.toFixed(2)}
               </p>
             </div>
@@ -1421,7 +1676,7 @@ const FinancialTimelineTab: React.FC<{ transactions: Transaction[] }> = ({ trans
         ))}
         {timeline.length === 0 && (
           <div className="px-4 py-6">
-            <p className="font-mono text-[9px] text-slate-500">Sem dados suficientes para timeline.</p>
+            <p className="font-mono text-xs text-slate-500">Sem dados suficientes para timeline.</p>
           </div>
         )}
       </div>
@@ -1429,7 +1684,7 @@ const FinancialTimelineTab: React.FC<{ transactions: Transaction[] }> = ({ trans
   );
 };
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface AIControlPanelProps {
   transactions: Transaction[];
@@ -1465,12 +1720,12 @@ const TAB_CONFIG: Array<{ id: PanelTab; label: string; icon: React.ReactNode }> 
 const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts, userId, leaks, report }) => {
   const [activeTab, setActiveTab] = useState<PanelTab>('stats');
 
-  // PART 7 — Only render in development mode
+  // PART 7 â€” Only render in development mode
   if (!IS_DEV) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-slate-500">
         <Shield size={40} className="opacity-30" />
-        <p className="font-mono text-[10px] uppercase tracking-widest">Disponível apenas em modo DEV</p>
+        <p className="font-mono text-xs uppercase tracking-[0.08em]">DisponÃ­vel apenas em modo DEV</p>
       </div>
     );
   }
@@ -1499,7 +1754,7 @@ const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts,
 
   return (
     <div className="flex flex-col gap-0 pb-8">
-      {/* Header — dark terminal style */}
+      {/* Header â€” dark terminal style */}
       <div className="bg-slate-950 border border-slate-700/60 rounded-[1.5rem] overflow-hidden shadow-2xl shadow-black/40">
 
         {/* Title bar */}
@@ -1511,23 +1766,23 @@ const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts,
           </div>
           <div className="flex items-center gap-2 flex-1">
             <Terminal size={13} className="text-emerald-400" />
-            <span className="font-mono text-[10px] text-emerald-300 font-bold uppercase tracking-widest">
+            <span className="font-mono text-xs text-emerald-300 font-medium uppercase tracking-[0.08em]">
               flow.ai.control_panel
             </span>
           </div>
           <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2 py-1 rounded">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-mono text-[7px] text-emerald-400 uppercase tracking-widest">dev mode</span>
+            <span className="font-mono text-xs text-emerald-400 uppercase tracking-[0.08em]">dev mode</span>
           </div>
         </div>
 
-        {/* Tab bar — horizontal scrolling */}
+        {/* Tab bar â€” horizontal scrolling */}
         <div className="flex overflow-x-auto border-b border-slate-700/60 bg-slate-900/50 scrollbar-none">
           {TAB_CONFIG.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-3.5 py-2.5 shrink-0 font-mono text-[8px] uppercase tracking-widest transition-colors border-b-2
+              className={`flex items-center gap-1.5 px-3.5 py-2.5 shrink-0 font-mono text-xs uppercase tracking-[0.08em] transition-colors border-b-2
                 ${activeTab === tab.id
                   ? 'border-emerald-400 text-emerald-300 bg-emerald-500/5'
                   : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'
@@ -1546,8 +1801,8 @@ const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts,
       </div>
 
       {/* Footer */}
-      <p className="font-mono text-[7px] text-slate-600 text-center pt-2 uppercase tracking-widest">
-        Flow Finance v0.4.0 · AI Control Panel · {IS_DEV ? 'Development' : 'Production'}
+      <p className="font-mono text-xs text-slate-600 text-center pt-2 uppercase tracking-[0.08em]">
+        Flow Finance v0.4.0 Â· AI Control Panel Â· {IS_DEV ? 'Development' : 'Production'}
       </p>
     </div>
   );
@@ -1555,13 +1810,13 @@ const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts,
 
 export function formatPanelDateTime(timestamp: string): string {
   const dt = new Date(timestamp);
-  if (isNaN(dt.getTime())) return 'Data inválida';
+  if (isNaN(dt.getTime())) return 'Data invÃ¡lida';
   return dt.toLocaleString('pt-BR');
 }
 
 export function formatPanelTime(timestamp: string): string {
   const dt = new Date(timestamp);
-  if (isNaN(dt.getTime())) return 'Horário inválido';
+  if (isNaN(dt.getTime())) return 'HorÃ¡rio invÃ¡lido';
   return dt.toLocaleTimeString('pt-BR');
 }
 
@@ -1577,3 +1832,9 @@ export function createParserLabState(format: 'ofx' | 'csv'): { format: string; i
 }
 
 export default AIControlPanel;
+
+
+
+
+
+

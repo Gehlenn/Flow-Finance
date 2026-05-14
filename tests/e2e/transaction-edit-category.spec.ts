@@ -43,7 +43,7 @@ test.describe('Edição de Categoria - TransactionList', () => {
     await expect(page.getByText('Histórico')).toBeVisible();
 
     // Garante ao menos uma transação disponível para edição
-    const transactionTitles = page.locator('h4.font-bold');
+    const transactionTitles = page.locator('h4');
     if ((await transactionTitles.count()) === 0) {
       const txDesc = 'Restaurante';
       const addButton = page.getByRole('button', { name: /Adicionar lançamento/i });
@@ -70,7 +70,7 @@ test.describe('Edição de Categoria - TransactionList', () => {
       await page.waitForTimeout(2000);
     }
 
-    const firstTransactionTitle = page.locator('h4.font-bold').first();
+    const firstTransactionTitle = page.locator('h4').first();
     if (!(await firstTransactionTitle.count())) {
       await skipIf(true, {
         reason: 'Nenhuma transação ficou disponível no histórico mesmo após criação manual.',

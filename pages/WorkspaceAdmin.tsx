@@ -363,12 +363,12 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
     return (
       <div className="space-y-4 animate-in fade-in duration-500 pb-24">
         <div className="bg-gradient-to-r from-emerald-700 to-emerald-600 p-6 rounded-[2rem] text-white shadow-lg shadow-emerald-900/10">
-          <h2 className="text-2xl font-black tracking-tight">Operacao do workspace</h2>
-          <p className="text-xs font-black uppercase tracking-widest text-white/70 mt-2">Carregando estado do workspace</p>
+          <h2 className="text-2xl font-semibold tracking-tight">Operacao do workspace</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-white/70 mt-2">Carregando estado do workspace</p>
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 flex items-center gap-3">
           <Loader2 className="animate-spin text-emerald-600" size={18} />
-          <span className="text-sm font-bold text-slate-700 dark:text-slate-100">Preparando a operacao do workspace...</span>
+          <span className="text-sm text-slate-700 dark:text-slate-100">Preparando a operacao do workspace...</span>
         </div>
       </div>
     );
@@ -378,16 +378,16 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
     return (
       <div className="space-y-4 animate-in fade-in duration-500 pb-24">
         <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-6 rounded-[2rem] text-white shadow-lg shadow-slate-900/20">
-          <h2 className="text-2xl font-black tracking-tight">Operacao do workspace</h2>
-          <p className="text-xs font-black uppercase tracking-widest text-white/70 mt-2">Funcao apenas leitura</p>
+          <h2 className="text-2xl font-semibold tracking-tight">Operacao do workspace</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-white/70 mt-2">Funcao apenas leitura</p>
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 space-y-4">
-          <p className="text-sm font-bold text-slate-700 dark:text-slate-100">
+          <p className="text-sm text-slate-700 dark:text-slate-100">
             Sua funcao atual e apenas leitura para {workspaceLabel}. Peça acesso de owner ou admin.
           </p>
           <button
             onClick={() => onNavigateToTab('settings')}
-            className="px-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-700 text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-100"
+            className="px-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-700 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700 dark:text-slate-100"
           >
             Voltar para configuracoes
           </button>
@@ -405,12 +405,12 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
     <div className="space-y-6 animate-in fade-in duration-500 pb-24">
       <div className="bg-gradient-to-r from-emerald-700 to-emerald-600 p-6 rounded-[2rem] flex items-center justify-between shadow-lg shadow-emerald-900/10">
         <div>
-          <h2 className="text-2xl font-black text-white tracking-tight">Operacao do workspace</h2>
-          <p className="text-xs font-black uppercase tracking-widest text-white/70 mt-2">{tenantLabel} · {workspaceLabel}</p>
+          <h2 className="text-2xl font-semibold text-white tracking-tight">Operacao do workspace</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-white/70 mt-2">{tenantLabel} · {workspaceLabel}</p>
         </div>
         <button
           onClick={() => onNavigateToTab('settings')}
-          className="px-4 py-3 rounded-2xl bg-white/10 text-white text-xs font-black uppercase tracking-widest border border-white/20"
+          className="px-4 py-3 rounded-2xl bg-white/10 text-white text-xs font-semibold uppercase tracking-[0.08em] border border-white/20"
         >
           Configurações
         </button>
@@ -418,12 +418,12 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
 
       <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 space-y-6">
         <div className="space-y-2">
-          <label className="text-xs font-black uppercase tracking-widest text-slate-400">Workspace</label>
+          <label className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Workspace</label>
           <select
             value={activeWorkspace?.workspaceId || ''}
             onChange={(event) => void handleWorkspaceChange(event.target.value)}
             disabled={loading || busy}
-            className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-100"
+            className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-100"
           >
             {workspaces.map((workspace) => (
               <option key={workspace.workspaceId} value={workspace.workspaceId}>
@@ -436,12 +436,12 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
         <>
         {error && (
           <div className="space-y-3">
-            <p className="text-sm font-bold text-rose-500">{error}</p>
+            <p className="text-sm text-rose-500">{error}</p>
             {errorDiagnostic && (
               <div role="status" className="rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-500/10 p-4 space-y-1">
-                <p className="text-xs font-black uppercase tracking-widest text-rose-700 dark:text-rose-300">{errorDiagnostic.title}</p>
-                <p className="text-xs font-bold text-rose-700 dark:text-rose-100">{errorDiagnostic.message}</p>
-                <p className="text-xs font-black uppercase tracking-widest text-rose-600 dark:text-rose-300">Próximo passo: {errorDiagnostic.suggestion}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-rose-700 dark:text-rose-300">{errorDiagnostic.title}</p>
+                <p className="text-xs text-rose-700 dark:text-rose-100">{errorDiagnostic.message}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-rose-600 dark:text-rose-300">Próximo passo: {errorDiagnostic.suggestion}</p>
               </div>
             )}
           </div>
@@ -450,13 +450,13 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
             <section className="space-y-3">
               <div className="flex items-center gap-3">
                 <ShieldCheck size={18} className="text-emerald-600" />
-                <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white">Faturamento e uso do workspace</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-800 dark:text-white">Faturamento e uso do workspace</h3>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                  <p className="text-sm font-black text-slate-800 dark:text-white">Plano atual: {currentPlan.toUpperCase()}</p>
-                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Mes atual: {monthlyUsageSummary}</p>
-                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-white">Plano atual: {currentPlan.toUpperCase()}</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Mes atual: {monthlyUsageSummary}</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
                     Modo de faturamento: {billingCatalog?.billingProvider || 'mock'}
                   </p>
                 </div>
@@ -468,12 +468,12 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
                           <button
                             onClick={() => void handleOpenBillingPortal()}
                             disabled={!canManageBilling || busy || !stripePortalEnabled}
-                            className="w-full p-4 rounded-2xl bg-emerald-600 text-xs font-black uppercase tracking-widest text-white disabled:opacity-50"
+                            className="w-full p-4 rounded-2xl bg-emerald-600 text-xs font-semibold uppercase tracking-[0.08em] text-white disabled:opacity-50"
                           >
                             Abrir portal financeiro
                           </button>
                           {!stripePortalEnabled && (
-                            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
                               O portal ficara disponivel depois que o workspace estiver vinculado a um cliente Stripe.
                             </p>
                           )}
@@ -482,7 +482,7 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
                           <button
                             onClick={() => void handleStartCheckout()}
                             disabled={!canManageBilling || busy}
-                            className="w-full p-4 rounded-2xl bg-emerald-600 text-xs font-black uppercase tracking-widest text-white disabled:opacity-50"
+                            className="w-full p-4 rounded-2xl bg-emerald-600 text-xs font-semibold uppercase tracking-[0.08em] text-white disabled:opacity-50"
                           >
                           Iniciar upgrade Pro
                           </button>
@@ -493,20 +493,20 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
                         <button
                           onClick={() => void handlePlanChange('free')}
                           disabled={!canManageBilling || busy || currentPlan === 'free'}
-                          className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-700 text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-100 disabled:opacity-50"
+                          className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-700 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700 dark:text-slate-100 disabled:opacity-50"
                         >
                         Definir Free
                         </button>
                         <button
                           onClick={() => void handlePlanChange('pro')}
                           disabled={!canManageBilling || busy || currentPlan === 'pro'}
-                          className="p-4 rounded-2xl bg-emerald-600 text-xs font-black uppercase tracking-widest text-white disabled:opacity-50"
+                          className="p-4 rounded-2xl bg-emerald-600 text-xs font-semibold uppercase tracking-[0.08em] text-white disabled:opacity-50"
                         >
                         Definir Pro
                         </button>
                     </div>
                   ) : (
-                    <div className="p-3 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-xs font-bold uppercase tracking-widest text-slate-400">
+                    <div className="p-3 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
                       As acoes de faturamento ficam indisponiveis ate que o Stripe ou o faturamento simulado estejam configurados neste ambiente.
                     </div>
                   )}
@@ -514,13 +514,13 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
               </div>
               <div className="space-y-2">
                 {billingHooks.length === 0 ? (
-                  <div className="p-3 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-xs font-bold uppercase tracking-widest text-slate-400">
+                  <div className="p-3 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
                     Nenhum evento de faturamento registrado para este workspace ainda.
                   </div>
                 ) : billingHooks.map((hook) => (
                   <div key={hook.id} className="p-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60">
-                    <p className="text-sm font-black text-slate-800 dark:text-white">{hook.event}</p>
-                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{hook.plan.toUpperCase()} · {new Date(hook.createdAt).toLocaleString('pt-BR')}</p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-white">{hook.event}</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">{hook.plan.toUpperCase()} · {new Date(hook.createdAt).toLocaleString('pt-BR')}</p>
                   </div>
                 ))}
               </div>
@@ -530,19 +530,19 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
               <section className="space-y-3">
                 <div className="flex items-center gap-3">
                   <Users size={18} className="text-indigo-600" />
-                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white">Membros do workspace</h3>
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-800 dark:text-white">Membros do workspace</h3>
                 </div>
                 <div className="grid grid-cols-[1fr_auto_auto] gap-2">
                   <input
                     value={memberUserId}
                     onChange={(event) => setMemberUserId(event.target.value)}
                     placeholder="ID do usuario do membro"
-                    className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-100"
+                    className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-100"
                   />
                   <select
                     value={memberRole}
                     onChange={(event) => setMemberRole(event.target.value as WorkspaceRole)}
-                    className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-100"
+                    className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-100"
                   >
                     <option value="member">member</option>
                     <option value="viewer">viewer</option>
@@ -551,7 +551,7 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
                   <button
                     onClick={() => void handleAddMember()}
                     disabled={busy || !memberUserId.trim()}
-                    className="px-4 rounded-2xl bg-indigo-600 text-white text-xs font-black uppercase tracking-widest disabled:opacity-50"
+                    className="px-4 rounded-2xl bg-indigo-600 text-white text-xs font-semibold uppercase tracking-[0.08em] disabled:opacity-50"
                   >
                     Add
                   </button>
@@ -560,13 +560,13 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
                   {workspaceMembers.map((member) => (
                     <div key={member.id} className="flex items-center justify-between p-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60">
                       <div>
-                        <p className="text-sm font-black text-slate-800 dark:text-white">{member.userId}</p>
-                        <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{member.role}</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-white">{member.userId}</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">{member.role}</p>
                       </div>
                       <button
                         onClick={() => void handleRemoveMember(member.userId)}
                         disabled={busy || member.role === 'owner'}
-                        className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 text-rose-500 text-xs font-black uppercase tracking-widest disabled:opacity-40"
+                        className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 text-rose-500 text-xs font-semibold uppercase tracking-[0.08em] disabled:opacity-40"
                       >
                         Remover
                       </button>
@@ -581,24 +581,24 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <ReceiptText size={18} className="text-amber-600" />
-                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white">Trilha de auditoria do workspace</h3>
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-800 dark:text-white">Trilha de auditoria do workspace</h3>
                   </div>
                   <button
                     onClick={() => onNavigateToTab('workspaceaudit')}
-                    className="px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 text-xs font-black uppercase tracking-widest"
+                    className="px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 text-xs font-semibold uppercase tracking-[0.08em]"
                   >
                     Auditoria completa
                   </button>
                 </div>
                 <div className="space-y-2">
                   {auditEvents.length === 0 ? (
-                    <div className="p-3 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-xs font-bold uppercase tracking-widest text-slate-400">
+                    <div className="p-3 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
                       Nenhum evento de auditoria para este workspace ainda.
                     </div>
                   ) : auditEvents.map((event) => (
                     <div key={event.id} className="p-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60">
-                      <p className="text-sm font-black text-slate-800 dark:text-white">{event.action}</p>
-                      <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{event.resourceType} · {event.resourceId} · {new Date(event.createdAt).toLocaleString('pt-BR')}</p>
+                      <p className="text-sm font-semibold text-slate-800 dark:text-white">{event.action}</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">{event.resourceType} · {event.resourceId} · {new Date(event.createdAt).toLocaleString('pt-BR')}</p>
                     </div>
                   ))}
                 </div>
@@ -608,7 +608,7 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
             <section className="space-y-3">
               <div className="flex items-center gap-3">
                 <Sparkles size={18} className="text-violet-600" />
-                <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white">Prontidão do workspace</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-800 dark:text-white">Prontidão do workspace</h3>
               </div>
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-100">
                 O Firestore agora é a fonte de verdade para membros do workspace, estado de faturamento, webhooks de faturamento, acompanhamento de uso e eventos de auditoria.
@@ -621,4 +621,6 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
 };
 
 export default WorkspaceAdminPage;
+
+
 

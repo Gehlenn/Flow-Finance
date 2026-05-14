@@ -8,6 +8,7 @@ import {
   analyzeFinancialQuestion,
   generateCFOResponse,
   learnFromConversation,
+  type AICFOExplainability,
 } from '../src/ai/aiCFO';
 import { logWarn } from '../src/utils/logger';
 import { runAIPipelineSync } from '../src/ai/aiOrchestrator';
@@ -19,6 +20,7 @@ import {
 import { buildProductFinancialIntelligence } from '../src/app/productFinancialIntelligence';
 import { AI_CFO_COPY } from '../src/app/assistantCopy';
 import { canAccessFeature } from '../src/app/monetizationPlan';
+import { clearCFOConversation, loadCFOConversation, saveCFOConversation, type CFOConversationMessage } from '../src/ai/cfoConversationStore';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -52,20 +54,17 @@ const INTENT_LABEL: Record<CFOIntent, { label: string; color: string }> = {
   monthly_summary:  { label: 'Resumo', color: 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' },
 };
 
+const CONFIDENCE_BAND_LABEL: Record<AICFOExplainability['confidence_band'], string> = {
+  low: 'Baixa',
+  medium: 'Media',
+  high: 'Alta',
+};
+
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  text: string;
+type Message = Omit<CFOConversationMessage, 'intent'> & {
   intent?: CFOIntent;
-  timestamp: string;
-  diagnostic?: {
-    kind: 'ai_unavailable';
-    message: string;
-    suggestion?: string;
-  };
-}
+};
 
 const buildConversationLearningDiagnostic = (): { title: string; message: string; suggestion: string } => ({
   title: 'Aprendizado da conversa indisponivel',
@@ -77,9 +76,9 @@ const UserBubble: React.FC<{ msg: Message }> = ({ msg }) => (
   <div className="flex justify-end gap-3 animate-in slide-in-from-right-4 duration-300">
     <div className="max-w-[80%]">
       <div className="bg-indigo-600 text-white px-5 py-3.5 rounded-[1.8rem] rounded-tr-lg shadow-md shadow-indigo-500/20">
-        <p className="text-sm font-bold leading-relaxed">{msg.text}</p>
+        <p className="text-sm leading-relaxed text-slate-100">{msg.text}</p>
       </div>
-      <p className="text-xs text-slate-400 mt-1 text-right font-bold">
+      <p className="text-xs text-slate-400 mt-1 text-right">
         {new Date(msg.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
       </p>
     </div>
@@ -99,26 +98,49 @@ const AssistantBubble: React.FC<{ msg: Message }> = ({ msg }) => {
       <div className="max-w-[85%]">
         <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-5 py-4 rounded-[1.8rem] rounded-tl-lg shadow-sm">
           {intentStyle && (
-            <span className={`inline-block text-xs font-black uppercase tracking-widest px-2 py-0.5 rounded-full mb-2 ${intentStyle.color}`}>
+            <span className={`inline-block text-xs font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded-full mb-2 ${intentStyle.color}`}>
               {intentStyle.label}
             </span>
           )}
           {msg.diagnostic && (
             <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
-              <p className="text-xs font-black uppercase tracking-widest">Diagnóstico da IA</p>
-              <p className="mt-1 text-[11px] font-bold leading-relaxed">{msg.diagnostic.message}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.08em]">Diagnóstico da IA</p>
+              <p className="mt-1 text-xs leading-relaxed">{msg.diagnostic.message}</p>
               {msg.diagnostic.suggestion && (
-                <p className="mt-1 text-xs font-black uppercase tracking-widest opacity-90">
+                <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] opacity-90">
                   Próximo passo: {msg.diagnostic.suggestion}
                 </p>
               )}
             </div>
           )}
-          <p className="text-sm text-slate-700 dark:text-slate-200 font-bold leading-relaxed whitespace-pre-line">{msg.text}</p>
+          {msg.explainability && (
+            <div className="mb-3 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-3 dark:border-indigo-500/20 dark:bg-indigo-500/10">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-indigo-600 dark:text-indigo-300">Base da resposta</p>
+              <ul className="mt-1 space-y-1">
+                {msg.explainability.reasons_used.map(reason => (
+                  <li key={reason} className="text-xs text-slate-600 dark:text-slate-300">• {reason}</li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">Sinais usados</p>
+              <div className="mt-1 grid gap-1">
+                {Object.entries(msg.explainability.evidence)
+                  .filter(([, value]) => Boolean(value))
+                  .map(([key, value]) => (
+                    <p key={key} className="text-xs text-slate-600 dark:text-slate-300">
+                      {key.replace(/_/g, ' ')}: {String(value)}
+                    </p>
+                  ))}
+              </div>
+              <p className="mt-2 text-xs font-semibold text-indigo-600 dark:text-indigo-300">
+                Nivel de confianca desta resposta: {CONFIDENCE_BAND_LABEL[msg.explainability.confidence_band]}
+              </p>
+            </div>
+          )}
+          <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line">{msg.text}</p>
         </div>
         <div className="flex items-center gap-2 mt-1 ml-1">
           <ShieldCheck size={9} className="text-emerald-500" />
-          <p className="text-xs text-slate-400 font-bold">Consultivo · Não constitui garantia financeira</p>
+          <p className="text-xs text-slate-400">Consultivo · Não constitui garantia financeira</p>
         </div>
       </div>
     </div>
@@ -140,7 +162,7 @@ const TypingBubble: React.FC = () => (
           />
         ))}
       </div>
-      <p className="text-xs text-slate-400 font-black uppercase tracking-widest ml-1">Lendo dados do workspace...</p>
+      <p className="text-xs text-slate-400 uppercase tracking-[0.08em] ml-1">Lendo dados do workspace...</p>
     </div>
   </div>
 );
@@ -156,15 +178,15 @@ const WelcomeScreen: React.FC<{
       <BrainCircuit size={36} className="text-white" />
     </div>
     <div className="text-center">
-      <h3 className="text-xl font-black text-slate-900 dark:text-white">{AI_CFO_COPY.welcomeTitle}</h3>
-      <p className="text-xs font-black text-indigo-500 uppercase tracking-widest mt-1">{AI_CFO_COPY.welcomeSubtitle}</p>
-      <p className="text-xs text-slate-500 dark:text-slate-400 mt-3 font-bold leading-relaxed max-w-xs">
+      <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{AI_CFO_COPY.welcomeTitle}</h3>
+      <p className="text-xs font-semibold text-indigo-500 uppercase tracking-[0.08em] mt-1">{AI_CFO_COPY.welcomeSubtitle}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400 mt-3 leading-relaxed max-w-xs">
         {AI_CFO_COPY.welcomeDescription}
       </p>
     </div>
 
     <div className="w-full flex flex-col gap-2">
-      <p className="text-xs font-black text-slate-400 uppercase tracking-widest text-center mb-1">Perguntas rápidas do caixa</p>
+      <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em] text-center mb-1">Perguntas rápidas do caixa</p>
       {prompts.map(p => (
         <button
           key={p.question}
@@ -174,7 +196,7 @@ const WelcomeScreen: React.FC<{
           <span className="w-8 h-8 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-xl flex items-center justify-center shrink-0">
             {p.icon}
           </span>
-          <span className="flex-1 text-xs font-bold text-slate-700 dark:text-slate-200">{p.label}</span>
+          <span className="flex-1 text-sm text-slate-700 dark:text-slate-200">{p.label}</span>
           <ChevronRight size={14} className="text-slate-300 group-hover:text-indigo-400 transition-colors" />
         </button>
       ))}
@@ -182,7 +204,7 @@ const WelcomeScreen: React.FC<{
 
     <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl w-full">
       <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
-      <p className="text-xs text-slate-400 font-bold leading-relaxed">
+      <p className="text-xs text-slate-400 leading-relaxed">
         Respostas consultivas com base nos seus dados reais. Nao substituem analise ou orientacao especializada.
       </p>
     </div>
@@ -235,6 +257,18 @@ const AICFO: React.FC<AICFOProps> = ({
 
   const hasStrongGrounding = accounts.length > 0 && transactions.length >= 3;
 
+  useEffect(() => {
+    const storedMessages = loadCFOConversation(userId).map((message) => ({
+      ...message,
+      intent: message.intent as CFOIntent | undefined,
+    }));
+    setMessages(storedMessages);
+  }, [userId]);
+
+  useEffect(() => {
+    saveCFOConversation(userId, messages);
+  }, [messages, userId]);
+
   // Auto-scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -276,6 +310,7 @@ const AICFO: React.FC<AICFOProps> = ({
         intent,
         timestamp: response.timestamp,
         diagnostic: response.diagnostic,
+        explainability: response.explainability,
       };
       setMessages(prev => [...prev, cfoMsg]);
     } catch (error) {
@@ -302,7 +337,10 @@ const AICFO: React.FC<AICFOProps> = ({
     }
   };
 
-  const clearChat = () => setMessages([]);
+  const clearChat = () => {
+    setMessages([]);
+    clearCFOConversation(userId);
+  };
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] animate-in fade-in duration-700">
@@ -311,8 +349,8 @@ const AICFO: React.FC<AICFOProps> = ({
       <div className="bg-gradient-to-r from-indigo-600 to-violet-500 p-5 rounded-[2rem] flex justify-between items-center shadow-lg shadow-indigo-500/20 shrink-0 relative overflow-hidden mb-4">
         <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 blur-3xl -mr-16 -mt-16 pointer-events-none" />
         <div className="relative z-10">
-          <h2 className="text-xl font-black text-white tracking-tight leading-none">{AI_CFO_COPY.headerTitle}</h2>
-          <p className="text-xs font-black text-white/70 uppercase tracking-widest mt-1">{AI_CFO_COPY.headerSubtitle}</p>
+          <h2 className="text-xl font-semibold text-white tracking-tight leading-none">{AI_CFO_COPY.headerTitle}</h2>
+          <p className="text-xs font-semibold text-white/70 uppercase tracking-[0.08em] mt-1">{AI_CFO_COPY.headerSubtitle}</p>
         </div>
         <div className="flex items-center gap-2 relative z-10">
           {messages.length > 0 && (
@@ -332,9 +370,9 @@ const AICFO: React.FC<AICFOProps> = ({
 
       {learningDiagnostic && (
         <div role="status" className="mb-4 rounded-2xl border border-amber-100 bg-amber-50/80 p-3 dark:border-amber-500/20 dark:bg-amber-500/10">
-          <p className="text-xs font-black uppercase tracking-widest text-amber-600">{learningDiagnostic.title}</p>
-          <p className="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">{learningDiagnostic.message}</p>
-          <p className="mt-1 text-xs font-bold text-amber-500">{learningDiagnostic.suggestion}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-600">{learningDiagnostic.title}</p>
+          <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{learningDiagnostic.message}</p>
+          <p className="mt-1 text-xs font-semibold text-amber-500">{learningDiagnostic.suggestion}</p>
         </div>
       )}
 
@@ -346,8 +384,8 @@ const AICFO: React.FC<AICFOProps> = ({
           { label: '30 dias', value: intelligence.context.cashflowForecast.in30Days },
         ].map(({ label, value }) => (
           <div key={label} className="bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 text-center">
-            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{label}</p>
-            <p className={`text-xs font-black mt-0.5 ${value >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">{label}</p>
+            <p className={`text-xs font-semibold mt-0.5 ${value >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>
               {hideValues ? '••••' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)}
             </p>
           </div>
@@ -356,25 +394,25 @@ const AICFO: React.FC<AICFOProps> = ({
 
       {!canUseRichAiContext && (
         <div className="mb-4 rounded-2xl border border-indigo-100 bg-indigo-50/80 p-3 dark:border-indigo-500/20 dark:bg-indigo-500/10">
-          <p className="text-xs font-black uppercase tracking-widest text-indigo-600">Modo Free</p>
-          <p className="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-indigo-600">Modo Free</p>
+          <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
             O apoio financeiro IA segue disponivel no Free com contexto essencial. No Pro, as respostas ganham mais profundidade historica e leitura de cenarios.
           </p>
         </div>
       )}
 
       <div className="flex flex-wrap gap-2 mb-4 shrink-0">
-        <span className="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-xs font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">
+        <span className="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-xs font-semibold uppercase tracking-[0.08em] text-indigo-600 dark:text-indigo-300">
           Confiança {Math.round(intelligence.context.confidence.overall * 100)}%
         </span>
-        <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
+        <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-300">
           Recorrências {intelligence.recurringCount}
         </span>
-        <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest ${hasStrongGrounding ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'}`}>
+        <span className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-[0.08em] ${hasStrongGrounding ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'}`}>
           {hasStrongGrounding ? 'Base suficiente' : 'Base incompleta'}
         </span>
         {intelligence.dominantCategoryLabel && (
-          <span className="px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 text-xs font-black uppercase tracking-widest text-violet-600 dark:text-violet-300">
+          <span className="px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 text-xs font-semibold uppercase tracking-[0.08em] text-violet-600 dark:text-violet-300">
             {intelligence.dominantCategoryLabel}
           </span>
         )}
@@ -403,7 +441,7 @@ const AICFO: React.FC<AICFOProps> = ({
           onKeyDown={handleKeyDown}
           placeholder={AI_CFO_COPY.inputPlaceholder}
           rows={1}
-          className="flex-1 bg-transparent outline-none resize-none text-sm font-bold text-slate-800 dark:text-white placeholder:text-slate-400 placeholder:font-normal py-2 max-h-32"
+          className="flex-1 bg-transparent outline-none resize-none text-sm text-slate-800 dark:text-white placeholder:text-slate-400 placeholder:font-normal py-2 max-h-32"
           style={{ scrollbarWidth: 'none' }}
         />
         <button
@@ -425,7 +463,7 @@ const AICFO: React.FC<AICFOProps> = ({
             <button
               key={p.question}
               onClick={() => sendMessage(p.question)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl text-xs font-black text-slate-500 dark:text-slate-400 whitespace-nowrap hover:border-indigo-200 hover:text-indigo-600 transition-all shrink-0"
+              className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap hover:border-indigo-200 hover:text-indigo-600 transition-all shrink-0"
             >
               {p.icon} {p.label}
             </button>
@@ -437,4 +475,9 @@ const AICFO: React.FC<AICFOProps> = ({
 };
 
 export default AICFO;
+
+
+
+
+
 

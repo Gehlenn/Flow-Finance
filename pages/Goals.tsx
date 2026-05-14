@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import { Category, Goal } from '../types';
 import { formatCurrency } from '../utils/helpers';
 import { SECONDARY_FLOWS_COPY } from '../src/app/secondaryFlowsCopy';
@@ -57,10 +57,10 @@ function buildGoalsDiagnostic(kind: 'target' | 'contribute'): { title: string; m
 }
 
 const GOAL_PRESETS: Array<{ title: string; category: Category }> = [
-  { title: 'Reserva de emergência', category: Category.INVESTIMENTO },
+  { title: 'Reserva de emergÃªncia', category: Category.INVESTIMENTO },
   { title: 'Viagem', category: Category.PESSOAL },
   { title: 'Novo equipamento', category: Category.CONSULTORIO },
-  { title: 'Entrada do imóvel', category: Category.INVESTIMENTO },
+  { title: 'Entrada do imÃ³vel', category: Category.INVESTIMENTO },
 ];
 
 function getGoalProgress(goal: Goal): number {
@@ -131,24 +131,24 @@ const GoalCard: React.FC<{
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="font-black text-slate-900 dark:text-white text-sm leading-tight truncate">
+              <p className="font-semibold text-slate-900 dark:text-white text-sm leading-tight truncate">
                 {goal.title}
               </p>
-              <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest mt-1">
+              <p className="text-[8px] text-slate-400 font-semibold uppercase tracking-[0.08em] mt-1">
                 {goal.category}
               </p>
             </div>
-            <span className="text-[8px] font-black uppercase tracking-widest text-emerald-600 shrink-0">
+            <span className="text-[8px] font-semibold uppercase tracking-[0.08em] text-emerald-600 shrink-0">
               {progress >= 100 ? 'concluida' : `${Math.round(progress)}%`}
             </span>
           </div>
 
           <div className="flex items-baseline gap-1 mt-2">
-            <p className="text-base font-black text-slate-900 dark:text-white">
-              {hideValues ? '••••' : formatCurrency(goal.currentAmount)}
+            <p className="text-base font-semibold text-slate-900 dark:text-white">
+              {hideValues ? 'â€¢â€¢â€¢â€¢' : formatCurrency(goal.currentAmount)}
             </p>
-            <p className="text-[9px] text-slate-400 font-bold">
-              / {hideValues ? '••••' : formatCurrency(goal.targetAmount)}
+            <p className="text-[9px] text-slate-400 font-medium">
+              / {hideValues ? 'â€¢â€¢â€¢â€¢' : formatCurrency(goal.targetAmount)}
             </p>
           </div>
 
@@ -161,7 +161,7 @@ const GoalCard: React.FC<{
 
           <div className="flex items-center gap-3 mt-2">
             {goal.deadline && (
-                  <span className="flex items-center gap-1 text-[8px] text-slate-400 font-bold">
+                  <span className="flex items-center gap-1 text-[8px] text-slate-400 font-medium">
                 <CalendarDays size={8} />
                 {(() => {
                   const dateOnlyMatch = goal.deadline?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -178,7 +178,7 @@ const GoalCard: React.FC<{
               </span>
             )}
             {daysRemaining !== null && daysRemaining > 0 && (
-              <span className="flex items-center gap-1 text-[8px] text-slate-400 font-bold">
+              <span className="flex items-center gap-1 text-[8px] text-slate-400 font-medium">
                 <TrendingUp size={8} />
                 {daysRemaining}d restantes
               </span>
@@ -190,14 +190,14 @@ const GoalCard: React.FC<{
       <div className="flex border-t border-slate-100 dark:border-slate-700">
         <button
           onClick={() => onOpenContribution(goal)}
-          className="flex-1 flex items-center justify-center gap-1.5 py-3 text-[9px] font-black text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
+          className="flex-1 flex items-center justify-center gap-1.5 py-3 text-[9px] font-semibold text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
         >
           <PlusCircle size={13} /> Aportar
         </button>
         <div className="w-px bg-slate-100 dark:bg-slate-700" />
         <button
           onClick={() => onDeleteGoal(goal.id)}
-          className="flex items-center justify-center gap-1.5 px-5 py-3 text-[9px] font-black text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+          className="flex items-center justify-center gap-1.5 px-5 py-3 text-[9px] font-semibold text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
         >
           <Trash2 size={13} />
         </button>
@@ -312,8 +312,8 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
             <Target size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-black text-slate-900 dark:text-white leading-none">{SECONDARY_FLOWS_COPY.goals.title}</h1>
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+            <h1 className="text-lg font-semibold text-slate-900 dark:text-white leading-none">{SECONDARY_FLOWS_COPY.goals.title}</h1>
+            <p className="text-[9px] font-medium text-slate-400 uppercase tracking-[0.08em] mt-0.5">
               {SECONDARY_FLOWS_COPY.goals.subtitle}
             </p>
           </div>
@@ -327,7 +327,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
             setContributeDiagnostic(null);
           }}
           disabled={!canEditGoals}
-          className="flex items-center gap-1.5 bg-emerald-500 text-white px-4 py-2.5 rounded-2xl text-[10px] font-black shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 active:scale-95 transition-all"
+          className="flex items-center gap-1.5 bg-emerald-500 text-white px-4 py-2.5 rounded-2xl text-[10px] font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 active:scale-95 transition-all"
         >
           <Plus size={14} /> Nova meta
         </button>
@@ -339,8 +339,8 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
             <Target size={24} className="text-emerald-500" />
           </div>
           <div className="text-center">
-            <p className="font-black text-slate-800 dark:text-white text-sm">{SECONDARY_FLOWS_COPY.goals.emptyTitle}</p>
-            <p className="text-[10px] text-slate-400 font-bold mt-1">{SECONDARY_FLOWS_COPY.goals.emptyDescription}</p>
+            <p className="font-semibold text-slate-800 dark:text-white text-sm">{SECONDARY_FLOWS_COPY.goals.emptyTitle}</p>
+            <p className="text-[10px] text-slate-400 font-medium mt-1">{SECONDARY_FLOWS_COPY.goals.emptyDescription}</p>
           </div>
           <button
             onClick={() => {
@@ -350,7 +350,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
               setContributeError(null);
               setContributeDiagnostic(null);
             }}
-            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white rounded-2xl text-sm font-black"
+            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white rounded-2xl text-sm font-semibold"
           >
             <Plus size={14} /> Criar meta
           </button>
@@ -360,7 +360,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
       {showForm && canEditGoals && (
         <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 overflow-hidden shadow-lg">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-            <p className="font-black text-slate-900 dark:text-white text-sm">Nova Meta</p>
+            <p className="font-semibold text-slate-900 dark:text-white text-sm">Nova Meta</p>
             <button
               onClick={() => {
                 setShowForm(false);
@@ -383,7 +383,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
               <button
                 key={preset.title}
                 onClick={() => setFormData((current) => ({ ...current, title: preset.title, category: preset.category }))}
-                className={`px-3 py-1.5 rounded-xl text-[9px] font-black shrink-0 transition-colors ${
+                className={`px-3 py-1.5 rounded-xl text-[9px] font-semibold shrink-0 transition-colors ${
                   formData.title === preset.title
                     ? 'bg-emerald-500 text-white'
                     : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
@@ -396,56 +396,56 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
 
           <div className="p-5 flex flex-col gap-4">
             <div>
-              <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Nome da meta</label>
+              <label className="text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Nome da meta</label>
               <input
                 type="text"
                 value={formData.title}
                 onChange={(event) => setFormData((current) => ({ ...current, title: event.target.value }))}
-                placeholder="Ex: Reserva de Emergência"
-                className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
+                placeholder="Ex: Reserva de EmergÃªncia"
+                className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Valor alvo (R$)</label>
+                <label className="text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Valor alvo (R$)</label>
                 <input
                   type="text"
                   inputMode="decimal"
                   value={formData.targetAmount}
                   onChange={(event) => { setFormData((current) => ({ ...current, targetAmount: event.target.value })); setTargetAmountError(null); setTargetAmountDiagnostic(null); }}
                   placeholder="0,00"
-                  className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
+                  className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
                 />
-                {targetAmountError && <p className="text-[10px] text-rose-500 font-bold mt-1">{targetAmountError}</p>}
+                {targetAmountError && <p className="text-[10px] text-rose-500 font-medium mt-1">{targetAmountError}</p>}
                 {targetAmountDiagnostic && (
                   <div role="status" className="mt-2 rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-500/10 p-3 space-y-1">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-rose-700 dark:text-rose-300">{targetAmountDiagnostic.title}</p>
-                    <p className="text-[10px] font-bold text-rose-700 dark:text-rose-100">{targetAmountDiagnostic.message}</p>
-                    <p className="text-[8px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-300">Próximo passo: {targetAmountDiagnostic.suggestion}</p>
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-rose-700 dark:text-rose-300">{targetAmountDiagnostic.title}</p>
+                    <p className="text-[10px] font-medium text-rose-700 dark:text-rose-100">{targetAmountDiagnostic.message}</p>
+                    <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-rose-600 dark:text-rose-300">PrÃ³ximo passo: {targetAmountDiagnostic.suggestion}</p>
                   </div>
                 )}
               </div>
               <div>
-                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Valor atual (R$)</label>
+                <label className="text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Valor atual (R$)</label>
                 <input
                   type="number"
                   step="0.01"
                   value={formData.currentAmount}
                   onChange={(event) => setFormData((current) => ({ ...current, currentAmount: event.target.value }))}
                   placeholder="0,00"
-                  className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
+                  className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Categoria</label>
+                <label className="text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Categoria</label>
                 <select
                   value={formData.category}
                   onChange={(event) => setFormData((current) => ({ ...current, category: event.target.value as Category }))}
-                  className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
+                  className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
                 >
                   {Object.values(Category).map((category) => (
                     <option key={category} value={category}>
@@ -455,12 +455,12 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
                 </select>
               </div>
               <div>
-                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Prazo (opcional)</label>
+                <label className="text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Prazo (opcional)</label>
                 <input
                   type="date"
                   value={formData.deadline}
                   onChange={(event) => setFormData((current) => ({ ...current, deadline: event.target.value }))}
-                  className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
+                  className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
                 />
               </div>
             </div>
@@ -468,7 +468,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
             <button
               onClick={handleCreate}
               disabled={!formData.title || !formData.targetAmount}
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl py-3.5 font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
+              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl py-3.5 font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
             >
               <Check size={16} /> Criar Meta
             </button>
@@ -490,7 +490,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
         <>
           <div className="flex items-center gap-2 mt-2">
             <Trophy size={14} className="text-amber-500" />
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+            <p className="text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">
               Concluidas ({completedGoals.length})
             </p>
           </div>
@@ -511,12 +511,12 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
           <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-black text-slate-900 dark:text-white text-sm">
+                <p className="font-semibold text-slate-900 dark:text-white text-sm">
                   <Target size={14} className="inline mr-1 text-emerald-500" />
                   Aportar em "{contributeGoal.title}"
                 </p>
-                <p className="text-[9px] text-slate-400 font-bold mt-0.5">
-                  Atual: {hideValues ? '••••' : formatCurrency(contributeGoal.currentAmount)} / {hideValues ? '••••' : formatCurrency(contributeGoal.targetAmount)}
+                <p className="text-[9px] text-slate-400 font-medium mt-0.5">
+                  Atual: {hideValues ? 'â€¢â€¢â€¢â€¢' : formatCurrency(contributeGoal.currentAmount)} / {hideValues ? 'â€¢â€¢â€¢â€¢' : formatCurrency(contributeGoal.targetAmount)}
                 </p>
               </div>
               <button
@@ -529,7 +529,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
             </div>
 
             <div>
-              <label htmlFor="contribute-amount" className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Valor do aporte (R$)</label>
+              <label htmlFor="contribute-amount" className="text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Valor do aporte (R$)</label>
                 <input
                   id="contribute-amount"
                   type="text"
@@ -538,14 +538,14 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
                   value={contributeAmount}
                   onChange={(event) => { setContributeAmount(event.target.value); setContributeError(null); setContributeDiagnostic(null); }}
                   placeholder="0,00"
-                  className="w-full mt-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-lg font-black text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
+                  className="w-full mt-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-lg font-semibold text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
                 />
-              {contributeError && <p className="text-[10px] text-rose-500 font-bold mt-1">{contributeError}</p>}
+              {contributeError && <p className="text-[10px] text-rose-500 font-medium mt-1">{contributeError}</p>}
               {contributeDiagnostic && (
                 <div role="status" className="mt-2 rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-500/10 p-3 space-y-1">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-rose-700 dark:text-rose-300">{contributeDiagnostic.title}</p>
-                  <p className="text-[10px] font-bold text-rose-700 dark:text-rose-100">{contributeDiagnostic.message}</p>
-                  <p className="text-[8px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-300">Próximo passo: {contributeDiagnostic.suggestion}</p>
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-rose-700 dark:text-rose-300">{contributeDiagnostic.title}</p>
+                  <p className="text-[10px] font-medium text-rose-700 dark:text-rose-100">{contributeDiagnostic.message}</p>
+                  <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-rose-600 dark:text-rose-300">PrÃ³ximo passo: {contributeDiagnostic.suggestion}</p>
                 </div>
               )}
             </div>
@@ -553,7 +553,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
             <button
               onClick={handleContribute}
               disabled={!contributeAmount || Number(contributeAmount) <= 0}
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl py-3.5 font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl py-3.5 font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 disabled:opacity-50"
             >
               <Check size={16} /> Confirmar Aporte
             </button>
@@ -565,4 +565,8 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
 };
 
 export default GoalsPage;
+
+
+
+
 

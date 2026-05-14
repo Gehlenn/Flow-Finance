@@ -1,4 +1,4 @@
-import React, { Component, ReactNode } from 'react';
+﻿import React, { Component, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { reportError } from '../config/sentry';
 
@@ -26,11 +26,11 @@ function DefaultErrorFallback({ error, onReset }: { error: Error | null; onReset
           </div>
         </div>
 
-        <h1 className="text-xl font-bold text-white text-center mb-2">Algo deu errado</h1>
+        <h1 className="text-xl font-medium text-white text-center mb-2">Algo deu errado</h1>
         <p className="text-slate-300 text-center mb-4">
           {isDynamicImportError
-            ? 'Houve um problema ao carregar esta página. Por favor, recarregue o aplicativo.'
-            : 'Desculpe, encontramos um erro inesperado na aplicação. Tente recarregar ou entre em contato com o suporte.'}
+            ? 'Houve um problema ao carregar esta pÃ¡gina. Por favor, recarregue o aplicativo.'
+            : 'Desculpe, encontramos um erro inesperado na aplicaÃ§Ã£o. Tente recarregar ou entre em contato com o suporte.'}
         </p>
 
         {import.meta.env.MODE === 'development' && error && (
@@ -63,7 +63,7 @@ function DefaultErrorFallback({ error, onReset }: { error: Error | null; onReset
               }}
               className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium"
             >
-              Recarregar Aplicação
+              Recarregar AplicaÃ§Ã£o
             </button>
           ) : (
             <>
@@ -130,3 +130,4 @@ export function useErrorHandler() {
     throw error;
   };
 }
+

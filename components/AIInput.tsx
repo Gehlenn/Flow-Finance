@@ -326,7 +326,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertTriangle size={16} className="text-amber-500" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-500">
                 {pendingDraft.confidenceLevel === 'low' ? 'RevisÃ£o obrigatÃ³ria' : 'Confirme os campos'}
               </span>
             </div>
@@ -338,17 +338,17 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
           <div className="p-6 flex flex-col gap-4">
             {diagnostic && (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-500/10 px-3 py-3 text-amber-950 dark:text-amber-100">
-                <p className="text-[9px] font-black uppercase tracking-widest">DiagnÃ³stico de entrada</p>
-                <p className="mt-1 text-[10px] font-bold leading-relaxed">{diagnostic.message}</p>
+                <p className="text-[9px] font-semibold uppercase tracking-[0.08em]">DiagnÃ³stico de entrada</p>
+                <p className="mt-1 text-[10px] font-medium leading-relaxed">{diagnostic.message}</p>
                 {diagnostic.suggestion && (
-                  <p className="mt-1 text-[9px] font-black uppercase tracking-widest opacity-90">
+                  <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.08em] opacity-90">
                     PrÃ³ximo passo: {diagnostic.suggestion}
                   </p>
                 )}
               </div>
             )}
             {intakeWarning && (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-[10px] font-bold text-amber-600 dark:text-amber-300">
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-[10px] font-medium text-amber-600 dark:text-amber-300">
                 {intakeWarning}
               </div>
             )}
@@ -360,7 +360,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
 
             {/* DescriÃ§Ã£o */}
             <div className={`rounded-2xl p-3 border ${isUncertain('description') ? 'border-amber-300 bg-amber-50 dark:bg-amber-500/10' : 'border-slate-100 dark:border-slate-800'}`}>
-              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">
+              <label className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400 block mb-1">
                 DescriÃ§Ã£o {isUncertain('description') && <span className="text-amber-500 ml-1">âš </span>}
               </label>
               <input
@@ -372,7 +372,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
 
             {/* Valor */}
             <div className={`rounded-2xl p-3 border ${isUncertain('amount') ? 'border-amber-300 bg-amber-50 dark:bg-amber-500/10' : 'border-slate-100 dark:border-slate-800'}`}>
-              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">
+              <label className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400 block mb-1">
                 Valor {isUncertain('amount') && <span className="text-amber-500 ml-1">âš </span>}
               </label>
               <input
@@ -392,7 +392,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                   key={t}
                   type="button"
                   onClick={() => setPendingDraft(d => d ? { ...d, type: t } : null)}
-                  className={`flex-1 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${pendingDraft.type === t ? 'bg-indigo-600 text-white' : 'bg-slate-50 dark:bg-slate-800 text-slate-400'}`}
+                  className={`flex-1 py-2 rounded-2xl text-[9px] font-semibold uppercase tracking-[0.08em] transition-all ${pendingDraft.type === t ? 'bg-indigo-600 text-white' : 'bg-slate-50 dark:bg-slate-800 text-slate-400'}`}
                 >
                   {t}
                 </button>
@@ -401,7 +401,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
 
             {/* Categoria */}
             <div className={`rounded-2xl p-3 border ${isUncertain('category') ? 'border-amber-300 bg-amber-50 dark:bg-amber-500/10' : 'border-slate-100 dark:border-slate-800'}`}>
-              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">
+              <label className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400 block mb-1">
                 Categoria {isUncertain('category') && <span className="text-amber-500 ml-1">âš </span>}
               </label>
               <select
@@ -417,14 +417,14 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
               <button
                 type="button"
                 onClick={() => setPendingDraft(null)}
-                className="flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-slate-50 dark:bg-slate-800 text-slate-400 transition-all"
+                className="flex-1 py-3 rounded-2xl text-[10px] font-semibold uppercase tracking-[0.08em] bg-slate-50 dark:bg-slate-800 text-slate-400 transition-all"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={() => commitDraft(pendingDraft)}
-                className="flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white shadow-md transition-all"
+                className="flex-1 py-3 rounded-2xl text-[10px] font-semibold uppercase tracking-[0.08em] bg-indigo-600 text-white shadow-md transition-all"
               >
                 Confirmar e Salvar
               </button>
@@ -444,13 +444,13 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
           <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl">
             <button 
               onClick={() => setMode('ai')} 
-              className={`px-6 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${mode === 'ai' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+              className={`px-6 py-2 rounded-xl text-[9px] font-semibold uppercase tracking-[0.08em] transition-all ${mode === 'ai' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}
             >
               InteligÃªncia Artificial
             </button>
             <button 
               onClick={() => setMode('manual')} 
-              className={`px-6 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${mode === 'manual' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+              className={`px-6 py-2 rounded-xl text-[9px] font-semibold uppercase tracking-[0.08em] transition-all ${mode === 'manual' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}
             >
               LanÃ§amento Manual
             </button>
@@ -460,23 +460,23 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
 
         <div className="p-8 flex-1">
           {diagnostic && (
-            <div role="status" className="mb-4 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/30 rounded-2xl text-amber-700 dark:text-amber-200 text-[10px] font-bold">
-              <div className="font-black uppercase tracking-widest">DiagnÃ³stico de entrada</div>
+            <div role="status" className="mb-4 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/30 rounded-2xl text-amber-700 dark:text-amber-200 text-[10px] font-medium">
+              <div className="font-semibold uppercase tracking-[0.08em]">DiagnÃ³stico de entrada</div>
               <div className="mt-1 leading-relaxed">{diagnostic.message}</div>
               {diagnostic.suggestion && (
-                <div className="mt-1 uppercase tracking-widest text-[9px] opacity-90">
+                <div className="mt-1 uppercase tracking-[0.08em] text-[9px] opacity-90">
                   PrÃ³ximo passo: {diagnostic.suggestion}
                 </div>
               )}
             </div>
           )}
           {intakeWarning && (
-            <div role="status" className="mb-4 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/30 rounded-2xl text-amber-600 dark:text-amber-300 text-[10px] font-bold flex items-center gap-2">
+            <div role="status" className="mb-4 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/30 rounded-2xl text-amber-600 dark:text-amber-300 text-[10px] font-medium flex items-center gap-2">
               <AlertTriangle size={14} className="shrink-0" /> {intakeWarning}
             </div>
           )}
           {error && (
-            <div role="alert" className="mb-4 p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-2xl text-rose-500 text-[10px] font-bold flex items-center gap-2">
+            <div role="alert" className="mb-4 p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-2xl text-rose-500 text-[10px] font-medium flex items-center gap-2">
                <X size={14} className="shrink-0" /> {error}
             </div>
           )}
@@ -484,14 +484,14 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
           {/* Seletor de Conta */}
           {accounts.length > 0 && (
             <div className="mb-5">
-              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Conta</label>
+              <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1 block mb-2">Conta</label>
               <div className="flex gap-2 flex-wrap">
                 {accounts.map(acc => (
                   <button
                     key={acc.id}
                     type="button"
                     onClick={() => setSelectedAccountId(acc.id)}
-                    className={`px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${selectedAccountId === acc.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 border border-slate-100 dark:border-slate-700'}`}
+                    className={`px-4 py-2 rounded-2xl text-[9px] font-semibold uppercase tracking-[0.08em] transition-all flex items-center gap-1.5 ${selectedAccountId === acc.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 border border-slate-100 dark:border-slate-700'}`}
                   >
                     <Wallet size={12} />
                     {acc.name}
@@ -500,7 +500,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                 <button
                   type="button"
                   onClick={() => setSelectedAccountId(undefined)}
-                  className={`px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${!selectedAccountId ? 'bg-slate-700 text-white' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 border border-slate-100 dark:border-slate-700'}`}
+                  className={`px-4 py-2 rounded-2xl text-[9px] font-semibold uppercase tracking-[0.08em] transition-all ${!selectedAccountId ? 'bg-slate-700 text-white' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 border border-slate-100 dark:border-slate-700'}`}
                 >
                   Sem conta
                 </button>
@@ -523,7 +523,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                     className={`flex items-center gap-2 flex-1 justify-center transition-all duration-300 rounded-xl py-1 ${clickedTipIndex === tipIndex ? 'bg-indigo-100 dark:bg-indigo-500/30 scale-105 shadow-sm' : 'hover:bg-indigo-50 dark:hover:bg-indigo-500/10'}`}
                   >
                     <div className={`transition-colors ${clickedTipIndex === tipIndex ? 'text-indigo-600 dark:text-indigo-300' : 'text-indigo-400'}`}>{TIPS[tipIndex]?.icon}</div>
-                    <p className={`text-[10px] font-bold italic transition-colors ${clickedTipIndex === tipIndex ? 'text-indigo-700 dark:text-indigo-200' : 'text-slate-500'}`}>"{TIPS[tipIndex]?.text}"</p>
+                    <p className={`text-[10px] font-medium italic transition-colors ${clickedTipIndex === tipIndex ? 'text-indigo-700 dark:text-indigo-200' : 'text-slate-500'}`}>"{TIPS[tipIndex]?.text}"</p>
                   </button>
                   <button onClick={() => setTipIndex(prev => (prev + 1) % TIPS.length)} className="text-indigo-300 hover:text-indigo-500 transition-colors"><ChevronRight size={16}/></button>
                 </div>
@@ -535,13 +535,13 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder="Diga ou escreva o que aconteceu..."
-                  className="w-full h-40 p-6 bg-slate-50 dark:bg-slate-800 rounded-[2rem] border-2 border-transparent focus:border-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 text-slate-700 dark:text-white font-bold outline-none resize-none transition-all shadow-inner"
+                  className="w-full h-40 p-6 bg-slate-50 dark:bg-slate-800 rounded-[2rem] border-2 border-transparent focus:border-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 text-slate-700 dark:text-white font-medium outline-none resize-none transition-all shadow-inner"
                 />
                 
                 {isLoading && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm rounded-[2rem]">
                     <Loader2 className="animate-spin text-indigo-600" size={32} />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Processando...</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-indigo-600">Processando...</p>
                   </div>
                 )}
 
@@ -568,7 +568,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
               <button 
                 onClick={handleAIProcess}
                 disabled={isLoading || !inputText.trim() || isSuccess}
-                className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 transition-all duration-500 ${isSuccess ? 'bg-emerald-500 text-white scale-105' : 'bg-indigo-600 text-white'}`}
+                className={`w-full py-5 rounded-2xl font-semibold text-xs uppercase tracking-[0.08em] shadow-xl flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 transition-all duration-500 ${isSuccess ? 'bg-emerald-500 text-white scale-105' : 'bg-indigo-600 text-white'}`}
               >
                 {isSuccess ? (
                   <>
@@ -584,33 +584,33 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
           ) : (
             <form onSubmit={handleManualSubmit} className={`space-y-4 animate-in slide-in-from-right-4 duration-300 ${isSuccess ? 'opacity-0 scale-95 transition-all duration-500' : ''}`}>
               <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">DescriÃ§Ã£o</label>
+                <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">DescriÃ§Ã£o</label>
                 <input 
                   type="text" required
                   value={manualData.description}
                   onChange={e => setManualData({...manualData, description: e.target.value})}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-bold text-sm text-slate-800 dark:text-white"
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-medium text-sm text-slate-800 dark:text-white"
                   placeholder="Ex: Mercado Mensal"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Valor (R$)</label>
+                  <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">Valor (R$)</label>
                   <input 
                     type="number" step="0.01" required
                     value={manualData.amount}
                     onChange={e => setManualData({...manualData, amount: e.target.value})}
-                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-black text-lg text-slate-800 dark:text-white"
+                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-semibold text-lg text-slate-800 dark:text-white"
                     placeholder="0,00"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Tipo</label>
+                  <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">Tipo</label>
                   <select 
                     value={manualData.type}
                     onChange={e => setManualData({...manualData, type: e.target.value as TransactionType})}
-                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-bold text-sm text-slate-800 dark:text-white border-none appearance-none"
+                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-medium text-sm text-slate-800 dark:text-white border-none appearance-none"
                   >
                     <option value={TransactionType.DESPESA}>Despesa (SaÃ­da)</option>
                     <option value={TransactionType.RECEITA}>Receita (Entrada)</option>
@@ -619,7 +619,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
               </div>
 
               <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Categoria</label>
+                <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">Categoria</label>
                 <div className="grid grid-cols-2 gap-2">
                    {Object.values(Category).map(cat => (
                      <button
@@ -633,7 +633,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                          {cat === Category.NEGOCIO && <Briefcase size={14}/>}
                          {cat === Category.INVESTIMENTO && <TrendingUp size={14}/>}
                        </div>
-                       <span className="text-[8px] font-black uppercase tracking-tight truncate">{cat}</span>
+                       <span className="text-[8px] font-semibold uppercase tracking-tight truncate">{cat}</span>
                      </button>
                    ))}
                 </div>
@@ -643,7 +643,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
                   <div>
-                    <p className="text-[9px] font-black text-slate-700 dark:text-white uppercase tracking-widest">Recorrente</p>
+                    <p className="text-[9px] font-semibold text-slate-700 dark:text-white uppercase tracking-[0.08em]">Recorrente</p>
                     <p className="text-[8px] text-slate-400 mt-0.5">Repetir automaticamente</p>
                   </div>
                   <button
@@ -658,11 +658,11 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                 {manualData.recurring && (
                   <div className="animate-in slide-in-from-top-2 duration-200 flex gap-3">
                     <div className="flex-1 space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">FrequÃªncia</label>
+                      <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">FrequÃªncia</label>
                       <select
                         value={manualData.recurrence_type}
                         onChange={e => setManualData({ ...manualData, recurrence_type: e.target.value as any })}
-                        className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-bold text-sm text-slate-800 dark:text-white border-none appearance-none"
+                        className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-medium text-sm text-slate-800 dark:text-white border-none appearance-none"
                       >
                         <option value="daily">DiÃ¡rio</option>
                         <option value="weekly">Semanal</option>
@@ -670,14 +670,14 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                       </select>
                     </div>
                     <div className="w-24 space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">A cada</label>
+                      <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">A cada</label>
                       <input
                         type="number"
                         min={1}
                         max={365}
                         value={manualData.recurrence_interval}
                         onChange={e => setManualData({ ...manualData, recurrence_interval: Math.max(1, parseInt(e.target.value) || 1) })}
-                        className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-black text-lg text-slate-800 dark:text-white text-center"
+                        className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-semibold text-lg text-slate-800 dark:text-white text-center"
                       />
                     </div>
                   </div>
@@ -687,7 +687,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
               <button 
                 type="submit"
                 disabled={isSuccess}
-                className={`w-full py-5 rounded-[1.8rem] font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all mt-4 flex items-center justify-center gap-2 ${isSuccess ? 'bg-emerald-500 text-white scale-105' : 'bg-slate-900 dark:bg-indigo-600 text-white'}`}
+                className={`w-full py-5 rounded-[1.8rem] font-semibold text-[10px] uppercase tracking-[0.08em] shadow-xl active:scale-95 transition-all mt-4 flex items-center justify-center gap-2 ${isSuccess ? 'bg-emerald-500 text-white scale-105' : 'bg-slate-900 dark:bg-indigo-600 text-white'}`}
               >
                 {isSuccess ? <Check size={16} className="animate-bounce" /> : 'Salvar LanÃ§amento'}
               </button>
@@ -700,4 +700,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
 };
 
 export default AIInput;
+
+
+
 
