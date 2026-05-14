@@ -68,6 +68,7 @@ describe('memoryAnalyzer', () => {
     expect(merchants.get('netflix')?.avgAmount).toBeCloseTo(49.9);
     expect(recurring.get('netflix')?.isSubscription).toBe(true);
     expect(recurring.get('netflix')?.frequency).toBe('monthly');
+    expect(recurring.get('netflix')?.nextExpectedDate).toMatch(/^2026-\d{2}-\d{2}$/);
     expect(behaviors.has('impulsive_spending')).toBe(true);
     expect(behaviors.has('weekend_spender')).toBe(true);
   });
@@ -101,5 +102,25 @@ describe('memoryAnalyzer', () => {
     ]);
 
     expect(profile).toBeNull();
+  });
+
+  it('trata datas date-only como dias locais nos detectores de memoria', () => {
+    const transactions = [
+      tx({ id: 'r1', merchant: 'Netflix', description: 'Netflix', amount: 49.9, date: '2026-01-10' }),
+      tx({ id: 'r2', merchant: 'Netflix', description: 'Netflix', amount: 49.9, date: '2026-02-10' }),
+      tx({ id: 'r3', merchant: 'Netflix', description: 'Netflix', amount: 49.9, date: '2026-03-10' }),
+      tx({ id: 'w1', amount: 40, date: '2026-03-07' }),
+      tx({ id: 'w2', amount: 35, date: '2026-03-08' }),
+      tx({ id: 'w3', amount: 30, date: '2026-03-14' }),
+      tx({ id: 'inc', type: TransactionType.RECEITA, category: Category.CONSULTORIO, amount: 5000, date: '2026-03-05' }),
+    ];
+
+    const recurring = analyzeRecurringExpenses(transactions);
+    const behaviors = analyzeUserBehavior(transactions);
+    const timePatterns = analyzeTimePatterns(transactions);
+
+    expect(recurring.get('netflix')?.frequency).toBe('monthly');
+    expect(behaviors.has('weekend_spender')).toBe(true);
+    expect(timePatterns.size).toBeGreaterThan(0);
   });
 });

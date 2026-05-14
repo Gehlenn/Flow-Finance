@@ -24,6 +24,7 @@ import { learnMemory, getAIMemory, getAIMemorySnapshot, AIMemory } from './aiMem
 import { CashflowPrediction } from './riskAnalyzer';
 import { AIInsight } from './insightGenerator';
 import { makeId, formatCurrency } from '../../utils/helpers';
+import { logWarn } from '../utils/logger';
 
 // ─── PART 2 — FinancialPattern model ─────────────────────────────────────────
 
@@ -53,9 +54,43 @@ export interface AdaptiveLearningState {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function parseAdaptiveDate(value: string): Date | null {
+  const dateOnly = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    const year = Number(dateOnly[1]);
+    const month = Number(dateOnly[2]) - 1;
+    const day = Number(dateOnly[3]);
+    const localDate = new Date(year, month, day);
+    return Number.isNaN(localDate.getTime()) ? null : localDate;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+export function getDaysUntilSalaryDay(salaryDay: number, today = new Date()): number | null {
+  if (!Number.isInteger(salaryDay) || salaryDay < 1 || salaryDay > 31) {
+    return null;
+  }
+
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  for (let offset = 0; offset <= 62; offset++) {
+    const candidate = new Date(start);
+    candidate.setDate(start.getDate() + offset);
+    if (candidate.getDate() === salaryDay) {
+      return offset;
+    }
+  }
+
+  return null;
+}
+
 function getRecentTxs(txs: Transaction[], days: number): Transaction[] {
   const cutoff = new Date(Date.now() - days * 86400000);
-  return txs.filter(t => new Date(t.date) >= cutoff && !t.generated);
+  return txs.filter(t => {
+    const parsed = parseAdaptiveDate(t.date);
+    return Boolean(parsed && parsed >= cutoff && !t.generated);
+  });
 }
 
 // ─── PART 3 — Pattern Detection ──────────────────────────────────────────────
@@ -69,11 +104,13 @@ export function detectFinancialPatterns(transactions: Transaction[]): FinancialP
 
   // ── 1. Weekend Spending ─────────────────────────────────────────────────────
   const weekendExp = expenses.filter(t => {
-    const day = new Date(t.date).getDay();
+    const day = parseAdaptiveDate(t.date)?.getDay();
+    if (day === undefined) return false;
     return day === 0 || day === 6;
   });
   const weekdayExp = expenses.filter(t => {
-    const day = new Date(t.date).getDay();
+    const day = parseAdaptiveDate(t.date)?.getDay();
+    if (day === undefined) return false;
     return day >= 1 && day <= 5;
   });
 
@@ -124,7 +161,8 @@ export function detectFinancialPatterns(transactions: Transaction[]): FinancialP
   // ── 3. Salary Day ───────────────────────────────────────────────────────────
   const incomes = base
     .filter(t => t.type === TransactionType.RECEITA)
-    .map(t => new Date(t.date).getDate())
+    .map(t => parseAdaptiveDate(t.date)?.getDate())
+    .filter((day): day is number => typeof day === 'number')
     .sort((a, b) => a - b);
 
   if (incomes.length >= 2) {
@@ -235,10 +273,9 @@ export function adjustCashflowWithPatterns(
   const salaryMem = get('salary_day');
   let projected_income = base.projected_income;
   if (salaryMem) {
-    const salaryDay = parseInt(salaryMem.value);
-    const today = new Date().getDate();
-    const daysUntilSalary = salaryDay > today ? salaryDay - today : (30 - today + salaryDay);
-    if (daysUntilSalary <= 7) {
+    const salaryDay = Number.parseInt(salaryMem.value, 10);
+    const daysUntilSalary = getDaysUntilSalaryDay(salaryDay);
+    if (daysUntilSalary !== null && daysUntilSalary <= 7) {
       // Receita esperada em breve → boosta confiança da projeção
       projected_income *= (1 + 0.02 * salaryMem.confidence);
     }
@@ -303,7 +340,8 @@ export function generateAdaptiveInsights(
   const weekendMem = get('weekend_spending');
   if (weekendMem?.value === 'high' || weekendMem?.value === 'very_high') {
     const weekendTxs = transactions.filter(t => {
-      const d = new Date(t.date).getDay();
+      const d = parseAdaptiveDate(t.date)?.getDay();
+      if (d === undefined) return false;
       return !t.generated && t.type === TransactionType.DESPESA && (d === 0 || d === 6);
     });
     const total = weekendTxs.reduce((s, t) => s + t.amount, 0);
@@ -329,10 +367,9 @@ export function generateAdaptiveInsights(
   // ── Salary day awareness ───────────────────────────────────────────────────────
   const salaryMem = get('salary_day');
   if (salaryMem) {
-    const salaryDay = parseInt(salaryMem.value);
-    const today = new Date().getDate();
-    const daysUntil = salaryDay > today ? salaryDay - today : (30 - today + salaryDay);
-    if (daysUntil <= 5) {
+    const salaryDay = Number.parseInt(salaryMem.value, 10);
+    const daysUntil = getDaysUntilSalaryDay(salaryDay);
+    if (daysUntil !== null && daysUntil <= 5) {
       insights.push(makeInsight(
         'saving',
         `Com base no seu histórico, sua receita costuma entrar por volta do dia ${salaryDay}. Faltam aproximadamente ${daysUntil} dia(s).`,
@@ -445,7 +482,8 @@ export function getAdaptiveLearningStats(userId: string): {
       memory_count: userMem.length,
       last_run,
     };
-  } catch {
+  } catch (error) {
+    logWarn('[AdaptiveAIEngine] Failed to read adaptive learning stats; returning empty snapshot', { userId, error });
     return { is_learning: false, pattern_count: 0, memory_count: 0, last_run: null };
   }
 }

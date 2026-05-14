@@ -9,6 +9,34 @@ export interface GoalPlan {
   recommendedMonthlySavings: number | null;
 }
 
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function parseGoalDate(dateValue: string): Date | null {
+  const trimmed = dateValue.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const dateOnlyMatch = DATE_ONLY_PATTERN.exec(trimmed);
+  if (dateOnlyMatch) {
+    const year = Number(dateOnlyMatch[1]);
+    const month = Number(dateOnlyMatch[2]) - 1;
+    const day = Number(dateOnlyMatch[3]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() !== year
+      || localDate.getMonth() !== month
+      || localDate.getDate() !== day
+    ) {
+      return null;
+    }
+    return localDate;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export function calculateGoalPlan(goal: SmartGoal): GoalPlan {
   const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
 
@@ -20,7 +48,13 @@ export function calculateGoalPlan(goal: SmartGoal): GoalPlan {
   }
 
   const today = new Date();
-  const target = new Date(goal.targetDate);
+  const target = parseGoalDate(goal.targetDate);
+  if (!target) {
+    return {
+      remaining,
+      recommendedMonthlySavings: null,
+    };
+  }
 
   const months = Math.max(
     1,
@@ -43,6 +77,7 @@ export interface GoalFeasibilityResult {
   estimatedMonths: number | null;
   shortfallPerMonth: number;   // > 0 se capacidade < necessidade
   surplusPerMonth: number;     // > 0 se capacidade > necessidade (sobra)
+  recommendedMonthlySavings: number | null;
   suggestion: string;
 }
 
@@ -66,6 +101,7 @@ export function assessGoalFeasibility(
       estimatedMonths: 0,
       shortfallPerMonth: 0,
       surplusPerMonth: availableMonthly,
+      recommendedMonthlySavings: null,
       suggestion: 'Meta ja atingida!',
     };
   }
@@ -80,6 +116,7 @@ export function assessGoalFeasibility(
         estimatedMonths: null,
         shortfallPerMonth: Math.abs(availableMonthly),
         surplusPerMonth: 0,
+        recommendedMonthlySavings: null,
         suggestion: 'Sem capacidade de poupanca atual. Reduza despesas antes de definir a meta.',
       };
     }
@@ -89,6 +126,7 @@ export function assessGoalFeasibility(
       estimatedMonths: estimated,
       shortfallPerMonth: 0,
       surplusPerMonth: availableMonthly,
+      recommendedMonthlySavings: null,
       suggestion: `Sem data definida: meta estimada em ${estimated} mes${estimated !== 1 ? 'es' : ''}.`,
     };
   }
@@ -123,6 +161,7 @@ export function assessGoalFeasibility(
     estimatedMonths,
     shortfallPerMonth: diff < 0 ? Number(Math.abs(diff).toFixed(2)) : 0,
     surplusPerMonth: diff > 0 ? Number(diff.toFixed(2)) : 0,
+    recommendedMonthlySavings: Number(monthly.toFixed(2)),
     suggestion,
   };
 }

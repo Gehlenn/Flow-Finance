@@ -139,21 +139,44 @@ function median(values: number[]): number {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
+function parseLocalDate(value: string): Date | null {
+  const dateOnly = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    const year = Number(dateOnly[1]);
+    const month = Number(dateOnly[2]) - 1;
+    const day = Number(dateOnly[3]);
+    const localDate = new Date(year, month, day);
+    return Number.isNaN(localDate.getTime()) ? null : localDate;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatLocalDateOnly(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function avgDayOfMonth(dates: string[]): number | null {
   if (dates.length < 2) return null;
-  const days = dates.map(d => new Date(d).getDate());
+  const parsedDates = dates.map(parseLocalDate).filter((date): date is Date => Boolean(date));
+  if (parsedDates.length < 2) return null;
+  const days = parsedDates.map(d => d.getDate());
   const avg = days.reduce((s, d) => s + d, 0) / days.length;
   const variance = days.reduce((s, d) => s + Math.abs(d - avg), 0) / days.length;
   return variance < 5 ? Math.round(avg) : null;
 }
 
 function nextExpectedDate(lastDate: string, dayOfMonth: number | null): string | null {
-  const d = new Date(lastDate);
-  if (isNaN(d.getTime())) return null;
+  const d = parseLocalDate(lastDate);
+  if (!d) return null;
   const next = new Date(d);
   next.setMonth(next.getMonth() + 1);
   if (dayOfMonth) next.setDate(Math.min(dayOfMonth, 28)); // clamp to 28 to avoid month overflow
-  return next.toISOString();
+  return formatLocalDateOnly(next);
 }
 
 function detectAmountTrend(amounts: number[]): FixedExpense['amount_trend'] {
@@ -210,7 +233,14 @@ export function detectFixedExpenses(
     for (const sg of subGroups) {
       if (sg.length === 0) continue;
       const amounts = sg.map(t => t.amount);
-      const sorted  = [...sg].sort((a, b) => b.date.localeCompare(a.date));
+      const sorted  = [...sg].sort((a, b) => {
+        const left = parseLocalDate(a.date);
+        const right = parseLocalDate(b.date);
+        if (!left && !right) return b.date.localeCompare(a.date);
+        if (!left) return 1;
+        if (!right) return -1;
+        return right.getTime() - left.getTime();
+      });
       const dates   = sg.map(t => t.date).sort();
       const dom     = avgDayOfMonth(dates);
 
@@ -262,14 +292,25 @@ export function detectFixedExpenses(
     if (amtVar > 0.15) continue; // not stable enough
 
     const dates  = group.map(t => t.date).sort();
-    const sorted = [...group].sort((a, b) => b.date.localeCompare(a.date));
+    const sorted = [...group].sort((a, b) => {
+      const left = parseLocalDate(a.date);
+      const right = parseLocalDate(b.date);
+      if (!left && !right) return b.date.localeCompare(a.date);
+      if (!left) return 1;
+      if (!right) return -1;
+      return right.getTime() - left.getTime();
+    });
     const dom    = avgDayOfMonth(dates);
 
     // Must have regular monthly-ish interval
     const gaps: number[] = [];
     for (let i = 1; i < dates.length; i++) {
-      gaps.push((new Date(dates[i]).getTime() - new Date(dates[i-1]).getTime()) / 86400000);
+      const currentDate = parseLocalDate(dates[i]);
+      const previousDate = parseLocalDate(dates[i - 1]);
+      if (!currentDate || !previousDate) continue;
+      gaps.push((currentDate.getTime() - previousDate.getTime()) / 86400000);
     }
+    if (gaps.length === 0) continue;
     const avgGap = gaps.reduce((s, g) => s + g, 0) / gaps.length;
     if (avgGap < 20 || avgGap > 40) continue; // only monthly
 

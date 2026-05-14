@@ -101,13 +101,13 @@ const taskId = aiTaskQueue.enqueueInsightGeneration(userId, accounts, transactio
 // Via eventos
 window.addEventListener('ai-task-progress', (e: CustomEvent) => {
   const { taskId, status, progress, message } = e.detail;
-  console.log(`Task ${taskId}: ${message} (${progress}%)`);
+  // Atualize a UI de progresso com taskId, mensagem e percentuais
 });
 
 window.addEventListener('ai-task-result', (e: CustomEvent) => {
   const { taskId, success, data, error, executionTime } = e.detail;
   if (success) {
-    console.log('Resultado:', data);
+    // Renderize o resultado da tarefa na interface
   }
 });
 
@@ -284,10 +284,10 @@ aiTaskQueue.initialize(); // Inicia worker automaticamente
 
 ```typescript
 // Ver todas as tarefas
-console.log(taskStore.getAllTasks());
+taskStore.getAllTasks();
 
 // Ver estatísticas
-console.log(aiTaskQueue.getQueueStats());
+aiTaskQueue.getQueueStats();
 
 // Limpar fila
 taskStore.clear();

@@ -13,6 +13,7 @@ import {
   type UserCredential,
 } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
+import { logWarn } from '../src/utils/logger';
 
 /**
  * Configuração do projeto: komodo-flow
@@ -56,9 +57,11 @@ const missingFirebaseConfigKeys = [
 ].filter(([, value]) => !isMeaningfulFirebaseValue(value)).map(([key]) => key);
 
 if (!isFirebaseConfigured && typeof window !== 'undefined') {
-  console.warn(
-    `[Firebase] Web auth/Firestore disabled. Configure env vars: ${missingFirebaseConfigKeys.join(', ') || 'VITE_FIREBASE_*'}.`,
-  );
+  logWarn('[Firebase] Web auth/Firestore disabled', {
+    missingFirebaseConfigKeys,
+  }, {
+    fallback: 'firebase-web-auth-firestore-disabled',
+  });
 }
 
 const app = isFirebaseConfigured

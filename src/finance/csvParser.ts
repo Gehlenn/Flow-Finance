@@ -67,25 +67,58 @@ function parseDate(raw: string): string {
   const s = raw.trim();
   if (!s) return new Date().toISOString();
 
+  const toLocalDateKey = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const isoDateOnly = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoDateOnly) {
+    const year = Number(isoDateOnly[1]);
+    const month = Number(isoDateOnly[2]) - 1;
+    const day = Number(isoDateOnly[3]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() === year
+      && localDate.getMonth() === month
+      && localDate.getDate() === day
+    ) {
+      return toLocalDateKey(localDate);
+    }
+  }
+
   // DD/MM/YYYY or DD-MM-YYYY
   const br = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
   if (br) {
-    const d = new Date(`${br[3]}-${br[2].padStart(2, '0')}-${br[1].padStart(2, '0')}`);
-    if (!isNaN(d.getTime())) return d.toISOString();
-  }
-
-  // YYYY-MM-DD (ISO)
-  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (iso) {
-    const d = new Date(s);
-    if (!isNaN(d.getTime())) return d.toISOString();
+    const year = Number(br[3]);
+    const month = Number(br[2]) - 1;
+    const day = Number(br[1]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() === year
+      && localDate.getMonth() === month
+      && localDate.getDate() === day
+    ) {
+      return toLocalDateKey(localDate);
+    }
   }
 
   // MM/DD/YYYY (US)
   const us = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (us) {
-    const d = new Date(s);
-    if (!isNaN(d.getTime())) return d.toISOString();
+    const year = Number(us[3]);
+    const month = Number(us[1]) - 1;
+    const day = Number(us[2]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() === year
+      && localDate.getMonth() === month
+      && localDate.getDate() === day
+    ) {
+      return toLocalDateKey(localDate);
+    }
   }
 
   const fallback = new Date(s);

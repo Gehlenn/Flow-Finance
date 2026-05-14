@@ -125,8 +125,8 @@ export class IntegrationTelemetry {
         fn(),
         this.createTimeoutPromise(context.timeoutMs || 30000)
       ])) as T;
-    } catch (err) {
-      const durationMs = performance.now() - startTime;
+      } catch (err) {
+        const durationMs = performance.now() - startTime;
 
       if (err instanceof Error && err.message === 'Integration timeout') {
         status = 'timeout';
@@ -139,6 +139,22 @@ export class IntegrationTelemetry {
       context.status = status;
       context.durationMs = durationMs;
       context.errorMessage = error.message;
+
+      this.logger.error(
+        {
+          integrationName: context.integrationName,
+          operation: context.operation,
+          status,
+          errorMessage: error.message,
+          errorType: error.constructor.name,
+          retryCount: context.retryCount,
+          durationMs,
+          requestId: context.requestId,
+          tenantId: context.tenantId,
+          fallback: status === 'timeout' ? 'integration-timeout' : 'integration-error',
+        },
+        `Integration telemetry failed: ${context.integrationName} - ${context.operation}`
+      );
 
       this.logIntegrationEvent(context);
       this.captureException(error, context);

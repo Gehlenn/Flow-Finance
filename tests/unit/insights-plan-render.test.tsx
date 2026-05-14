@@ -73,8 +73,9 @@ describe('Insights plan render', () => {
       />,
     );
 
-    expect(screen.getByText(/Insights aprofundados e comparativos/i)).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: /Contexto Avancado/i })).toBeNull();
+    expect(screen.getByText(/Leituras avançadas e comparativas/i)).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: /Contexto avançado/i })).toBeNull();
+    expect(screen.getByText(/Próxima ação/i)).toBeTruthy();
   });
 
   it('plano pro libera contexto avancado sem card de upgrade', () => {
@@ -88,8 +89,9 @@ describe('Insights plan render', () => {
       />,
     );
 
-    expect(screen.getByText(/Contexto Avancado/i)).toBeTruthy();
-    expect(screen.queryByText(/Insights aprofundados e comparativos/i)).toBeNull();
-    expect(screen.getByText(/Perfil Financeiro/i)).toBeTruthy();
+    expect(screen.getByText(/Contexto avançado/i)).toBeTruthy();
+    expect(screen.queryByText(/Leituras avançadas e comparativas/i)).toBeNull();
+    expect(screen.getByText(/Perfil de fluxo/i)).toBeTruthy();
+    expect(screen.getByText(/Próxima ação/i)).toBeTruthy();
   });
 });

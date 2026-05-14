@@ -31,6 +31,34 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Outros':              '#94a3b8',
 };
 
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function parseMoneyMapDate(dateValue: string): Date | null {
+  const trimmed = dateValue.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const dateOnly = DATE_ONLY_PATTERN.exec(trimmed);
+  if (dateOnly) {
+    const year = Number(dateOnly[1]);
+    const month = Number(dateOnly[2]) - 1;
+    const day = Number(dateOnly[3]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() === year
+      && localDate.getMonth() === month
+      && localDate.getDate() === day
+    ) {
+      return localDate;
+    }
+    return null;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 // ─── PART 6 — calculateMoneyDistribution ─────────────────────────────────────
 
 export function calculateMoneyDistribution(
@@ -43,11 +71,14 @@ export function calculateMoneyDistribution(
   const prevCutoff = new Date(cutoff.getTime() - periodDays * 86400000);
 
   // Transações do período atual
-  const current = base.filter(t => new Date(t.date) >= cutoff);
+  const current = base.filter((t) => {
+    const parsed = parseMoneyMapDate(t.date);
+    return parsed !== null && parsed >= cutoff;
+  });
   // Transações do período anterior (para trend)
   const previous = base.filter(t => {
-    const d = new Date(t.date);
-    return d >= prevCutoff && d < cutoff;
+    const parsed = parseMoneyMapDate(t.date);
+    return parsed !== null && parsed >= prevCutoff && parsed < cutoff;
   });
 
   const expenses  = current.filter(t => t.type === TransactionType.DESPESA);
@@ -147,8 +178,8 @@ export function getWeeklySpendingByCategory(
     const end   = new Date(Date.now() - w * 7 * 86400000);
     const start = new Date(Date.now() - (w + 1) * 7 * 86400000);
     const weekTxs = base.filter(t => {
-      const d = new Date(t.date);
-      return d >= start && d < end;
+      const parsed = parseMoneyMapDate(t.date);
+      return parsed !== null && parsed >= start && parsed < end;
     });
     const entry: { week: string; [cat: string]: number | string } = {
       week: `S${weeks - w}`,

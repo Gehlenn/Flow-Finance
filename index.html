@@ -41,6 +41,15 @@
 <script type="module" src="/index.tsx"></script>
 <script>
   // PART 8 - Registrar Service Worker para suporte PWA/offline com limpeza de cache antigo
+  window.__FLOW_BOOTSTRAP_LOGS__ = window.__FLOW_BOOTSTRAP_LOGS__ || [];
+  const pushBootstrapLog = (level, message, data) => {
+    window.__FLOW_BOOTSTRAP_LOGS__.push({
+      level,
+      message,
+      data,
+      ts: new Date().toISOString(),
+    });
+  };
   const benchmarkParams = new URLSearchParams(window.location.search);
   const benchmarkMode = benchmarkParams.has('bench') || benchmarkParams.has('benchmark') || benchmarkParams.has('lh');
 
@@ -54,7 +63,7 @@
         );
         
         if (oldCaches.length > 0) {
-          console.log('[Flow] Limpando caches antigos:', oldCaches);
+          pushBootstrapLog('INFO', '[Flow] Limpando caches antigos', { oldCaches });
           await Promise.all(oldCaches.map(name => window.caches.delete(name)));
           
           // Unregister old service workers
@@ -63,15 +72,14 @@
             await registration.unregister();
           }
           
-          console.log('[Flow] Cache limpo! Recarregando pagina...');
+          pushBootstrapLog('INFO', '[Flow] Cache limpo! Recarregando pagina...');
           // Force hard reload to bypass any cached content
-          console.info('[Flow] reload(true) suprimido');
           return;
         }
         
         // Register new SW v5
         const reg = await navigator.serviceWorker.register('/sw.js');
-        console.log('[Flow] SW v5 registrado:', reg.scope);
+        pushBootstrapLog('INFO', '[Flow] SW v5 registrado', { scope: reg.scope });
         
         // Force immediate update check
         if (reg.waiting) {
@@ -79,7 +87,7 @@
         }
         reg.update();
       } catch (err) {
-        console.warn('[Flow] SW error:', err);
+        pushBootstrapLog('WARN', '[Flow] SW error', { error: String(err) });
       }
     });
   }

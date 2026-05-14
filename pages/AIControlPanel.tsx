@@ -11,6 +11,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Transaction, TransactionType } from '../types';
 import { Account } from '../models/Account';
+import { logWarn } from '../src/utils/logger';
 
 // Services
 import { getAIMemory, AIMemory }              from '../src/ai/aiMemory';
@@ -110,10 +111,29 @@ const EmptyState: React.FC<{ icon: React.ReactNode; message: string }> = ({ icon
 const MemoryTab: React.FC<{ userId: string }> = ({ userId }) => {
   const [entries, setEntries] = useState<AIMemory[]>([]);
   const [filter, setFilter] = useState('');
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadDiagnostic, setLoadDiagnostic] = useState<{ title: string; message: string; suggestion: string } | null>(null);
 
   const load = useCallback(async () => {
-    const mem = await getAIMemory(userId);
-    setEntries([...mem].sort((a, b) => b.updated_at.localeCompare(a.updated_at)));
+    setLoadError(null);
+    setLoadDiagnostic(null);
+    try {
+      const mem = await getAIMemory(userId);
+      setEntries([...mem].sort((a, b) => b.updated_at.localeCompare(a.updated_at)));
+    } catch (error) {
+      logWarn('[AIControlPanel] Failed to load AI memory', {
+        userId,
+        error,
+        fallback: 'ai-control-panel-memory-load-failed',
+      });
+      setEntries([]);
+      setLoadError('Nao foi possivel carregar as memorias da IA agora.');
+      setLoadDiagnostic({
+        title: 'Falha ao carregar memorias',
+        message: 'A consulta de memoria da IA nao concluiu agora.',
+        suggestion: 'Atualize a tela ou tente novamente com a mesma sessao.',
+      });
+    }
   }, [userId]);
 
   useEffect(() => { load(); }, [load]);
@@ -140,8 +160,18 @@ const MemoryTab: React.FC<{ userId: string }> = ({ userId }) => {
         </div>
       </div>
 
+      {loadError && loadDiagnostic && (
+        <div className="px-4 pt-3">
+          <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-1">
+            <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-amber-400">{loadDiagnostic.title}</p>
+            <p className="font-mono text-[10px] text-amber-100">{loadDiagnostic.message}</p>
+            <p className="font-mono text-[8px] font-black uppercase tracking-widest text-amber-300">Proximo passo: {loadDiagnostic.suggestion}</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto">
-        {filtered.length === 0 ? (
+        {filtered.length === 0 && !loadError ? (
           <EmptyState icon={<Brain size={32} />} message="Nenhuma memória encontrada" />
         ) : (
           <div className="divide-y divide-slate-800">
@@ -550,19 +580,20 @@ const MoneyMapTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }
 
 // ─── TAB: Leaks ──────────────────────────────────────────────────────────────
 
-const LeaksTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }) => {
-  const leaks = useMemo(() => detectFinancialLeaks(transactions), [transactions]);
+const LeaksTab: React.FC<{ transactions: Transaction[]; leaks?: FinancialLeak[] }> = ({ transactions, leaks }) => {
+  const computedLeaks = useMemo(() => detectFinancialLeaks(transactions), [transactions]);
+  const leakList = leaks ?? computedLeaks;
 
   return (
     <div className="flex flex-col h-full">
-      <SectionHeader icon={<AlertTriangle size={11} />} title="Financial Leaks" count={leaks.length} />
+      <SectionHeader icon={<AlertTriangle size={11} />} title="Financial Leaks" count={leakList.length} />
 
       <div className="flex-1 overflow-y-auto">
-        {leaks.length === 0 ? (
+        {leakList.length === 0 ? (
           <EmptyState icon={<AlertTriangle size={32} />} message="Nenhum vazamento detectado" />
         ) : (
           <div className="divide-y divide-slate-800">
-            {leaks.map((leak, idx) => (
+            {leakList.map((leak, idx) => (
               <div key={idx} className="px-4 py-3 hover:bg-slate-800/30 transition-colors">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -585,8 +616,9 @@ const LeaksTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }) =
 
 // ─── TAB: Report ─────────────────────────────────────────────────────────────
 
-const ReportTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }) => {
-  const report = useMemo(() => generateMonthlyReport(transactions), [transactions]);
+const ReportTab: React.FC<{ transactions: Transaction[]; report?: FinancialReport | null }> = ({ transactions, report }) => {
+  const computedReport = useMemo(() => generateMonthlyReport(transactions), [transactions]);
+  const reportSnapshot = report ?? computedReport;
 
   return (
     <div className="flex flex-col h-full">
@@ -594,15 +626,15 @@ const ReportTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }) 
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <div className="bg-slate-800/50 rounded p-4">
-          <h3 className="font-mono text-[10px] text-emerald-400 mb-3">{report.month}</h3>
+          <h3 className="font-mono text-[10px] text-emerald-400 mb-3">{reportSnapshot.month}</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="font-mono text-[8px] text-slate-500">Receitas</p>
-              <p className="font-mono text-[12px] text-emerald-400">R$ {report.total_income.toFixed(2)}</p>
+              <p className="font-mono text-[12px] text-emerald-400">R$ {reportSnapshot.total_income.toFixed(2)}</p>
             </div>
             <div>
               <p className="font-mono text-[8px] text-slate-500">Despesas</p>
-              <p className="font-mono text-[12px] text-rose-400">R$ {report.total_expenses.toFixed(2)}</p>
+              <p className="font-mono text-[12px] text-rose-400">R$ {reportSnapshot.total_expenses.toFixed(2)}</p>
             </div>
           </div>
         </div>
@@ -610,7 +642,7 @@ const ReportTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }) 
         <div className="bg-slate-800/50 rounded p-4">
           <h4 className="font-mono text-[9px] text-slate-300 mb-2">Top Categorias</h4>
           <div className="space-y-2">
-            {report.top_categories.map(cat => (
+            {reportSnapshot.top_categories.map(cat => (
               <div key={cat.category} className="flex items-center justify-between">
                 <span className="font-mono text-[9px] text-slate-400">{cat.category}</span>
                 <span className="font-mono text-[9px] text-emerald-400">{cat.percentage}%</span>
@@ -619,11 +651,11 @@ const ReportTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }) 
           </div>
         </div>
 
-        {report.insights.length > 0 && (
+        {reportSnapshot.insights.length > 0 && (
           <div className="bg-slate-800/50 rounded p-4">
             <h4 className="font-mono text-[9px] text-slate-300 mb-2">Insights</h4>
             <div className="space-y-1">
-              {report.insights.map((insight, idx) => (
+              {reportSnapshot.insights.map((insight, idx) => (
                 <p key={idx} className="font-mono text-[8px] text-slate-400">{insight}</p>
               ))}
             </div>
@@ -843,18 +875,52 @@ const AuditTab: React.FC = () => {
 // ─── TAB: Parser Lab ─────────────────────────────────────────────────────────
 
 const ParserLabTab: React.FC = () => {
-  const [input, setInput]   = useState('');
+  const [input, setInput] = useState('');
   const [format, setFormat] = useState<'ofx' | 'csv'>('ofx');
   const [result, setResult] = useState<any[] | null>(null);
-  const [error, setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [diagnostic, setDiagnostic] = useState<{ title: string; message: string; suggestion: string } | null>(null);
+
+  const buildDiagnostic = (currentFormat: 'ofx' | 'csv', currentInput: string, parsedCount: number) => {
+    if (parsedCount > 0) return null;
+
+    const sample = currentFormat === 'ofx'
+      ? 'Exemplo: <STMTTRN>...<TRNAMT>-89.90...'
+      : 'Exemplo: Data,Descricao,Valor';
+
+    return {
+      title: 'Nenhuma transacao foi identificada',
+      message: currentInput.trim()
+        ? `O arquivo nao bateu com o formato ${currentFormat.toUpperCase()} esperado ou nao trouxe campos mapeaveis.`
+        : 'Cole um extrato valido para o formato selecionado antes de executar o parser.',
+      suggestion: currentInput.trim()
+        ? `Revise o separador, o cabecalho e os campos obrigatorios. ${sample}`
+        : `Cole um exemplo minimo no formato ${currentFormat.toUpperCase()} e execute novamente. ${sample}`,
+    };
+  };
 
   const run = () => {
     setError(null);
+    setDiagnostic(null);
     try {
       const txs = format === 'ofx' ? parseOFX(input) : parseCSV(input);
+      if (!txs.length) {
+        setDiagnostic(buildDiagnostic(format, input, txs.length));
+      }
       setResult(txs);
     } catch (e: any) {
-      setError(e?.message ?? 'Parse error');
+      logWarn('[AIControlPanel] Parser Lab failed to process input', {
+        format,
+        inputLength: input.length,
+        error: e,
+        fallback: 'ai-control-panel-parser-lab-failed',
+      });
+      setError(e?.message ?? 'Nao foi possivel processar o arquivo.');
+      setDiagnostic({
+        title: 'Falha ao processar o arquivo',
+        message: `O parser interrompeu a leitura do arquivo ${format.toUpperCase()}.`,
+        suggestion: `Confirme se o conteudo segue o formato ${format.toUpperCase()} e tente novamente.`,
+      });
       setResult(null);
     }
   };
@@ -868,7 +934,7 @@ const ParserLabTab: React.FC = () => {
           {(['ofx', 'csv'] as const).map(f => (
             <button
               key={f}
-              onClick={() => setFormat(f)}
+              onClick={() => { setFormat(f); setError(null); setDiagnostic(null); setResult(null); }}
               className={`px-3 py-1.5 font-mono text-[9px] uppercase tracking-widest rounded transition-colors
                 ${format === f ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'text-slate-500 hover:text-slate-300 border border-slate-700'}`}
             >
@@ -880,8 +946,8 @@ const ParserLabTab: React.FC = () => {
         {/* Input */}
         <textarea
           value={input}
-          onChange={e => { setInput(e.target.value); setResult(null); setError(null); }}
-          placeholder={format === 'ofx' ? '<STMTTRN>\n<DTPOSTED>20260301\n<TRNAMT>-89.90\n<MEMO>iFood\n</STMTTRN>' : 'Data,Descrição,Valor\n01/03/2026,iFood,-89.90\n01/03/2026,Salário,3200.00'}
+          onChange={e => { setInput(e.target.value); setResult(null); setError(null); setDiagnostic(null); }}
+          placeholder={format === 'ofx' ? '<STMTTRN>\n<DTPOSTED>20260301\n<TRNAMT>-89.90\n<MEMO>iFood\n</STMTTRN>' : 'Data,Descricao,Valor\n01/03/2026,iFood,-89.90\n01/03/2026,Salario,3200.00'}
           rows={8}
           className="w-full bg-black/50 border border-slate-700 rounded font-mono text-[9px] text-slate-300 p-3 resize-none outline-none focus:border-emerald-500/50 placeholder-slate-700"
         />
@@ -899,9 +965,17 @@ const ParserLabTab: React.FC = () => {
           </div>
         )}
 
+        {diagnostic && (
+          <div role="status" className="bg-amber-500/10 border border-amber-500/30 rounded p-3">
+            <p className="font-mono text-[9px] text-amber-300 uppercase tracking-widest">{diagnostic.title}</p>
+            <p className="font-mono text-[9px] text-amber-200 mt-1 leading-relaxed">{diagnostic.message}</p>
+            <p className="font-mono text-[8px] text-amber-100 mt-2 uppercase tracking-widest">Proximo passo: {diagnostic.suggestion}</p>
+          </div>
+        )}
+
         {result && (
           <div>
-            <p className="font-mono text-[8px] text-slate-500 mb-2 uppercase tracking-widest">{result.length} transações parseadas</p>
+            <p className="font-mono text-[8px] text-slate-500 mb-2 uppercase tracking-widest">{result.length} transacoes parseadas</p>
             <pre className="font-mono text-[8px] text-slate-400 bg-black/40 p-3 rounded overflow-x-auto whitespace-pre-wrap border border-slate-700/40 max-h-64">
               {JSON.stringify(result.slice(0, 5), null, 2)}
             </pre>
@@ -911,8 +985,7 @@ const ParserLabTab: React.FC = () => {
     </div>
   );
 };
-
-// ─── PART 7 — Graph Visualization Tab ────────────────────────────────────────
+// ─── PART 7 — Graph Visualization Tab ─────────────────────────────────────── — Graph Visualization Tab ────────────────────────────────────────
 
 type GraphViewMode = 'overview' | 'merchants' | 'categories' | 'subscriptions' | 'edges';
 
@@ -1362,6 +1435,8 @@ interface AIControlPanelProps {
   transactions: Transaction[];
   accounts: Account[];
   userId: string;
+  leaks?: FinancialLeak[];
+  report?: FinancialReport | null;
 }
 
 type PanelTab = 'stats' | 'memory' | 'insights' | 'autopilot' | 'events' | 'logs' | 'subscriptions' | 'moneymap' | 'leaks' | 'report' | 'simulation' | 'audit' | 'parser' | 'graph' | 'metrics' | 'health' | 'goals' | 'timeline';
@@ -1387,7 +1462,7 @@ const TAB_CONFIG: Array<{ id: PanelTab; label: string; icon: React.ReactNode }> 
   { id: 'timeline',      label: 'Timeline',      icon: <Calendar size={11} />     },
 ];
 
-const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts, userId }) => {
+const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts, userId, leaks, report }) => {
   const [activeTab, setActiveTab] = useState<PanelTab>('stats');
 
   // PART 7 — Only render in development mode
@@ -1409,8 +1484,8 @@ const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts,
       case 'events':        return <EventsTab />;
       case 'logs':          return <AILogsTab />;
       case 'subscriptions': return <SubscriptionsTab transactions={transactions} />;
-      case 'leaks':         return <LeaksTab transactions={transactions} />;
-      case 'report':        return <ReportTab transactions={transactions} />;
+      case 'leaks':         return <LeaksTab transactions={transactions} leaks={leaks} />;
+      case 'report':        return <ReportTab transactions={transactions} report={report} />;
       case 'simulation':    return <SimulationTab transactions={transactions} accounts={accounts} />;
       case 'audit':         return <AuditTab />;
       case 'parser':        return <ParserLabTab />;
@@ -1497,8 +1572,8 @@ export function createDefaultSimulationScenario(type: 'extra_spending' | 'monthl
   return { type, amount: 500, description: 'uma viagem de fim de semana' } as SimulationScenario;
 }
 
-export function createParserLabState(format: 'ofx' | 'csv'): { format: string; input: string; result: null; error: null } {
-  return { format, input: '', result: null, error: null };
+export function createParserLabState(format: 'ofx' | 'csv'): { format: string; input: string; result: null; error: null; diagnostic: null } {
+  return { format, input: '', result: null, error: null, diagnostic: null };
 }
 
 export default AIControlPanel;

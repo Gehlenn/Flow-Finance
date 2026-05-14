@@ -151,7 +151,14 @@ export async function generateContent(
 export async function estimateTokens(text: string): Promise<number> {
   try {
     return await openai.estimateTokens(text);
-  } catch {
+  } catch (error) {
+    logger.warn(
+      {
+        event: 'ai_token_estimate_fallback',
+        error: error instanceof Error ? error.message : String(error),
+      },
+      'Falling back to heuristic token estimate',
+    );
     // Rough estimate: ~4 chars per token for Portuguese
     return Math.ceil(text.length / 4);
   }

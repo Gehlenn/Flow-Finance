@@ -2,6 +2,7 @@
 // v0.8.x – Flow Finance
 
 import { Transaction, TransactionType, Category } from '../../../types';
+import { logWarn } from '../../utils/logger';
 
 export type ExtratoFormato = 'OFX' | 'CSV' | 'PDF';
 
@@ -67,6 +68,7 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
         }
       }
     } catch (e: any) {
+      logWarn('[ExtratoImporter] CSV processing failed', { formato, error: e });
       erros.push('Erro ao processar CSV: ' + e.message);
     }
 
@@ -102,6 +104,7 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
         erros.push('Nenhuma transação encontrada no OFX.');
       }
     } catch (e: any) {
+      logWarn('[ExtratoImporter] OFX processing failed', { formato, error: e });
       erros.push('Erro ao processar OFX: ' + e.message);
     }
   } else {

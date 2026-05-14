@@ -1,4 +1,4 @@
-import fs from 'node:fs/promises';
+﻿import fs from 'node:fs/promises';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';
 
@@ -92,7 +92,7 @@ function deriveKeyPoints(entry, text) {
   let inBullets = false;
 
   for (const rawLine of lines) {
-    const line = rawLine.replace(/^\uFEFF|^ï»¿/, '').trim();
+    const line = rawLine.replace(/^\uFEFF|^Ã¯Â»Â¿/, '').trim();
     if (!line) {
       if (inBullets && bullets.length >= 4) break;
       continue;
@@ -223,14 +223,15 @@ async function main() {
 
   for (const result of results) {
     if (!result.targetPath) {
-      console.log(`MISSING: ${path.relative(repoRoot, result.sourcePath)}`);
+      process.stdout.write(`MISSING: ${path.relative(repoRoot, result.sourcePath)}\n`);
       continue;
     }
-    console.log(`${result.changed ? 'WROTE' : 'SKIPPED'}: ${path.relative(repoRoot, result.targetPath)}`);
+    process.stdout.write(`${result.changed ? 'WROTE' : 'SKIPPED'}: ${path.relative(repoRoot, result.targetPath)}\n`);
   }
 }
 
 main().catch((error) => {
-  console.error(error);
+  process.stderr.write(`${error instanceof Error ? error.stack || error.message : String(error)}\n`);
   process.exitCode = 1;
 });
+

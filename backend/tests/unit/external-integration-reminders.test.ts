@@ -7,6 +7,7 @@ const integrationMocks = vi.hoisted(() => ({
   pushSyncItems: vi.fn(),
   hasProcessedExternalEvent: vi.fn(),
   markExternalEventProcessed: vi.fn(),
+  logError: vi.fn(),
 }));
 
 vi.mock('../../src/services/finance/eventStore', () => ({
@@ -28,6 +29,12 @@ vi.mock('../../src/services/sync/cloudSyncStore', () => ({
 vi.mock('../../src/services/externalIdempotencyStore', () => ({
   hasProcessedExternalEvent: integrationMocks.hasProcessedExternalEvent,
   markExternalEventProcessed: integrationMocks.markExternalEventProcessed,
+}));
+
+vi.mock('../../src/config/logger', () => ({
+  default: {
+    error: integrationMocks.logError,
+  },
 }));
 
 import { processExternalIntegrationEvent } from '../../src/services/externalIntegrationService';
@@ -103,5 +110,41 @@ describe('processExternalIntegrationEvent reminders', () => {
       })],
       expect.objectContaining({ workspaceId: 'ws-1' }),
     );
+  });
+
+  it('logs contextual data when persistence fails before marking the event processed', async () => {
+    integrationMocks.pushSyncItems.mockRejectedValueOnce(new Error('sync offline'));
+
+    await expect(processExternalIntegrationEvent({
+      eventType: 'receivable_reminder_created',
+      externalEventId: 'evt-3',
+      sourceSystem: 'clinic-automation',
+      workspaceId: 'ws-1',
+      occurredAt: '2026-04-08T12:00:00.000Z',
+      payload: {
+        externalCustomerId: 'customer-1',
+        externalReceivableId: 'recv-2',
+        dueDate: '2026-04-10',
+        outstandingAmount: 250,
+        currency: 'BRL',
+        description: 'Recebimento consulta',
+        serviceDescription: 'Consulta inicial',
+      },
+    })).rejects.toThrow('sync offline');
+
+    expect(integrationMocks.logError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.any(Error),
+        workspaceId: 'ws-1',
+        externalEventId: 'evt-3',
+        sourceSystem: 'clinic-automation',
+        eventType: 'receivable_reminder_created',
+        operation: 'reminder_created',
+        fallback: 'external-integration-ingest-failed',
+      }),
+      'Failed to persist external integration event',
+    );
+    expect(integrationMocks.markExternalEventProcessed).not.toHaveBeenCalled();
+    expect(integrationMocks.recordAuditEvent).not.toHaveBeenCalled();
   });
 });

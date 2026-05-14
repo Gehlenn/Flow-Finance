@@ -1,5 +1,13 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { AuthService } from './authService';
+
+const loggerWarnMock = vi.fn();
+
+vi.mock('../config/logger', () => ({
+  default: {
+    warn: (...args: unknown[]) => loggerWarnMock(...args),
+  },
+}));
 
 describe('AuthService', () => {
   it('deve instanciar o serviço', () => {
@@ -33,6 +41,47 @@ describe('AuthService', () => {
       await expect(AuthService.login('admin@flow.com', 'senha')).rejects.toThrow(
         'AuthService.login stub must not be called in production',
       );
+    });
+  });
+
+  describe('register', () => {
+    const originalEnv = process.env.NODE_ENV;
+
+    afterEach(() => {
+      process.env.NODE_ENV = originalEnv;
+      loggerWarnMock.mockClear();
+    });
+
+    it('registra um aviso controlado fora de producao', async () => {
+      process.env.NODE_ENV = 'development';
+
+      await expect(AuthService.register({
+        id: 'usr_1',
+        email: 'user@example.com',
+        passwordHash: 'external-auth',
+        tenantId: 'tenant-1',
+      })).resolves.toBeUndefined();
+
+      expect(loggerWarnMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'usr_1',
+          email: 'user@example.com',
+          tenantId: 'tenant-1',
+          fallback: 'auth-register-stub-noop',
+        }),
+        'AuthService.register is a controlled no-op outside production',
+      );
+    });
+
+    it('lança erro em producao', async () => {
+      process.env.NODE_ENV = 'production';
+
+      await expect(AuthService.register({
+        id: 'usr_1',
+        email: 'user@example.com',
+        passwordHash: 'external-auth',
+        tenantId: 'tenant-1',
+      })).rejects.toThrow('AuthService.register stub must not be called in production');
     });
   });
 });

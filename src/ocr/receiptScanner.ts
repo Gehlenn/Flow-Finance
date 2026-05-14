@@ -1,3 +1,5 @@
+import { logWarn } from '../utils/logger';
+
 export interface OCRImageLike {
   text?: () => Promise<string>;
 }
@@ -26,7 +28,10 @@ export async function scanReceiptText(image: OCRImageLike): Promise<string> {
     return result.data?.text ?? '';
   }
 
-  console.warn('[OCR Scanner] tesseract.js unavailable, using text fallback:', err);
+  logWarn('[OCR Scanner] tesseract.js unavailable, using text fallback', {
+    error: err,
+    fallback: 'ocr-tesseract-unavailable',
+  });
   if (image.text) {
     return image.text();
   }

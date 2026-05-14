@@ -1,5 +1,6 @@
 import { Category, Transaction, TransactionType } from '../../../types';
 import { apiRequest, API_ENDPOINTS } from '../../config/api.config';
+import { logWarn } from '../../utils/logger';
 import {
   buildCanonicalCategorizationResult,
   type CanonicalCategorizationResult,
@@ -59,6 +60,11 @@ export async function classifyTransactionsWithAI(
       });
     });
   } catch (error) {
+    logWarn('[CategorizationService] classifyTransactionsWithAI failed; using deterministic fallback', {
+      error,
+      transactionCount: transactions.length,
+      fallback: 'categorization-classification-failed',
+    });
     return transactions.map((transaction) =>
       buildCanonicalCategorizationResult({
         category: transaction.type === TransactionType.RECEITA ? Category.NEGOCIO : Category.PESSOAL,

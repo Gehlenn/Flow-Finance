@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { AppError } from '../../middleware/errorHandler';
+import logger from '../../config/logger';
 import {
   findWorkspaceByBillingCustomerIdAsync,
   getLastWorkspaceForUserAsync,
@@ -150,6 +151,11 @@ export async function createStripePortalSession(input: StripePortalInput): Promi
 export function verifyStripeWebhookSignature(rawBody: string, stripeSignature?: string): boolean {
   const webhookSecret = getRequiredEnv('STRIPE_WEBHOOK_SECRET');
   if (!stripeSignature) {
+    logger.warn({
+      rawLength: rawBody.length,
+      hasSignature: false,
+      fallback: 'stripe-webhook-signature-missing',
+    }, '[StripeService] Missing Stripe webhook signature header');
     return false;
   }
 
@@ -157,6 +163,13 @@ export function verifyStripeWebhookSignature(rawBody: string, stripeSignature?: 
   const signaturePart = stripeSignature.split(',').find((part) => part.startsWith('v1='));
 
   if (!timestampPart || !signaturePart) {
+    logger.warn({
+      rawLength: rawBody.length,
+      hasSignature: true,
+      hasTimestampPart: Boolean(timestampPart),
+      hasSignaturePart: Boolean(signaturePart),
+      fallback: 'stripe-webhook-signature-malformed',
+    }, '[StripeService] Malformed Stripe webhook signature header');
     return false;
   }
 
@@ -168,13 +181,27 @@ export function verifyStripeWebhookSignature(rawBody: string, stripeSignature?: 
   const expected = Buffer.from(expectedSignature, 'utf8');
   const provided = Buffer.from(signature, 'utf8');
 
-  return expected.length === provided.length && crypto.timingSafeEqual(expected, provided);
+  const matches = expected.length === provided.length && crypto.timingSafeEqual(expected, provided);
+
+  if (!matches) {
+    logger.warn({
+      rawLength: rawBody.length,
+      hasSignature: true,
+      timestampLength: timestamp.length,
+      providedLength: provided.length,
+      expectedLength: expected.length,
+      fallback: 'stripe-webhook-signature-mismatch',
+    }, '[StripeService] Stripe webhook signature mismatch');
+  }
+
+  return matches;
 }
 
 export function parseStripeWebhookEvent(rawBody: string): StripeWebhookEvent {
   try {
     return JSON.parse(rawBody) as StripeWebhookEvent;
-  } catch {
+  } catch (error) {
+    logger.warn({ error, rawLength: rawBody.length }, '[StripeService] Invalid webhook JSON payload');
     throw new AppError(400, 'Invalid Stripe webhook JSON payload');
   }
 }

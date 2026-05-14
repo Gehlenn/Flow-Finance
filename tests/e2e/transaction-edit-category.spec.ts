@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+﻿import { test, expect } from '@playwright/test';
 import { skipIf } from './helpers/skipHelpers';
 import { gotoAuthedApp } from './helpers/appBootstrap';
 import { clickWithRetry } from './helpers/resilientActions';
@@ -49,11 +49,20 @@ test.describe('Edição de Categoria - TransactionList', () => {
       const addButton = page.getByRole('button', { name: /Adicionar lançamento/i });
       await expect(addButton).toBeVisible({ timeout: 10000 });
 
-      await clickWithRetry(() => addButton);
-      await clickWithRetry(() => page.getByRole('button', { name: /Lançamento Manual/i }));
-      await page.getByPlaceholder('Ex: Mercado Mensal').fill(txDesc);
-      await page.getByPlaceholder('0,00').first().fill('42');
-      await clickWithRetry(() => page.getByRole('button', { name: /Salvar Lançamento/i }));
+                  await clickWithRetry(() => addButton);
+
+      const manualEntryButton = page.getByRole('button', { name: /Manual/i }).last();
+      await expect(manualEntryButton).toBeVisible({ timeout: 10000 });
+      await clickWithRetry(() => manualEntryButton);
+
+      const descriptionInput = page.getByPlaceholder('Ex: Mercado Mensal').last();
+      const amountInput = page.getByPlaceholder('0,00').last();
+      await expect(descriptionInput).toBeVisible({ timeout: 10000 });
+      await expect(amountInput).toBeVisible({ timeout: 10000 });
+
+      await descriptionInput.fill(txDesc);
+      await amountInput.fill('42');
+      await clickWithRetry(() => page.getByRole('button', { name: /Salvar/i }).last());
       await page.waitForTimeout(1800);
 
       await clickWithRetry(() => historyButton);
@@ -94,3 +103,8 @@ test.describe('Edição de Categoria - TransactionList', () => {
     await expect(categoryToast).toHaveClass(/pointer-events-none/);
   });
 });
+
+
+
+
+

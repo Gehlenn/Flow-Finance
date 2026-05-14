@@ -39,7 +39,12 @@ export function detectFinancialLeaks(transactions: Transaction[]): FinancialLeak
     if (avgAmount > 50) continue; // só pequenos gastos
 
     // Verificar recorrência (pelo menos semanal ou mensal)
-    const dates = txs.map(t => new Date(t.date).getTime()).sort((a, b) => a - b);
+    const dates = txs
+      .map((t) => parseLeakDate(t.date))
+      .filter((d): d is Date => d !== null)
+      .map((d) => d.getTime())
+      .sort((a, b) => a - b);
+    if (dates.length < 3) continue;
     const intervals = [];
     for (let i = 1; i < dates.length; i++) {
       intervals.push(dates[i] - dates[i-1]);
@@ -69,4 +74,15 @@ export function detectFinancialLeaks(transactions: Transaction[]): FinancialLeak
   }
 
   return leaks.sort((a, b) => b.monthly_cost - a.monthly_cost);
+}
+
+function parseLeakDate(value: string): Date | null {
+  const trimmed = value.trim();
+  const dateOnlyMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const parsed = new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }

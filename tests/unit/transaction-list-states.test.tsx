@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import TransactionList, { classifyTransactionFinancialState } from '../../components/TransactionList';
@@ -56,5 +56,28 @@ describe('transaction financial states', () => {
     expect(screen.getByText(/confirmado 1/i)).toBeTruthy();
     expect(screen.getByText(/pendente 1/i)).toBeTruthy();
     expect(screen.getByText(/vencido 1/i)).toBeTruthy();
+  });
+
+  it('filters the list by financial state for faster review', () => {
+    render(
+      <TransactionList
+        transactions={[
+          makeTransaction({ id: 'confirmed-1', description: 'Pagamento fornecedor' }),
+          makeTransaction({ id: 'pending-1', description: 'Recebimento agendado', type: TransactionType.RECEITA, date: '2099-01-01T10:00:00.000Z' }),
+          makeTransaction({ id: 'overdue-1', description: 'Recorrencia atrasada', generated: true, date: '2020-01-01T10:00:00.000Z' }),
+        ]}
+        hideValues={false}
+        onDelete={vi.fn()}
+        onDeleteMultiple={vi.fn()}
+        onUpdate={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText(/abrir filtros da lista/i));
+    fireEvent.click(screen.getByRole('button', { name: /pendente/i }));
+
+    expect(screen.getByText(/Recebimento agendado/i)).toBeTruthy();
+    expect(screen.queryByText(/Pagamento fornecedor/i)).toBeNull();
+    expect(screen.queryByText(/Recorrencia atrasada/i)).toBeNull();
   });
 });

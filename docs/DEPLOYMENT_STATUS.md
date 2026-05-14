@@ -28,13 +28,15 @@ Observacao:
 
 Estado:
 
-- publicado no Vercel
-- endpoints de saude e versao implementados com contrato novo de observabilidade
+- o dominio atual responde HTML na raiz e nao exp?e o contrato de API esperado
+- `/health`, `/api/health` e `/api/version` retornam `404` na revalidacao de `2026-05-08`
 
 Observacao:
 
-- a validacao externa continua bloqueada quando o preview esta protegido por Vercel Authentication
-- sem acesso liberado, o teste automatizado nao consegue provar resposta real da aplicacao
+- o backend alvo esta com contrato de rota desalinhado ou apontando para o deploy errado
+- sem o contrato de API real, o teste automatizado nao consegue provar a aplicacao esperada
+- a causa mais provavel e root directory/deploy apontando para o shell do frontend em vez de `backend/`
+- `npm run health:vercel` agora evidencia explicitamente esse mismatch de shell do frontend
 
 ### Billing
 
@@ -45,12 +47,13 @@ Estado:
 
 ## Bloqueios atuais
 
-1. Preview ou URL de validacao ainda protegido por autenticacao antes da aplicacao responder.
+1. O backend alvo nao esta respondendo o contrato de API esperado.
 2. Variaveis de ambiente ainda pendentes no destino:
    - `VITE_SENTRY_DSN` (frontend preferencial)
    - `SENTRY_DSN` (backend e fallback legado do frontend no build)
    - `VITE_APP_VERSION`
    - `APP_VERSION`
+3. Corrigir o deploy/roteamento do backend para que o dominio de API volte a servir `/health`, `/api/health` e `/api/version`
 
 ## O que ja esta fechado
 
@@ -58,24 +61,33 @@ Estado:
 - `npm run test:coverage:critical`
 - `npm run test:firestore:rules`
 - login local de desenvolvimento sem Firebase configurado
-- endpoints `/health`, `/api/health` e `/api/version` com `requestId` e `routeScope`
 - bootstrap silencioso de Sentry sem DSN
 - billing Stripe sandbox validado no nucleo critico
+- frontend principal ainda responde `200` no dominio publico conhecido
+- o verificador `npm run health:vercel` agora diferencia `404` de API-only de dominio apontado para shell do frontend
 
 ## O que falta para marcar o deploy como pronto
 
-1. Preencher as variaveis de ambiente ausentes no Vercel.
-2. Liberar ou compartilhar o preview protegido.
-3. Executar:
+1. Corrigir o roteamento ou o deploy do backend para expor o contrato de API esperado.
+2. Garantir que o projeto Vercel do backend tenha root directory em `backend/`, nao no repo principal.
+3. Preencher as variaveis de ambiente ausentes no Vercel.
+4. Liberar ou compartilhar o preview protegido.
+5. Executar:
 
 ```bash
 VERCEL_TARGET_URL=https://seu-preview.vercel.app npm run health:vercel
 ```
 
-4. Confirmar resposta real da aplicacao em:
+6. Confirmar resposta real da aplicacao em:
    - `/health`
    - `/api/health`
    - `/api/version`
+
+## Revalidacao de 2026-05-08
+
+- `https://flow-finance-backend.vercel.app/` retornou `200` com HTML
+- `/health`, `/api/health` e `/api/version` retornaram `404`
+- o verificador classificou o dominio como shell de frontend apontado no lugar do backend API-only
 
 ## Referencias relacionadas
 
@@ -91,30 +103,26 @@ Comandos executados:
 - `VERCEL_TARGET_URL=https://flow-finance-frontend-nine.vercel.app/ npm run health:vercel`
 
 Resultado:
-- Backend: falha de contrato em `/health` sem `requestId/routeScope`.
-- Frontend: `/health`, `/api/health` e `/api/version` retornando `404`.
+- Backend: a revalida??o atual retorna `404` em `/health`, `/api/health` e `/api/version`, enquanto `/` responde HTML.
+- Frontend: permanece acessivel com `200`.
 
 Leitura operacional:
-- O bloqueio de release permanece no alinhamento de ambiente alvo e contrato de observabilidade.
+- O bloqueio de release permanece no backend alvo que deixou de expor o contrato de observabilidade esperado.
 - Nao ha evidencia nova de regressao no nucleo de testes locais nesta rodada.
 
 ## Atualizacao de execucao - 2026-04-12 (backend corrigido)
 
 Acoes executadas:
-- Deploy de producao do projeto `flow-finance-backend` realizado no Vercel.
-- `APP_VERSION` de producao ajustado para `0.9.6`.
-- Revalidacao de endpoint publico de versao executada com sucesso.
+- O deploy do backend foi validado historicamente, mas a revalidacao atual nao encontra mais o contrato de API esperado no dominio alvo.
+- A versao do repo subiu para `0.9.7`, mas o backend publico atual nao est? expondo `/api/version` neste momento.
 
 Evidencia:
-- `GET https://flow-finance-backend.vercel.app/api/version` retornando:
-  - `version: 0.9.6`
-  - `requestId` presente
-  - `routeScope` presente
-- `GET /health`, `GET /api/health` e `GET /api/version` no backend retornando `200` com contrato esperado.
+- `GET https://flow-finance-backend.vercel.app/` retornando `200` com HTML
+- `GET /health`, `GET /api/health` e `GET /api/version` retornando `404` na revalida??o atual
 
 Residual conhecido:
-- O comando `npm run health:vercel` ainda falha no backend por considerar `GET /` como obrigatorio com `200`.
-- No backend, `GET /` retornar `404` e esperado (nao ha rota raiz).
+- O comando `npm run health:vercel` agora aponta explicitamente quando o dominio backend parece servir o shell do frontend.
+- O fato de `GET /` responder `200` com HTML e os endpoints de API retornarem `404` sugere alias/deploy errado, nao um API-only saudavel.
 
 ## Atualizacao de execucao - 2026-04-12 (gate backend aprovado)
 
@@ -172,14 +180,8 @@ Acoes executadas:
 - Revalidacao final do contrato de observabilidade executada no backend oficial.
 
 Evidencia tecnica:
-- `GET https://flow-finance-backend.vercel.app/health` -> `200`
-- `GET https://flow-finance-backend.vercel.app/api/health` -> `200`
-- `GET https://flow-finance-backend.vercel.app/api/version` -> `200`
-- `apiHealth.observability.sentryConfigured` -> `true`
-
-Decisao operacional final:
-- **GO TOTAL** confirmado para o ciclo atual.
-- Sem bloqueios de release em aberto no contrato backend.
+- A decis?o de `GO TOTAL` ficou historicamente registrada, mas a revalida??o atual do dom?nio backend n?o confirma mais o contrato de API esperado.
+- O estado operacional atual exige corre??o de roteamento/deploy antes de reabrir o selo de aprova??o.
 
 ## Atualizacao de execucao - 2026-04-23 (CI verde + revalidacao)
 
@@ -198,8 +200,27 @@ Resultado observado (backend):
 - `GET /api/version` -> `200` com `version = 0.9.6`
 
 Leitura operacional:
-- Estado do ciclo: `verde`.
-- O backend continua cumprindo o contrato de observabilidade.
-- O frontend esta publicado e acessivel nos dominios de referencia.
+- Estado do ciclo: `parcial`.
+- O frontend continua publicado e acessivel nos dominios de referencia.
+- O backend atual precisa de revalidacao/redeploy porque nao exp?e mais o contrato de observabilidade esperado.
+
+## Atualizacao de execucao - 2026-05-08 (revalidacao atual)
+
+Acoes executadas:
+- `VERCEL_TARGET_URL=https://flow-finance-backend.vercel.app/ npm run health:vercel`
+- `Invoke-WebRequest` ao frontend principal em `https://flow-finance-frontend-nine.vercel.app/`
+
+Resultado observado:
+- Backend:
+  - `/` -> `200` com HTML
+  - `/health` -> `404`
+  - `/api/health` -> `404`
+  - `/api/version` -> `404`
+- Frontend principal:
+  - `200`
+
+Leitura operacional:
+- O frontend segue publicado.
+- O backend alvo continua desalinhado com o contrato de observabilidade esperado e nao deve ser tratado como pronto para fechamento de deploy operacional.
 
 

@@ -16,6 +16,7 @@
  */
 
 import { API_ENDPOINTS, apiRequest } from '../config/api.config';
+import { logWarn } from '../utils/logger';
 
 export type LocalSyncEntity = 'goals' | 'accounts' | 'transactions' | 'reminders' | 'subscriptions';
 
@@ -71,9 +72,13 @@ export async function pushToCloud(
       credentials: 'include',
       silent: true,
     });
-  } catch {
-    // Falha silenciosa intencional: localStorage já foi atualizado.
-    // O próximo push bem-sucedido reconcilia o estado.
+  } catch (error) {
+    logWarn('[LocalSync] pushToCloud failed; keeping local state as source of truth', {
+      entity,
+      itemCount: items.length,
+      error,
+      fallback: 'local-sync-push-failed',
+    });
   }
 }
 
@@ -91,7 +96,12 @@ export async function pullFromCloud(since?: string): Promise<SyncPullResult | nu
       credentials: 'include',
       silent: true,
     });
-  } catch {
+  } catch (error) {
+    logWarn('[LocalSync] pullFromCloud failed; returning null to preserve local state', {
+      since: since ?? null,
+      error,
+      fallback: 'local-sync-pull-failed',
+    });
     return null;
   }
 }
@@ -125,7 +135,11 @@ export async function hydrateGoalsFromCloud(): Promise<boolean> {
   let local: Record<string, unknown>[] = [];
   try {
     local = JSON.parse(localStorage.getItem(GOALS_STORAGE_KEY) || '[]');
-  } catch {
+  } catch (error) {
+    logWarn('[LocalSync] Failed to parse local goals cache; using empty baseline', {
+      key: GOALS_STORAGE_KEY,
+      error,
+    });
     local = [];
   }
 

@@ -95,16 +95,16 @@ async function main() {
   }
 
   if (broken.length === 0) {
-    console.log('OK: no broken doc links found.');
+    process.stdout.write('OK: no broken doc links found.\n');
     return;
   }
 
-  console.log(`BROKEN: ${broken.length} doc link(s) are pointing to missing targets:\n`);
+  process.stdout.write(`BROKEN: ${broken.length} doc link(s) are pointing to missing targets:\n`);
   for (const b of broken) {
     const rel = path.relative(repoRoot, b.file);
-    console.log(`- ${normalizeSlashes(rel)}:${b.line} -> ${b.target}`);
-    console.log(`  resolved: ${b.resolved}`);
-    console.log(`  text: ${b.text}`);
+    process.stdout.write(`- ${normalizeSlashes(rel)}:${b.line} -> ${b.target}\n`);
+    process.stdout.write(`  resolved: ${b.resolved}\n`);
+    process.stdout.write(`  text: ${b.text}\n`);
   }
   process.exitCode = 1;
 }

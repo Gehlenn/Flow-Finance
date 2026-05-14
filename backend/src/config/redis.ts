@@ -15,15 +15,28 @@ const redisConfig = {
   },
   retry_strategy: (options: { error?: NodeJS.ErrnoException; total_retry_time: number; attempt: number }) => {
     if (options.error && options.error.code === 'ECONNREFUSED') {
-      logger.error('Redis connection refused');
+      logger.error({
+        errorCode: options.error.code,
+        attempt: options.attempt,
+        totalRetryTime: options.total_retry_time,
+        fallback: 'redis-connection-refused',
+      }, 'Redis connection refused');
       return new Error('Redis server connection refused');
     }
     if (options.total_retry_time > 1000 * 60 * 60) {
-      logger.error('Redis retry time exhausted');
+      logger.error({
+        attempt: options.attempt,
+        totalRetryTime: options.total_retry_time,
+        fallback: 'redis-retry-time-exhausted',
+      }, 'Redis retry time exhausted');
       return new Error('Retry time exhausted');
     }
     if (options.attempt > 10) {
-      logger.error('Redis max retry attempts reached');
+      logger.error({
+        attempt: options.attempt,
+        totalRetryTime: options.total_retry_time,
+        fallback: 'redis-max-retry-attempts',
+      }, 'Redis max retry attempts reached');
       return new Error('Max retry attempts reached');
     }
     // Exponential backoff
@@ -36,7 +49,10 @@ export const redisClient: RedisClientType = createClient(redisConfig);
 
 // Handle Redis events
 redisClient.on('error', (err: Error) => {
-  logger.error({ error: err }, 'Redis client error');
+  logger.error({
+    error: err,
+    fallback: 'redis-client-error',
+  }, 'Redis client error');
 });
 
 redisClient.on('connect', () => {
@@ -57,7 +73,11 @@ export const connectRedis = async (): Promise<void> => {
     await redisClient.connect();
     logger.info('Redis connection established');
   } catch (error) {
-    logger.error({ error }, 'Failed to connect to Redis');
+    logger.error({
+      error,
+      url: process.env.REDIS_URL || 'redis://localhost:6379',
+      fallback: 'redis-connect-failed',
+    }, 'Failed to connect to Redis');
     throw error;
   }
 };
@@ -68,7 +88,10 @@ export const disconnectRedis = async (): Promise<void> => {
     await redisClient.disconnect();
     logger.info('Redis connection closed');
   } catch (error) {
-    logger.error({ error }, 'Error disconnecting from Redis');
+    logger.error({
+      error,
+      fallback: 'redis-disconnect-failed',
+    }, 'Error disconnecting from Redis');
   }
 };
 
@@ -78,7 +101,11 @@ export const cache = {
     try {
       return await redisClient.get(key);
     } catch (error) {
-      logger.error({ error, key }, 'Cache get error');
+      logger.error({
+        error,
+        key,
+        fallback: 'redis-cache-get-failed',
+      }, 'Cache get error');
       return null;
     }
   },
@@ -91,7 +118,11 @@ export const cache = {
         await redisClient.set(key, value);
       }
     } catch (error) {
-      logger.error({ error, key }, 'Cache set error');
+      logger.error({
+        error,
+        key,
+        fallback: 'redis-cache-set-failed',
+      }, 'Cache set error');
     }
   },
 
@@ -99,7 +130,11 @@ export const cache = {
     try {
       await redisClient.del(key);
     } catch (error) {
-      logger.error({ error, key }, 'Cache delete error');
+      logger.error({
+        error,
+        key,
+        fallback: 'redis-cache-delete-failed',
+      }, 'Cache delete error');
     }
   },
 
@@ -108,7 +143,11 @@ export const cache = {
       const result = await redisClient.exists(key);
       return result === 1;
     } catch (error) {
-      logger.error({ error, key }, 'Cache exists error');
+      logger.error({
+        error,
+        key,
+        fallback: 'redis-cache-exists-failed',
+      }, 'Cache exists error');
       return false;
     }
   },
@@ -117,7 +156,12 @@ export const cache = {
     try {
       await redisClient.expire(key, ttl);
     } catch (error) {
-      logger.error({ error, key, ttl }, 'Cache expire error');
+      logger.error({
+        error,
+        key,
+        ttl,
+        fallback: 'redis-cache-expire-failed',
+      }, 'Cache expire error');
     }
   },
 };
@@ -148,7 +192,11 @@ export async function checkRedisHealth(): Promise<boolean> {
     await redisClient.ping();
     return true;
   } catch (error) {
-    logger.warn({ error }, 'Redis health check failed');
+    logger.warn({
+      error,
+      url: process.env.REDIS_URL || 'redis://localhost:6379',
+      fallback: 'redis-healthcheck-failed',
+    }, 'Redis health check failed');
     return false;
   }
 }
@@ -159,7 +207,11 @@ export const initRedis = async (): Promise<void> => {
     try {
       await connectRedis();
     } catch (error) {
-      logger.warn({ error }, 'Redis initialization failed - will retry on demand');
+      logger.warn({
+        error,
+        url: process.env.REDIS_URL || 'redis://localhost:6379',
+        fallback: 'redis-init-failed',
+      }, 'Redis initialization failed - will retry on demand');
     }
   }
 };

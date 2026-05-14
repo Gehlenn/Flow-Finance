@@ -19,9 +19,11 @@ import { makeId, now } from '../../utils/helpers';
 import { Transaction } from '../../types';
 import { Account } from '../../models/Account';
 import { buildFinancialGraph, invalidateGraphCache } from '../ai/financialGraph';
-import { detectFinancialLeaks } from '../ai/leakDetector';
+import { FinancialLeak, detectFinancialLeaks } from '../ai/leakDetector';
+import { FinancialReport } from '../finance/reportEngine';
 import { generateMonthlyReport } from '../finance/reportEngine';
 import { API_ENDPOINTS, getAuthHeaders, getStoredWorkspaceId } from '../config/api.config';
+import { logError, logInfo, logWarn } from '../utils/logger';
 
 
 // PART 5 - Storage
@@ -73,7 +75,13 @@ async function persistEventRemotely(event: FinancialEvent): Promise<void> {
       occurredAt: event.created_at,
     }),
   }).catch((error) => {
-    console.warn('[EventEngine] Failed to persist event remotely:', error);
+    logWarn('[EventEngine] Failed to persist event remotely', {
+      error,
+      eventId: event.id,
+      eventType: event.type,
+      workspaceId: getActiveWsId(),
+      fallback: 'event-engine-remote-persist-failed',
+    });
   });
 }
 
@@ -108,7 +116,12 @@ export async function refreshFinancialEvents(limit = MAX_EVENTS): Promise<Financ
     eventCacheByWorkspace.set(getActiveWsId(), refreshed);
     return refreshed;
   } catch (error) {
-    console.warn('[EventEngine] Failed to fetch remote events:', error);
+    logWarn('[EventEngine] Failed to fetch remote events', {
+      error,
+      workspaceId: getActiveWsId(),
+      limit,
+      fallback: 'event-engine-fetch-remote-failed',
+    });
     return getWorkspaceEventCache();
   }
 }
@@ -135,7 +148,16 @@ export function emitFinancialEvent(
   eventCacheByWorkspace.set(wsId, updated);
   void persistEventRemotely(full);
   subscribers.forEach(cb => {
-    try { cb(full); } catch (e) { console.error('[EventEngine] subscriber error', e); }
+    try {
+      cb(full);
+    } catch (error) {
+      logError('[EventEngine] subscriber error', error, {
+        eventId: full.id,
+        eventType: full.type,
+        workspaceId: wsId,
+        fallback: 'event-engine-subscriber-failed',
+      });
+    }
   });
   return full;
 }
@@ -221,6 +243,8 @@ export function initEventListeners(
     onAutopilotActions?: (actions: any[]) => void;
     onInsights?: (insights: any[]) => void;
     onRisks?: (risks: any[]) => void;
+    onLeaks?: (leaks: FinancialLeak[]) => void;
+    onReport?: (report: FinancialReport) => void;
   }
 ): () => void {
   const unsubscribe = subscribeToFinancialEvents(async (event) => {
@@ -233,7 +257,7 @@ export function initEventListeners(
       event.type !== 'bank_transactions_synced'
     ) return;
 
-    const { transactions, accounts, userId, onAutopilotActions, onInsights, onRisks } = getState();
+    const { transactions, accounts, userId, onAutopilotActions, onInsights, onRisks, onLeaks, onReport } = getState();
 
     try {
       // PART 6 - Run AI Orchestrator on relevant events
@@ -263,22 +287,19 @@ export function initEventListeners(
       // Run leak detection and report generation
       const leaks = detectFinancialLeaks(transactions);
       const report = generateMonthlyReport(transactions);
-
-      // TODO: handle leaks and report in UI
+      if (leaks.length > 0) {
+        onLeaks?.(leaks);
+      }
+      onReport?.(report);
     } catch (e) {
-      console.error('[EventEngine] listener pipeline error:', e);
+      logError('[EventEngine] listener pipeline error', e, {
+        eventType: event.type,
+        userId,
+        transactionCount: transactions.length,
+        fallback: 'event-engine-listener-pipeline-failed',
+      });
     }
   });
 
   return unsubscribe;
 }
-
-
-
-
-
-
-
-
-
-

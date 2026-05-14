@@ -167,4 +167,20 @@ describe('aiMemory', () => {
     expect(merchantMemory).toBeDefined();
     expect(merchantMemory!.value).toBe('ifood');
   });
+
+  it('detectAndLearnPatterns detects weekend spending from date-only values', async () => {
+    const txs = [
+      { ...makeTx('Cafe', 30, TransactionType.DESPESA, 0), date: '2026-03-07' },
+      { ...makeTx('Lanche', 25, TransactionType.DESPESA, 0), date: '2026-03-08' },
+      { ...makeTx('Taxi', 40, TransactionType.DESPESA, 0), date: '2026-03-14' },
+      { ...makeTx('Conta', 55, TransactionType.DESPESA, 0), date: '2026-03-10' },
+      { ...makeTx('Salario', 5000, TransactionType.RECEITA, 0), date: '2026-03-05' },
+    ];
+
+    await detectAndLearnPatterns('u1', txs);
+
+    const memories = await getAIMemory('u1');
+    const weekendMemory = memories.find((m) => m.key === 'weekend_spending');
+    expect(weekendMemory?.value).toBe('high');
+  });
 });

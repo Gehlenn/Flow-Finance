@@ -7,29 +7,38 @@ import { AITask, AITaskType, AITaskStatus, AITaskPriority } from './taskTypes';
 import { taskStore } from './taskStore';
 import { aiWorker } from './AIWorker';
 import { makeId } from '../../utils/helpers';
+import { logInfo, logWarn } from '../../utils/logger';
 
 class AITaskQueue {
   private initialized = false;
 
   initialize(): void {
     if (this.initialized) {
-      console.warn('[AI Task Queue] Already initialized');
+      logWarn('[AI Task Queue] Already initialized', {
+        fallback: 'ai-task-queue-already-initialized',
+      });
       return;
     }
 
-    console.log('[AI Task Queue] Initializing...');
+    logInfo('[AI Task Queue] Initializing...', {
+      fallback: 'ai-task-queue-initializing',
+    });
     
     // Start worker
     aiWorker.start();
 
     this.initialized = true;
-    console.log('[AI Task Queue] Ready');
+    logInfo('[AI Task Queue] Ready', {
+      fallback: 'ai-task-queue-ready',
+    });
   }
 
   shutdown(): void {
     aiWorker.stop();
     this.initialized = false;
-    console.log('[AI Task Queue] Shutdown complete');
+    logInfo('[AI Task Queue] Shutdown complete', {
+      fallback: 'ai-task-queue-shutdown-complete',
+    });
   }
 
   enqueueTask<T = any>(
@@ -59,7 +68,13 @@ class AITaskQueue {
     };
 
     taskStore.addTask(task);
-    console.log(`[AI Task Queue] Task enqueued: ${taskId} (${type})`);
+    logInfo('[AI Task Queue] Task enqueued', {
+      taskId,
+      taskType: type,
+      userId,
+      priority: task.priority,
+      fallback: 'ai-task-queue-task-enqueued',
+    });
 
     // Emit event
     window.dispatchEvent(
@@ -92,7 +107,10 @@ class AITaskQueue {
     }
 
     taskStore.updateTaskStatus(taskId, AITaskStatus.CANCELLED);
-    console.log(`[AI Task Queue] Task cancelled: ${taskId}`);
+    logInfo('[AI Task Queue] Task cancelled', {
+      taskId,
+      fallback: 'ai-task-queue-task-cancelled',
+    });
     return true;
   }
 

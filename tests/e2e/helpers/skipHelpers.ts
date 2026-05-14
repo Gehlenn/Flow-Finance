@@ -1,4 +1,4 @@
-import { test, Page } from '@playwright/test';
+﻿import { test, Page } from '@playwright/test';
 
 /**
  * Environment-aware skip helpers for E2E tests
@@ -31,7 +31,7 @@ export async function skipIf(
 
   const globalForceSkip = process.env.E2E_FORCE_SKIP_VERIFICATION === 'true';
   if (globalForceSkip && options.allowForceSkip !== false) {
-    console.warn(`⚠️  Forced execution despite: ${options.reason}`);
+    process.stdout.write(`âš ï¸  Forced execution despite: ${options.reason}\n`);
     return;
   }
 
@@ -43,7 +43,7 @@ export async function skipIf(
  */
 export async function hasAuthenticatedShell(page: Page): Promise<boolean> {
   return (await page.getByRole('button', { 
-    name: /Apoio IA|Consultor IA|Ajustes|Settings|Inicio|Caixa|Transacoes|Fluxo|Historico/i 
+    name: /Apoio IA|Consultor IA|Ajustes|Settings|Inicio|Caixa|Transacoes|Fluxo|Receitas|Historico/i 
   }).count()) > 0;
 }
 
@@ -58,7 +58,7 @@ export async function skipIfNoAuthShell(page: Page): Promise<void> {
     // Check for specific override
     const forceShell = process.env.E2E_FORCE_SHELL_VERIFICATION === 'true';
     if (forceShell) {
-      console.warn('⚠️  Forced execution despite missing authenticated shell');
+      process.stdout.write('WARN: Forced execution despite missing authenticated shell\\n');
       return;
     }
   }
@@ -81,7 +81,7 @@ export async function skipIfBackendUnavailable(
   const forceBackend = process.env.E2E_FORCE_BACKEND_AVAILABLE === 'true';
   
   if (forceBackend) {
-    console.warn('⚠️  Forced execution despite potential backend unavailability');
+    process.stdout.write('âš ï¸  Forced execution despite potential backend unavailability\n');
     return;
   }
 
@@ -141,3 +141,6 @@ export function annotateSkipReason(
     description: `[${category}] ${reason}`,
   });
 }
+
+
+

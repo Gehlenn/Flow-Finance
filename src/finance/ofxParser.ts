@@ -18,7 +18,19 @@ function makeId(): string {
 function parseOFXDate(raw: string): string {
   // OFX: YYYYMMDD or YYYYMMDDHHMMSS[.mmm][±hh:mm]
   const m = raw.trim().match(/^(\d{4})(\d{2})(\d{2})/);
-  if (m) return new Date(`${m[1]}-${m[2]}-${m[3]}`).toISOString();
+  if (m) {
+    const year = Number(m[1]);
+    const month = Number(m[2]) - 1;
+    const day = Number(m[3]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() === year
+      && localDate.getMonth() === month
+      && localDate.getDate() === day
+    ) {
+      return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+  }
   const d = new Date(raw);
   return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
 }

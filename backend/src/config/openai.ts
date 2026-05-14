@@ -8,6 +8,14 @@ export function initOpenAI(): OpenAI {
   if (client) return client;
 
   if (!env.OPENAI_API_KEY) {
+    logger.error(
+      {
+        hasApiKey: false,
+        model: env.OPENAI_MODEL,
+        fallback: 'openai-api-key-missing',
+      },
+      'OpenAI API key is missing'
+    );
     throw new Error('OPENAI_API_KEY is not set');
   }
 
@@ -54,6 +62,9 @@ export async function generateContent(
       errorType: error?.constructor?.name,
       stack: error?.stack,
       model: env.OPENAI_MODEL,
+      promptLength: prompt.length,
+      maxTokens: parseInt(env.OPENAI_MAX_TOKENS || '4096', 10),
+      fallback: 'openai-generate-content-failed',
     }, 'OpenAI generateContent error');
     throw error;
   }

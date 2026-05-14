@@ -43,6 +43,47 @@ function formatCurrency(value: number): string {
   return `R$ ${value.toFixed(2)}`;
 }
 
+function parsePredictionChartDate(value: string): Date | null {
+  const trimmed = value.trim();
+  const dateOnly = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    const year = Number(dateOnly[1]);
+    const month = Number(dateOnly[2]) - 1;
+    const day = Number(dateOnly[3]);
+    const localDate = new Date(year, month, day);
+    return Number.isNaN(localDate.getTime()) ? null : localDate;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+export function formatPredictionTooltipDate(value: string): string {
+  const parsed = parsePredictionChartDate(value);
+  if (!parsed) {
+    return 'Data inválida';
+  }
+
+  return parsed.toLocaleDateString('pt-BR', {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+export function formatPredictionXAxisTick(value: string): string {
+  const parsed = parsePredictionChartDate(value);
+  if (!parsed) {
+    return 'Data inválida';
+  }
+
+  return parsed.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+  });
+}
+
 const CustomTooltip: React.FC<{
   active?: boolean;
   payload?: any[];
@@ -55,12 +96,7 @@ const CustomTooltip: React.FC<{
   return (
     <div className="max-w-[320px] rounded-lg border border-slate-200 bg-white p-3 text-slate-900 shadow-sm">
       <div className="text-xs font-semibold text-slate-700">
-        {new Date(data.date).toLocaleDateString('pt-BR', {
-          weekday: 'short',
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        })}
+        {formatPredictionTooltipDate(data.date)}
       </div>
 
       <div className="mt-2 space-y-1 text-sm">
@@ -258,12 +294,10 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
       <div className="mt-4" style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={chartData} margin={{ top: 12, right: 12, bottom: 12, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="date"
-              tickFormatter={(value) =>
-                new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-              }
+              tickFormatter={(value) => formatPredictionXAxisTick(String(value))}
               minTickGap={16}
             />
             <YAxis tickFormatter={(v) => `R$ ${Number(v).toFixed(0)}`} width={80} />

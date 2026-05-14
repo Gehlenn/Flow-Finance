@@ -23,6 +23,22 @@ import { learnMemory } from './aiMemory';
 import { buildFinancialGraph, graphToAIContext, getTopMerchants, getCategorySpending } from './financialGraph';
 import { getSpendingPatterns, getUserBehaviors, getFinancialProfile, getMerchantCategories } from './memory';
 import { ProductFinancialIntelligence } from '../app/productFinancialIntelligence';
+import { logAIDebug } from './aiDebugService';
+import { logWarn } from '../utils/logger';
+
+function parseCfoDate(value: string): Date | null {
+  const dateOnly = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    const year = Number(dateOnly[1]);
+    const month = Number(dateOnly[2]) - 1;
+    const day = Number(dateOnly[3]);
+    const localDate = new Date(year, month, day);
+    return Number.isNaN(localDate.getTime()) ? null : localDate;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
 
 // ─── PART 2 — Response Model ──────────────────────────────────────────────────
 
@@ -32,6 +48,11 @@ export interface AICFOResponse {
   context_summary?: string;
   intent?: CFOIntent;
   timestamp: string;
+  diagnostic?: {
+    kind: 'ai_unavailable';
+    message: string;
+    suggestion?: string;
+  };
 }
 
 // ─── PART 4 — Intent Types ────────────────────────────────────────────────────
@@ -112,7 +133,8 @@ export function buildFinancialContext(
   // Receita e despesa do mês atual
   const now = new Date();
   const currentMonthTxs = baseTxs.filter(t => {
-    const d = new Date(t.date);
+    const d = parseCfoDate(t.date);
+    if (!d) return false;
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
   const monthIncome = currentMonthTxs
@@ -156,7 +178,12 @@ export function buildFinancialContext(
   try {
     const graph = buildFinancialGraph('local', accounts, transactions);
     graphContext = '\n\n' + graphToAIContext(graph, 6);
-} catch (err) { console.warn('[buildFinancialContext] Graph context unavailable:', err instanceof Error ? err : new Error(String(err))); }
+  } catch (err) {
+    logWarn('[buildFinancialContext] Graph context unavailable; continuing without graph enrichment', {
+      userId,
+      error: err,
+    });
+  }
 
   // AI MEMORY SYSTEM 2.0 — Behavioral context
   let behaviorContext = '';
@@ -205,7 +232,10 @@ export function buildFinancialContext(
       }
     }
   } catch (err) {
-    console.error('[buildFinancialContext] Erro ao carregar memórias:', err);
+    logWarn('[buildFinancialContext] Failed to load AI memories; continuing without behavioral context', {
+      userId,
+      error: err,
+    });
   }
 
   return `
@@ -299,19 +329,53 @@ Responda de forma consultiva, curta e baseada exclusivamente nos dados acima.
     // proxy the request to backend, which will call GPT‑4 or Gemini as configured
     const gemini = new GeminiService();
     const result = await gemini.generateCFO(question, context, intent);
+    const answer = result.answer?.trim();
+    const fallbackDiagnostic = {
+      kind: 'ai_unavailable' as const,
+      message: 'Nao foi possivel gerar uma resposta no momento.',
+      suggestion: 'Tente novamente em alguns instantes ou verifique a sessao do workspace.',
+    };
+    logAIDebug({
+      input: question,
+      intent,
+      raw_response: result.answer || '',
+      error: 'CFO response empty fallback',
+    });
+    if (!answer || answer.length === 0) {
+      logWarn('[AI CFO] Empty CFO response; returning fallback diagnostic', {
+        intent,
+        fallback: 'ai-cfo-empty-response',
+      });
+    }
     return {
       question,
-      answer: result.answer || 'Não foi possível gerar uma resposta no momento.',
+      answer: answer && answer.length > 0 ? answer : fallbackDiagnostic.message,
       context_summary: 'Resposta ancorada em dados reais do workspace quando disponíveis.',
       intent,
       timestamp: new Date().toISOString(),
+      diagnostic: answer && answer.length > 0 ? undefined : fallbackDiagnostic,
     };
   } catch (err: any) {
+    logWarn('[AI CFO] Failed to generate CFO response; returning fallback diagnostic', {
+      intent,
+      error: err,
+      fallback: 'ai-cfo-response-failed',
+    });
+    logAIDebug({
+      input: question,
+      intent,
+      error: String(err?.message || err || 'CFO response failed'),
+    });
     return {
       question,
       answer: 'Com base nos seus dados, não consegui processar a consulta agora. Verifique sua conexão e tente novamente.',
       intent,
       timestamp: new Date().toISOString(),
+      diagnostic: {
+        kind: 'ai_unavailable',
+        message: 'Com base nos seus dados, não consegui processar a consulta agora.',
+        suggestion: 'Verifique sua conexão, recarregue a sessão do workspace e tente novamente.',
+      },
     };
   }
 }

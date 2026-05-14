@@ -163,7 +163,15 @@ export const firebaseSessionController = asyncHandler(async (req: Request, res: 
       }
     });
   } catch (error) {
-    logger.error({ error }, 'Firebase session exchange error');
+    logger.error({
+      error,
+      path: req.path,
+      ip: req.ip,
+      hasIdToken: typeof idToken === 'string',
+      idTokenLength: typeof idToken === 'string' ? idToken.length : 0,
+      firebaseConfigured: isFirebaseIdentityVerificationConfigured(),
+      fallback: 'firebase-session-exchange-failed',
+    }, 'Firebase session exchange error');
     throw new AppError(401, 'Invalid Firebase identity token');
   }
 });
@@ -231,7 +239,14 @@ export const refreshController = asyncHandler(async (req: Request, res: Response
       expiresIn: decodedToken.exp - Math.floor(Date.now() / 1000),
     });
   } catch (error) {
-    logger.error({ error, userId: req.userId, hasRefreshToken: !!providedRefreshToken }, 'Refresh error');
+    logger.error({
+      error,
+      userId: req.userId,
+      hasRefreshToken: !!providedRefreshToken,
+      hasAuthorizationToken: !providedRefreshToken && !!req.userId && !!req.userEmail,
+      refreshTokenLength: typeof providedRefreshToken === 'string' ? providedRefreshToken.length : 0,
+      fallback: 'auth-refresh-failed',
+    }, 'Refresh error');
     if (error instanceof AppError) {
       throw error;
     }
@@ -271,7 +286,13 @@ export const validateController = asyncHandler(async (req: Request, res: Respons
       expiresIn: expirationTime
     });
   } catch (error) {
-    logger.error({ error, userId: req.userId }, 'Validate error');
+    logger.error({
+      error,
+      userId: req.userId,
+      hasUserEmail: !!req.userEmail,
+      hasExpiration: typeof req.userExp === 'number',
+      fallback: 'auth-validate-failed',
+    }, 'Validate error');
     res.json({ valid: false });
   }
 });

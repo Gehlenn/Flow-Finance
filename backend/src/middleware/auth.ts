@@ -100,7 +100,12 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
       }
     }
   } catch (error) {
-    logger.error({ error }, 'Auth middleware error');
+    logger.error({
+      error,
+      requestId: requestContext.requestId,
+      routeScope: requestContext.routeScope,
+      fallback: 'auth-middleware-error',
+    }, 'Auth middleware error');
     res.status(500).json(buildAuthError('Internal server error'));
   }
 }
@@ -120,13 +125,22 @@ export function optionalAuthMiddleware(req: Request, res: Response, next: NextFu
           updateRequestContext({ userId: payload.userId, userEmail: payload.email });
         }
       } catch (error) {
-        logger.debug('Optional auth token invalid');
+        logger.debug({
+          requestId: requestContext.requestId,
+          routeScope: requestContext.routeScope,
+          fallback: 'optional-auth-token-invalid',
+        }, 'Optional auth token invalid');
       }
     }
 
     next();
   } catch (error) {
-    logger.error({ error }, 'Optional auth middleware error');
+    logger.error({
+      error,
+      requestId: requestContext.requestId,
+      routeScope: requestContext.routeScope,
+      fallback: 'optional-auth-middleware-error',
+    }, 'Optional auth middleware error');
     res.status(500).json({
       message: 'Internal server error',
       requestId: requestContext.requestId,
@@ -169,7 +183,13 @@ export function generateToken(userId: string, email: string, expiresIn?: string 
 export function decodeToken(token: string): JWTPayload | null {
   try {
     return jwt.verify(token, env.JWT_SECRET) as JWTPayload;
-  } catch {
+  } catch (error) {
+    logger.warn({
+      error,
+      tokenLength: typeof token === 'string' ? token.length : 0,
+      tokenType: typeof token,
+      fallback: 'auth-decode-token-failed',
+    }, '[AuthMiddleware] Failed to decode token; returning null');
     return null;
   }
 }

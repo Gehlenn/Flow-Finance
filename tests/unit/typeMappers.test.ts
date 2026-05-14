@@ -9,7 +9,7 @@ describe('typeMappers', () => {
       amount: 100,
       type: 'Receita',
       category: 'Pessoal',
-      description: 'Salário',
+      description: 'Salario',
       date: '2026-03-20T00:00:00.000Z',
       account_id: 'acc1',
       merchant: 'Empresa',
@@ -28,7 +28,7 @@ describe('typeMappers', () => {
       amount: 100,
       type: TransactionType.RECEITA,
       category: Category.PESSOAL,
-      description: 'Salário',
+      description: 'Salario',
       date: '2026-03-20T00:00:00.000Z',
       account_id: 'acc1',
       merchant: 'Empresa',
@@ -41,6 +41,21 @@ describe('typeMappers', () => {
       recurrence_interval: 1,
       generated: false,
     });
+    expect(toApiTransaction(domain)).toMatchObject(api);
+  });
+
+  it('mantem date-only de transaction como data local no mapper', () => {
+    const api = {
+      id: 'tx2',
+      amount: 120,
+      type: 'Despesa',
+      category: 'Pessoal',
+      description: 'Mercado',
+      date: '2026-03-20',
+    };
+
+    const domain = toDomainTransaction(api);
+    expect(domain.date).toBe('2026-03-20');
     expect(toApiTransaction(domain)).toMatchObject(api);
   });
 
@@ -67,6 +82,21 @@ describe('typeMappers', () => {
     expect(toApiAccount(domain)).toMatchObject(api);
   });
 
+  it('normaliza createdAt para ISO e aceita date-only no account mapper', () => {
+    const api = {
+      id: 'acc2',
+      user_id: 'user2',
+      name: 'Conta',
+      type: 'checking',
+      balance: 500,
+      currency: 'BRL',
+      createdAt: '2026-03-20',
+    };
+
+    const domain = toDomainAccount(api);
+    expect(domain.created_at).toBe('2026-03-20');
+  });
+
   it('converte Reminder API <-> Domain', () => {
     const api = {
       id: 'rem1',
@@ -90,5 +120,44 @@ describe('typeMappers', () => {
       isRecurring: false,
     });
     expect(toApiReminder(domain)).toMatchObject(api);
+  });
+
+  it('mantem date-only de reminder como data local no mapper', () => {
+    const api = {
+      id: 'rem2',
+      title: 'Pagar conta',
+      date: '2026-03-20',
+      type: 'Pessoal',
+      amount: 200,
+      completed: false,
+      priority: 'baixa',
+      isRecurring: false,
+    };
+
+    const domain = toDomainReminder(api);
+    expect(domain.date).toBe('2026-03-20');
+    expect(toApiReminder(domain)).toMatchObject(api);
+  });
+
+  it('normaliza datas invalidas de transaction e reminder para ISO atual', () => {
+    const tx = toDomainTransaction({
+      id: 'tx-invalid',
+      amount: 10,
+      type: 'Despesa',
+      category: 'Pessoal',
+      description: 'Teste',
+      date: 'invalid-date',
+    });
+
+    const reminder = toDomainReminder({
+      id: 'rem-invalid',
+      title: 'Teste',
+      date: 'invalid-date',
+      type: 'Pessoal',
+      amount: 1,
+    });
+
+    expect(new Date(tx.date).getTime()).not.toBeNaN();
+    expect(new Date(reminder.date).getTime()).not.toBeNaN();
   });
 });

@@ -143,12 +143,25 @@ function buildWorkspaceScopedStorageKey(userId: string, workspaceId: string): st
 function parseWorkspaceScopedStorageKey(scopeKey: string): { workspaceId?: string; userId: string } {
   const separatorIndex = scopeKey.indexOf('::');
   if (separatorIndex === -1) {
+    logger.warn({
+      scopeKey,
+      fallback: 'banking-scoped-storage-key-parse-failed',
+    }, 'Malformed workspace scoped storage key encountered');
     return { userId: scopeKey };
   }
 
+  const workspaceId = scopeKey.slice(0, separatorIndex);
+  const userId = scopeKey.slice(separatorIndex + 2);
+  if (!workspaceId || !userId) {
+    logger.warn({
+      scopeKey,
+      fallback: 'banking-scoped-storage-key-parse-failed',
+    }, 'Incomplete workspace scoped storage key encountered');
+  }
+
   return {
-    workspaceId: scopeKey.slice(0, separatorIndex),
-    userId: scopeKey.slice(separatorIndex + 2),
+    workspaceId,
+    userId,
   };
 }
 
@@ -186,7 +199,12 @@ function parseConnectorMap(): Record<string, number> {
     const parsed = JSON.parse(env.PLUGGY_BANK_CONNECTORS) as Record<string, number>;
     return parsed || {};
   } catch (err) {
-    logger.warn({ err }, 'Failed to parse PLUGGY_BANK_CONNECTORS environment variable');
+    logger.warn({
+      err,
+      envVar: 'PLUGGY_BANK_CONNECTORS',
+      rawLength: env.PLUGGY_BANK_CONNECTORS.length,
+      fallback: 'pluggy-bank-connectors-parse-failed',
+    }, 'Failed to parse PLUGGY_BANK_CONNECTORS environment variable');
     return {};
   }
 }
@@ -200,7 +218,12 @@ function parseDefaultCredentials(): Record<string, unknown> | null {
     const parsed = JSON.parse(env.PLUGGY_DEFAULT_CREDENTIALS_JSON) as Record<string, unknown>;
     return parsed || null;
   } catch (err) {
-    logger.warn({ err }, 'Failed to parse PLUGGY_DEFAULT_CREDENTIALS_JSON environment variable');
+    logger.warn({
+      err,
+      envVar: 'PLUGGY_DEFAULT_CREDENTIALS_JSON',
+      rawLength: env.PLUGGY_DEFAULT_CREDENTIALS_JSON.length,
+      fallback: 'pluggy-default-credentials-parse-failed',
+    }, 'Failed to parse PLUGGY_DEFAULT_CREDENTIALS_JSON environment variable');
     return null;
   }
 }
@@ -454,7 +477,15 @@ export const connectBankController = asyncHandler(async (req: Request, res: Resp
       return;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown Pluggy error';
-      logger.error({ error: message, userId: resolvedUserId, bankId }, 'Pluggy connect failed');
+      logger.error({
+        error: message,
+        userId: resolvedUserId,
+        bankId,
+        workspaceId,
+        itemId,
+        connectorId,
+        fallback: 'pluggy-connect-failed',
+      }, 'Pluggy connect failed');
       res.status(502).json({ message: `Pluggy connect failed: ${message}` });
       return;
     }
@@ -602,7 +633,14 @@ export const syncBankController = asyncHandler(async (req: Request, res: Respons
       return;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown Pluggy error';
-      logger.error({ error: message, userId: resolvedUserId, connectionId }, 'Pluggy sync failed');
+      logger.error({
+        error: message,
+        userId: resolvedUserId,
+        workspaceId,
+        connectionId,
+        days,
+        fallback: 'pluggy-sync-failed',
+      }, 'Pluggy sync failed');
       res.status(502).json({ message: `Pluggy sync failed: ${message}` });
       return;
     }
@@ -712,7 +750,12 @@ export const pluggyWebhookController = asyncHandler(async (req: Request, res: Re
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown Pluggy webhook error';
     await markConnectionsAsError(itemId, `Webhook refresh failed: ${message}`);
-    logger.error({ eventName, itemId, error: message }, 'Pluggy webhook processing failed');
+    logger.error({
+      eventName,
+      itemId,
+      error: message,
+      fallback: 'pluggy-webhook-processing-failed',
+    }, 'Pluggy webhook processing failed');
     res.status(202).json({ received: true, processed: false, reason: 'refresh-failed' });
   }
 });

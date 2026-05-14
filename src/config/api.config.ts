@@ -1,5 +1,6 @@
-﻿import { getEphemeralAccessToken } from '../services/authSessionStore';
+import { getEphemeralAccessToken } from '../services/authSessionStore';
 import { reportError } from './sentry';
+import { logError, logWarn } from '../utils/logger';
 
 /**
  * API CONFIGURATION - Backend Proxy Setup
@@ -350,7 +351,12 @@ export async function apiRequest<T>(
 
       if (attempt < maxRetries) {
         if (!silent) {
-          console.warn(`[API] Request to ${endpoint} failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying...`);
+          logWarn(`[API] Request to ${endpoint} failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying...`, {
+            endpoint,
+            attempt: attempt + 1,
+            maxAttempts: maxRetries + 1,
+            fallback: 'api-request-retry',
+          });
         }
         await new Promise(resolve => setTimeout(resolve, API_CONFIG.RETRY_DELAY * (attempt + 1)));
       }
@@ -358,7 +364,12 @@ export async function apiRequest<T>(
   }
 
   if (!silent) {
-    console.error(`[API] Request to ${endpoint} failed after ${maxRetries + 1} attempts:`, lastError);
+    logError(`[API] Request to ${endpoint} failed after ${maxRetries + 1} attempts`, {
+      endpoint,
+      attempts: maxRetries + 1,
+      error: lastError,
+      fallback: 'api-request-exhausted',
+    });
   }
   reportApiFailure(endpoint, lastError, silent);
   throw lastError;
@@ -383,6 +394,8 @@ export async function apiRequest<T>(
  *   }
  * );
  */
+
+
 
 
 

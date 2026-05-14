@@ -188,6 +188,12 @@ O que ainda não está fechado:
 - prova final no ambiente alvo do Vercel quando o preview estiver protegido por autenticação
 - alinhamento total de variáveis de ambiente de observabilidade e versão
 
+## Deploy Vercel
+
+O backend deve ser publicado como projeto Vercel separado com `root directory = backend/`.
+
+Se o domínio backend passar a responder HTML na raiz e `404` em `/health`, `/api/health` e `/api/version`, o erro mais provável está no alias/root directory do projeto, não no contrato do Express.
+
 ## Referências
 
 - [README.md](README.md)

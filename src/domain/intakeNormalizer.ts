@@ -74,9 +74,33 @@ function parseAmount(raw: number | string): number {
   return isNaN(n) ? 0 : Math.abs(n);
 }
 
+function formatLocalDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function safeIso(raw?: string): string {
   if (!raw) return new Date().toISOString();
-  const d = new Date(raw);
+
+  const trimmed = raw.trim();
+  const dateOnly = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    const year = Number(dateOnly[1]);
+    const month = Number(dateOnly[2]) - 1;
+    const day = Number(dateOnly[3]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() === year
+      && localDate.getMonth() === month
+      && localDate.getDate() === day
+    ) {
+      return formatLocalDateKey(localDate);
+    }
+  }
+
+  const d = new Date(trimmed);
   return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
 }
 

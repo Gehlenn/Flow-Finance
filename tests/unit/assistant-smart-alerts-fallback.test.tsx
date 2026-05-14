@@ -4,9 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import Assistant from '../../components/Assistant';
 import { Category, TransactionType } from '../../types';
+import { runFinancialAutopilot } from '../../src/ai/financialAutopilot';
 
 const { apiRequestMock } = vi.hoisted(() => ({
   apiRequestMock: vi.fn(),
+}));
+
+const assistantMocks = vi.hoisted(() => ({
+  logWarn: vi.fn(),
 }));
 
 vi.mock('../../src/config/api.config', async (importOriginal) => {
@@ -49,9 +54,12 @@ vi.mock('../../src/ai/financialAutopilot', () => ({
   ]),
 }));
 
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: assistantMocks.logWarn,
+}));
+
 describe('assistant smart alerts fallback', () => {
   beforeEach(() => {
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     apiRequestMock.mockReset();
   });
 
@@ -121,5 +129,52 @@ describe('assistant smart alerts fallback', () => {
       expect(screen.getAllByText(/Sugestao: R\$/i).length).toBeGreaterThan(0);
       expect(apiRequestMock).not.toHaveBeenCalled();
     });
+  });
+
+  it('shows a visible diagnostic when smart alerts generation fails', async () => {
+    vi.mocked(runFinancialAutopilot).mockImplementationOnce(() => {
+      throw new Error('autopilot failed');
+    });
+
+    render(
+      <Assistant
+        reminders={[]}
+        alerts={[]}
+        goals={[]}
+        transactions={[
+          {
+            id: 'tx-1',
+            amount: 200,
+            type: TransactionType.DESPESA,
+            category: Category.PESSOAL,
+            description: 'Uber',
+            date: new Date().toISOString(),
+          } as any,
+        ]}
+        workspacePlan="pro"
+        onToggleComplete={vi.fn()}
+        onDeleteReminder={vi.fn()}
+        onAddReminder={vi.fn()}
+        onUpdateReminder={vi.fn()}
+        onSaveAlert={vi.fn()}
+        onDeleteAlert={vi.fn()}
+        onSaveGoal={vi.fn()}
+        onDeleteGoal={vi.fn()}
+        onUpdateGoal={vi.fn()}
+        hideValues={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Gerar sugestoes de limite/i }));
+
+    expect(await screen.findByRole('status')).toBeTruthy();
+    expect(screen.getByText(/Nao foi possivel gerar as sugestoes inteligentes agora/i)).toBeTruthy();
+    expect(screen.getByText(/Recarregue o painel ou revise se os dados de transacoes estao disponiveis/i)).toBeTruthy();
+    expect(assistantMocks.logWarn).toHaveBeenCalledWith(
+      '[Assistant] Failed to generate smart alerts',
+      expect.objectContaining({
+        fallback: 'assistant-smart-alerts-generation-failed',
+      }),
+    );
   });
 });

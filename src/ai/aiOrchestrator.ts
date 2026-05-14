@@ -37,6 +37,7 @@ import { runFinancialAutopilot, AutopilotAction } from './financialAutopilot';
 import { learnCategoryFromTransactions } from './categoryLearning';
 import { detectFinancialLeaks, FinancialLeak } from './leakDetector';
 import { updateAIMemory } from './memory';
+import { logWarn } from '../utils/logger';
 
 // ─── Pipeline Output ──────────────────────────────────────────────────────────
 
@@ -172,15 +173,35 @@ export async function runAIPipeline(
   try {
     const learningPromises = [
       // Keep the lightweight memory snapshot fed while the structured memory engine learns in parallel.
-      detectAndLearnPatterns(userId, transactions).catch(e => console.error('Erro em detectAndLearnPatterns:', e)),
-      learnMemory(userId, 'financial_profile', profile.profile, 0.8).catch(e => console.error('Erro ao salvar profile memory:', e)),
-      learnMemory(userId, 'balance_trend', financial_state.summary_current_month.balance >= 0 ? 'positivo' : 'negativo', 0.7).catch(e => console.error('Erro ao salvar balance trend memory:', e)),
+      detectAndLearnPatterns(userId, transactions).catch((error) => logWarn('[AI Orchestrator] detectAndLearnPatterns failed', {
+        userId,
+        transactionCount: transactions.length,
+        error,
+      })),
+      learnMemory(userId, 'financial_profile', profile.profile, 0.8).catch((error) => logWarn('[AI Orchestrator] profile memory write failed', {
+        userId,
+        transactionCount: transactions.length,
+        error,
+      })),
+      learnMemory(userId, 'balance_trend', financial_state.summary_current_month.balance >= 0 ? 'positivo' : 'negativo', 0.7).catch((error) => logWarn('[AI Orchestrator] balance trend memory write failed', {
+        userId,
+        transactionCount: transactions.length,
+        error,
+      })),
       // AI Memory System 2.0 - Structured behavioral learning
-      updateAIMemory(userId, transactions).catch(e => console.error('Erro em updateAIMemory v2:', e))
+      updateAIMemory(userId, transactions).catch((error) => logWarn('[AI Orchestrator] updateAIMemory v2 failed', {
+        userId,
+        transactionCount: transactions.length,
+        error,
+      }))
     ];
     await Promise.all(learningPromises);
   } catch (error) {
-    console.error("Uma ou mais promessas de aprendizado falharam:", error);
+    logWarn('[AI Orchestrator] Background learning pipeline failed', {
+      userId,
+      transactionCount: transactions.length,
+      error,
+    });
   }
 
   const processing_ms = Date.now() - start;

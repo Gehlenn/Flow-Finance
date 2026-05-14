@@ -80,6 +80,7 @@ Deferred:
 High confidence:
 - Sync entity unions had drift: backend/local sync included `subscriptions`, while Firestore sync omitted it.
 - `FinanceCategory` still existed in both finance categorization and AI schema modules even after cycle cleanup; both definitions were identical and safe to collapse into the engine-owned type.
+- `FinanceCategory` now comes from the engine-owned `categoryTypes.ts` module, while `transactionCategorizer.ts` keeps the public re-export for compatibility.
 
 Deferred:
 - Category contracts drift between frontend and backend validation. This is real, but it affects API validation/product data and should be handled in a dedicated contract migration.
@@ -129,7 +130,7 @@ Implemented:
 Deferred:
 - Several `any` clusters remain legitimate targets, especially prediction routes and AI worker result plumbing, but they touch financial/API payload interpretation or open-ended async results and deserve focused tests before replacement.
 - `unknown` at JSON/request/provider boundaries is mostly correct and should not be weakened into speculative rigid types.
-- `src/finance/importService.ts` still contains some parser-local debt and mojibake-era cleanup opportunities, but the remaining edits are lower leverage than the integration/service contracts addressed here.
+- `src/finance/importService.ts` was rechecked in UTF-8 and the visible mojibake was terminal rendering only; no source cleanup was needed in this pass.
 
 ### 6. Error Handling Cleanup
 
@@ -181,9 +182,18 @@ Implemented:
 - TransactionList now validates stored sort configuration values and falls back to the default ordering when the saved key or direction is not recognized.
 - Billing hook persistence now validates stored payloads before reading or appending them, so invalid legacy localStorage entries are skipped instead of poisoning the hook log.
 - Shared `getFromStorage()` now rejects JSON values whose basic type does not match the provided default, instead of trusting any parsed payload shape.
+- Open Banking disconnect and full-sync account-step failures now warn with operation, connection id, status code, request id, and message while preserving the existing tolerant local flow.
+- Open Banking now shows visible Pluggy loading diagnostics when health, connector listing, or connect-token creation fails.
+- The Pluggy loading error block now exposes an explicit retry action so the user can reopen the flow without refreshing the whole page.
+- Open Banking connection-list reload failures now warn and surface a visible UI diagnostic instead of failing behind an unhandled async refresh.
+- The connection-list reload error block now exposes a retry action so the user can re-run the refresh from the same screen.
+- The reload error block now reuses the provider recovery hint, so mock/configuration issues are explained instead of leaving a generic retry dead end.
+- Opening the add-bank flow now clears stale reload errors, so a list refresh failure does not leak into the add flow.
+- Open Banking user actions now surface unexpected individual sync/disconnect rejections visibly, and the disconnect icon button has an accessible action label.
+- Open Banking bulk sync now reports when every listed connection is in error instead of returning silently without attempting a sync.
 
 Deferred:
-- Banking/Open Finance disconnect and full-sync failure handling need observability improvements, but they affect active external integration behavior and should be tested separately.
+- Provider-specific Open Finance recovery flows still need a dedicated product pass after the now-visible generic failure states.
 
 ### 7. Deprecated Code And AI Artifacts
 
@@ -286,6 +296,11 @@ Deferred:
 - TransactionList now normalizes the saved date-range filter values before filtering, so a corrupt stored range does not hide the list or poison the cache key.
 - TransactionList header labels and share report copy were rewritten in clean UTF-8, removing mojibake from the visible list shell and exported summary.
 - Open Finance remains explicitly disabled by policy; the feature flag no longer auto-enables on enterprise context, so the expensive Pluggy path only comes back through an explicit env decision.
+- `goalService` now treats date-only deadlines as local calendar dates and marks a goal overdue only after the end of that day, not at midnight local time.
+- `smartGoalsEngine` now returns an explicit `recommendedMonthlySavings` field in feasibility results, including `null` for malformed or missing deadlines.
+- `csvParser`, `ofxParser`, `importNormalizer`, `moneyMap`, and `reportEngine` now parse date-only strings as local calendar dates instead of drifting by timezone through the import/report pipeline.
+- `financialEngine` now treats date-only analysis windows as local dates, so monthly summaries do not shift by timezone on date-only entries.
+- `subscriptionDetectionCore` and the AI subscription detector now infer recurring cycles and next charges from local date-only values instead of UTC-shifting the cadence window.
 - Main navigation and app loading copy were rewritten in clean UTF-8 so the core shell no longer shows mojibake in the most visible labels.
 - Error boundary and login surface copy were also rewritten in clean UTF-8, removing mojibake from the most visible recovery and entry screens.
 - Goals preset titles and placeholder copy were normalized to clean UTF-8, and the contribution input still parses pt-BR amounts safely.
@@ -305,3 +320,77 @@ Deferred:
 - Accounts form now rejects malformed balance text instead of silently saving it as zero, so invalid input cannot create a misleading account balance.
 - Goals creation and contribution now surface validation errors instead of failing silently, and contribution submit is only disabled when the field is empty rather than when the value is merely invalid.
 - Goals validation messages now clear as soon as the user edits the field again, so the form does not stay stuck in an error state after correction.
+- Fixed expense detection now parses date-only transaction strings as local calendar dates, ignores malformed recurring dates in monthly grouping, and keeps the next expected charge on a local date-only string.
+- Salary detection now parses date-only income strings as local calendar dates, and the payday formatter handles date-only values without timezone drift.
+- Financial graph aggregation now parses date-only values for merchant trend windows and same-day co-occurrence, so the graph does not drift by timezone on date-only history.
+- Financial autopilot, CFO context, and prediction rendering now parse date-only data locally, so recent-spend windows, monthly summaries, and chart labels do not drift by timezone.
+- Cashflow predictor, recurring service, and prediction hook now parse date-only dates locally before monthly averages, recurrence expansion, and chart conversion.
+- AI memory, memory analyzer, leak detection, receipt OCR, advanced context building, and CFO advisor now parse date-only transaction dates locally, so behavioral analysis, leak detection, receipt parsing, and advisory normalization do not drift by timezone on date-only history.
+- Insight generation now parses date-only dates locally for monthly windows and recent-small-purchase checks, so monthly trend insights do not drift by timezone on date-only history.
+- Financial analytics, timeline, forecast, and shared month helpers now parse date-only transaction dates locally, so timeline grouping, monthly aggregates, and cashflow forecasts do not drift by timezone.
+- Import duplicate detection now compares date-only values as local calendar dates, so imported files do not misclassify duplicates because of UTC shifting.
+- Type mappers, PDF statement parsing, and the remaining financial engine month filter now normalize date-only and invalid API values locally, so shared contracts do not leak malformed dates into domain objects or month summaries.
+- Analytics engine custom timeframe and timeline keys now use local date formatting, so date-only transactions do not drift by timezone in the cashflow graph or custom filters.
+- Cashflow predictor and recurring detector now serialize projected date-only values as local calendar days, so recurrence and projection previews do not drift by timezone.
+- Memory analyzer recurring-transaction predictions now serialize nextExpectedDate as a local calendar day, so memory-based recurrence previews do not drift by timezone.
+- Financial timeline day buckets now use local calendar keys, so timeline grouping does not drift by timezone on date-only transactions.
+- OCR receipt parser now returns local calendar date keys for BR and ISO date-only inputs, so receipt dates do not shift by timezone in downstream subscription parsing.
+- CSV and OFX parsers now keep date-only inputs as local calendar keys, so imported statement dates do not shift by timezone before they reach the transaction model.
+- Legacy OCR and PDF import engines now stamp extracted receipts with local calendar dates, so the fallback import path does not drift to the previous UTC day near midnight.
+- PDF extraction now also has regression coverage for empty-text and parser-rejection failures, so the fallback path stays visible instead of silently collapsing.
+- PredictionChart tick and tooltip formatting now use local calendar date parsing, so the forecast chart does not drift by timezone on date-only labels.
+- Intake normalizer now preserves date-only file and integration inputs as local calendar keys in occurredAt, so imported drafts do not reintroduce UTC drift before save.
+- Legacy import normalizer and the main import service now preserve date-only rows and OFX/CSV dates as local calendar keys, and recurring transaction expansion now emits local calendar dates, so the import pipeline does not reintroduce UTC drift through the legacy path or future recurrence generation.
+- PDF statement parsing now preserves BR and ISO date-only strings as local calendar keys, and the receipt OCR/CFO advisor paths now keep date-only values local before serializing them back to the UI or advisor summary.
+- Open Banking sync freshness now parses `last_sync` date-only values as local calendar dates in both the service formatter and the bank sync summary, so a fresh same-day connection is not flagged stale by timezone drift.
+- Billing overview and usage now fail soft on missing workspace context, while plan updates and billing hooks reject empty workspace/tenant ids before building Firestore paths.
+- Cloud sync now returns an empty pull result when workspace context is missing and rejects push attempts without a workspace id before touching the Firestore workspace store.
+- Workspace store reads now fail soft for empty workspace ids, while workspace-scoped writes and audit/event queries reject empty workspace or tenant context before building Firestore queries and paths.
+
+## Dead code removido
+
+- `pages/DashboardPage.tsx` era apenas um re-export morto para `components/Dashboard` e foi removido.
+- O type-check da app e do backend continua verde depois da remoção.
+
+- Adaptive AI salary timing now scans the real calendar for the next salary day instead of assuming 30-day months, so February and 31-day months no longer distort salary-based insights or cashflow boosts.
+
+## Queue examples removidos
+
+- `src/ai/queue/examples.ts` foi removido como exemplo/demo sem importação em runtime.
+- `npm run lint`, `npm run docs:check-mojibake` e `npm run test:critical` seguiram verdes depois da remoção.
+
+- Usage tracking now keeps month keys on the local calendar and passes Date objects through the adapter path, so month-boundary usage accounting no longer drifts into the wrong month.
+- Adaptive AI salary timing now scans the real calendar for the next salary day instead of assuming 30-day months, so February and 31-day months no longer distort salary-based insights or cashflow boosts.
+
+## Módulos órfãos removidos
+
+- `hooks/useCashFlowState.ts`, `components/SpendingAlerts.tsx`, `src/events/financialEventStream.ts` e `src/runtime/index.ts` não tinham importação viva e foram removidos.
+- `npm run lint`, `npm run docs:check-mojibake` e `npm run test:critical` seguiram verdes depois da remoção.
+
+- Workspace member add/remove now reject empty workspace or tenant context before building Firestore membership document ids, closing another invalid path on the workspace store write surface.
+
+## Chunk guard simplificado
+
+- `src/runtime/chunkGuard.ts` perdeu o alias legado `initChunkGuard` e o export morto `resetChunkErrorCount`.
+- `npm run lint`, `npm run docs:check-mojibake` e `npm run test:critical` continuaram verdes após a limpeza.
+
+### 2026-05-08 - Billing hook context fields are now stable even when payload carries conflicting workspace data.
+- `recordWorkspaceBillingHook()` now spreads `input.payload` first and overrides `id`, `tenantId`, `workspaceId`, and `createdAt` last, so payload data cannot replace the enclosing billing context.
+- Added a regression in `tests/unit/firestore-billing-store.test.ts` that feeds a conflicting `workspaceId` inside the payload and asserts the stored document keeps the outer workspace id.
+## Version guard simplificado
+
+- `src/runtime/versionGuard.ts` perdeu o helper morto de notificação de mismatch de versão.
+- `npm run lint`, `npm run docs:check-mojibake` e `npm run test:critical` continuaram verdes depois da limpeza.
+
+### 2026-05-08 - HTTP SaaS adapters now surface usage write failures and preserve the active workspace id in billing hooks.
+- `createHttpUsageStoreAdapter().write()` now throws when the API returns a non-OK response instead of silently accepting a failed sync.
+- Added `tests/unit/http-adapters.test.ts` to cover the usage write failure path and the active-workspace fallback in `createHttpBillingTransport()`.
+### 2026-05-08 - Removed dead skipped coverage for the deleted API storage provider test module.
+- `tests/unit/api-storage-provider.test.ts` was a `describe.skip` placeholder for a module that no longer exists, so it was removed to reduce irrelevant test noise.
+### 2026-05-08 - HTTP usage reads now normalize malformed payloads instead of trusting raw API shape.
+- `createHttpUsageStoreAdapter().read()` now normalizes the `usage` payload and drops non-object month entries, so a malformed API response cannot poison the local usage cache.
+- Added a regression in `tests/unit/http-adapters.test.ts` that returns `null` and string garbage in the payload and asserts only the valid month entry survives.
+## Limite desta passada
+
+- Os itens remanescentes agora caem em contrato compartilhado, migração de validação ou dependência de outra sessão.
+- O restante do cleanup deve ficar em passadas dedicadas, não em remoção cega.

@@ -1,5 +1,33 @@
 import { Transaction, TransactionType } from '../../../../types';
 
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function parsePatternDate(dateValue: string): Date | null {
+  const trimmed = dateValue.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const dateOnlyMatch = DATE_ONLY_PATTERN.exec(trimmed);
+  if (dateOnlyMatch) {
+    const year = Number(dateOnlyMatch[1]);
+    const month = Number(dateOnlyMatch[2]) - 1;
+    const day = Number(dateOnlyMatch[3]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() !== year
+      || localDate.getMonth() !== month
+      || localDate.getDate() !== day
+    ) {
+      return null;
+    }
+    return localDate;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export interface RecurringPatternInsight {
   key: string;
   transactions: Transaction[];
@@ -118,10 +146,13 @@ export class FinancialPatternDetector {
         continue;
       }
 
-      const sorted = [...list].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      const sorted = [...list].sort((a, b) => (parsePatternDate(a.date)?.getTime() ?? 0) - (parsePatternDate(b.date)?.getTime() ?? 0));
       const intervals = sorted.slice(1).map((item, index) => {
-        const current = new Date(item.date).getTime();
-        const previous = new Date(sorted[index].date).getTime();
+        const current = parsePatternDate(item.date)?.getTime();
+        const previous = parsePatternDate(sorted[index].date)?.getTime();
+        if (current == null || previous == null) {
+          return 1;
+        }
         return Math.max(1, Math.round((current - previous) / (1000 * 60 * 60 * 24)));
       });
 
@@ -171,7 +202,11 @@ export class FinancialPatternDetector {
           return null;
       }
 
-      const day = new Date(t.date).getDay();
+      const parsedDate = parsePatternDate(t.date);
+      if (!parsedDate) {
+        return null;
+      }
+      const day = parsedDate.getDay();
       const isWeekend = day === 0 || day === 6;
       if (!isWeekend || median <= 0) {
           return null;

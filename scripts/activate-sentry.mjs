@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 /**
  * Sentry Activation Script for Flow Finance v0.9.6
@@ -24,8 +24,8 @@ import path from 'path';
 const args = process.argv.slice(2);
 
 if (args.length < 2) {
-  console.error(`
-❌ Missing Sentry DSNs
+  process.stderr.write(`
+âŒ Missing Sentry DSNs
 
 Usage: node scripts/activate-sentry.mjs BACKEND_DSN FRONTEND_DSN
 
@@ -44,25 +44,25 @@ Example:
 const BACKEND_DSN = args[0];
 const FRONTEND_DSN = args[1];
 
-console.log(`
-╔════════════════════════════════════════════════════════════╗
-║  🔧 SENTRY ACTIVATION - Flow Finance v0.9.6               ║
-║                                                            ║
-║  Backend DSN:  ${BACKEND_DSN.substring(0, 40)}...        ║
-║  Frontend DSN: ${FRONTEND_DSN.substring(0, 40)}...       ║
-╚════════════════════════════════════════════════════════════╝
+process.stdout.write(`
+â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+â•‘  ðŸ”§ SENTRY ACTIVATION - Flow Finance v0.9.6               â•‘
+â•‘                                                            â•‘
+â•‘  Backend DSN:  ${BACKEND_DSN.substring(0, 40)}...        â•‘
+â•‘  Frontend DSN: ${FRONTEND_DSN.substring(0, 40)}...       â•‘
+â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 `);
 
 const run = (cmd, label) => {
   try {
-    console.log(`\n▶️  ${label}...`);
-    console.log(`   $ ${cmd}`);
+    process.stdout.write(`\nâ–¶ï¸  ${label}...`);
+    process.stdout.write(`   $ ${cmd}`);
     const output = execSync(cmd, { encoding: 'utf-8', stdio: 'inherit' });
-    console.log(`✅ ${label} completed`);
+    process.stdout.write(`âœ… ${label} completed`);
     return output;
   } catch (error) {
-    console.error(`❌ ${label} failed`);
-    console.error(error.message);
+    process.stderr.write(`âŒ ${label} failed`);
+    process.stderr.write(error.message);
     process.exit(1);
   }
 };
@@ -70,7 +70,7 @@ const run = (cmd, label) => {
 (async () => {
   try {
     // Step 1: Backend
-    console.log('\n┌─ BACKEND CONFIGURATION ─────────────────────────┐');
+    process.stdout.write('\nâ”Œâ”€ BACKEND CONFIGURATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”');
     run(
       'npx vercel link --yes --project flow-finance-backend --cwd . 2>&1',
       'Linking backend project'
@@ -87,7 +87,7 @@ const run = (cmd, label) => {
     );
 
     // Step 2: Frontend
-    console.log('\n┌─ FRONTEND CONFIGURATION ────────────────────────┐');
+    process.stdout.write('\nâ”Œâ”€ FRONTEND CONFIGURATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”');
     run(
       'npx vercel link --yes --project flow-finance-frontend --cwd . 2>&1',
       'Linking frontend project'
@@ -104,7 +104,7 @@ const run = (cmd, label) => {
     );
 
     // Step 3: Validation
-    console.log('\n┌─ VALIDATION ────────────────────────────────────┐');
+    process.stdout.write('\nâ”Œâ”€ VALIDATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”');
     
     const healthCheck = run(
       'VERCEL_TARGET_URL=https://flow-finance-backend.vercel.app npm run health:vercel 2>&1',
@@ -112,21 +112,22 @@ const run = (cmd, label) => {
     );
 
     if (healthCheck.includes('"sentryConfigured": true')) {
-      console.log('\n✅ Sentry is fully configured and active!');
-      console.log('\n📊 Next steps:');
-      console.log('   1. Verify in Sentry dashboard: https://sentry.io/');
-      console.log('   2. Trigger test error to confirm integration');
-      console.log('   3. Check error grouping in Sentry');
+      process.stdout.write('\nâœ… Sentry is fully configured and active!');
+      process.stdout.write('\nðŸ“Š Next steps:');
+      process.stdout.write('   1. Verify in Sentry dashboard: https://sentry.io/');
+      process.stdout.write('   2. Trigger test error to confirm integration');
+      process.stdout.write('   3. Check error grouping in Sentry');
     } else {
-      console.warn('\n⚠️  Sentry not yet showing as configured');
-      console.log('   This may take 1-2 minutes to propagate');
+      process.stderr.write('\nâš ï¸  Sentry not yet showing as configured');
+      process.stdout.write('   This may take 1-2 minutes to propagate');
     }
 
-    console.log('\n🎉 Sentry activation complete!');
+    process.stdout.write('\nðŸŽ‰ Sentry activation complete!');
     process.exit(0);
 
   } catch (error) {
-    console.error('\n❌ Activation failed:', error.message);
+    process.stderr.write('\nâŒ Activation failed:', error.message);
     process.exit(1);
   }
 })();
+

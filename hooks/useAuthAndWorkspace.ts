@@ -16,6 +16,7 @@ import {
   WorkspaceSummary,
 } from '../src/services/workspaceSession';
 import { hydrateGoalsFromCloud } from '../src/services/localSyncService';
+import { logWarn } from '../src/utils/logger';
 
 const IS_DEV = import.meta.env.DEV;
 
@@ -113,7 +114,14 @@ export function useAuthAndWorkspace() {
     });
 
     // Hidrata dados locais com a nuvem após o workspace estar pronto (fire-and-forget)
-    hydrateGoalsFromCloud().catch(() => {/* falha silenciosa — localStorage permanece */});
+    hydrateGoalsFromCloud().catch((error) => {
+      logWarn('[Auth] Failed to hydrate goals from cloud after workspace bootstrap', {
+        userId: userIdentity.id,
+        workspaceId: workspace.workspaceId,
+        error,
+        fallback: 'auth-hydrate-goals-cloud-failed',
+      });
+    });
 
     return workspace;
   }, []);
@@ -159,11 +167,21 @@ export function useAuthAndWorkspace() {
     });
     addBreadcrumb(`Development login enabled for ${resolvedEmail}`, 'auth', 'info');
 
-    await hydrateWorkspace({
-      id: resolvedUserId,
-      email: resolvedEmail,
-      name: resolvedName,
-    });
+    try {
+      await hydrateWorkspace({
+        id: resolvedUserId,
+        email: resolvedEmail,
+        name: resolvedName,
+      });
+    } catch (error) {
+      logWarn('[Auth] Development login workspace hydration failed', {
+        error,
+        userId: resolvedUserId,
+        email: resolvedEmail,
+        fallback: 'auth-development-workspace-hydration-failed',
+      });
+      setBackendSyncEnabled(false);
+    }
   }, [hydrateWorkspace]);
 
   const handleLogout = useCallback(async () => {
@@ -193,7 +211,11 @@ export function useAuthAndWorkspace() {
 
       if (workspaceId && !isE2EBootstrapActive) {
         void refreshWorkspace().catch((error) => {
-          console.warn('[Workspace] Failed to refresh workspace context:', error);
+          logWarn('[Workspace] Failed to refresh workspace context', {
+            error,
+            workspaceId,
+            fallback: 'workspace-refresh-failed',
+          });
         });
       }
     };
@@ -267,7 +289,12 @@ export function useAuthAndWorkspace() {
               });
             })
             .catch((error) => {
-              console.warn('[Auth] Failed to bootstrap backend token:', error);
+              logWarn('[Auth] Failed to bootstrap backend token', {
+                error,
+                userId: firebaseUser.uid,
+                email: firebaseUser.email,
+                fallback: 'auth-backend-token-bootstrap-failed',
+              });
               setBackendSyncEnabled(false);
             })
             .finally(() => {

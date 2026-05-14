@@ -1,7 +1,20 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+
+const mockWarn = vi.fn();
+
+vi.mock('./logger', () => ({
+  default: {
+    warn: mockWarn,
+  },
+}));
+
 import { createCorsOptions, isOriginAllowed, resolveAllowedOrigins } from './cors';
 
 describe('cors config', () => {
+  beforeEach(() => {
+    mockWarn.mockClear();
+  });
+
   it('allows loopback origins automatically in development', () => {
     const allowedOrigins = resolveAllowedOrigins({
       nodeEnv: 'development',
@@ -40,5 +53,21 @@ describe('cors config', () => {
 
     options.origin('https://evil.example.com', callback);
     expect(callback).toHaveBeenCalledWith(null, false);
+  });
+
+  it('registra aviso quando a origem informada e malformada', () => {
+    const allowedOrigins = resolveAllowedOrigins({
+      nodeEnv: 'development',
+      allowedOrigins: 'https://app.flow-finance.com',
+    });
+
+    expect(isOriginAllowed('not-a-valid-origin', allowedOrigins, 'development')).toBe(false);
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        origin: 'not-a-valid-origin',
+        error: expect.any(Error),
+      }),
+      'CORS origin parsing failed',
+    );
   });
 });

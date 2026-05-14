@@ -16,6 +16,7 @@ describe('assistant microcopy alignment', () => {
     expect(ASSISTANT_COPY.headerTitle).toBe('Assistente Financeiro');
     expect(ASSISTANT_COPY.headerSubtitle.toLowerCase()).toContain('caixa');
     expect(ASSISTANT_COPY.headerSubtitle.toLowerCase()).toContain('rotina');
-    expect(ASSISTANT_COPY.smartAlertsCta.toLowerCase()).toContain('limite');
+    expect(ASSISTANT_COPY.smartAlertsCta.toLowerCase()).toContain('caixa');
+    expect(ASSISTANT_COPY.timelineTitle.toLowerCase()).toContain('caixa');
   });
 });

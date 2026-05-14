@@ -225,8 +225,13 @@ export class ClinicAutomationService {
         {
           internalEventId,
           externalEventId,
+          sourceSystem,
+          sourceIp,
+          requestId,
+          eventType: payload.type,
           error: err.message,
-          stack: err.stack
+          stack: err.stack,
+          fallback: 'clinic-webhook-processing-failed',
         },
         'Failed to process clinic webhook'
       );
@@ -596,7 +601,11 @@ export class ClinicAutomationService {
       await this.redis.ping();
       details.redis = true;
     } catch (error) {
-      this.logger.warn({ err: error }, 'Redis ping failed during health check');
+      this.logger.warn({
+        err: error,
+        fallback: 'clinic-redis-healthcheck-failed',
+        detail: 'redis ping failed',
+      }, 'Redis ping failed during health check');
       details.redis = false;
     }
 

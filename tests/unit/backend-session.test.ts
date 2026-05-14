@@ -1,8 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bootstrapBackendSessionFromFirebase } from '../../src/services/backendSession';
 
+const loggerMocks = vi.hoisted(() => ({
+  logWarn: vi.fn(),
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: loggerMocks.logWarn,
+}));
+
 describe('bootstrapBackendSessionFromFirebase', () => {
   afterEach(() => {
+    vi.clearAllMocks();
     vi.restoreAllMocks();
   });
 
@@ -22,6 +31,35 @@ describe('bootstrapBackendSessionFromFirebase', () => {
 
     expect(payload.token).toBe('jwt-secure');
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('falha com mensagem explicita quando o backend retorna JSON invalido na troca firebase', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new Error('invalid json');
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+    await expect(
+      bootstrapBackendSessionFromFirebase({
+        idToken: 'firebase-id-token',
+        userId: 'u1',
+        email: 'u1@test.dev',
+        isDevelopment: false,
+      }),
+    ).rejects.toThrow(/Invalid session payload returned by backend/i);
+
+    expect(loggerMocks.logWarn).toHaveBeenCalledWith(
+      '[BackendSession] Firebase session exchange returned invalid JSON',
+      expect.objectContaining({
+        status: 200,
+        error: expect.any(Error),
+        fallback: 'backend-session-firebase-json-invalid',
+      }),
+    );
   });
 
   it('faz fallback para login legado apenas em desenvolvimento', async () => {

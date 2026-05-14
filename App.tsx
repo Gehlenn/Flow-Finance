@@ -20,6 +20,7 @@ import AITaskQueueMonitor from './components/dev/AITaskQueueMonitor';
 import { isFirebaseConfigured } from './services/firebase';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { addBreadcrumb, initSentry } from './src/config/sentry';
+import { logError } from './src/utils/logger';
 import {
   configureBillingTransport,
   configureUsageStoreAdapter,
@@ -126,6 +127,8 @@ const App: React.FC = () => {
     alerts: financialState.alerts,
     reminders: financialState.reminders,
     goals: financialState.goals,
+    latestLeaks: financialState.latestLeaks,
+    latestReport: financialState.latestReport,
     onToggleHideValues: () => setHideValues((current) => !current),
     onNavigateToTab: navigation.setActiveTab,
     onUpdateProfileName: (name: string) => {
@@ -180,6 +183,8 @@ const App: React.FC = () => {
     financialState.deleteTransaction,
     financialState.deleteTransactions,
     financialState.goals,
+    financialState.latestLeaks,
+    financialState.latestReport,
     financialState.reminders,
     financialState.toggleReminder,
     financialState.transactions,
@@ -220,7 +225,10 @@ const App: React.FC = () => {
 
   return (
     <ErrorBoundary onError={(error, errorInfo) => {
-      console.error('[App] Error caught by boundary:', error, errorInfo);
+      logError('[App] Error caught by boundary', error, {
+        errorInfo,
+        fallback: 'app-error-boundary-caught',
+      });
     }}>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-500 pb-20 overflow-visible">
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] transition-all duration-500">

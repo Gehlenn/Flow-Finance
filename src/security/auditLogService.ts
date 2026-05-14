@@ -4,6 +4,8 @@
  * Registra todas as operações críticas para auditoria e integridade.
  */
 
+import { logInfo } from '../utils/logger';
+
 export interface AuditLogEntry {
   id: string;
   event_type: string;
@@ -34,7 +36,13 @@ export function logAuditEvent(
   };
 
   auditLogs.push(entry);
-  console.log(`[AUDIT] ${eventType}: ${entity} ${entityId}`, metadata);
+  logInfo('[Audit] recorded event', {
+    eventType,
+    entity,
+    entityId,
+    metadata,
+    fallback: 'audit-log-event-recorded',
+  });
 }
 
 /**

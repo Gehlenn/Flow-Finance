@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Category, Goal } from '../types';
 import { formatCurrency } from '../utils/helpers';
 import { SECONDARY_FLOWS_COPY } from '../src/app/secondaryFlowsCopy';
+import { logWarn } from '../src/utils/logger';
 import {
   CalendarDays,
   Check,
@@ -38,6 +39,22 @@ const DEFAULT_FORM: GoalFormData = {
   deadline: '',
   category: Category.INVESTIMENTO,
 };
+
+function buildGoalsDiagnostic(kind: 'target' | 'contribute'): { title: string; message: string; suggestion: string } {
+  if (kind === 'target') {
+    return {
+      title: 'Valor alvo invalido',
+      message: 'O valor da meta precisa ser numerico e maior que zero.',
+      suggestion: 'Digite um valor como 1000, 2500,50 ou 10.000,00.',
+    };
+  }
+
+  return {
+    title: 'Aporte invalido',
+    message: 'O valor do aporte precisa ser numerico e maior que zero.',
+    suggestion: 'Digite um valor valido como 50, 150,75 ou 1.000,00.',
+  };
+}
 
 const GOAL_PRESETS: Array<{ title: string; category: Category }> = [
   { title: 'Reserva de emergência', category: Category.INVESTIMENTO },
@@ -202,7 +219,9 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
   const [contributeGoal, setContributeGoal] = useState<Goal | null>(null);
   const [contributeAmount, setContributeAmount] = useState('');
   const [targetAmountError, setTargetAmountError] = useState<string | null>(null);
+  const [targetAmountDiagnostic, setTargetAmountDiagnostic] = useState<{ title: string; message: string; suggestion: string } | null>(null);
   const [contributeError, setContributeError] = useState<string | null>(null);
+  const [contributeDiagnostic, setContributeDiagnostic] = useState<{ title: string; message: string; suggestion: string } | null>(null);
 
   const sortedGoals = useMemo(
     () => [...goals].sort((a, b) => getGoalProgress(b) - getGoalProgress(a)),
@@ -216,21 +235,39 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
     const currentAmount = Number(formData.currentAmount.replace(',', '.'));
 
     if (!formData.title.trim() || !Number.isFinite(targetAmount) || targetAmount <= 0) {
-      setTargetAmountError('Informe um valor alvo valido');
+      const diagnostic = buildGoalsDiagnostic('target');
+      setTargetAmountError(diagnostic.title);
+      setTargetAmountDiagnostic(diagnostic);
       return;
     }
 
     setTargetAmountError(null);
-    onCreateGoal({
-      title: formData.title.trim(),
-      targetAmount,
-      currentAmount: Number.isFinite(currentAmount) ? Math.min(Math.max(currentAmount, 0), targetAmount) : 0,
-      deadline: formData.deadline || undefined,
-      category: formData.category,
-    });
+    setTargetAmountDiagnostic(null);
+    try {
+      onCreateGoal({
+        title: formData.title.trim(),
+        targetAmount,
+        currentAmount: Number.isFinite(currentAmount) ? Math.min(Math.max(currentAmount, 0), targetAmount) : 0,
+        deadline: formData.deadline || undefined,
+        category: formData.category,
+      });
 
-    setFormData(DEFAULT_FORM);
-    setShowForm(false);
+      setFormData(DEFAULT_FORM);
+      setShowForm(false);
+    } catch (error) {
+      logWarn('[Goals] Failed to create goal', {
+        error,
+        title: formData.title.trim(),
+        fallback: 'goals-create-goal-failed',
+      });
+      const diagnostic = {
+        title: 'Nao foi possivel salvar a meta',
+        message: 'A meta foi validada, mas o sistema nao conseguiu persistir a criacao agora.',
+        suggestion: 'Tente novamente ou verifique a conexao com a base de dados.',
+      };
+      setTargetAmountError(diagnostic.title);
+      setTargetAmountDiagnostic(diagnostic);
+    }
   };
 
   const handleContribute = () => {
@@ -238,14 +275,33 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
 
     const amount = Number(contributeAmount.replace(',', '.'));
     if (!Number.isFinite(amount) || amount <= 0) {
-      setContributeError('Informe um aporte valido');
+      const diagnostic = buildGoalsDiagnostic('contribute');
+      setContributeError(diagnostic.title);
+      setContributeDiagnostic(diagnostic);
       return;
     }
 
     setContributeError(null);
-    onContributeGoal(contributeGoal.id, amount);
-    setContributeGoal(null);
-    setContributeAmount('');
+    setContributeDiagnostic(null);
+    try {
+      onContributeGoal(contributeGoal.id, amount);
+      setContributeGoal(null);
+      setContributeAmount('');
+    } catch (error) {
+      logWarn('[Goals] Failed to contribute to goal', {
+        error,
+        goalId: contributeGoal.id,
+        amount,
+        fallback: 'goals-contribute-failed',
+      });
+      const diagnostic = {
+        title: 'Nao foi possivel registrar o aporte',
+        message: 'O valor foi validado, mas a atualizacao da meta falhou agora.',
+        suggestion: 'Tente novamente ou atualize a tela para revalidar o estado da meta.',
+      };
+      setContributeError(diagnostic.title);
+      setContributeDiagnostic(diagnostic);
+    }
   };
 
   return (
@@ -263,7 +319,13 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
           </div>
         </div>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => {
+            setShowForm(true);
+            setTargetAmountError(null);
+            setTargetAmountDiagnostic(null);
+            setContributeError(null);
+            setContributeDiagnostic(null);
+          }}
           disabled={!canEditGoals}
           className="flex items-center gap-1.5 bg-emerald-500 text-white px-4 py-2.5 rounded-2xl text-[10px] font-black shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 active:scale-95 transition-all"
         >
@@ -281,7 +343,13 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
             <p className="text-[10px] text-slate-400 font-bold mt-1">{SECONDARY_FLOWS_COPY.goals.emptyDescription}</p>
           </div>
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              setShowForm(true);
+              setTargetAmountError(null);
+              setTargetAmountDiagnostic(null);
+              setContributeError(null);
+              setContributeDiagnostic(null);
+            }}
             className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white rounded-2xl text-sm font-black"
           >
             <Plus size={14} /> Criar meta
@@ -294,7 +362,13 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
             <p className="font-black text-slate-900 dark:text-white text-sm">Nova Meta</p>
             <button
-              onClick={() => setShowForm(false)}
+              onClick={() => {
+                setShowForm(false);
+                setTargetAmountError(null);
+                setTargetAmountDiagnostic(null);
+                setContributeError(null);
+                setContributeDiagnostic(null);
+              }}
               className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
             >
               <X size={15} />
@@ -339,11 +413,18 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
                   type="text"
                   inputMode="decimal"
                   value={formData.targetAmount}
-                  onChange={(event) => { setFormData((current) => ({ ...current, targetAmount: event.target.value })); setTargetAmountError(null); }}
+                  onChange={(event) => { setFormData((current) => ({ ...current, targetAmount: event.target.value })); setTargetAmountError(null); setTargetAmountDiagnostic(null); }}
                   placeholder="0,00"
                   className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
                 />
                 {targetAmountError && <p className="text-[10px] text-rose-500 font-bold mt-1">{targetAmountError}</p>}
+                {targetAmountDiagnostic && (
+                  <div role="status" className="mt-2 rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-500/10 p-3 space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-rose-700 dark:text-rose-300">{targetAmountDiagnostic.title}</p>
+                    <p className="text-[10px] font-bold text-rose-700 dark:text-rose-100">{targetAmountDiagnostic.message}</p>
+                    <p className="text-[8px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-300">Próximo passo: {targetAmountDiagnostic.suggestion}</p>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Valor atual (R$)</label>
@@ -449,17 +530,24 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
 
             <div>
               <label htmlFor="contribute-amount" className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Valor do aporte (R$)</label>
-              <input
-                id="contribute-amount"
-                type="text"
-                inputMode="decimal"
-                autoFocus
-                value={contributeAmount}
-                onChange={(event) => { setContributeAmount(event.target.value); setContributeError(null); }}
-                placeholder="0,00"
-                className="w-full mt-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-lg font-black text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
-              />
+                <input
+                  id="contribute-amount"
+                  type="text"
+                  inputMode="decimal"
+                  autoFocus
+                  value={contributeAmount}
+                  onChange={(event) => { setContributeAmount(event.target.value); setContributeError(null); setContributeDiagnostic(null); }}
+                  placeholder="0,00"
+                  className="w-full mt-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-lg font-black text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
+                />
               {contributeError && <p className="text-[10px] text-rose-500 font-bold mt-1">{contributeError}</p>}
+              {contributeDiagnostic && (
+                <div role="status" className="mt-2 rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-500/10 p-3 space-y-1">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-rose-700 dark:text-rose-300">{contributeDiagnostic.title}</p>
+                  <p className="text-[10px] font-bold text-rose-700 dark:text-rose-100">{contributeDiagnostic.message}</p>
+                  <p className="text-[8px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-300">Próximo passo: {contributeDiagnostic.suggestion}</p>
+                </div>
+              )}
             </div>
 
             <button

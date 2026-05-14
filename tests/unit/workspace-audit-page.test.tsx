@@ -8,10 +8,18 @@ const auditMocks = vi.hoisted(() => ({
   listWorkspaceAuditEventsPage: vi.fn(),
 }));
 
+const workspaceAuditLoggerMock = vi.hoisted(() => ({
+  logWarn: vi.fn(),
+}));
+
 vi.mock('../../src/services/workspaceSession', () => ({
   ensureActiveWorkspace: auditMocks.ensureActiveWorkspace,
   getCurrentWorkspaceIdentity: auditMocks.getCurrentWorkspaceIdentity,
   listWorkspaceAuditEventsPage: auditMocks.listWorkspaceAuditEventsPage,
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: workspaceAuditLoggerMock.logWarn,
 }));
 
 import WorkspaceAuditPage from '../../pages/WorkspaceAudit';
@@ -59,16 +67,17 @@ function setup(role: 'owner' | 'viewer') {
 describe('WorkspaceAuditPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    workspaceAuditLoggerMock.logWarn.mockReset();
   });
 
   it('shows filters and audit events for owner', async () => {
     setup('owner');
 
     await waitFor(() => {
-      expect(screen.getByText(/Workspace Audit/i)).toBeTruthy();
+      expect(screen.getByText(/Auditoria do workspace/i)).toBeTruthy();
       expect(screen.getByText(/workspace.plan_changed/i)).toBeTruthy();
-      expect(screen.getByDisplayValue(/Last 30 days/i)).toBeTruthy();
-      expect(screen.getByText(/Showing 1 loaded event/i)).toBeTruthy();
+      expect(screen.getByDisplayValue(/Últimos 30 dias/i)).toBeTruthy();
+      expect(screen.getByText(/Mostrando 1 evento carregado/i)).toBeTruthy();
     });
   });
 
@@ -76,9 +85,35 @@ describe('WorkspaceAuditPage', () => {
     setup('viewer');
 
     await waitFor(() => {
-      expect(screen.getByText(/Admin or owner required/i)).toBeTruthy();
+      expect(screen.getByText(/Owner ou admin necessários/i)).toBeTruthy();
     });
 
     expect(screen.queryByText(/workspace.plan_changed/i)).toBeNull();
+  });
+
+  it('shows a visible diagnostic when audit events fail to load', async () => {
+    auditMocks.ensureActiveWorkspace.mockRejectedValueOnce(new Error('network offline'));
+
+    render(
+      <WorkspaceAuditPage
+        userId="owner-1"
+        activeWorkspaceId="ws-1"
+        activeWorkspaceName="Workspace 1"
+        activeTenantName="Tenant 1"
+        activeWorkspaceRole="owner"
+        onNavigateToTab={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText(/Nao foi possivel carregar os eventos de auditoria deste workspace/i)).toBeTruthy();
+    expect(await screen.findByRole('status')).toBeTruthy();
+    expect(screen.getByText(/Falha ao carregar a auditoria/i)).toBeTruthy();
+    expect(screen.getByText(/Pr[óo]ximo passo:/i)).toBeTruthy();
+    expect(workspaceAuditLoggerMock.logWarn).toHaveBeenCalledWith(
+      '[WorkspaceAudit] Failed to load audit events',
+      expect.objectContaining({
+        fallback: 'workspace-audit-load-failed',
+      }),
+    );
   });
 });

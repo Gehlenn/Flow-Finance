@@ -1,6 +1,7 @@
 import { Transaction } from '../../types';
 import { makeId } from '../utils/helpers';
 import { getActiveWorkspaceScopedStorageKey } from '../utils/workspaceStorage';
+import { logWarn } from '../utils/logger';
 
 const STORAGE_KEY = 'flow_ai_debug';
 const MAX_LOGS = 100; // Limite para não encher o localStorage
@@ -26,7 +27,12 @@ export interface AIDebugEntry {
 function readLogs(): AIDebugEntry[] {
   try {
     return JSON.parse(localStorage.getItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY)) || '[]');
-  } catch {
+  } catch (error) {
+    logWarn('[AIDebug] Failed to parse debug logs storage; returning empty set', {
+      storageKey: getActiveWorkspaceScopedStorageKey(STORAGE_KEY),
+      error,
+      fallback: 'ai-debug-parse-failed',
+    });
     return [];
   }
 }

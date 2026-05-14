@@ -24,7 +24,6 @@ interface DashboardProps {
   alerts?: Array<{ id: string }>;
   reminders?: Reminder[];
   hideValues?: boolean;
-  onNavigateToAccounts?: () => void;
   onNavigateToInsights?: () => void;
   onNavigateToHistory?: () => void;
   onNavigateToFlow?: () => void;
@@ -143,6 +142,13 @@ export function buildDashboardFocusNote(metrics: DashboardMetrics): DashboardFoc
     };
   }
 
+  if (metrics.currentBalance < 0) {
+    return {
+      title: 'Saldo negativo pede revisao',
+      description: `O saldo consolidado esta negativo em ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Math.abs(metrics.currentBalance))}.`,
+    };
+  }
+
   if (metrics.activeAlerts > 0) {
     return {
       title: 'Alertas pedem revisao',
@@ -193,7 +199,6 @@ const Dashboard: React.FC<DashboardProps> = ({
   alerts = [],
   reminders = [],
   hideValues = false,
-  onNavigateToAccounts,
   onNavigateToInsights,
   onNavigateToHistory,
   onNavigateToFlow,
@@ -225,14 +230,14 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div className="rounded-3xl border border-slate-200 bg-white px-6 py-5 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Caixa</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Caixa</p>
             <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Leitura rapida do caixa</h2>
             <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-300">
               {userName ? `${userName}, veja o que entrou, saiu e exige acao.` : 'Veja o que entrou, saiu e exige acao no workspace ativo.'}
             </p>
           </div>
           <div className="rounded-2xl bg-slate-100 px-4 py-2 text-right dark:bg-slate-700">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Workspace ativo</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Workspace ativo</p>
             <p className="text-sm font-black text-slate-700 dark:text-slate-100">
               {activeWorkspaceName || 'Carregando workspace'}
             </p>
@@ -244,7 +249,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Saldo atual</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Saldo atual</p>
               <h3 className="mt-2 text-4xl font-black tracking-tight text-slate-950 dark:text-white ">
                 {valueOrHidden(metrics.currentBalance)}
               </h3>
@@ -257,7 +262,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <ComparisonMetricCard
               label="Entrou no mes"
               value={valueOrHidden(metrics.inflowMonth)}
@@ -271,10 +276,16 @@ const Dashboard: React.FC<DashboardProps> = ({
               icon={<ArrowDownRight size={16} />}
             />
             <ComparisonMetricCard
+              label="Receita prevista"
+              value={valueOrHidden(metrics.projectedRevenueMonth)}
+              tone="positive"
+              icon={<CalendarClock size={16} />}
+            />
+            <ComparisonMetricCard
               label="Saldo do mes"
               value={valueOrHidden(netMonth)}
               tone={netMonth >= 0 ? 'positive' : 'negative'}
-              icon={<CalendarClock size={16} />}
+              icon={<Wallet size={16} />}
             />
           </div>
         </section>
@@ -282,7 +293,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Estados financeiros</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Estados financeiros</p>
               <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">O que ja entrou, o que ainda nao entrou e o que esta atrasado</p>
             </div>
           </div>
@@ -317,7 +328,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <section className="rounded-3xl border border-amber-200 bg-amber-50/80 p-5 shadow-sm dark:border-amber-500/20 dark:bg-amber-500/10">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-amber-700 dark:text-amber-300">O que pede atencao</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">O que pede atencao</p>
               <p className="mt-1 text-xl font-black tracking-tight text-slate-900 dark:text-white">{focusNote.title}</p>
               <p className="mt-2 text-sm font-semibold text-slate-600 dark:text-slate-300">{focusNote.description}</p>
             </div>
@@ -355,7 +366,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         </section>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Leitura de recebiveis</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Leitura de recebiveis</p>
           <div className="mt-4 space-y-3">
             <MiniSummaryRow
               label="Pendente"
@@ -379,7 +390,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Acoes principais</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Acoes principais</p>
             <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">Siga para as telas que mudam a decisao do dia</p>
           </div>
         </div>
@@ -403,9 +414,9 @@ const Dashboard: React.FC<DashboardProps> = ({
             onClick={onNavigateToInsights}
           />
           <QuickActionButton
-            title="Consultar saldos"
-            description="Veja os saldos e contas registradas no workspace."
-            onClick={onNavigateToAccounts}
+            title="Ver receitas previstas"
+            description="Acompanhe o que ainda deve entrar no caixa nos proximos dias."
+            onClick={onNavigateToFlow}
           />
         </div>
       </div>
@@ -443,7 +454,7 @@ const ComparisonMetricCard: React.FC<{ label: string; value: string; icon: React
 }) => (
   <div className={`rounded-2xl border p-4 ${COMPARISON_TONE_CLASS_MAP[tone]}`}>
     <div className="flex items-center justify-between">
-      <p className="text-[10px] font-black uppercase tracking-[0.22em] opacity-70">{label}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">{label}</p>
       <span className="rounded-lg p-1.5">{icon}</span>
     </div>
     <p className="mt-2 text-xl font-black tracking-tight text-slate-900 dark:text-white">{value}</p>
@@ -487,7 +498,7 @@ const UrgencyCard: React.FC<{
   tone,
 }) => (
   <div className={`rounded-2xl border p-4 ${URGENCY_TONE_CLASS_MAP[tone]}`}>
-    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">{label}</p>
+    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{label}</p>
     <p className="mt-2 text-xl font-black tracking-tight text-slate-950 dark:text-white">{value}</p>
     <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-300">{description}</p>
   </div>
@@ -509,7 +520,7 @@ const MiniSummaryRow: React.FC<{
       <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white">{label}</p>
       <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-300">{count} item{count === 1 ? '' : 's'}</p>
     </div>
-    <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] ${MINI_SUMMARY_TONE_CLASS_MAP[tone]}`}>
+    <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${MINI_SUMMARY_TONE_CLASS_MAP[tone]}`}>
       {value}
     </span>
   </div>
@@ -552,3 +563,4 @@ const QuickActionButton: React.FC<{ title: string; description: string; onClick?
 );
 
 export default Dashboard;
+

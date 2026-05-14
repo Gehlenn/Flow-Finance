@@ -642,7 +642,12 @@ export class PredictionEngine {
         }
       }
     } catch (err) {
-      logger.warn({ err, userId }, 'PredictionEngine: Redis cache read failed, falling back to memory');
+      logger.warn({
+        err,
+        userId,
+        cacheKey: `${REDIS_CACHE_PREFIX}${userId}`,
+        fallback: 'prediction-engine-cache-read-failed',
+      }, 'PredictionEngine: Redis cache read failed, falling back to memory');
     }
     return this.getCachedPrediction(userId);
   }
@@ -659,7 +664,12 @@ export class PredictionEngine {
     redisCache
       .set(`${REDIS_CACHE_PREFIX}${userId}`, JSON.stringify({ prediction, expiresAt }), ttlSeconds)
       .catch((err: unknown) => {
-        logger.warn({ err, userId }, 'PredictionEngine: Redis cache write failed, memory-only cache active');
+        logger.warn({
+          err,
+          userId,
+          cacheKey: `${REDIS_CACHE_PREFIX}${userId}`,
+          fallback: 'prediction-engine-cache-write-failed',
+        }, 'PredictionEngine: Redis cache write failed, memory-only cache active');
       });
   }
 

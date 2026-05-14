@@ -29,7 +29,11 @@ export function errorHandler(
     return;
   }
 
-  logger.error({ err }, 'Unhandled error');
+  logger.error({
+    err,
+    errorType: err instanceof Error ? err.name : typeof err,
+    fallback: 'unhandled-error',
+  }, 'Unhandled error');
   const contextReq = req as Request & { requestId?: string; routeScope?: string };
   res.status(500).json({
     message: 'Internal Server Error',

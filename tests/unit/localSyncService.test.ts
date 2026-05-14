@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // ─── Mocks de módulos ─────────────────────────────────────────────────────────
 
 const apiRequestMock = vi.fn();
+const logWarnMock = vi.fn();
 
 vi.mock('../../src/config/api.config', () => ({
   API_ENDPOINTS: {
@@ -21,6 +22,10 @@ vi.mock('../../src/config/api.config', () => ({
     },
   },
   apiRequest: (...args: unknown[]) => apiRequestMock(...args),
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: (...args: unknown[]) => logWarnMock(...args),
 }));
 
 // ─── Importações após mock ────────────────────────────────────────────────────
@@ -44,6 +49,7 @@ beforeEach(() => {
     clear: () => { Object.keys(store).forEach((k) => delete store[k]); },
   });
   apiRequestMock.mockReset();
+  logWarnMock.mockReset();
 });
 
 // ─── pushToCloud ──────────────────────────────────────────────────────────────
@@ -74,6 +80,16 @@ describe('pushToCloud', () => {
     await expect(
       pushToCloud('goals', [{ id: 'g1', updatedAt: '2026-01-01T00:00:00.000Z' }]),
     ).resolves.toBeUndefined();
+
+    expect(logWarnMock).toHaveBeenCalledWith(
+      '[LocalSync] pushToCloud failed; keeping local state as source of truth',
+      expect.objectContaining({
+        entity: 'goals',
+        itemCount: 1,
+        error: expect.any(Error),
+        fallback: 'local-sync-push-failed',
+      }),
+    );
   });
 
   it('nao chama a API quando lista de items esta vazia', async () => {
@@ -107,6 +123,14 @@ describe('pullFromCloud', () => {
 
     const result = await pullFromCloud();
     expect(result).toBeNull();
+    expect(logWarnMock).toHaveBeenCalledWith(
+      '[LocalSync] pullFromCloud failed; returning null to preserve local state',
+      expect.objectContaining({
+        since: null,
+        error: expect.any(Error),
+        fallback: 'local-sync-pull-failed',
+      }),
+    );
   });
 
   it('inclui parametro since na query string quando fornecido', async () => {
@@ -220,5 +244,28 @@ describe('hydrateGoalsFromCloud', () => {
 
     const updated = await hydrateGoalsFromCloud();
     expect(updated).toBe(false);
+  });
+
+  it('warns and recovers when local goals cache is corrupted', async () => {
+    store['flow_financial_goals'] = '{broken-json';
+    apiRequestMock.mockResolvedValueOnce(
+      makePullResult([
+        { id: 'g1', updatedAt: serverTime, payload: { id: 'g1', name: 'Meta nova' } },
+      ]),
+    );
+
+    const updated = await hydrateGoalsFromCloud();
+
+    expect(updated).toBe(true);
+    expect(logWarnMock).toHaveBeenCalledWith(
+      '[LocalSync] Failed to parse local goals cache; using empty baseline',
+      expect.objectContaining({
+        key: 'flow_financial_goals',
+        error: expect.any(Error),
+      }),
+    );
+    expect(JSON.parse(store['flow_financial_goals'])).toEqual([
+      { id: 'g1', name: 'Meta nova' },
+    ]);
   });
 });

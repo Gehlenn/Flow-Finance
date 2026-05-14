@@ -4,6 +4,7 @@
  */
 
 import { GuardResult } from './types';
+import { logError, logInfo } from '../utils/logger';
 
 let chunkErrorCount = 0;
 const MAX_CHUNK_ERRORS = 3;
@@ -37,7 +38,9 @@ export function protectChunkLoading(): GuardResult {
     }
   });
 
-  console.log('[Chunk Guard] Initialized - monitoring dynamic imports');
+  logInfo('[Chunk Guard] Initialized - monitoring dynamic imports', {
+    fallback: 'chunk-guard-initialized',
+  });
 
   return {
     guard: 'chunk',
@@ -47,13 +50,14 @@ export function protectChunkLoading(): GuardResult {
   };
 }
 
-// Backward-compatible alias.
-export const initChunkGuard = protectChunkLoading;
-
 function handleChunkError(error: string): void {
   chunkErrorCount++;
 
-  console.error(`[Chunk Guard] Chunk loading error detected (${chunkErrorCount}/${MAX_CHUNK_ERRORS}):`, error);
+  logError('[Chunk Guard] Chunk loading error detected', error, {
+    chunkErrorCount,
+    maxChunkErrors: MAX_CHUNK_ERRORS,
+    fallback: 'chunk-guard-chunk-loading-failed',
+  });
 
   // Show user notification
   showChunkErrorNotification();
@@ -121,7 +125,9 @@ function reloadApplication(): void {
   if (hasReloaded) return;
   
   hasReloaded = true;
-  console.log('[Chunk Guard] Reloading application to fetch updated chunks');
+  logInfo('[Chunk Guard] Reloading application to fetch updated chunks', {
+    fallback: 'chunk-guard-reload-triggered',
+  });
 
   // Clear service worker cache before reload
   if ('serviceWorker' in navigator && 'caches' in window) {
@@ -135,6 +141,3 @@ function reloadApplication(): void {
   }
 }
 
-export function resetChunkErrorCount(): void {
-  chunkErrorCount = 0;
-}

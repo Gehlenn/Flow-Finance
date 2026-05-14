@@ -123,7 +123,7 @@ describe('CFOAdvisor', () => {
           type: 'expense',
           category: 'CATEGORIA_INVALIDA',
           description: 'Despesa legado',
-          date: new Date('2026-03-10T00:00:00.000Z'),
+          date: new Date(2026, 2, 10),
           merchant: 'Fornecedor X',
           isGenerated: true,
         },
@@ -194,10 +194,135 @@ describe('CFOAdvisor', () => {
     });
 
     const normalizedTransactions = analyzeSpy.mock.calls.at(-1)?.[0]?.transactions;
+    expect(normalizedTransactions?.find((tx) => tx.id === 'repo-income')?.date).toBe('2026-03-01');
+    expect(normalizedTransactions?.find((tx) => tx.id === 'repo-expense')?.date).toBe('2026-03-10');
     expect(normalizedTransactions).toEqual([
       expect.objectContaining({ type: TransactionType.RECEITA, category: Category.CONSULTORIO, generated: false }),
       expect.objectContaining({ type: TransactionType.DESPESA, category: Category.PESSOAL, generated: true }),
     ]);
+
+    analyzeSpy.mockRestore();
+  });
+
+  it('normalizes repository date-only transactions before advisory analysis', async () => {
+    const analyzeSpy = vi.spyOn(AICFOAgent.prototype, 'analyzeFinancialState');
+    const fakeRepository = {
+      getByUser: async () => [
+        {
+          id: 'repo-date-only',
+          amount: 180,
+          type: 'expense',
+          category: Category.PESSOAL,
+          description: 'Despesa legado',
+          date: '2026-03-10',
+          merchant: 'Fornecedor X',
+          isGenerated: false,
+        },
+      ],
+    } as any;
+
+    const advisor = new CFOAdvisor(fakeRepository);
+    await advisor.advise({
+      userId: 'user-date-only',
+      monthlyIncome: 2000,
+      monthlyExpenses: 180,
+      balance: 1820,
+    });
+
+    const normalizedTransactions = analyzeSpy.mock.calls.at(-1)?.[0]?.transactions;
+    expect(normalizedTransactions?.[0]?.date).toContain('2026-03-10');
+
+    analyzeSpy.mockRestore();
+  });
+
+  it('normalizes invalid repository dates with a fallback timestamp', async () => {
+    const analyzeSpy = vi.spyOn(AICFOAgent.prototype, 'analyzeFinancialState');
+    const fakeRepository = {
+      getByUser: async () => [
+        {
+          id: 'repo-invalid-date',
+          amount: 120,
+          type: 'expense',
+          category: Category.PESSOAL,
+          description: 'Despesa legado',
+          date: 'not-a-date',
+          merchant: 'Fornecedor X',
+          isGenerated: false,
+        },
+      ],
+    } as any;
+
+    const advisor = new CFOAdvisor(fakeRepository);
+    await advisor.advise({
+      userId: 'user-invalid-date-fallback',
+      monthlyIncome: 2000,
+      monthlyExpenses: 120,
+      balance: 1880,
+    });
+
+    const normalizedTransactions = analyzeSpy.mock.calls.at(-1)?.[0]?.transactions;
+    expect(normalizedTransactions?.[0]?.date).not.toBe('not-a-date');
+
+    analyzeSpy.mockRestore();
+  });
+
+  it('prefers explicit transactions over the repository reader', async () => {
+    const analyzeSpy = vi.spyOn(AICFOAgent.prototype, 'analyzeFinancialState');
+    const repositorySpy = vi.fn(async () => [
+      {
+        id: 'repo-ignored',
+        amount: 999,
+        type: 'expense',
+        category: Category.PESSOAL,
+        description: 'Ignorada',
+        date: '2026-03-10',
+        merchant: 'Fornecedor X',
+        isGenerated: false,
+      },
+    ]);
+
+    const advisor = new CFOAdvisor({ getByUser: repositorySpy } as any);
+    await advisor.advise({
+      userId: 'user-explicit-transactions',
+      transactions: [],
+      monthlyIncome: 1000,
+      monthlyExpenses: 400,
+      balance: 600,
+    });
+
+    expect(repositorySpy).not.toHaveBeenCalled();
+    expect(analyzeSpy.mock.calls.at(-1)?.[0]?.transactions).toEqual([]);
+
+    analyzeSpy.mockRestore();
+  });
+
+  it('falls back when repository date-only values are invalid', async () => {
+    const analyzeSpy = vi.spyOn(AICFOAgent.prototype, 'analyzeFinancialState');
+    const fakeRepository = {
+      getByUser: async () => [
+        {
+          id: 'repo-invalid-date-only',
+          amount: 180,
+          type: 'expense',
+          category: Category.PESSOAL,
+          description: 'Despesa legado',
+          date: '2026-02-31',
+          merchant: 'Fornecedor X',
+          isGenerated: false,
+        },
+      ],
+    } as any;
+
+    const advisor = new CFOAdvisor(fakeRepository);
+    await advisor.advise({
+      userId: 'user-invalid-date-only',
+      monthlyIncome: 2000,
+      monthlyExpenses: 180,
+      balance: 1820,
+    });
+
+    const normalizedTransactions = analyzeSpy.mock.calls.at(-1)?.[0]?.transactions;
+    expect(normalizedTransactions?.[0]?.date).not.toBe('2026-02-31');
 
     analyzeSpy.mockRestore();
   });

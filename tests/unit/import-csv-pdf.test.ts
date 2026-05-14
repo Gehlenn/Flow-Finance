@@ -150,8 +150,12 @@ describe('parsePdfStatementText', () => {
   it('datas BR são convertidas corretamente para ISO', () => {
     const result = parsePdfStatementText(PDF_TEXT_SIMPLE);
     const first = result[0];
-    expect(new Date(first.date).getUTCFullYear()).toBe(2026);
-    expect(new Date(first.date).getUTCMonth()).toBe(0); // janeiro (UTC)
+    expect(first.date).toBe('2026-01-01');
+  });
+
+  it('datas ISO date-only continuam no dia local esperado', () => {
+    const result = parsePdfStatementText(PDF_TEXT_ISO);
+    expect(result[0].date).toBe('2026-02-01');
   });
 
   it('texto sem datas retorna array vazio', () => {

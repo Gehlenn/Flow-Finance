@@ -116,15 +116,32 @@ const KNOWN_SERVICES: KnownService[] = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function parseSubscriptionDate(value: string): Date | null {
+  const dateOnly = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    const year = Number(dateOnly[1]);
+    const month = Number(dateOnly[2]) - 1;
+    const day = Number(dateOnly[3]);
+    const localDate = new Date(year, month, day);
+    return Number.isNaN(localDate.getTime()) ? null : localDate;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
 
 function estimateNextCharge(lastDate: string, cycle: SubscriptionBillingCycle): string | null {
-  const d = new Date(lastDate);
-  if (isNaN(d.getTime())) return null;
+  const d = parseSubscriptionDate(lastDate);
+  if (!d) return null;
+
   if (cycle === 'monthly')  d.setMonth(d.getMonth() + 1);
   else if (cycle === 'weekly') d.setDate(d.getDate() + 7);
   else if (cycle === 'annual') d.setFullYear(d.getFullYear() + 1);
   else return null;
-  return d.toISOString();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function detectCycle(transactions: Transaction[]): SubscriptionBillingCycle {
@@ -173,7 +190,14 @@ export function detectSubscriptions(transactions: Transaction[]): SubscriptionSu
     if (matching.length === 0) continue;
 
     for (const amountGroup of groupTransactionsByAmount(matching)) {
-      const sorted = [...amountGroup].sort((a, b) => b.date.localeCompare(a.date));
+      const sorted = [...amountGroup].sort((a, b) => {
+        const left = parseSubscriptionDate(a.date);
+        const right = parseSubscriptionDate(b.date);
+        if (!left && !right) return b.date.localeCompare(a.date);
+        if (!left) return 1;
+        if (!right) return -1;
+        return right.getTime() - left.getTime();
+      });
       const amounts = amountGroup.map(t => t.amount);
       const avgAmount = amounts.reduce((s, a) => s + a, 0) / amounts.length;
       const cycle = detectCycle(amountGroup);
@@ -235,7 +259,14 @@ export function detectSubscriptions(transactions: Transaction[]): SubscriptionSu
     const cycle = detectCycle(txs);
     if (cycle === 'unknown') continue; // must have a recognisable pattern
 
-    const sorted = [...txs].sort((a, b) => b.date.localeCompare(a.date));
+    const sorted = [...txs].sort((a, b) => {
+      const left = parseSubscriptionDate(a.date);
+      const right = parseSubscriptionDate(b.date);
+      if (!left && !right) return b.date.localeCompare(a.date);
+      if (!left) return 1;
+      if (!right) return -1;
+      return right.getTime() - left.getTime();
+    });
     const name = (sorted[0].merchant ?? sorted[0].description).slice(0, 40);
 
     let confidence = 0.5;
@@ -295,7 +326,8 @@ export function detectSubscriptions(transactions: Transaction[]): SubscriptionSu
 /** Format next charge date in a human-readable way */
 export function formatNextCharge(iso: string | null): string {
   if (!iso) return 'Indeterminado';
-  const d = new Date(iso);
+  const d = parseSubscriptionDate(iso);
+  if (!d) return 'Indeterminado';
   const diffDays = Math.round((d.getTime() - Date.now()) / 86400000);
   if (diffDays < 0)  return 'Atrasado';
   if (diffDays === 0) return 'Hoje';

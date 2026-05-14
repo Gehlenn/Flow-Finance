@@ -14,6 +14,7 @@ import { TransactionData, ReminderData } from '../../types';
 
 import { getAIMemory, AIMemory } from './aiMemory';
 import { logAIDebug } from './aiDebugService';
+import { logWarn } from '../utils/logger';
 
 // ─── Output Types ─────────────────────────────────────────────────────────────
 
@@ -28,6 +29,11 @@ export interface InterpreterOutput {
   raw_input: string;
   processing_ms: number;
   enriched: boolean; // true se a memória influenciou o resultado
+  diagnostic?: {
+    kind: 'ai_unavailable' | 'ai_uncertain';
+    message: string;
+    suggestion?: string;
+  };
 }
 
 // ─── Memory context builder ───────────────────────────────────────────────────
@@ -88,6 +94,12 @@ export async function interpretText(
     // Normaliza intents inválidos para 'unknown'
     const validIntents = ['transaction', 'reminder'];
     if (!validIntents.includes(result.intent)) {
+      logAIDebug({
+        input,
+        intent: 'unknown',
+        error: 'Intent invalido retornado pelo interpretador',
+        processing_ms: Date.now() - start,
+      });
       return {
         intent: 'unknown',
         modality: 'text',
@@ -97,6 +109,11 @@ export async function interpretText(
         raw_input: input,
         processing_ms: Date.now() - start,
         enriched,
+        diagnostic: {
+          kind: 'ai_uncertain',
+          message: 'Nao consegui classificar esta entrada com seguranca.',
+          suggestion: 'Tente descrever o lancamento com valor, data e contexto mais claros.',
+        },
       };
     }
 
@@ -127,7 +144,11 @@ export async function interpretText(
     return output;
   } catch (err: any) {
     const processing_ms = Date.now() - start;
-    console.warn('[AI Interpreter] Text interpretation failed:', { userId, inputLength: input.length, error: err });
+    logWarn('[AI Interpreter] Text interpretation failed; returning unknown intent', {
+      userId,
+      inputLength: input.length,
+      error: err,
+    });
     logAIDebug({
       input,
       error: err?.message || 'Erro desconhecido no interpretador',
@@ -142,6 +163,11 @@ export async function interpretText(
       raw_input: input,
       processing_ms,
       enriched: false,
+      diagnostic: {
+        kind: 'ai_unavailable',
+        message: 'A IA de entrada falhou ao processar este texto.',
+        suggestion: 'Tente novamente ou use o modo manual para registrar o lancamento.',
+      },
     };
   }
 }
@@ -185,7 +211,12 @@ export async function interpretImage(
       enriched,
     };
   } catch (err: any) {
-    console.warn('[AI Interpreter] Image interpretation failed:', { userId, mimeType, hintLength: hint?.length ?? 0, error: err });
+    logWarn('[AI Interpreter] Image interpretation failed; returning unknown intent', {
+      userId,
+      mimeType,
+      hintLength: hint?.length ?? 0,
+      error: err,
+    });
     logAIDebug({ input: '[imagem]', error: err?.message, processing_ms: Date.now() - start });
     return {
       intent: 'unknown', modality: 'image', data: [], confidence: 0,

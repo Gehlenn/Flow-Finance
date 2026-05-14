@@ -14,7 +14,7 @@ export interface UsageStoreAdapter {
   increment?(params: {
     resource: ResourceKind;
     amount: number;
-    at: string;
+    at: Date;
     metadata?: Record<string, unknown>;
   }): Promise<number>;
   reset?(monthKey?: string): Promise<void>;
@@ -62,8 +62,8 @@ async function flush(): Promise<void> {
 }
 
 function getMonthKey(date: Date): string {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
   return `${year}-${month}`;
 }
 
@@ -110,7 +110,7 @@ export async function trackUsage(
     const total = await usageAdapter.increment({
       resource,
       amount,
-      at: at.toISOString(),
+      at,
       metadata,
     });
     const usage = getOrCreateUsage(userId, getMonthKey(at));

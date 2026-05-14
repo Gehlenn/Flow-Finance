@@ -4,8 +4,13 @@ vi.mock('../../src/services/externalIntegrationService', () => ({
   processExternalIntegrationEvent: vi.fn(),
 }));
 
+vi.mock('@sentry/node', () => ({
+  captureException: vi.fn(),
+}));
+
 import { ClinicAutomationService } from '../../src/services/clinic/ClinicAutomationService';
 import { processExternalIntegrationEvent } from '../../src/services/externalIntegrationService';
+import * as Sentry from '@sentry/node';
 
 function createRedisMock() {
   const store = new Map<string, string>();
@@ -159,5 +164,80 @@ describe('ClinicAutomationService contract safety', () => {
     expect(result.success).toBe(false);
     expect(result.message).toContain('auto-post is disabled');
     expect(processExternalIntegrationEvent).not.toHaveBeenCalled();
+  });
+
+  it('registra contexto quando o processamento do webhook falha', async () => {
+    const logger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    } as any;
+    const redis = createRedisMock() as any;
+    const monitor = {
+      executeClinicWebhookCall: vi.fn(async (_operation: string, callback: () => Promise<unknown>) => callback()),
+    } as any;
+    const featureFlags = {
+      isEnabled: vi.fn(() => ({ enabled: true, reason: 'enabled' })),
+    } as any;
+
+    vi.mocked(processExternalIntegrationEvent).mockRejectedValueOnce(new Error('clinic pipeline failed'));
+
+    const service = new ClinicAutomationService(logger, redis, monitor, featureFlags);
+
+    await expect(service.processWebhookEvent({
+      type: 'payment_received',
+      externalEventId: 'evt_fail_1',
+      externalPatientId: 'patient_1',
+      externalFacilityId: 'workspace_clinic_1',
+      amount: 100,
+      currency: 'BRL',
+      date: new Date().toISOString(),
+      paymentMethod: 'pix',
+      description: 'Consulta',
+    } as any, '', '127.0.0.1', {
+      environment: 'development',
+    })).rejects.toThrow('clinic pipeline failed');
+
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        externalEventId: 'evt_fail_1',
+        sourceSystem: 'clinic-automation',
+        sourceIp: '127.0.0.1',
+        eventType: 'payment_received',
+        fallback: 'clinic-webhook-processing-failed',
+      }),
+      'Failed to process clinic webhook',
+    );
+    expect(Sentry.captureException).toHaveBeenCalled();
+  });
+
+  it('registra contexto quando o health check do Redis falha', async () => {
+    const logger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    } as any;
+    const redis = {
+      ...createRedisMock(),
+      ping: vi.fn(async () => { throw new Error('redis down'); }),
+    } as any;
+    const monitor = {
+      executeClinicWebhookCall: vi.fn(async (_operation: string, callback: () => Promise<unknown>) => callback()),
+    } as any;
+    const featureFlags = {
+      isEnabled: vi.fn(() => ({ enabled: true, reason: 'enabled' })),
+    } as any;
+
+    const service = new ClinicAutomationService(logger, redis, monitor, featureFlags);
+    const result = await service.healthCheck();
+
+    expect(result.healthy).toBe(false);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fallback: 'clinic-redis-healthcheck-failed',
+        detail: 'redis ping failed',
+      }),
+      'Redis ping failed during health check',
+    );
   });
 });

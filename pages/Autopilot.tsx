@@ -5,6 +5,7 @@ import { runFinancialAutopilot, AutopilotAction, learnAutopilotPatterns } from '
 import { runAIPipelineSync } from '../src/ai/aiOrchestrator';
 import { canAccessFeature } from '../src/app/monetizationPlan';
 import UpgradePromptCard from '../components/UpgradePromptCard';
+import { logWarn } from '../src/utils/logger';
 import {
   Zap, AlertTriangle, Lightbulb, TrendingUp, ShieldCheck,
   ChevronRight, RefreshCw, CheckCircle2, Info,
@@ -67,6 +68,12 @@ const SEV_BADGE: Record<string, string> = {
   low:    'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300',
 };
 const SEV_LABEL: Record<string, string> = { high: 'Alto', medium: 'Médio', low: 'Baixo' };
+
+const buildAutopilotLearningDiagnostic = (): { title: string; message: string; suggestion: string } => ({
+  title: 'Aprendizado do Autopilot indisponivel',
+  message: 'Nao foi possivel atualizar o aprendizado automatico em segundo plano agora.',
+  suggestion: 'Atualize a pagina ou aguarde a proxima analise com novas transacoes e contas.',
+});
 
 // ─── Action Card ──────────────────────────────────────────────────────────────
 
@@ -143,6 +150,7 @@ const Autopilot: React.FC<AutopilotProps> = ({ transactions, accounts, userId = 
 
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [refreshKey, setRefreshKey] = useState(0);
+  const [learningDiagnostic, setLearningDiagnostic] = useState<{ title: string; message: string; suggestion: string } | null>(null);
 
   const allActions = useMemo(() => {
     return runFinancialAutopilot(
@@ -157,9 +165,13 @@ const Autopilot: React.FC<AutopilotProps> = ({ transactions, accounts, userId = 
   useEffect(() => {
     learnAutopilotPatterns(userId, accounts, transactions, pipeline.financial_state.cashflow_prediction)
       .catch((e) => {
-        console.error('Falha ao aprender padrões do Autopilot:', e);
+        setLearningDiagnostic(buildAutopilotLearningDiagnostic());
+        logWarn('[Autopilot] Failed to learn patterns', {
+          error: e,
+          fallback: 'autopilot-learning-failed',
+        });
       });
-  }, [userId, accounts, transactions, pipeline.financial_state.cashflow_prediction, learnAutopilotPatterns]);
+  }, [userId, accounts, transactions, pipeline.financial_state.cashflow_prediction, refreshKey, learnAutopilotPatterns]);
 
   const visible = useMemo(
     () => allActions.filter(a => !dismissed.has(a.id)),
@@ -167,6 +179,11 @@ const Autopilot: React.FC<AutopilotProps> = ({ transactions, accounts, userId = 
   );
 
   const handleDismiss = (id: string) => setDismissed(prev => new Set([...prev, id]));
+  const handleRefresh = () => {
+    setDismissed(new Set());
+    setLearningDiagnostic(null);
+    setRefreshKey(k => k + 1);
+  };
 
   const warnings     = visible.filter(a => a.type === 'warning');
   const suggestions  = visible.filter(a => a.type === 'suggestion');
@@ -202,7 +219,7 @@ const Autopilot: React.FC<AutopilotProps> = ({ transactions, accounts, userId = 
         </div>
         <div className="flex items-center gap-2 relative z-10">
           <button
-            onClick={() => { setDismissed(new Set()); setRefreshKey(k => k + 1); }}
+            onClick={handleRefresh}
             className="w-9 h-9 bg-white/10 border border-white/20 rounded-xl flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-colors"
             title="Atualizar análise"
           >
@@ -249,11 +266,27 @@ const Autopilot: React.FC<AutopilotProps> = ({ transactions, accounts, userId = 
           <CheckCircle2 size={40} className="text-emerald-400" />
           <p className="text-sm font-black text-slate-700 dark:text-white">Todas as ações dispensadas!</p>
           <button
-            onClick={() => { setDismissed(new Set()); setRefreshKey(k => k + 1); }}
+            onClick={handleRefresh}
             className="mt-2 px-5 py-2.5 bg-indigo-600 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-all"
           >
             <RefreshCw size={12} /> Reexibir ações
           </button>
+        </div>
+      )}
+
+
+      {learningDiagnostic && (
+        <div role="status" className="bg-amber-50 border border-amber-100 rounded-[1.8rem] p-4 shadow-sm dark:bg-amber-500/10 dark:border-amber-500/20">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300 shrink-0">
+              <AlertTriangle size={15} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] font-black uppercase tracking-widest text-amber-600">{learningDiagnostic.title}</p>
+              <p className="mt-1 text-xs font-bold text-slate-600 dark:text-slate-300">{learningDiagnostic.message}</p>
+              <p className="mt-1 text-[10px] font-bold text-amber-500">{learningDiagnostic.suggestion}</p>
+            </div>
+          </div>
         </div>
       )}
 

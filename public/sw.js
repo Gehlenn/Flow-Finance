@@ -9,13 +9,23 @@ const STATIC_ASSETS = [
   '/index.html',
 ];
 
-console.log('[SW v5] Service Worker iniciando');
+const swLog = (level, message, data) => {
+  self.__FLOW_SW_LOGS__ = self.__FLOW_SW_LOGS__ || [];
+  self.__FLOW_SW_LOGS__.push({
+    level,
+    message,
+    data,
+    ts: new Date().toISOString(),
+  });
+};
+
+swLog('INFO', '[SW v5] Service Worker iniciando');
 
 // ─── Message handler: force skip waiting ──────────────────────────────────
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    console.log('[SW v5] SKIP_WAITING recebido - ativando imediatamente');
+    swLog('INFO', '[SW v5] SKIP_WAITING recebido - ativando imediatamente');
     self.skipWaiting();
   }
 });
@@ -23,12 +33,12 @@ self.addEventListener('message', (event) => {
 // ─── Install: pre-cache assets ─────────────────────────────────────────────
 
 self.addEventListener('install', (event) => {
-  console.log('[SW v5] Instalando...');
+  swLog('INFO', '[SW v5] Instalando...');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW v5] Pre-caching static assets');
+      swLog('INFO', '[SW v5] Pre-caching static assets');
       return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('[SW v5] Pre-cache falhou:', err);
+        swLog('WARN', '[SW v5] Pre-cache falhou', { error: String(err) });
         // Falha silenciosa — assets serão cacheados no primeiro fetch
       });
     })
@@ -139,6 +149,6 @@ self.addEventListener('fetch', (event) => {
 
 self.addEventListener('sync', (event) => {
   if (event.tag === 'flow-sync') {
-    console.log('[SW] Background sync: flow-sync');
+    swLog('INFO', '[SW] Background sync: flow-sync');
   }
 });

@@ -148,7 +148,11 @@ function loadState(): WorkspaceStoreState {
       userPreferences: Array.isArray(parsed.userPreferences) ? parsed.userPreferences : [],
     };
   } catch (error) {
-    logger.warn({ error }, 'Failed to load workspace store, starting with empty state');
+    logger.warn({
+      error,
+      filePath,
+      fallback: 'workspace-store-load-failed',
+    }, 'Failed to load workspace store, starting with empty state');
     stateCache = cloneState(EMPTY_STATE);
   }
 
@@ -163,11 +167,25 @@ function persistState(state: WorkspaceStoreState): void {
     fs.writeFileSync(filePath, JSON.stringify(state, null, 2), 'utf8');
   }
   void saveWorkspaceStoreState(state).catch((error) => {
-    logger.warn({ error }, 'Failed to persist normalized workspace store to Postgres');
+    logger.warn({
+      error,
+      tenantCount: state.tenants.length,
+      workspaceCount: state.workspaces.length,
+      workspaceUserCount: state.workspaceUsers.length,
+      preferenceCount: state.userPreferences.length,
+      fallback: 'workspace-store-postgres-save-failed',
+    }, 'Failed to persist normalized workspace store to Postgres');
   });
   if (!areLegacyStateBlobsDisabled()) {
     void saveJsonState(POSTGRES_STATE_KEY, state as unknown as Record<string, unknown>).catch((error) => {
-      logger.warn({ error }, 'Failed to persist workspace store to Postgres');
+      logger.warn({
+        error,
+        tenantCount: state.tenants.length,
+        workspaceCount: state.workspaces.length,
+        workspaceUserCount: state.workspaceUsers.length,
+        preferenceCount: state.userPreferences.length,
+        fallback: 'workspace-store-json-save-failed',
+      }, 'Failed to persist workspace store JSON blob');
     });
   }
 }
@@ -754,7 +772,15 @@ export async function initializeWorkspaceStorePersistence(): Promise<void> {
     }));
   }
 
-  void saveWorkspaceStoreState(stateCache).catch((error) => {
-    logger.warn({ error }, 'Failed to backfill normalized workspace store to Postgres');
+  const backfillState = stateCache;
+  void saveWorkspaceStoreState(backfillState).catch((error) => {
+    logger.warn({
+      error,
+      tenantCount: backfillState.tenants.length,
+      workspaceCount: backfillState.workspaces.length,
+      workspaceUserCount: backfillState.workspaceUsers.length,
+      preferenceCount: backfillState.userPreferences.length,
+      fallback: 'workspace-store-backfill-failed',
+    }, 'Failed to backfill normalized workspace store to Postgres');
   });
 }

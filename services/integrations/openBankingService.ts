@@ -1,17 +1,17 @@
-/**
+﻿/**
  * OPEN BANKING SERVICE
  *
- * Orquestrador central para sincronização bancária.
+ * Orquestrador central para sincronizaÃ§Ã£o bancÃ¡ria.
  *
  * Pipeline de sync:
- *   connectBank → fetchAccounts → fetchTransactions
- *       ↓
+ *   connectBank â†’ fetchAccounts â†’ fetchTransactions
+ *       â†“
  *   mapToTransactions (PART 4)
- *       ↓
+ *       â†“
  *   classifyWithAI (PART 5)
- *       ↓
+ *       â†“
  *   updateAccountBalance (PART 6)
- *       ↓
+ *       â†“
  *   emit bank_transactions_synced (PART 9)
  */
 
@@ -25,9 +25,10 @@ import { normalizeFromIntegration, draftToTransaction } from '../../src/domain/i
 import { learnMemory } from '../../src/ai/aiMemory';
 import { makeId } from '../../utils/helpers';
 import { API_ENDPOINTS, apiRequest, ApiRequestError } from '../../src/config/api.config';
+import { logError, logWarn } from '../../src/utils/logger';
 import { getActiveWorkspaceScopedStorageKey } from '../../src/utils/workspaceStorage';
 
-// ─── Storage ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Storage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CONNECTIONS_KEY = 'flow_bank_connections';
 
@@ -87,6 +88,37 @@ function extractRequestId(error: unknown): string | null {
 
   const fromObject = (error as any)?.requestId;
   return typeof fromObject === 'string' && fromObject.trim() ? fromObject.trim() : null;
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim();
+  }
+
+  const message = (error as { message?: unknown })?.message;
+  return typeof message === 'string' && message.trim() ? message.trim() : fallback;
+}
+
+function logBankingOperationFailure(
+  operation: string,
+  connectionId: string,
+  error: unknown,
+  fallback: string,
+): string {
+  const message = getErrorMessage(error, fallback);
+  const statusCode = getApiErrorStatus(error);
+  const requestId = extractRequestId(error);
+
+  logWarn('[OpenBanking] Operation failed', {
+    operation,
+    connectionId,
+    statusCode,
+    requestId,
+    message,
+    fallback: 'open-banking-operation-failed',
+  });
+
+  return requestId ? `${message} (requestId: ${requestId})` : message;
 }
 
 function collectErrorTokens(error: unknown, seen = new Set<unknown>()): string[] {
@@ -211,7 +243,7 @@ export async function connectPluggyItem(
 }
 
 
-// ─── CRUD helpers ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ CRUD helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function getConnections(userId: string): BankConnection[] {
   return readConnections().filter(c => c.user_id === userId);
@@ -242,7 +274,12 @@ export async function reloadConnections(userId: string): Promise<BankConnection[
     const otherUsers = readConnections().filter((c) => c.user_id !== userId);
     writeConnections([...otherUsers, ...remote]);
     return remote;
-  } catch {
+  } catch (error) {
+    logWarn('[OpenBanking] Failed to reload connections from backend; returning local cache', {
+      userId,
+      error,
+      fallback: 'open-banking-reload-connections-failed',
+    });
     return local;
   }
 }
@@ -264,7 +301,23 @@ function updateStatus(id: string, status: BankConnection['connection_status'], e
   if (idx >= 0) writeConnections(all.map(c => c.id === id ? { ...c, connection_status: status, ...extra } : c));
 }
 
-// ─── PART 2 — connectBank ─────────────────────────────────────────────────────
+export function parseLastSyncDate(lastSync?: string): Date | null {
+  if (!lastSync) return null;
+
+  const trimmed = lastSync.trim();
+  if (!trimmed) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [year, month, day] = trimmed.split('-').map(Number);
+    const parsed = new Date(year, month - 1, day);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+// â”€â”€â”€ PART 2 â€” connectBank â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function connectBank(
   bankId: string,
@@ -293,7 +346,7 @@ export async function connectBank(
   }
 
   const bankMeta = BRAZILIAN_BANKS.find(b => b.id === bankId);
-  if (!bankMeta) throw new Error(`Banco "${bankId}" não encontrado no catálogo.`);
+  if (!bankMeta) throw new Error(`Banco "${bankId}" nÃ£o encontrado no catÃ¡logo.`);
 
   const provider = getProvider(bankMeta.provider as ProviderKey);
   const { external_id } = await provider.connect(bankId, userId);
@@ -312,15 +365,19 @@ export async function connectBank(
 
   saveConnection(conn);
 
-  // Aprender preferência de banco do usuário na AI Memory
-  learnMemory(userId, `bank_${bankId}`, 'connected', 0.9).catch(e => {
-    console.error('Erro ao registrar memória de conexão bancária:', e);
+  // Aprender preferÃªncia de banco do usuÃ¡rio na AI Memory
+  learnMemory(userId, `bank_${bankId}`, 'connected', 0.9).catch((e) => {
+    logError('Erro ao registrar memÃ³ria de conexÃ£o bancÃ¡ria', e, {
+      userId,
+      bankId,
+      fallback: 'open-banking-learn-memory-failed',
+    });
   });
 
   return conn;
 }
 
-// ─── PART 2 — disconnectBank ──────────────────────────────────────────────────
+// â”€â”€â”€ PART 2 â€” disconnectBank â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function disconnectBank(connectionId: string): Promise<void> {
   const conn = getConnection(connectionId);
@@ -333,8 +390,13 @@ export async function disconnectBank(connectionId: string): Promise<void> {
         body: JSON.stringify({ connectionId }),
         retries: 1,
       });
-    } catch {
-      // Fallback to local mock flow
+    } catch (error: unknown) {
+      logBankingOperationFailure(
+        'backend_disconnect',
+        connectionId,
+        error,
+        'Erro ao desconectar no backend.',
+      );
     }
   }
 
@@ -343,12 +405,19 @@ export async function disconnectBank(connectionId: string): Promise<void> {
     if (conn.external_account_id) {
       await provider.disconnect(conn.external_account_id);
     }
-  } catch { /* silencioso — remover localmente mesmo assim */ }
+  } catch (error: unknown) {
+    logBankingOperationFailure(
+      'provider_disconnect',
+      connectionId,
+      error,
+      'Erro ao desconectar no provider.',
+    );
+  }
 
   writeConnections(readConnections().filter(c => c.id !== connectionId));
 }
 
-// ─── PART 2 + 6 — syncAccounts ───────────────────────────────────────────────
+// â”€â”€â”€ PART 2 + 6 â€” syncAccounts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function syncAccounts(
   connectionId: string,
@@ -365,7 +434,7 @@ export async function syncAccounts(
     const rawAccounts = await provider.fetchAccounts(conn.external_account_id);
 
     for (const raw of rawAccounts) {
-      // PART 6 — Atualizar saldo da conta vinculada
+      // PART 6 â€” Atualizar saldo da conta vinculada
       const linked = existingAccounts.find(a =>
         a.name.toLowerCase().includes(conn.bank_name.toLowerCase()) ||
         a.name.toLowerCase().includes('open banking') ||
@@ -376,16 +445,22 @@ export async function syncAccounts(
         onUpdateAccount({ ...linked, balance: raw.balance });
       }
 
-      // Atualizar saldo no registro da conexão
+      // Atualizar saldo no registro da conexÃ£o
       updateStatus(connectionId, 'connected', { balance: raw.balance });
     }
-  } catch (err: any) {
-    updateStatus(connectionId, 'error', { error_message: err?.message ?? 'Erro ao sincronizar contas.' });
-    throw err;
+  } catch (error: unknown) {
+    const message = logBankingOperationFailure(
+      'sync_accounts',
+      connectionId,
+      error,
+      'Erro ao sincronizar contas.',
+    );
+    updateStatus(connectionId, 'error', { error_message: message });
+    throw error;
   }
 }
 
-// ─── PART 4 — mapToTransaction ────────────────────────────────────────────────
+// â”€â”€â”€ PART 4 â€” mapToTransaction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function mapToTransaction(raw: RawBankTransaction, accountId?: string): Partial<Transaction> & {
   raw_description: string;
@@ -402,7 +477,7 @@ function mapToTransaction(raw: RawBankTransaction, accountId?: string): Partial<
     raw_date:        new Date(raw.date).toISOString(),
     raw_type:        isCredit ? TransactionType.RECEITA : TransactionType.DESPESA,
     merchant:        raw.merchant,
-    // Campos que serão preenchidos pela AI classification:
+    // Campos que serÃ£o preenchidos pela AI classification:
     type:            isCredit ? TransactionType.RECEITA : TransactionType.DESPESA,
     category:        Category.PESSOAL,
     description:     raw.description,
@@ -466,7 +541,7 @@ function normalizeBankTransactionsFromDraft(input: Array<Partial<Transaction>>):
     });
 }
 
-// ─── Detectar duplicatas contra transações existentes ────────────────────────
+// â”€â”€â”€ Detectar duplicatas contra transaÃ§Ãµes existentes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function isDuplicate(raw: RawBankTransaction, existing: Transaction[]): boolean {
   return existing.some(ex => {
@@ -477,7 +552,7 @@ function isDuplicate(raw: RawBankTransaction, existing: Transaction[]): boolean 
   });
 }
 
-// ─── PART 2 + 5 + 9 — syncTransactions ───────────────────────────────────────
+// â”€â”€â”€ PART 2 + 5 + 9 â€” syncTransactions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function syncTransactions(
   connectionId: string,
@@ -488,7 +563,7 @@ export async function syncTransactions(
 ): Promise<SyncResult> {
   const conn = getConnection(connectionId);
   if (!conn || !conn.external_account_id) {
-    return { connection_id: connectionId, transactions_imported: 0, balance_updated: false, synced_at: new Date().toISOString(), error: 'Conexão não encontrada.' };
+    return { connection_id: connectionId, transactions_imported: 0, balance_updated: false, synced_at: new Date().toISOString(), error: 'ConexÃ£o nÃ£o encontrada.' };
   }
 
   if (isProductionRuntime() && conn.provider === 'mock') {
@@ -498,7 +573,7 @@ export async function syncTransactions(
       transactions_imported: 0,
       balance_updated: false,
       synced_at: new Date().toISOString(),
-      error: 'Conexão local de teste removida. Conecte novamente usando o fluxo real.',
+      error: 'ConexÃ£o local de teste removida. Conecte novamente usando o fluxo real.',
     };
   }
 
@@ -530,8 +605,13 @@ export async function syncTransactions(
       });
 
       return result;
-    } catch (error: any) {
-      const message = String(error?.message ?? '');
+    } catch (error: unknown) {
+      const message = logBankingOperationFailure(
+        'backend_sync_transactions',
+        connectionId,
+        error,
+        'Erro ao sincronizar com o backend.',
+      );
       if (message.includes('API Error 404')) {
         writeConnections(readConnections().filter((c) => c.id !== connectionId));
         return {
@@ -539,20 +619,20 @@ export async function syncTransactions(
           transactions_imported: 0,
           balance_updated: false,
           synced_at: new Date().toISOString(),
-          error: 'Conexão não encontrada no backend. Atualize a lista e reconecte o banco.',
+          error: 'ConexÃ£o nÃ£o encontrada no backend. Atualize a lista e reconecte o banco.',
         };
       }
 
       if (!shouldUseLocalMockFallback(error)) {
         updateStatus(connectionId, 'error', {
-          error_message: message || 'Erro ao sincronizar com o backend.',
+          error_message: message,
         });
         return {
           connection_id: connectionId,
           transactions_imported: 0,
           balance_updated: false,
           synced_at: new Date().toISOString(),
-          error: message || 'Erro ao sincronizar com o backend.',
+          error: message,
         };
       }
 
@@ -574,14 +654,21 @@ export async function syncTransactions(
       return { connection_id: connectionId, transactions_imported: 0, balance_updated: false, synced_at: new Date().toISOString() };
     }
 
-    // PART 4 — Mapear para formato interno
+    // PART 4 â€” Mapear para formato interno
     const mapped = newRaw.map(r => mapToTransaction(r));
 
-    // PART 5 — Classificar com IA (reutiliza classifyImportedTransactions do importService)
+    // PART 5 â€” Classificar com IA (reutiliza classifyImportedTransactions do importService)
     let classified = mapped;
     try {
       classified = await classifyImportedTransactions(mapped as any, userId) as any;
-    } catch { /* usar mapeamento básico se AI falhar */ }
+    } catch (error) {
+      logWarn('[OpenBanking] AI classification failed during sync; using basic mapping fallback', {
+        connectionId,
+        userId,
+        error,
+        fallback: 'open-banking-ai-classification-failed',
+      });
+    }
 
     // Converter para Transaction final sempre via TransactionDraft
     const finalTxs = normalizeBankTransactionsFromDraft(
@@ -604,7 +691,7 @@ export async function syncTransactions(
     // Atualizar timestamp de sync
     updateStatus(connectionId, 'connected', { last_sync: new Date().toISOString() });
 
-    // PART 9 — Emitir evento para acionar insights, autopilot, adaptive learning
+    // PART 9 â€” Emitir evento para acionar insights, autopilot, adaptive learning
     FinancialEventEmitter.bankTransactionsSynced({
       connection_id: connectionId,
       bank_name:     conn.bank_name,
@@ -620,19 +707,25 @@ export async function syncTransactions(
       synced_at: new Date().toISOString(),
     };
 
-  } catch (err: any) {
-    updateStatus(connectionId, 'error', { error_message: err?.message ?? 'Erro ao sincronizar.' });
+  } catch (error: unknown) {
+    const message = logBankingOperationFailure(
+      'local_sync_transactions',
+      connectionId,
+      error,
+      'Erro ao sincronizar.',
+    );
+    updateStatus(connectionId, 'error', { error_message: message });
     return {
       connection_id: connectionId,
       transactions_imported: 0,
       balance_updated: false,
       synced_at: new Date().toISOString(),
-      error: err?.message,
+      error: message,
     };
   }
 }
 
-// ─── Full sync (accounts + transactions) ─────────────────────────────────────
+// â”€â”€â”€ Full sync (accounts + transactions) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function fullSync(
   connectionId: string,
@@ -644,20 +737,30 @@ export async function fullSync(
 ): Promise<SyncResult> {
   try {
     await syncAccounts(connectionId, existingAccounts, onUpdateAccount);
-  } catch { /* continua mesmo se falhar o sync de contas */ }
+  } catch (error: unknown) {
+    logBankingOperationFailure(
+      'full_sync_accounts_step',
+      connectionId,
+      error,
+      'Erro ao sincronizar contas durante sync completo.',
+    );
+  }
 
   return syncTransactions(connectionId, existingTransactions, userId, onNewTransactions);
 }
 
-// ─── Helpers para UI ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers para UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function formatLastSync(lastSync?: string): string {
-  if (!lastSync) return 'Nunca';
-  const diff = Date.now() - new Date(lastSync).getTime();
+  const parsed = parseLastSyncDate(lastSync);
+  if (!parsed) return 'Nunca';
+
+  const diff = Math.max(Date.now() - parsed.getTime(), 0);
   const mins = Math.floor(diff / 60000);
   if (mins < 1)  return 'Agora mesmo';
-  if (mins < 60) return `${mins} min atrás`;
+  if (mins < 60) return `${mins} min atrÃ¡s`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24)  return `${hrs}h atrás`;
-  return new Date(lastSync).toLocaleDateString('pt-BR');
+  if (hrs < 24)  return `${hrs}h atrÃ¡s`;
+  return parsed.toLocaleDateString('pt-BR');
 }
+

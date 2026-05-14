@@ -7,6 +7,34 @@
 import { Transaction, TransactionType } from '../../types';
 import { sumTransactions } from '../security/moneyMath';
 
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function parseReportDate(dateValue: string): Date | null {
+  const trimmed = dateValue.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const dateOnly = DATE_ONLY_PATTERN.exec(trimmed);
+  if (dateOnly) {
+    const year = Number(dateOnly[1]);
+    const month = Number(dateOnly[2]) - 1;
+    const day = Number(dateOnly[3]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() === year
+      && localDate.getMonth() === month
+      && localDate.getDate() === day
+    ) {
+      return localDate;
+    }
+    return null;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export interface FinancialReport {
   month: string; // YYYY-MM
   total_income: number;
@@ -23,7 +51,14 @@ export function generateMonthlyReport(transactions: Transaction[]): FinancialRep
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
   // Filtrar transações do mês atual
-  const monthTxs = transactions.filter(tx => tx.date.startsWith(currentMonth));
+  const monthTxs = transactions.filter((tx) => {
+    const parsed = parseReportDate(tx.date);
+    if (!parsed) {
+      return false;
+    }
+    const monthKey = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`;
+    return monthKey === currentMonth;
+  });
 
   let totalIncome = 0;
   let totalExpenses = 0;
@@ -64,7 +99,14 @@ export function generateMonthlyReport(transactions: Transaction[]): FinancialRep
   // Comparar com mês anterior
   const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const prevMonthStr = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
-  const prevMonthTxs = transactions.filter(tx => tx.date.startsWith(prevMonthStr));
+  const prevMonthTxs = transactions.filter((tx) => {
+    const parsed = parseReportDate(tx.date);
+    if (!parsed) {
+      return false;
+    }
+    const monthKey = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`;
+    return monthKey === prevMonthStr;
+  });
   const prevExpenses = prevMonthTxs
     .filter(tx => tx.type === TransactionType.DESPESA)
     .reduce((s, tx) => s + tx.amount, 0);

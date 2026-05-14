@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+﻿import React, { useState, useRef, useCallback } from 'react';
 import { Transaction, TransactionType, Category } from '../types';
 import { scanReceipt, ScannedReceipt } from '../src/ai/receiptScanner';
 import { normalizeFromAIImage, draftToTransaction } from '../src/domain/intakeNormalizer';
@@ -36,6 +36,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
   const [imageUrl, setImageUrl]   = useState<string | null>(null);
   const [scanData, setScanData]   = useState<ScannedReceipt | null>(null);
   const [errorMsg, setErrorMsg]   = useState<string>('');
+  const [errorDiagnostic, setErrorDiagnostic] = useState<{ title: string; message: string; suggestion: string } | null>(null);
   const [editData, setEditData]   = useState<Partial<ScannedReceipt>>({});
   const [confirmed, setConfirmed] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -47,6 +48,11 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
   const handleFile = useCallback((file: File) => {
     if (!file.type.startsWith('image/')) {
       setErrorMsg('Selecione um arquivo de imagem (JPG, PNG, WEBP).');
+      setErrorDiagnostic({
+        title: 'Arquivo invalido',
+        message: 'O scanner so aceita imagens para extrair dados do recibo.',
+        suggestion: 'Selecione uma imagem JPG, PNG ou WEBP e tente novamente.',
+      });
       setPhase('error');
       return;
     }
@@ -54,6 +60,8 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
     setImageUrl(URL.createObjectURL(file));
     setScanData(null);
     setEditData({});
+    setErrorMsg('');
+    setErrorDiagnostic(null);
     setPhase('preview');
   }, []);
 
@@ -75,6 +83,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
     if (!imageFile) return;
     setPhase('scanning');
     setErrorMsg('');
+    setErrorDiagnostic(null);
     try {
       const result = await scanReceipt(imageFile);
       if (!result.success || !result.data) {
@@ -84,7 +93,15 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
       setEditData({ ...result.data });
       setPhase('review');
     } catch (err: any) {
-      setErrorMsg(err.message ?? 'Erro ao escanear recibo.');
+      const message = err.message ?? 'Erro ao escanear recibo.';
+      setErrorMsg(message);
+      setErrorDiagnostic({
+        title: 'Falha na leitura',
+        message: 'O scanner nao conseguiu extrair os campos principais do recibo.',
+        suggestion: /imagem|arquivo|extrair|ler/i.test(message)
+          ? 'Tente outra foto com mais luz, menos reflexo e o recibo inteiro visivel.'
+          : 'Tente novamente ou siga para o ajuste manual dos campos identificados.',
+      });
       setPhase('error');
     }
   };
@@ -129,6 +146,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
     setScanData(null);
     setEditData({});
     setErrorMsg('');
+    setErrorDiagnostic(null);
     setConfirmed(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -141,7 +159,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
                 : pct >= 50 ? 'text-amber-500 bg-amber-50 dark:bg-amber-500/10'
                 :             'text-rose-500 bg-rose-50 dark:bg-rose-500/10';
     return (
-      <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${color}`}>
+      <span className={`text-xs font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${color}`}>
         {pct}% confiança
       </span>
     );
@@ -161,7 +179,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
           <h1 className="text-lg font-black text-slate-900 dark:text-white leading-none">
             {SECONDARY_FLOWS_COPY.scanner.title}
           </h1>
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">
             {SECONDARY_FLOWS_COPY.scanner.subtitle}
           </p>
         </div>
@@ -187,13 +205,13 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
             <p className="font-black text-slate-800 dark:text-white text-sm">
               {SECONDARY_FLOWS_COPY.scanner.idleTitle}
             </p>
-            <p className="text-[10px] text-slate-400 font-bold mt-1">
+            <p className="text-xs text-slate-400 font-bold mt-1">
               {SECONDARY_FLOWS_COPY.scanner.idleFormats}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">
-              <ShieldCheck size={10} className="text-emerald-500" /> Processado localmente
+            <span className="flex items-center gap-1.5 text-xs font-black text-slate-400 uppercase tracking-widest">
+              <ShieldCheck size={10} className="text-emerald-500" /> Processado no dispositivo
             </span>
           </div>
           <input
@@ -223,7 +241,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
               <X size={14} />
             </button>
             <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl">
-              <p className="text-[9px] font-black text-white uppercase tracking-widest">
+              <p className="text-xs font-black text-white uppercase tracking-widest">
                 {imageFile?.name?.slice(0, 28) ?? 'imagem selecionada'}
               </p>
             </div>
@@ -235,7 +253,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
             <ScanLine size={18} />
             {SECONDARY_FLOWS_COPY.scanner.scanCta}
           </button>
-          <button onClick={handleReset} className="text-[10px] text-slate-400 font-bold text-center py-1">
+          <button onClick={handleReset} className="text-xs text-slate-400 font-bold text-center py-1">
             Escolher outra imagem
           </button>
         </div>
@@ -260,8 +278,8 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
           <div className="flex items-center gap-3">
             <Loader2 size={18} className="text-indigo-500 animate-spin" />
             <div>
-              <p className="font-black text-slate-800 dark:text-white text-sm">Analisando recibo…</p>
-              <p className="text-[9px] text-slate-400 font-bold">Gemini Vision extraindo dados</p>
+              <p className="font-black text-slate-800 dark:text-white text-sm">Lendo recibo para o caixa…</p>
+              <p className="text-xs text-slate-400 font-bold">Gemini Vision extraindo dados</p>
             </div>
           </div>
           <style>{`
@@ -289,10 +307,10 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resultado da análise</p>
+              <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Resultado da análise</p>
               {scanData && <ConfidenceBadge v={scanData.confidence} />}
-              <p className="text-[9px] text-slate-500 dark:text-slate-400 font-bold mt-1 leading-relaxed">
-                Revise os campos abaixo e confirme para registrar a transação.
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-1 leading-relaxed">
+                Revise os campos abaixo e confirme para registrar o movimento.
               </p>
             </div>
           </div>
@@ -306,7 +324,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
                 <DollarSign size={14} className="text-emerald-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Valor</p>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Valor</p>
                 <input
                   type="number"
                   step="0.01"
@@ -324,7 +342,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
                 <Store size={14} className="text-indigo-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Estabelecimento</p>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Estabelecimento</p>
                 <input
                   type="text"
                   value={editData.merchant ?? ''}
@@ -341,7 +359,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
                 <CalendarDays size={14} className="text-amber-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Data</p>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Data</p>
                 <input
                   type="date"
                   value={editData.date ? editData.date.slice(0, 10) : ''}
@@ -357,7 +375,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
                 <Zap size={14} className="text-rose-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Tipo</p>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Tipo</p>
                 <select
                   value={editData.type ?? TransactionType.DESPESA}
                   onChange={e => setEditData(d => ({ ...d, type: e.target.value as TransactionType }))}
@@ -375,7 +393,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
                 <FileImage size={14} className="text-violet-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Categoria</p>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Categoria</p>
                 <select
                   value={editData.category ?? Category.PESSOAL}
                   onChange={e => setEditData(d => ({ ...d, category: e.target.value as Category }))}
@@ -394,7 +412,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
                 <CreditCard size={14} className="text-sky-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Forma de pagamento</p>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Forma de pagamento</p>
                 <select
                   value={editData.payment_method ?? ''}
                   onChange={e => setEditData(d => ({ ...d, payment_method: e.target.value as Transaction['payment_method'] }))}
@@ -418,8 +436,8 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
             <Check size={18} />
             Confirmar e Registrar Transação
           </button>
-          <button onClick={handleReset} className="w-full flex items-center justify-center gap-2 py-2 text-[10px] text-slate-400 font-bold">
-            <RotateCcw size={12} /> Escanear outro recibo
+          <button onClick={handleReset} className="w-full flex items-center justify-center gap-2 py-2 text-xs text-slate-400 font-bold">
+            <RotateCcw size={12} /> Ler outro recibo
           </button>
         </div>
       )}
@@ -438,7 +456,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
               </p>
             )}
             {editData.merchant && (
-              <p className="text-[10px] text-slate-400 font-bold mt-1">{editData.merchant}</p>
+              <p className="text-xs text-slate-400 font-bold mt-1">{editData.merchant}</p>
             )}
           </div>
           <button
@@ -458,7 +476,14 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
           </div>
           <div className="text-center px-4">
             <p className="font-black text-rose-700 dark:text-rose-400 text-sm">Falha na leitura</p>
-            <p className="text-[10px] text-rose-500 font-bold mt-1">{errorMsg}</p>
+            <p className="text-xs text-rose-500 font-bold mt-1">{errorMsg}</p>
+            {errorDiagnostic && (
+              <div role="status" className="mt-3 rounded-2xl border border-rose-200 bg-white/70 dark:bg-slate-900/60 p-3 text-left">
+                <p className="text-xs font-black uppercase tracking-widest text-rose-600 dark:text-rose-300">{errorDiagnostic.title}</p>
+                <p className="mt-1 text-xs font-bold leading-relaxed text-rose-700 dark:text-rose-200">{errorDiagnostic.message}</p>
+                <p className="mt-2 text-xs font-black uppercase tracking-widest text-rose-500 dark:text-rose-300">Proximo passo: {errorDiagnostic.suggestion}</p>
+              </div>
+            )}
           </div>
           <button
             onClick={handleReset}
@@ -472,7 +497,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
       {/* Tips */}
       {phase === 'idle' && (
         <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 p-5">
-          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">Dicas para melhor resultado</p>
+          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Dicas para melhor resultado</p>
           <div className="flex flex-col gap-2">
             {[
               { icon: '📸', text: 'Foto nítida e bem iluminada' },
@@ -482,7 +507,7 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
             ].map(({ icon, text }) => (
               <div key={text} className="flex items-center gap-2.5">
                 <span className="text-sm">{icon}</span>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">{text}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">{text}</p>
               </div>
             ))}
           </div>
@@ -493,3 +518,4 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
 };
 
 export default ReceiptScannerPage;
+

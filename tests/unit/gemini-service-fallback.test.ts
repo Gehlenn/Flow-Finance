@@ -2,7 +2,11 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 // vi.mock is hoisted before const declarations — must use vi.hoisted() to
 // initialise the mock reference before the factory runs.
-const { apiRequestMock } = vi.hoisted(() => ({ apiRequestMock: vi.fn() }));
+const { apiRequestMock, logWarnMock, logErrorMock } = vi.hoisted(() => ({
+  apiRequestMock: vi.fn(),
+  logWarnMock: vi.fn(),
+  logErrorMock: vi.fn(),
+}));
 
 vi.mock('../../src/config/api.config', () => ({
   API_ENDPOINTS: {
@@ -16,6 +20,11 @@ vi.mock('../../src/config/api.config', () => ({
     },
   },
   apiRequest: apiRequestMock,
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: logWarnMock,
+  logError: logErrorMock,
 }));
 
 import { buildSmartInputFallback, GeminiService } from '../../services/geminiService';
@@ -63,6 +72,8 @@ describe('buildSmartInputFallback', () => {
 describe('GeminiService.processSmartInput', () => {
   beforeEach(() => {
     apiRequestMock.mockReset();
+    logWarnMock.mockReset();
+    logErrorMock.mockReset();
   });
 
   it('usa fallback deterministico quando apiRequest falha', async () => {
@@ -75,5 +86,24 @@ describe('GeminiService.processSmartInput', () => {
     const tx = output.data[0] as any;
     expect(tx.amount).toBe(89.9);
     expect(tx.type).toBe(TransactionType.DESPESA);
+    expect(logWarnMock).toHaveBeenCalledWith(
+      '[AIService] processSmartInput unavailable, using deterministic fallback',
+      expect.any(Error),
+      expect.objectContaining({ fallback: 'ai-process-smart-input-fallback' }),
+    );
+  });
+
+  it('registra erro ao falhar parsing de imagem financeira', async () => {
+    apiRequestMock.mockRejectedValueOnce(new Error('image parse failed'));
+    const service = new GeminiService();
+
+    const output = await service.parseFinancialImage('base64', 'image/png');
+
+    expect(output).toEqual([]);
+    expect(logErrorMock).toHaveBeenCalledWith(
+      '[AIService] parseFinancialImage failed',
+      expect.any(Error),
+      expect.objectContaining({ fallback: 'ai-parse-financial-image-failed' }),
+    );
   });
 });

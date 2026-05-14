@@ -1,4 +1,5 @@
 import { User } from './authModel';
+import logger from '../config/logger';
 
 export class AuthService {
   public static async login(username: string, _password: string): Promise<User> {
@@ -16,6 +17,15 @@ export class AuthService {
   }
 
   public static async register(user: User): Promise<void> {
-    void user;
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('AuthService.register stub must not be called in production. Use an external identity provider.');
+    }
+
+    logger.warn({
+      userId: user.id,
+      email: user.email,
+      tenantId: user.tenantId,
+      fallback: 'auth-register-stub-noop',
+    }, 'AuthService.register is a controlled no-op outside production');
   }
 }

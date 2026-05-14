@@ -122,7 +122,13 @@ export class IdempotentEventStore {
       if (objectResult === null) {
         return false;
       }
-    } catch {
+    } catch (error) {
+      logger.warn({
+        key,
+        error,
+        ttlSeconds: this.ttlSeconds,
+        fallback: 'idempotent-event-atomic-set-failed',
+      }, 'Atomic Redis SET NX/EX failed, trying positional fallback');
       // ioredis style fallback abaixo
     }
 
@@ -135,7 +141,13 @@ export class IdempotentEventStore {
       if (positionalResult === null) {
         return false;
       }
-    } catch {
+    } catch (error) {
+      logger.warn({
+        key,
+        error,
+        ttlSeconds: this.ttlSeconds,
+        fallback: 'idempotent-event-positional-set-failed',
+      }, 'Positional Redis SET NX/EX fallback failed');
       return null;
     }
 
@@ -174,7 +186,11 @@ export class IdempotentEventStore {
     try {
       return JSON.parse(json);
     } catch (error) {
-      logger.error({ key, error }, 'Failed to parse stored record');
+      logger.error({
+        key,
+        error,
+        fallback: 'idempotent-event-parse-failed',
+      }, 'Failed to parse stored record');
       return null;
     }
   }
@@ -205,8 +221,13 @@ export class IdempotentEventStore {
       if (json) {
         try {
           records.push(JSON.parse(json));
-        } catch {
-          // Ignorar registros inválidos
+        } catch (error) {
+          logger.warn({
+            key,
+            error,
+            sourceSystem,
+            fallback: 'idempotent-event-list-parse-failed',
+          }, 'Ignoring invalid idempotent record payload');
         }
       }
     }

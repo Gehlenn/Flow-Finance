@@ -15,6 +15,7 @@ import {
 } from '../types/externalIntegration';
 import { hasProcessedExternalEvent, markExternalEventProcessed } from './externalIdempotencyStore';
 import { AppError } from '../middleware/errorHandler';
+import logger from '../config/logger';
 
 function buildReminderSyncPayload(
   event: ReceivableReminderCreatedEvent | ReceivableReminderUpdatedEvent,
@@ -229,38 +230,6 @@ export async function processExternalIntegrationEvent(
     throw new AppError(404, 'Workspace not found for integration event');
   }
 
-  if (await hasProcessedExternalEvent(event.workspaceId, event.externalEventId)) {
-    return {
-      status: 'duplicate',
-      eventType: event.eventType,
-      externalEventId: event.externalEventId,
-      workspaceId: event.workspaceId,
-      operation: event.eventType === 'payment_received'
-        ? 'transaction_created'
-        : event.eventType === 'expense_recorded'
-          ? 'transaction_created'
-          : event.eventType === 'alert_triggered'
-          ? 'reminder_created'
-          : event.eventType === 'receivable_reminder_cleared'
-            ? 'reminder_cleared'
-            : event.eventType === 'receivable_reminder_updated'
-              ? 'reminder_updated'
-              : 'reminder_created',
-    };
-  }
-
-  if (event.eventType === 'payment_received') {
-    await persistTransactionFromPayment(event);
-  } else if (event.eventType === 'expense_recorded') {
-    await persistTransactionFromExpense(event);
-  } else if (event.eventType === 'alert_triggered') {
-    await persistAlertAsReminder(event);
-  } else {
-    await persistReminderEvent(event);
-  }
-
-  await markExternalEventProcessed(event.workspaceId, event.externalEventId);
-
   const operation = event.eventType === 'payment_received'
     ? 'transaction_created'
     : event.eventType === 'expense_recorded'
@@ -272,6 +241,41 @@ export async function processExternalIntegrationEvent(
         : event.eventType === 'receivable_reminder_updated'
           ? 'reminder_updated'
           : 'reminder_created';
+
+  if (await hasProcessedExternalEvent(event.workspaceId, event.externalEventId)) {
+    return {
+      status: 'duplicate',
+      eventType: event.eventType,
+      externalEventId: event.externalEventId,
+      workspaceId: event.workspaceId,
+      operation,
+    };
+  }
+
+  try {
+    if (event.eventType === 'payment_received') {
+      await persistTransactionFromPayment(event);
+    } else if (event.eventType === 'expense_recorded') {
+      await persistTransactionFromExpense(event);
+    } else if (event.eventType === 'alert_triggered') {
+      await persistAlertAsReminder(event);
+    } else {
+      await persistReminderEvent(event);
+    }
+
+    await markExternalEventProcessed(event.workspaceId, event.externalEventId);
+  } catch (error) {
+    logger.error({
+      error,
+      workspaceId: event.workspaceId,
+      externalEventId: event.externalEventId,
+      sourceSystem: event.sourceSystem,
+      eventType: event.eventType,
+      operation,
+      fallback: 'external-integration-ingest-failed',
+    }, 'Failed to persist external integration event');
+    throw error;
+  }
 
   recordAuditEvent({
     tenantId: workspace.tenantId,

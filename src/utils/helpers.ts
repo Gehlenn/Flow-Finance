@@ -1,5 +1,7 @@
 // utility helpers shared across the app
 
+import { logWarn } from './logger';
+
 export function makeId(length = 9): string {
   let result = '';
 
@@ -55,7 +57,18 @@ export function getMonthTransactions<T extends { date: string }>(
   const year = referenceDate.getFullYear();
   const month = referenceDate.getMonth();
   return transactions.filter(t => {
-    const d = new Date(t.date);
+    const dateOnly = t.date.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const d = dateOnly
+      ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+      : new Date(t.date);
+    if (dateOnly && (
+      d.getFullYear() !== Number(dateOnly[1]) ||
+      d.getMonth() !== Number(dateOnly[2]) - 1 ||
+      d.getDate() !== Number(dateOnly[3])
+    )) {
+      return false;
+    }
+    if (Number.isNaN(d.getTime())) return false;
     return d.getFullYear() === year && d.getMonth() === month;
   });
 }
@@ -65,7 +78,11 @@ export function getFromStorage<T>(key: string, defaultValue: T): T {
   if (!raw) return defaultValue;
   try {
     return JSON.parse(raw) as T;
-  } catch {
+  } catch (error) {
+    logWarn('[Helpers] Failed to parse storage entry; returning default value', {
+      key,
+      error,
+    });
     return defaultValue;
   }
 }

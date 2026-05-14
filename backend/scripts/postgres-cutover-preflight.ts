@@ -99,7 +99,7 @@ async function main(): Promise<void> {
 
   const finalStatus = summary.status === 'ready' && pendingMigrations.length === 0 ? 'ready' : 'blocked';
 
-  console.log(JSON.stringify({
+  process.stdout.write(`${JSON.stringify({
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
     postgresStateStoreEnabled,
@@ -115,7 +115,7 @@ async function main(): Promise<void> {
       status: finalStatus,
       recommendations,
     },
-  }, null, 2));
+  }, null, 2)}\n`);
 
   if (finalStatus !== 'ready') {
     process.exit(1);
@@ -123,7 +123,7 @@ async function main(): Promise<void> {
 }
 
 void main().catch((error) => {
-  console.error('[postgres-cutover-preflight] failed');
-  console.error(error);
+  process.stderr.write('[postgres-cutover-preflight] failed\n');
+  process.stderr.write(`${error instanceof Error ? error.stack || error.message : String(error)}\n`);
   process.exit(1);
 });

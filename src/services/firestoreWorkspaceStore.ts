@@ -1,4 +1,4 @@
-import {
+﻿import {
   collection,
   doc,
   getDoc,
@@ -158,6 +158,7 @@ export type SyncEntityIdMap = Record<string, string>;
 const DEFAULT_WORKSPACE_NAME = 'Workspace Pessoal';
 const DEFAULT_TENANT_NAME = 'Tenant Pessoal';
 const FIREBASE_WORKSPACE_CONFIG_ERROR = new Error('Workspace sync requires Firebase configuration.');
+const FIREBASE_WORKSPACE_CONTEXT_ERROR = new Error('Workspace sync requires a workspaceId and tenantId.');
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -224,6 +225,14 @@ function createFallbackWorkspaceSummary(identity: UserIdentity, explicitName?: s
     role: 'owner',
     isDefault: true,
   };
+}
+
+function hasWorkspaceContext(workspaceId?: string, tenantId?: string): boolean {
+  return Boolean(workspaceId?.trim()) && Boolean(tenantId?.trim());
+}
+
+function hasWorkspaceId(workspaceId?: string): boolean {
+  return Boolean(workspaceId?.trim());
 }
 
 export async function writeAuditLogEvent(event: Omit<AuditLogDocument, 'id' | 'createdAt'>): Promise<void> {
@@ -427,6 +436,9 @@ export async function addWorkspaceMember(input: {
   if (!isFirebaseConfigured) {
     throw FIREBASE_WORKSPACE_CONFIG_ERROR;
   }
+  if (!hasWorkspaceContext(input.workspaceId, input.tenantId)) {
+    throw FIREBASE_WORKSPACE_CONTEXT_ERROR;
+  }
 
   const now = nowIso();
   const memberId = workspaceMemberDocId(input.workspaceId, input.userId);
@@ -479,6 +491,9 @@ export async function removeWorkspaceMember(input: {
 }): Promise<void> {
   if (!isFirebaseConfigured) {
     throw FIREBASE_WORKSPACE_CONFIG_ERROR;
+  }
+  if (!hasWorkspaceContext(input.workspaceId, input.tenantId)) {
+    throw FIREBASE_WORKSPACE_CONTEXT_ERROR;
   }
 
   const memberRef = doc(membershipCollection(), workspaceMemberDocId(input.workspaceId, input.userId));
@@ -537,7 +552,7 @@ export async function listWorkspaceAuditEventsPage(input: {
   resourceType?: string;
   after?: AuditLogCursor | null;
 }): Promise<{ events: AuditLogDocument[]; nextCursor: AuditLogCursor | null }> {
-  if (!isFirebaseConfigured) {
+  if (!isFirebaseConfigured || !hasWorkspaceContext(input.workspaceId, input.tenantId)) {
     return { events: [], nextCursor: null };
   }
 
@@ -587,7 +602,7 @@ export async function listWorkspaceCollectionDocuments<T extends { id: string }>
   workspaceId: string,
   entity: Extract<WorkspaceScopedEntity, 'insights' | 'imports' | 'subscriptions'>,
 ): Promise<T[]> {
-  if (!isFirebaseConfigured) {
+  if (!isFirebaseConfigured || !hasWorkspaceId(workspaceId)) {
     return [];
   }
 
@@ -606,13 +621,16 @@ export async function upsertWorkspaceCollectionDocument<T extends {
   user_id?: string;
   created_at?: string;
   updated_at?: string;
-} & Record<string, unknown>>(
+  } & Record<string, unknown>>(
   entity: Extract<WorkspaceScopedEntity, 'insights' | 'imports' | 'subscriptions'>,
   documentInput: T,
   context: { userId: string; tenantId: string; workspaceId: string },
 ): Promise<T> {
   if (!isFirebaseConfigured) {
     throw FIREBASE_WORKSPACE_CONFIG_ERROR;
+  }
+  if (!hasWorkspaceContext(context.workspaceId, context.tenantId)) {
+    throw FIREBASE_WORKSPACE_CONTEXT_ERROR;
   }
 
   const stamped = stampEntityContext(documentInput, context);
@@ -682,7 +700,85 @@ function sortReminders(reminders: Reminder[]): Reminder[] {
   return [...reminders].sort((left, right) => String(left.date).localeCompare(String(right.date), 'pt-BR'));
 }
 
+function loadE2ESeedEntities(workspaceId: string): EntityState | null {
+  const storage = typeof globalThis !== 'undefined' && 'localStorage' in globalThis
+    ? (globalThis.localStorage as Storage)
+    : null;
+
+  const globalAny = globalThis as Record<string, unknown>;
+  const isE2EAuth = (storage?.getItem('flow_e2e_auth') === '1') || globalAny.__FLOW_E2E_AUTH__ === true;
+  if (!isE2EAuth) {
+    return null;
+  }
+
+  const workspaceScopedSeedKey = `flow_e2e_seed_entities:${workspaceId}`;
+  const rawSeed = storage?.getItem(workspaceScopedSeedKey)
+    || storage?.getItem('flow_e2e_seed_entities');
+
+  if (rawSeed) {
+    try {
+      const parsed = JSON.parse(rawSeed) as Partial<EntityState>;
+      return {
+        accounts: sortAccounts(Array.isArray(parsed.accounts) ? parsed.accounts as Account[] : []),
+        transactions: sortTransactions(Array.isArray(parsed.transactions) ? parsed.transactions as Transaction[] : []),
+        goals: sortGoals(Array.isArray(parsed.goals) ? parsed.goals as Goal[] : []),
+        reminders: sortReminders(Array.isArray(parsed.reminders) ? parsed.reminders as Reminder[] : []),
+      };
+    } catch {
+      // fallback para seed default abaixo
+    }
+  }
+
+  const seededMap = globalAny.__FLOW_E2E_SEED_ENTITIES__ as Record<string, Partial<EntityState>> | undefined;
+  const seededFromGlobal = seededMap?.[workspaceId] || seededMap?.default;
+  if (seededFromGlobal) {
+    return {
+      accounts: sortAccounts(Array.isArray(seededFromGlobal.accounts) ? seededFromGlobal.accounts as Account[] : []),
+      transactions: sortTransactions(Array.isArray(seededFromGlobal.transactions) ? seededFromGlobal.transactions as Transaction[] : []),
+      goals: sortGoals(Array.isArray(seededFromGlobal.goals) ? seededFromGlobal.goals as Goal[] : []),
+      reminders: sortReminders(Array.isArray(seededFromGlobal.reminders) ? seededFromGlobal.reminders as Reminder[] : []),
+    };
+  }
+
+  const today = nowIso();
+  const userId = storage?.getItem('flow_e2e_user_id') || (globalAny.__FLOW_E2E_USER_ID__ as string | undefined) || 'e2e-user';
+  const tenantId = `tenant-e2e-${userId}`;
+
+  return {
+    accounts: [],
+    transactions: [
+      {
+        id: `tx-e2e-${workspaceId}`,
+        user_id: userId,
+        tenant_id: tenantId,
+        workspace_id: workspaceId,
+        amount: 42,
+        type: 'Despesa' as Transaction['type'],
+        category: 'Pessoal' as Transaction['category'],
+        description: 'Restaurante',
+        date: today,
+      },
+    ],
+    goals: [],
+    reminders: [],
+  };
+}
+
 export async function loadWorkspaceEntities(workspaceId: string): Promise<EntityState> {
+  if (!hasWorkspaceId(workspaceId)) {
+    return {
+      accounts: [],
+      transactions: [],
+      goals: [],
+      reminders: [],
+    };
+  }
+
+  const seeded = loadE2ESeedEntities(workspaceId);
+  if (seeded) {
+    return seeded;
+  }
+
   if (!isFirebaseConfigured) {
     return {
       accounts: [],
@@ -706,7 +802,6 @@ export async function loadWorkspaceEntities(workspaceId: string): Promise<Entity
     reminders: sortReminders(reminderSnapshot.docs.map((snapshot) => snapshot.data() as Reminder)),
   };
 }
-
 function resolveAuditAction(entity: SyncEntity, operation: 'created' | 'updated' | 'deleted'): string {
   const singular = entity === 'accounts'
     ? 'account'
@@ -752,6 +847,9 @@ export async function replaceWorkspaceEntityCollection<T extends { id: string } 
       latestServerUpdatedAt: nowIso(),
       reconciledIds: [],
     };
+  }
+  if (!hasWorkspaceContext(context.workspaceId, context.tenantId)) {
+    throw FIREBASE_WORKSPACE_CONTEXT_ERROR;
   }
 
   const collectionRef = workspaceEntityCollection(context.workspaceId, entity);
@@ -838,3 +936,10 @@ export async function replaceWorkspaceEntityCollection<T extends { id: string } 
     reconciledIds,
   };
 }
+
+
+
+
+
+
+

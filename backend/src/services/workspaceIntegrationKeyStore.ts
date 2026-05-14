@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import logger from '../config/logger';
 import { getFirestoreOrNull } from '../utils/firestoreAdmin';
 
 const KEY_PREFIX = 'flw_';
@@ -20,7 +21,13 @@ function safeCompare(a: string, b: string): boolean {
   if (aBuf.length !== bBuf.length) return false;
   try {
     return crypto.timingSafeEqual(aBuf, bBuf);
-  } catch {
+  } catch (error) {
+    logger.warn({
+      error,
+      providedLength: aBuf.length,
+      storedLength: bBuf.length,
+      fallback: 'workspace-integration-key-compare-failed',
+    }, '[workspaceIntegrationKeyStore] timingSafeEqual failed; rejecting key comparison');
     return false;
   }
 }

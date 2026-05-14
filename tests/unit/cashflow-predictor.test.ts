@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { predictCashflow, formatPredictionLabel, predictionTrend } from '../../src/finance/cashflowPredictor';
+import * as recurringService from '../../src/finance/recurringService';
 import { Category, TransactionType } from '../../types';
 import type { Transaction } from '../../types';
 import type { Account } from '../../models/Account';
 
-// ─── Mock: FinancialEventEmitter (no side-effects) ────────────────────────────
+// â”€â”€â”€ Mock: FinancialEventEmitter (no side-effects) â”€â”€â”€
 vi.mock('../../src/events/eventEngine', () => ({
   FinancialEventEmitter: {
     insightGenerated: vi.fn(),
@@ -12,7 +13,7 @@ vi.mock('../../src/events/eventEngine', () => ({
   },
 }));
 
-// ─── Fixture helpers ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Fixture helpers â”€â”€â”€
 
 let _id = 0;
 
@@ -42,7 +43,7 @@ function makeAccount(id: string, balance: number): Account {
   return { id, userId: 'u1', name: 'Conta', type: 'checking', balance, currency: 'BRL', isActive: true, createdAt: new Date(), updatedAt: new Date() } as any;
 }
 
-// ─── predictCashflow ──────────────────────────────────────────────────────────
+// â”€â”€â”€ predictCashflow â”€â”€â”€
 
 describe('predictCashflow', () => {
   beforeEach(() => {
@@ -57,8 +58,8 @@ describe('predictCashflow', () => {
 
   it('derives balance from transactions when no accounts provided', () => {
     const txs = [
-      makeTx('Salário',    5000, TransactionType.RECEITA, 10),
-      makeTx('Aluguel',    1200, TransactionType.DESPESA, 5),
+      makeTx('Salario', 5000, TransactionType.RECEITA, 10),
+      makeTx('Aluguel', 1200, TransactionType.DESPESA, 5),
     ];
     const result = predictCashflow([], txs);
     expect(result.current_balance).toBe(3800);
@@ -71,20 +72,18 @@ describe('predictCashflow', () => {
 
   it('projected_transactions includes future occurrences of recurring expenses', () => {
     const txs = [
-      // 3 months of salary (so the recurring detector picks it up)
-      makeTx('Netflix', 50, TransactionType.DESPESA, 5,  true),
+      makeTx('Netflix', 50, TransactionType.DESPESA, 5, true),
       makeTx('Netflix', 50, TransactionType.DESPESA, 35, true),
       makeTx('Netflix', 50, TransactionType.DESPESA, 65, true),
     ];
     const result = predictCashflow([makeAccount('a1', 2000)], txs);
-    // There should be at least 1 projected transaction (next month Netflix)
     expect(result.projected_transactions.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('lowest_point balance is ≤ highest_point balance', () => {
+  it('lowest_point balance is <= highest_point balance', () => {
     const txs = [
-      makeTx('Salário',    5000, TransactionType.RECEITA, 5),
-      makeTx('Aluguel',    1500, TransactionType.DESPESA, 5),
+      makeTx('Salario', 5000, TransactionType.RECEITA, 5),
+      makeTx('Aluguel', 1500, TransactionType.DESPESA, 5),
     ];
     const result = predictCashflow([makeAccount('a1', 5000)], txs);
     expect(result.lowest_point.balance).toBeLessThanOrEqual(result.highest_point.balance);
@@ -113,7 +112,7 @@ describe('predictCashflow', () => {
 
   it('projected_income and projected_expenses are non-negative', () => {
     const txs = [
-      makeTx('Salário', 5000, TransactionType.RECEITA, 5),
+      makeTx('Salario', 5000, TransactionType.RECEITA, 5),
       makeTx('Aluguel', 1200, TransactionType.DESPESA, 5),
     ];
     const result = predictCashflow([], txs);
@@ -137,9 +136,9 @@ describe('predictCashflow', () => {
 
   it('aplica recorrencias de receita aumentando o saldo projetado', () => {
     const txs = [
-      makeTx('Salário recorrente', 3000, TransactionType.RECEITA, 5, true),
-      makeTx('Salário recorrente', 3000, TransactionType.RECEITA, 35, true),
-      makeTx('Salário recorrente', 3000, TransactionType.RECEITA, 65, true),
+      makeTx('Salario recorrente', 3000, TransactionType.RECEITA, 5, true),
+      makeTx('Salario recorrente', 3000, TransactionType.RECEITA, 35, true),
+      makeTx('Salario recorrente', 3000, TransactionType.RECEITA, 65, true),
     ];
 
     const result = predictCashflow([makeAccount('a1', 1000)], txs);
@@ -148,7 +147,7 @@ describe('predictCashflow', () => {
 
   it('ignora transacoes geradas ao calcular baseline historico', () => {
     const txs = [
-      { ...makeTx('Salário', 5000, TransactionType.RECEITA, 5), generated: true },
+      { ...makeTx('Salario', 5000, TransactionType.RECEITA, 5), generated: true },
       { ...makeTx('Aluguel', 1200, TransactionType.DESPESA, 5), generated: true },
     ] as Transaction[];
 
@@ -156,9 +155,60 @@ describe('predictCashflow', () => {
     expect(result.projected_income).toBe(0);
     expect(result.projected_expenses).toBe(0);
   });
+
+  it('ignora transacoes antigas e com data invalida no baseline historico', () => {
+    const txs = [
+      makeTx('Salario antigo', 9000, TransactionType.RECEITA, 140),
+      { ...makeTx('Despesa invalida', 700, TransactionType.DESPESA, 5), date: 'not-a-date' },
+      makeTx('Salario recente', 3000, TransactionType.RECEITA, 10),
+      makeTx('Despesa recente', 600, TransactionType.DESPESA, 10),
+    ] as Transaction[];
+
+    const result = predictCashflow([makeAccount('a1', 1000)], txs);
+    expect(result.projected_income).toBe(1000);
+    expect(result.projected_expenses).toBe(200);
+  });
+
+  it('aceita transacoes date-only na projecao recorrente', () => {
+    const txs = [
+      { ...makeTx('Salario date-only', 3000, TransactionType.RECEITA, 5, true), date: '2026-02-10' },
+      { ...makeTx('Salario date-only', 3000, TransactionType.RECEITA, 35, true), date: '2026-03-10' },
+      { ...makeTx('Salario date-only', 3000, TransactionType.RECEITA, 65, true), date: '2026-04-10' },
+    ] as Transaction[];
+
+    const result = predictCashflow([makeAccount('a1', 1000)], txs);
+    expect(result.projected_transactions.length).toBeGreaterThan(0);
+    expect(result.projected_income).toBe(3000);
+  });
+
+  it('ignora recorrencias com datas invalidas ao montar a projecao', () => {
+    const recurringSpy = vi.spyOn(recurringService, 'generateRecurringTransactions').mockReturnValue([
+      { ...makeTx('Agendada invalida', 250, TransactionType.DESPESA, 5, true), date: 'not-a-date' } as Transaction,
+      { ...makeTx('Agendada valida', 250, TransactionType.DESPESA, 5, true), date: '2026-05-10' } as Transaction,
+    ]);
+
+    const result = predictCashflow([makeAccount('a1', 1000)], [
+      makeTx('Base', 1500, TransactionType.RECEITA, 10),
+    ]);
+
+    expect(result.projected_transactions).toHaveLength(2);
+    expect(recurringSpy).toHaveBeenCalled();
+    recurringSpy.mockRestore();
+  });
+
+  it('descarta date-only invalida ao calcular o baseline historico', () => {
+    const txs = [
+      { ...makeTx('Salario invalido', 9000, TransactionType.RECEITA, 5), date: '2026-02-31' } as Transaction,
+      { ...makeTx('Salario valido', 3000, TransactionType.RECEITA, 10), date: '2026-03-10' } as Transaction,
+    ];
+
+    const result = predictCashflow([], txs);
+    expect(result.projected_income).toBe(1000);
+    expect(result.projected_transactions.length).toBeGreaterThanOrEqual(0);
+  });
 });
 
-// ─── formatPredictionLabel ────────────────────────────────────────────────────
+// â”€â”€â”€ formatPredictionLabel â”€â”€â”€
 
 describe('formatPredictionLabel', () => {
   it('returns "Em 7 dias" for 7', ()  => expect(formatPredictionLabel(7)).toBe('Em 7 dias'));
@@ -167,7 +217,7 @@ describe('formatPredictionLabel', () => {
   it('returns generic label for other values', () => expect(formatPredictionLabel(14)).toBe('Em 14 dias'));
 });
 
-// ─── predictionTrend ──────────────────────────────────────────────────────────
+// â”€â”€â”€ predictionTrend â”€â”€â”€
 
 describe('predictionTrend', () => {
   it('"up" when future > current by more than 2%', () => {

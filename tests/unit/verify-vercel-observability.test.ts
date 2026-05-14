@@ -9,6 +9,7 @@ vi.hoisted(() => {
 import {
   isExpectedApiRoot404,
   isFailedCheck,
+  isLikelyFrontendShellMismatch,
 } from '../../scripts/verify-vercel-observability.mjs';
 
 describe('verify-vercel-observability helpers', () => {
@@ -47,5 +48,16 @@ describe('verify-vercel-observability helpers', () => {
 
     expect(isFailedCheck(ok)).toBe(false);
     expect(isFailedCheck(fail)).toBe(true);
+  });
+
+  it('identifica mismatch quando o dominio raiz responde html e os endpoints api voltam 404', () => {
+    const results = [
+      { path: '/', status: 200, contentType: 'text/html; charset=utf-8' },
+      { path: '/health', status: 404 },
+      { path: '/api/health', status: 404 },
+      { path: '/api/version', status: 404 },
+    ];
+
+    expect(isLikelyFrontendShellMismatch(results)).toBe(true);
   });
 });

@@ -63,18 +63,18 @@ async function main(): Promise<void> {
   ] as const;
 
   for (const step of steps) {
-    console.log(`\n[postgres-cutover-run] starting: ${step.name}`);
+    process.stdout.write(`\n[postgres-cutover-run] starting: ${step.name}\n`);
     await runStep(step.name, step.scriptPath, step.extraEnv);
   }
 
-  console.log(JSON.stringify({
+  process.stdout.write(`${JSON.stringify({
     status: 'ok',
     nextStep: 'Enable DISABLE_LEGACY_STATE_BLOBS=true in the runtime environment after smoke-testing the application against Postgres.',
-  }, null, 2));
+  }, null, 2)}\n`);
 }
 
 void main().catch((error) => {
-  console.error('[postgres-cutover-run] failed');
-  console.error(error);
+  process.stderr.write('[postgres-cutover-run] failed\n');
+  process.stderr.write(`${error instanceof Error ? error.stack || error.message : String(error)}\n`);
   process.exit(1);
 });

@@ -5,11 +5,10 @@ import { describe, expect, it, vi } from 'vitest';
 import Dashboard from '../../components/Dashboard';
 
 describe('dashboard quick actions', () => {
-  it('exposes contextual access to transactions, cash flow, insights and accounts', () => {
+  it('exposes contextual access to transactions, cash flow, insights and revenue forecast', () => {
     const onNavigateToHistory = vi.fn();
     const onNavigateToFlow = vi.fn();
     const onNavigateToInsights = vi.fn();
-    const onNavigateToAccounts = vi.fn();
 
     render(
       <Dashboard
@@ -23,19 +22,33 @@ describe('dashboard quick actions', () => {
         onNavigateToHistory={onNavigateToHistory}
         onNavigateToFlow={onNavigateToFlow}
         onNavigateToInsights={onNavigateToInsights}
-        onNavigateToAccounts={onNavigateToAccounts}
       />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: /ver transacoes/i }));
     fireEvent.click(screen.getByRole('button', { name: /abrir fluxo de caixa/i }));
     fireEvent.click(screen.getByRole('button', { name: /ver insights/i }));
-    fireEvent.click(screen.getByRole('button', { name: /consultar saldos/i }));
+    fireEvent.click(screen.getByRole('button', { name: /ver receitas previstas/i }));
 
     expect(onNavigateToHistory).toHaveBeenCalledTimes(1);
-    expect(onNavigateToFlow).toHaveBeenCalledTimes(1);
+    expect(onNavigateToFlow).toHaveBeenCalledTimes(2);
     expect(onNavigateToInsights).toHaveBeenCalledTimes(1);
-    expect(onNavigateToAccounts).toHaveBeenCalledTimes(1);
+  });
+
+  it('surfaces projected revenue as a first-class dashboard metric', () => {
+    render(
+      <Dashboard
+        userName="Flow User"
+        activeWorkspaceName="Workspace 1"
+        transactions={[]}
+        accounts={[]}
+        alerts={[]}
+        reminders={[]}
+        hideValues={false}
+      />,
+    );
+
+    expect(screen.getByText(/Receita prevista/i)).toBeTruthy();
   });
 
   it('surfaces a focus note for the current period', () => {

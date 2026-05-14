@@ -13,7 +13,8 @@ function isLoopbackOrigin(origin: string): boolean {
     const url = new URL(origin);
     return url.protocol.startsWith('http')
       && (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
-  } catch {
+  } catch (error) {
+    logger.warn({ origin, error }, 'CORS origin parsing failed');
     return false;
   }
 }

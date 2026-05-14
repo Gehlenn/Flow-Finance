@@ -78,7 +78,12 @@ export async function generateContent(
       lastError = error;
 
       if (isModelNotFoundError(error)) {
-        logger.warn({ model: modelName, error: error?.message || String(error) }, 'Gemini model unavailable, trying next candidate');
+        logger.warn({
+          model: modelName,
+          error: error?.message || String(error),
+          triedModels: candidates,
+          fallback: 'gemini-model-unavailable',
+        }, 'Gemini model unavailable, trying next candidate');
         continue;
       }
 
@@ -87,6 +92,8 @@ export async function generateContent(
         errorType: error?.constructor?.name,
         stack: error?.stack,
         geminiModel: modelName,
+        triedModels: candidates,
+        fallback: 'gemini-generate-content-failed',
       }, 'Gemini generateContent error');
       throw error;
     }
@@ -95,6 +102,7 @@ export async function generateContent(
   logger.error({
     error: lastError?.message || String(lastError),
     triedModels: candidates,
+    fallback: 'gemini-all-candidate-models-failed',
   }, 'Gemini generateContent failed for all candidate models');
   throw lastError || new Error('Gemini model resolution failed');
 }
@@ -112,14 +120,27 @@ export async function countTokens(text: string): Promise<number> {
     } catch (error: any) {
       lastError = error;
       if (isModelNotFoundError(error)) {
-        logger.warn({ model: modelName }, 'Gemini token-count model unavailable, trying next candidate');
+        logger.warn({
+          model: modelName,
+          triedModels: candidates,
+          fallback: 'gemini-token-count-model-unavailable',
+        }, 'Gemini token-count model unavailable, trying next candidate');
         continue;
       }
-      logger.error({ error, model: modelName }, 'Token count error');
+      logger.error({
+        error,
+        model: modelName,
+        triedModels: candidates,
+        fallback: 'gemini-token-count-error',
+      }, 'Token count error');
       throw error;
     }
   }
 
-  logger.error({ error: lastError, triedModels: candidates }, 'Token count failed for all Gemini models');
+  logger.error({
+    error: lastError,
+    triedModels: candidates,
+    fallback: 'gemini-token-count-all-models-failed',
+  }, 'Token count failed for all Gemini models');
   throw lastError || new Error('Gemini token count failed');
 }

@@ -31,17 +31,18 @@ describe('ReceiptScanner draft path', () => {
       <ReceiptScannerPage hideValues={false} onAddTransaction={onAddTransaction} />,
     );
 
+    expect(screen.getByText(/Ler para o caixa/i)).toBeTruthy();
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(['img'], 'recibo.png', { type: 'image/png' });
 
     fireEvent.change(input, { target: { files: [file] } });
-    fireEvent.click(screen.getByRole('button', { name: /Extrair dados para revisao/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Extrair dados para o caixa/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Confirmar e Registrar Transação/i })).toBeTruthy();
+      expect(screen.getByRole('button', { name: /confirmar/i })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Confirmar e Registrar Transação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /confirmar/i }));
 
     await waitFor(() => {
       expect(onAddTransaction).toHaveBeenCalledTimes(1);
@@ -56,5 +57,27 @@ describe('ReceiptScanner draft path', () => {
       category: 'Pessoal',
       payment_method: 'pix',
     });
+  });
+
+  it('mostra diagnostico visivel quando a extracao falha', async () => {
+    scanReceiptMock.mockResolvedValue({
+      success: false,
+      data: null,
+      error: 'Falha na extração',
+    });
+
+    const { container } = render(
+      <ReceiptScannerPage hideValues={false} onAddTransaction={vi.fn()} />,
+    );
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(['img'], 'recibo.png', { type: 'image/png' });
+
+    fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: /Extrair dados para o caixa/i }));
+
+    expect(await screen.findByRole('status')).toBeTruthy();
+    expect(screen.getByText(/O scanner nao conseguiu extrair os campos principais do recibo/i)).toBeTruthy();
+    expect(screen.getByText(/Proximo passo:/i)).toBeTruthy();
   });
 });

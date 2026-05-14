@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import { Request, Response, NextFunction } from 'express';
+import logger from './logger';
 
 // ─── SENTRY CONFIGURATION ──────────────────────────────────────────────────────
 
@@ -68,7 +69,9 @@ export const initSentry = () => {
     denyUrls: process.env.NODE_ENV === 'test' ? [/.*/] : [],
   });
 
-  console.log('Sentry initialized for backend error tracking');
+  logger.info({
+    fallback: 'backend-sentry-initialized',
+  }, 'Sentry initialized for backend error tracking');
 };
 
 // ─── ERROR REPORTING HELPERS ─────────────────────────────────────────────────

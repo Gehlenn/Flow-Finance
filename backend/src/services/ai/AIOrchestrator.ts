@@ -155,7 +155,12 @@ export class AIOrchestrator {
       try {
         results[name] = await provider.healthCheck();
       } catch (error) {
-        logger.error(`Health check failed for ${name}`, { error });
+        logger.error(`Health check failed for ${name}`, {
+          provider: name,
+          error: error instanceof Error ? error.message : String(error),
+          errorType: error instanceof Error ? error.constructor.name : typeof error,
+          fallback: 'provider-health-unavailable',
+        });
         results[name] = false;
       }
     }

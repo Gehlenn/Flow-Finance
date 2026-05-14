@@ -7,6 +7,7 @@
 
 import { TransactionType, Category } from '../../types';
 import { apiRequest, API_ENDPOINTS } from '../config/api.config';
+import { logWarn } from '../utils/logger';
 
 // ─── Model ────────────────────────────────────────────────────────────────────
 
@@ -67,6 +68,24 @@ function normalizeType(raw: string): TransactionType {
   return TransactionType.DESPESA;
 }
 
+function formatLocalDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseReceiptDate(value: string): Date | null {
+  const trimmed = value.trim();
+  const dateOnlyMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const parsed = new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 // ─── PART 4 — Core scanner functions ──────────────────────────────────────────
 
 /**
@@ -84,7 +103,11 @@ export async function extractTextFromImage(image: File): Promise<string> {
       result.data.date,
     ].filter(Boolean);
     return parts.join(' ').trim();
-  } catch {
+  } catch (error) {
+    logWarn('[ReceiptScanner] Failed to extract text from image; returning empty text', {
+      error,
+      fileName: image.name,
+    });
     return '';
   }
 }
@@ -116,8 +139,8 @@ export function calculateConfidence(receipt: Partial<ScannedReceipt>): Confidenc
 
   let dateConf = 0;
   if (receipt.date) {
-    const d = new Date(receipt.date);
-    if (!isNaN(d.getTime())) {
+    const d = parseReceiptDate(receipt.date);
+    if (d) {
       dateConf = 0.5;
       const twoYearsAgo = Date.now() - 2 * 365 * 86400000;
       if (d.getTime() > twoYearsAgo && d.getTime() <= Date.now()) dateConf = 1.0;
@@ -177,10 +200,15 @@ export function parseReceiptText(text: string): Partial<ScannedReceipt> {
   for (const [pattern, builder] of dateStrategies) {
     const match = text.match(pattern);
     if (match) {
-      try {
-        const d = new Date(builder(match));
-        if (!isNaN(d.getTime())) { result.date = d.toISOString(); break; }
-      } catch { /* try next */ }
+    try {
+        const d = parseReceiptDate(builder(match));
+        if (d) { result.date = formatLocalDateKey(d); break; }
+      } catch (error) {
+        logWarn('[ReceiptScanner] Failed to parse receipt date strategy; trying next', {
+          error,
+          rawText: text.slice(0, 120),
+        });
+      }
     }
   }
 
@@ -237,7 +265,7 @@ export async function scanReceipt(image: File): Promise<ScanResult> {
     const data: ScannedReceipt = {
       amount:         typeof raw.amount === 'number' ? raw.amount : null,
       merchant:       null,
-      date:           raw.date ? new Date(raw.date as string).toISOString() : null,
+      date:           typeof raw.date === 'string' ? (parseReceiptDate(raw.date) ? formatLocalDateKey(parseReceiptDate(raw.date) as Date) : null) : null,
       description:    (raw.description as string) ?? null,
       category:       raw.category ? normalizeCategory(raw.category as string) : null,
       type:           raw.type ? normalizeType(raw.type as string) : TransactionType.DESPESA,
@@ -252,6 +280,10 @@ export async function scanReceipt(image: File): Promise<ScanResult> {
 
     return { success: true, data };
   } catch (err: unknown) {
+    logWarn('[ReceiptScanner] Failed to scan receipt; returning structured error', {
+      error: err,
+      fileName: image.name,
+    });
     return {
       success: false,
       data: null,

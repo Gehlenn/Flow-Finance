@@ -296,7 +296,14 @@ class FirebaseAdminCloudSyncStoreAdapter implements FirebaseCloudSyncStoreAdapte
       return this.firestore;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'firebase-init-failed';
-      logger.error({ error: message }, 'Failed to initialize Firebase Cloud Sync store');
+      logger.error({
+        error: message,
+        usingServiceAccount,
+        usingApplicationDefault,
+        configured: true,
+        ready: false,
+        fallback: 'firebase-cloud-sync-store-init-failed',
+      }, 'Failed to initialize Firebase Cloud Sync store');
       this.buildStatus(true, false, message);
       return null;
     }

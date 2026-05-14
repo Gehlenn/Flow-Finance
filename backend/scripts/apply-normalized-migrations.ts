@@ -66,18 +66,18 @@ async function main(): Promise<void> {
 
   const finalAppliedRows = await query('SELECT name, applied_at FROM schema_migrations ORDER BY applied_at ASC');
 
-  console.log(JSON.stringify({
+  process.stdout.write(`${JSON.stringify({
     status: 'ok',
     migrationsDir: DEFAULT_MIGRATIONS_DIR,
     discoveredMigrations: migrationFiles,
     appliedNow,
     alreadyApplied,
     appliedMigrations: finalAppliedRows.rows,
-  }, null, 2));
+  }, null, 2)}\n`);
 }
 
 void main().catch((error) => {
-  console.error('[apply-normalized-migrations] failed');
-  console.error(error);
+  process.stderr.write('[apply-normalized-migrations] failed\n');
+  process.stderr.write(`${error instanceof Error ? error.stack || error.message : String(error)}\n`);
   process.exit(1);
 });

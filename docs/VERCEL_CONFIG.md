@@ -23,6 +23,8 @@ Garantir que:
 - versionamento esteja exposto
 - observabilidade minima esteja preparada
 - a validacao externa nao seja confundida com um deploy apenas publicado
+- o projeto backend no Vercel esteja com `root directory = backend/`
+- o dominio backend nao resolva para o shell do frontend
 
 ## Variaveis criticas do frontend
 
@@ -44,6 +46,11 @@ GEMINI_API_KEY=
 FRONTEND_URL=https://flow-finance-frontend-nine.vercel.app/
 ```
 
+## Revalidacao atual
+
+- Em `2026-05-08`, o backend oficial responde `200` na raiz, mas `/health`, `/api/health` e `/api/version` continuam em `404`.
+- O frontend principal responde `200` no mesmo checkpoint.
+
 ## Regras praticas
 
 ### URLs
@@ -64,6 +71,19 @@ Sem DSN configurado, a trilha de observabilidade fica parcialmente aberta. No fr
 
 Se a URL estiver protegida por Vercel Authentication antes da aplicacao responder, ela nao serve como evidencia automatizada de health.
 
+### Root directory do backend
+
+O backend precisa ser publicado como projeto Vercel separado, com raiz em `backend/` e entrypoint serverless em `backend/api/index.ts`.
+
+Se o dominio backend responder HTML na raiz e `404` em `/health`, `/api/health` e `/api/version`, o problema mais provavel e alias/projeto apontando para a aplicacao errada, nao falha do contrato no codigo.
+
+### Troubleshooting rapido
+
+1. Conferir se o projeto do backend no painel do Vercel aponta para o diretorio `backend/`.
+2. Conferir se o dominio `flow-finance-backend.vercel.app` nao foi movido para o projeto do frontend por engano.
+3. Se o root continuar servindo HTML, o deploy atual nao e o backend API-only esperado.
+4. Reexecutar `npm run health:vercel` depois de corrigir o alias.
+
 ## Checklist operacional
 
 - [ ] `VITE_API_PROD_URL` apontando para o backend correto
@@ -79,5 +99,6 @@ Se a URL estiver protegida por Vercel Authentication antes da aplicacao responde
 
 - [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)
 - [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md)
+- [VERCEL_RECOVERY_CHECKLIST.md](./VERCEL_RECOVERY_CHECKLIST.md)
 - [OPERATIONS_README.md](./OPERATIONS_README.md)
 

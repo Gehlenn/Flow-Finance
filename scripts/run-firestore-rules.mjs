@@ -51,10 +51,11 @@ const child = spawn(process.execPath, [
 });
 
 child.on('error', (error) => {
-  console.error('[firestore-rules] Failed to launch emulator runner:', error);
+  process.stderr.write('[firestore-rules] Failed to launch emulator runner:', error);
   process.exit(1);
 });
 
 child.on('exit', (code) => {
   process.exit(code ?? 1);
 });
+

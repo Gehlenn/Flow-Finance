@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import {
   convertCurrency,
   formatCurrency,
@@ -7,9 +7,16 @@ import {
   makeId,
 } from '../../src/utils/helpers';
 
+const logWarnMock = vi.fn();
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: (...args: unknown[]) => logWarnMock(...args),
+}));
+
 describe('helpers', () => {
   beforeEach(() => {
     localStorage.clear();
+    logWarnMock.mockReset();
   });
 
   it('makeId returns strings with requested length', () => {
@@ -63,12 +70,46 @@ describe('helpers', () => {
     expect(result).toHaveLength(2);
   });
 
+  it('getMonthTransactions ignora o mesmo mes em outro ano', () => {
+    const transactions = [
+      { date: '2025-03-10' },
+      { date: '2026-03-15' },
+      { date: '2026-04-01' },
+    ];
+
+    const result = getMonthTransactions(transactions, new Date('2026-03-25T00:00:00.000Z'));
+    expect(result).toHaveLength(1);
+    expect(result[0].date).toBe('2026-03-15');
+  });
+
+  it('getMonthTransactions ignora datas invalidadas mesmo quando parecem date-only', () => {
+    const transactions = [
+      { date: '2026-03-10' },
+      { date: '2026-02-31' },
+      { date: 'not-a-date' },
+    ];
+
+    const result = getMonthTransactions(transactions, new Date('2026-03-25T00:00:00.000Z'));
+    expect(result).toHaveLength(1);
+    expect(result[0].date).toBe('2026-03-10');
+  });
+
   it('getFromStorage returns default value for missing and invalid JSON', () => {
     const fallback = { ok: false };
     expect(getFromStorage('missing', fallback)).toEqual(fallback);
 
+    localStorage.setItem('empty', '');
+    expect(getFromStorage('empty', fallback)).toEqual(fallback);
+
     localStorage.setItem('invalid', '{nope');
     expect(getFromStorage('invalid', fallback)).toEqual(fallback);
+    expect(logWarnMock).toHaveBeenCalledWith(
+      '[Helpers] Failed to parse storage entry; returning default value',
+      expect.objectContaining({
+        key: 'invalid',
+        error: expect.any(Error),
+      }),
+    );
   });
 
   it('getFromStorage returns parsed JSON for valid entry', () => {

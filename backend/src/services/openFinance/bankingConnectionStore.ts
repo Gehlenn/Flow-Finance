@@ -124,7 +124,14 @@ class FirebaseAdminBankingConnectionStoreAdapter implements FirebaseBankingConne
       return this.firestore;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'firebase-init-failed';
-      logger.error({ error: message }, 'Failed to initialize Firebase Open Finance store');
+      logger.error({
+        error: message,
+        usingServiceAccount,
+        usingApplicationDefault,
+        configured: true,
+        ready: false,
+        fallback: 'firebase-open-finance-store-init-failed',
+      }, 'Failed to initialize Firebase Open Finance store');
       this.buildStatus(true, false, message);
       return null;
     }

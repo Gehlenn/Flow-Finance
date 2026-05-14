@@ -10,6 +10,7 @@ import {
   MemoryStats,
   MemoryDecayConfig,
 } from './memoryTypes';
+import { logInfo, logWarn } from '../../utils/logger';
 import { getActiveWorkspaceScopedStorageKey } from '../../utils/workspaceStorage';
 
 const STORAGE_KEY = 'flow_ai_memory_v2';
@@ -55,7 +56,10 @@ class AIMemoryStore {
       }
       this.initialized = true;
     } catch (error) {
-      console.error('[AI Memory Store] Failed to load:', error);
+      logWarn('[AI Memory Store] Failed to load; returning empty memory set', {
+        storageKey: this.activeStorageKey,
+        error,
+      });
       this.memories = new Map();
       this.initialized = true;
     }
@@ -67,7 +71,10 @@ class AIMemoryStore {
       const entries = Array.from(this.memories.values());
       localStorage.setItem(this.activeStorageKey, JSON.stringify(entries));
     } catch (error) {
-      console.error('[AI Memory Store] Failed to save:', error);
+      logWarn('[AI Memory Store] Failed to save; keeping in-memory state', {
+        storageKey: this.activeStorageKey,
+        error,
+      });
     }
   }
 
@@ -99,7 +106,11 @@ class AIMemoryStore {
     }
 
     if (decayed > 0) {
-      console.log(`[AI Memory Store] Decayed ${decayed} old memories`);
+      logInfo('[AI Memory Store] Decayed old memories', {
+        decayed,
+        storageKey: this.activeStorageKey,
+        fallback: 'ai-memory-store-decayed-old-memories',
+      });
       this.saveToStorage();
     }
   }

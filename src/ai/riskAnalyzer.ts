@@ -1,6 +1,20 @@
 import { Transaction, TransactionType } from '../../types';
 import { makeId } from '../utils/helpers';
 
+function parseRiskDate(value: string): Date | null {
+  const dateOnly = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    const year = Number(dateOnly[1]);
+    const month = Number(dateOnly[2]) - 1;
+    const day = Number(dateOnly[3]);
+    const localDate = new Date(year, month, day);
+    return Number.isNaN(localDate.getTime()) ? null : localDate;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 // ─── Model (PART 4) ───────────────────────────────────────────────────────────
 
 export interface FinancialRiskAlert {
@@ -35,7 +49,10 @@ export function buildCashflowPrediction(transactions: Transaction[]): CashflowPr
   // Média mensal de receitas e despesas (últimos 3 meses)
   const now = new Date();
   const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-  const recent = baseTxs.filter(t => new Date(t.date) >= threeMonthsAgo);
+  const recent = baseTxs.filter(t => {
+    const parsed = parseRiskDate(t.date);
+    return Boolean(parsed && parsed >= threeMonthsAgo);
+  });
 
   const monthlyIncome = recent
     .filter(t => t.type === TransactionType.RECEITA)

@@ -508,6 +508,14 @@ export async function saveWorkspaceStoreState(state: PersistedWorkspaceStoreStat
     await query('COMMIT');
   } catch (error) {
     await query('ROLLBACK');
+    logger.error({
+      error,
+      tenantCount: state.tenants.length,
+      workspaceCount: state.workspaces.length,
+      workspaceUserCount: state.workspaceUsers.length,
+      preferenceCount: state.userPreferences.length,
+      fallback: 'workspace-store-save-failed',
+    }, 'Failed to persist workspace store state');
     throw error;
   }
 }
@@ -659,6 +667,13 @@ export async function saveWorkspaceSaasState(state: PersistedWorkspaceSaasState)
     await query('COMMIT');
   } catch (error) {
     await query('ROLLBACK');
+    logger.error({
+      error,
+      workspaceCount: Object.keys(state.usageByWorkspace).length,
+      usageEventWorkspaceCount: Object.keys(state.usageEventsByWorkspace).length,
+      billingHookWorkspaceCount: Object.keys(state.billingHooksByWorkspace).length,
+      fallback: 'saas-state-save-failed',
+    }, 'Failed to persist workspace SaaS state');
     throw error;
   }
 }

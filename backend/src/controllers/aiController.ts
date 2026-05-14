@@ -130,7 +130,12 @@ Responda em JSON estruturado conforme o schema.`;
 
     res.json(response);
   } catch (error) {
-    logger.warn({ error, userId: req.userId }, 'Interpret unavailable, returning fallback response');
+    logger.warn({
+      error,
+      userId: req.userId,
+      textLength: sanitizedText.length,
+      fallback: 'interpret-empty',
+    }, 'Interpret unavailable, returning fallback response');
     res.json(buildInterpretFallbackResponse());
   }
 });
@@ -164,7 +169,11 @@ Responda em JSON.`;
     const response: ScanReceiptResponse = parsed;
     res.json(response);
   } catch (error) {
-    logger.error({ error, userId: req.userId }, 'Scan receipt error');
+    logger.error({
+      error,
+      userId: req.userId,
+      fallback: 'scan-receipt-failed',
+    }, 'Scan receipt error');
     throw new AppError(500, 'Failed to scan receipt', { error: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
@@ -196,7 +205,12 @@ Responda em JSON array.`;
     const response: ClassifyTransactionsResponse = parsed;
     res.json(response);
   } catch (error) {
-    logger.error({ error, userId: req.userId }, 'Classify transactions error');
+    logger.error({
+      error,
+      userId: req.userId,
+      count: transactions.length,
+      fallback: 'classify-transactions-failed',
+    }, 'Classify transactions error');
     throw new AppError(500, 'Failed to classify transactions');
   }
 });
@@ -248,7 +262,13 @@ Responda em JSON estruturado.`;
 
     res.json(response);
   } catch (error) {
-    logger.warn({ error, userId: req.userId, type }, 'Generate insights unavailable, returning fallback response');
+    logger.warn({
+      error,
+      userId: req.userId,
+      type,
+      transactionCount: transactions.length,
+      fallback: type === 'daily' ? 'daily-empty' : 'strategic-empty',
+    }, 'Generate insights unavailable, returning fallback response');
     res.json(buildInsightsFallbackResponse(type));
   }
 });
@@ -268,7 +288,12 @@ export const tokenCountController = asyncHandler(async (req: Request, res: Respo
     const tokenCount = await estimateTokens(text);
     res.json({ tokenCount });
   } catch (error) {
-    logger.error({ error, userId: req.userId }, 'Token count error');
+    logger.error({
+      error,
+      userId: req.userId,
+      textLength: text.length,
+      fallback: 'token-count-failed',
+    }, 'Token count error');
     throw new AppError(500, 'Failed to count tokens');
   }
 });
@@ -355,6 +380,10 @@ Responda de forma consultiva, personalizada e baseada exclusivamente nos dados a
       error: error?.message || String(error),
       errorType: error?.constructor?.name,
       status: error?.status,
+      userId: req.userId,
+      questionLength: sanitizedQuestion.length,
+      intent,
+      fallback: 'cfo-failed',
     }, 'CFO generation error');
     throw new AppError(500, `Failed to generate CFO response: ${error?.message || 'Unknown error'}`);
   }

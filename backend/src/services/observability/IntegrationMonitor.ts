@@ -202,6 +202,15 @@ export class IntegrationMonitor {
         const health = await this.telemetry.checkHealthFor(integration);
         checks.push(health);
       } catch (error) {
+        this.logger.error(
+          {
+            integrationName: integration,
+            error: error instanceof Error ? error.message : String(error),
+            errorType: error instanceof Error ? error.constructor.name : typeof error,
+            fallback: 'healthcheck-false',
+          },
+          `Health check failed for ${integration}`
+        );
         checks.push({
           name: integration,
           healthy: false,

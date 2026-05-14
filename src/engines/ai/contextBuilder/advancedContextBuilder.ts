@@ -6,6 +6,17 @@ import { getFinancialProfile, getRecurringExpenses } from '../../../ai/memory/AI
 import { moneyMapEngine } from '../../finance/moneyMap/moneyMapEngine';
 import { cashflowPredictionEngine } from '../../finance/cashflowPrediction/cashflowPredictionEngine';
 
+function parseAdvancedContextDate(value: string): Date | null {
+  const trimmed = value.trim();
+  const dateOnlyMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const parsed = new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export interface AdvancedAIContext {
   base: ReturnType<typeof buildAIContext>;
   patterns: ReturnType<typeof financialPatternDetector.detectPatterns>;
@@ -29,7 +40,7 @@ export interface AdvancedAIContext {
 
 export function buildAdvancedAIContext(userContext: UserContext, transactions: Transaction[]): AdvancedAIContext {
   const sortedTransactions = [...transactions].sort(
-    (left, right) => new Date(right.date).getTime() - new Date(left.date).getTime()
+    (left, right) => (parseAdvancedContextDate(right.date)?.getTime() ?? 0) - (parseAdvancedContextDate(left.date)?.getTime() ?? 0)
   );
 
   const base = buildAIContext({ userContext, transactions: sortedTransactions });
@@ -47,7 +58,7 @@ export function buildAdvancedAIContext(userContext: UserContext, transactions: T
     return merchant.length > 0;
   }).length;
 
-  const datedTransactions = sortedTransactions.filter((transaction) => !Number.isNaN(new Date(transaction.date).getTime())).length;
+  const datedTransactions = sortedTransactions.filter((transaction) => parseAdvancedContextDate(transaction.date) !== null).length;
   const totalTransactions = Math.max(1, sortedTransactions.length);
 
   const dataQuality = {

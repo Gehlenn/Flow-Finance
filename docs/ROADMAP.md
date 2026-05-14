@@ -2,8 +2,8 @@
 
 ## Status do documento
 
-- Última atualização: `2026-04-22` (padronização PT-BR + links relativos + correção de encoding)
-- Versão de acompanhamento: `0.9.6.1v`
+- Última atualização: `2026-05-08` (revalidação do estado de deploy + alinhamento com a versão atual)
+- Versão de acompanhamento: `0.9.7`
 - Papel deste arquivo: visão estratégica e operacional consolidada (produto + operação)
 
 ## Resumo executivo
@@ -21,7 +21,7 @@ No checkpoint atual:
 - a suíte global foi recuperada
 - o billing Stripe sandbox foi provado localmente (evidência operacional)
 - o contrato mínimo de observabilidade existe em código
-- o bloqueio remanescente está concentrado no ambiente-alvo do Vercel (variáveis e acesso ao destino)
+- o backend alvo do Vercel está desalinhado: o domínio responde na raiz, mas `/health`, `/api/health` e `/api/version` voltaram `404` na revalidação de `2026-05-08`
 
 ## Estado atual por eixo
 
@@ -68,7 +68,7 @@ Ainda pendente para fechamento no ambiente-alvo:
 
 ### 4. Observabilidade
 
-Estado: `fechada em código, pendente no ambiente-alvo`
+Estado: `fechada em código, desalinhada no ambiente-alvo`
 
 Já implementado:
 
@@ -80,6 +80,12 @@ Ainda pendente:
 
 - variáveis no destino: `VITE_SENTRY_DSN`, `SENTRY_DSN`, `VITE_APP_VERSION`, `APP_VERSION`
 - acesso liberado ao preview (sem Vercel Authentication bloqueando o verificador)
+- restaurar o contrato real do backend no domínio alvo para que `/health`, `/api/health` e `/api/version` voltem a responder
+
+Revalidação atual:
+
+- `https://flow-finance-frontend-nine.vercel.app/` responde `200`
+- `https://flow-finance-backend.vercel.app/` responde `200` na raiz, mas `404` em `/health`, `/api/health` e `/api/version`
 
 ## Foco imediato
 
@@ -99,7 +105,7 @@ Entregas:
 
 Entregas:
 
-- confirmar resposta real do frontend e backend no ambiente acessível
+- confirmar resposta real do frontend e do backend no ambiente acessível
 - reconfirmar readiness mínima de billing e observabilidade no destino
 - atualizar evidências se houver diferença entre local e deploy
 
@@ -107,8 +113,8 @@ Entregas:
 
 1. suíte global sem regressão - `aprovado`
 2. gates críticos aprovados novamente - `aprovado (cobertura crítica 99.72%)`
-3. deploy-alvo validado com endpoints de saúde acessíveis - `parcial (backend /api/version comprovado; health end-to-end depende de URL acessível e contrato do verificador)`
-4. observabilidade configurada no ambiente-alvo - `pendente (depende de variáveis e acesso ao destino)`
+3. deploy-alvo validado com endpoints de saúde acessíveis - `pendente (backend atual responde HTML na raiz e 404 em /health e /api/*)`
+4. observabilidade configurada no ambiente-alvo - `pendente (depende de variáveis, acesso ao destino e contrato do backend)`
 5. documentação principal e vault atualizados - `em andamento (PT-BR + links relativos no repo; espelho no vault canônico deve acompanhar)`
 
 ## Referências obrigatórias

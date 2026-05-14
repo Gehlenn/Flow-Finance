@@ -5,6 +5,14 @@ import { describe, expect, it, vi } from 'vitest';
 import GoalsPage from '../../pages/Goals';
 import { Category, type Goal } from '../../types';
 
+const goalsLoggerMock = vi.hoisted(() => ({
+  logWarn: vi.fn(),
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: goalsLoggerMock.logWarn,
+}));
+
 vi.mock('../../src/app/secondaryFlowsCopy', () => ({
   SECONDARY_FLOWS_COPY: {
     goals: {
@@ -26,6 +34,10 @@ const baseGoal: Goal = {
 };
 
 describe('Goals contribution modal', () => {
+  beforeEach(() => {
+    goalsLoggerMock.logWarn.mockReset();
+  });
+
   it('reseta o valor do aporte ao reabrir o modal', () => {
     render(
       <GoalsPage
@@ -68,5 +80,38 @@ describe('Goals contribution modal', () => {
     fireEvent.click(screen.getByRole('button', { name: /Confirmar Aporte/i }));
 
     expect(onContributeGoal).toHaveBeenCalledWith('goal-1', 123.45);
+  });
+
+  it('mostra diagnostico visivel quando registrar aporte falha', async () => {
+    const onContributeGoal = vi.fn(() => {
+      throw new Error('update failed');
+    });
+
+    render(
+      <GoalsPage
+        goals={[baseGoal]}
+        hideValues={false}
+        canEditGoals
+        onCreateGoal={vi.fn()}
+        onDeleteGoal={vi.fn()}
+        onContributeGoal={onContributeGoal}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Aportar/i }));
+    fireEvent.change(screen.getByLabelText(/Valor do aporte/i), { target: { value: '123,45' } });
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar Aporte/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toBeTruthy();
+    });
+
+    expect(screen.getByText(/Nao foi possivel registrar o aporte/i)).toBeTruthy();
+    expect(goalsLoggerMock.logWarn).toHaveBeenCalledWith(
+      '[Goals] Failed to contribute to goal',
+      expect.objectContaining({
+        fallback: 'goals-contribute-failed',
+      }),
+    );
   });
 });

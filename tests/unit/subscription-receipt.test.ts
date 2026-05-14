@@ -92,6 +92,18 @@ describe('detectSubscriptions', () => {
     const result = detectSubscriptions(txs);
     expect(result[0].occurrences).toBeGreaterThanOrEqual(result[1].occurrences);
   });
+
+  it('trata datas-only como locais e ignora datas invalidas no ciclo', () => {
+    const txs: SubscriptionDetectionInput[] = [
+      ...makeTx('Prime Video', 14.9, ['2026-01-05', '2026-02-05', '2026-03-05']),
+      { merchant: 'Prime Video', amount: 14.9, date: 'invalid-date' },
+    ];
+
+    const result = detectSubscriptions(txs);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].frequency).toBe('monthly');
+  });
 });
 
 // ─── receiptParser ────────────────────────────────────────────────────────────
@@ -125,14 +137,12 @@ describe('detectAmount', () => {
 describe('detectDate', () => {
   it('detecta data BR DD/MM/YYYY', () => {
     const result = detectDate('Emissao: 15/03/2026');
-    expect(result).toBeDefined();
-    expect(new Date(result!).getFullYear()).toBe(2026);
+    expect(result).toBe('2026-03-15');
   });
 
   it('detecta data ISO YYYY-MM-DD', () => {
     const result = detectDate('Data: 2026-03-15');
-    expect(result).toBeDefined();
-    expect(new Date(result!).getMonth()).toBe(2); // março
+    expect(result).toBe('2026-03-15');
   });
 
   it('retorna null quando não há data', () => {
@@ -162,7 +172,7 @@ CNPJ 12.345.678/0001-99
   it('extrai amount, date e merchant', () => {
     const result = parseReceiptText(receipt);
     expect(result.amount).toBeCloseTo(150, 0);
-    expect(result.date).toBeDefined();
+    expect(result.date).toBe('2026-03-15');
     expect(result.merchant).toBeDefined();
   });
 

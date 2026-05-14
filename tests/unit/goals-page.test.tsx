@@ -5,6 +5,14 @@ import { describe, expect, it, vi } from 'vitest';
 import GoalsPage from '../../pages/Goals';
 import { Category, type Goal } from '../../types';
 
+const goalsLoggerMock = vi.hoisted(() => ({
+  logWarn: vi.fn(),
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: goalsLoggerMock.logWarn,
+}));
+
 vi.mock('../../src/app/secondaryFlowsCopy', () => ({
   SECONDARY_FLOWS_COPY: {
     goals: {
@@ -26,6 +34,10 @@ const baseGoal: Goal = {
 };
 
 describe('Goals page', () => {
+  beforeEach(() => {
+    goalsLoggerMock.logWarn.mockReset();
+  });
+
   it('esconde deadline invalido sem renderizar Invalid Date', () => {
     render(
       <GoalsPage
@@ -84,8 +96,9 @@ describe('Goals page', () => {
 
     expect(onCreateGoal).not.toHaveBeenCalled();
     await waitFor(() => {
-      expect(screen.getByText(/valor alvo valido/i)).toBeTruthy();
+      expect(screen.getByRole('status')).toBeTruthy();
     });
+    expect(screen.getByText(/O valor da meta precisa ser numerico/i)).toBeTruthy();
   });
 
   it('limpa o erro de meta quando o usuario corrige o valor', async () => {
@@ -107,12 +120,12 @@ describe('Goals page', () => {
     fireEvent.change(screen.getAllByPlaceholderText('0,00')[0], { target: { value: 'abc' } });
     fireEvent.click(screen.getByRole('button', { name: /Criar Meta/i }));
 
-    expect(screen.getByText(/valor alvo valido/i)).toBeTruthy();
+    expect(screen.getByRole('status')).toBeTruthy();
 
     fireEvent.change(screen.getAllByPlaceholderText('0,00')[0], { target: { value: '100,00' } });
 
     await waitFor(() => {
-      expect(screen.queryByText(/valor alvo valido/i)).toBeNull();
+      expect(screen.queryByRole('status')).toBeNull();
     });
   });
 
@@ -141,7 +154,41 @@ describe('Goals page', () => {
 
     expect(onContributeGoal).not.toHaveBeenCalled();
     await waitFor(() => {
-      expect(screen.getByText(/Informe um aporte valido/i)).toBeTruthy();
+      expect(screen.getByRole('status')).toBeTruthy();
     });
+    expect(screen.getByText(/O valor do aporte precisa ser numerico/i)).toBeTruthy();
+  });
+
+  it('mostra diagnostico visivel quando salvar meta falha', async () => {
+    const onCreateGoal = vi.fn(() => {
+      throw new Error('persist failed');
+    });
+
+    render(
+      <GoalsPage
+        goals={[]}
+        hideValues={false}
+        canEditGoals={true}
+        onCreateGoal={onCreateGoal}
+        onDeleteGoal={vi.fn()}
+        onContributeGoal={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Nova meta/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Reserva de EmergÃªncia/i), { target: { value: 'Reserva' } });
+    fireEvent.change(screen.getAllByPlaceholderText('0,00')[0], { target: { value: '1000' } });
+    fireEvent.click(screen.getByRole('button', { name: /Criar Meta/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toBeTruthy();
+    });
+    expect(screen.getByText(/Nao foi possivel salvar a meta/i)).toBeTruthy();
+    expect(goalsLoggerMock.logWarn).toHaveBeenCalledWith(
+      '[Goals] Failed to create goal',
+      expect.objectContaining({
+        fallback: 'goals-create-goal-failed',
+      }),
+    );
   });
 });

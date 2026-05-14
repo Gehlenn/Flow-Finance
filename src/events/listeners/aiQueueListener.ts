@@ -8,6 +8,7 @@
 import { subscribeToFinancialEvents } from '../eventEngine';
 import { aiTaskQueue } from '../../ai/queue/AITaskQueue';
 import { AITaskType } from '../../ai/queue/taskTypes';
+import { logWarn } from '../../utils/logger';
 import type { FinancialEvent } from '../../../models/FinancialEvent';
 
 type EventToTask = {
@@ -32,7 +33,8 @@ export function registerAIQueueListener(): () => void {
         aiTaskQueue.enqueueTask(taskType, event.payload, 'event-listener');
         console.debug(`[AIQueueListener] Tarefa ${taskType} enfileirada via evento "${event.type}"`);
       } catch (err: any) {
-        console.warn('[AIQueueListener] failed to enqueue task from financial event', {
+        logWarn('[AIQueueListener] failed to enqueue task from financial event', {
+          fallback: 'ai-queue-listener-enqueue-failed',
           eventType: event.type,
           taskType,
           error: err?.message || String(err),

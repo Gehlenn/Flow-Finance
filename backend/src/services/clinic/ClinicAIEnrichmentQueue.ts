@@ -14,6 +14,18 @@ export interface ClinicAIEnrichmentTask {
   retriesRemaining: number;
 }
 
+export interface ClinicAIEnrichmentSnapshot {
+  taskId: string;
+  transactionId: string;
+  externalEventId: string;
+  workspaceId: string;
+  amountBand: 'low' | 'medium' | 'high';
+  suggestedCategory: string;
+  riskLevel: 'low' | 'medium' | 'high';
+  notes: string[];
+  createdAt: string;
+}
+
 /**
  * ClinicAIEnrichmentQueue: Processa eventos da clínica através de IA para enriquecimento.
  * 
@@ -25,6 +37,7 @@ export interface ClinicAIEnrichmentTask {
  */
 export class ClinicAIEnrichmentQueue {
   private readonly queue: ClinicAIEnrichmentTask[] = [];
+  private readonly enrichmentSnapshots = new Map<string, ClinicAIEnrichmentSnapshot>();
   private readonly logger: Logger;
   private readonly maxRetries: number = 3;
   private readonly processingIntervalMs: number = 5000; // 5 segundos
@@ -93,7 +106,12 @@ export class ClinicAIEnrichmentQueue {
     this.processAvailableTasks()
       .catch((error) => {
         this.logger.error(
-          { error },
+          {
+            error,
+            queueSize: this.queue.length,
+            processingIntervalActive: !!this.processingInterval,
+            fallback: 'clinic-ai-enrichment-cycle-failed',
+          },
           'Error processing clinic AI enrichment queue',
         );
       })
@@ -143,8 +161,10 @@ export class ClinicAIEnrichmentQueue {
         this.logger.warn(
           {
             taskId: task.id,
+            externalEventId: task.externalEventId,
             retriesRemaining: task.retriesRemaining,
             error,
+            fallback: 'clinic-ai-enrichment-retry',
           },
           'ClinicAI enrichment failed, retrying',
         );
@@ -158,6 +178,7 @@ export class ClinicAIEnrichmentQueue {
             taskId: task.id,
             externalEventId: task.externalEventId,
             error,
+            fallback: 'clinic-ai-enrichment-max-retries-exhausted',
           },
           'ClinicAI enrichment failed after max retries',
         );
@@ -185,18 +206,64 @@ export class ClinicAIEnrichmentQueue {
   /**
    * Placeholder: Enrich event with AI.
    * TODO(#ai-enrichment): Integrate with real IA service (Gemini/OpenAI)
-   * Current: No-op stub. Returns immediately without enrichment.
+   * Current: deterministic local heuristic fallback with observability.
    */
   private async enrichWithAI(task: ClinicAIEnrichmentTask): Promise<void> {
-    // TODO(#ai-enrichment): Implement AI enrichment:
-    // 1. Smart transaction categorization
-    // 2. Duplicate/inconsistency detection
-    // 3. Financial action suggestions
-    // 4. Spending pattern analysis
+    const normalizedDescription = task.description.toLowerCase().trim();
+    const amount = Math.abs(task.amount);
+    const amountBand: ClinicAIEnrichmentSnapshot['amountBand'] =
+      amount >= 1000 ? 'high' : amount >= 250 ? 'medium' : 'low';
 
-    this.logger.debug(
-      { taskId: task.id, externalEventId: task.externalEventId },
-      '[ClinicAIEnrichment] Placeholder: No enrichment performed (TODO: implement AI integration)',
+    let suggestedCategory = 'Clínica';
+    const notes: string[] = [];
+
+    if (/(consulta|doctor|medic|saude|health|clinic)/i.test(normalizedDescription)) {
+      suggestedCategory = 'Saúde';
+      notes.push('Descrição associada a atendimento clínico.');
+    } else if (/(laborat|exame|test|análise|analise)/i.test(normalizedDescription)) {
+      suggestedCategory = 'Exames';
+      notes.push('Descrição associada a exames ou laboratório.');
+    } else if (/(pagamento|received|payment|receipt|invoice|fatura)/i.test(normalizedDescription)) {
+      suggestedCategory = 'Recebimento';
+      notes.push('Fluxo financeiro descrito como recebimento/pagamento.');
+    }
+
+    if (amountBand === 'high') {
+      notes.push('Valor alto para acompanhamento prioritário.');
+    } else if (amountBand === 'medium') {
+      notes.push('Valor intermediário; revisar alinhamento com histórico.');
+    } else {
+      notes.push('Valor baixo; manter monitoramento de rotina.');
+    }
+
+    const riskLevel: ClinicAIEnrichmentSnapshot['riskLevel'] =
+      amountBand === 'high' ? 'high' : amountBand === 'medium' ? 'medium' : 'low';
+
+    const snapshot: ClinicAIEnrichmentSnapshot = {
+      taskId: task.id,
+      transactionId: task.transactionId,
+      externalEventId: task.externalEventId,
+      workspaceId: task.workspaceId,
+      amountBand,
+      suggestedCategory,
+      riskLevel,
+      notes,
+      createdAt: new Date().toISOString(),
+    };
+
+    this.enrichmentSnapshots.set(task.id, snapshot);
+    this.logger.info(
+      {
+        taskId: task.id,
+        externalEventId: task.externalEventId,
+        workspaceId: task.workspaceId,
+        suggestedCategory,
+        amountBand,
+        riskLevel,
+        notes,
+        fallback: 'clinic-ai-enrichment-local-heuristic',
+      },
+      'ClinicAI enrichment fallback heuristic applied',
     );
   }
 
@@ -205,6 +272,14 @@ export class ClinicAIEnrichmentQueue {
    */
   getQueueSize(): number {
     return this.queue.length;
+  }
+
+  /**
+   * Retorna o último snapshot heurístico gerado para uma tarefa.
+   */
+  getEnrichmentSnapshot(taskId: string): ClinicAIEnrichmentSnapshot | undefined {
+    const snapshot = this.enrichmentSnapshots.get(taskId);
+    return snapshot ? { ...snapshot, notes: [...snapshot.notes] } : undefined;
   }
 
   /**

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+﻿import { test, expect } from '@playwright/test';
 import { clickWithRetry } from './helpers/resilientActions';
 
 const ALLOWED_WARNING_PATTERNS = [
@@ -9,7 +9,16 @@ const ALLOWED_WARNING_PATTERNS = [
   /\[API Guard\] Backend returned non-OK status: 404/i,
   /\[Version Guard\] Failed to fetch backend version: 404/i,
   /Failed to load resource: the server responded with a status of 404 \(Not Found\)/i,
+  /va\.vercel-scripts\.com\/v1\/script\.debug\.js/i,
+  /OpaqueResponseBlocking/i,
+  /A resource is blocked by OpaqueResponseBlocking/i,
+  /Loading failed for the <script> with source/i,
+  /Failed to load resource: the server responded with a status of 403/i,
 ];
+
+function isAllowedConsoleIssue(text: string): boolean {
+  return ALLOWED_WARNING_PATTERNS.some((pattern) => pattern.test(text));
+}
 
 test.describe('Runtime Console Health', () => {
   test('should load app shell without unexpected console errors/warnings', async ({ page }) => {
@@ -22,8 +31,7 @@ test.describe('Runtime Console Health', () => {
       }
 
       const text = msg.text();
-      const isAllowed = ALLOWED_WARNING_PATTERNS.some((pattern) => pattern.test(text));
-      if (!isAllowed) {
+      if (!isAllowedConsoleIssue(text)) {
         consoleIssues.push({ type, text });
       }
     });

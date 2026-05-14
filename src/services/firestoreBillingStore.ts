@@ -41,9 +41,14 @@ const DEFAULT_USAGE: WorkspaceUsageSnapshot = {
 };
 
 const FIREBASE_BILLING_CONFIG_ERROR = new Error('Workspace billing requires Firebase configuration.');
+const FIREBASE_BILLING_CONTEXT_ERROR = new Error('Workspace billing requires a workspaceId and tenantId.');
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+function hasWorkspaceContext(workspaceId?: string, tenantId?: string): boolean {
+  return Boolean(workspaceId?.trim()) && Boolean(tenantId?.trim());
 }
 
 function usageDocRef(workspaceId: string) {
@@ -71,13 +76,36 @@ function normalizeUsageSnapshot(input?: Partial<WorkspaceUsageSnapshot> | null):
 }
 
 export function getCurrentMonthKey(at = new Date()): string {
-  const year = at.getUTCFullYear();
-  const month = String(at.getUTCMonth() + 1).padStart(2, '0');
+  const year = at.getFullYear();
+  const month = String(at.getMonth() + 1).padStart(2, '0');
   return `${year}-${month}`;
 }
 
+function toMonthDate(at?: string | Date): Date {
+  if (!at) {
+    return new Date();
+  }
+
+  if (at instanceof Date) {
+    return at;
+  }
+
+  const trimmed = at.trim();
+  if (!trimmed) {
+    return new Date();
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [year, month, day] = trimmed.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
 export async function readWorkspaceUsage(workspaceId: string): Promise<Record<string, WorkspaceUsageSnapshot>> {
-  if (!isFirebaseConfigured) {
+  if (!isFirebaseConfigured || !workspaceId.trim()) {
     return {};
   }
 
@@ -101,7 +129,7 @@ export async function writeWorkspaceUsage(
   workspaceId: string,
   usage: Record<string, WorkspaceUsageSnapshot>,
 ): Promise<void> {
-  if (!isFirebaseConfigured) {
+  if (!isFirebaseConfigured || !workspaceId.trim()) {
     return;
   }
 
@@ -116,10 +144,14 @@ export async function incrementWorkspaceUsage(input: {
   workspaceId: string;
   resource: ResourceKind;
   amount: number;
-  at?: string;
+  at?: string | Date;
 }): Promise<number> {
+  if (!hasWorkspaceContext(input.workspaceId)) {
+    return 0;
+  }
+
   const usage = await readWorkspaceUsage(input.workspaceId);
-  const monthKey = getCurrentMonthKey(input.at ? new Date(input.at) : new Date());
+  const monthKey = getCurrentMonthKey(toMonthDate(input.at));
   const current = normalizeUsageSnapshot(usage[monthKey]);
   current[input.resource] += input.amount;
   usage[monthKey] = current;
@@ -128,6 +160,10 @@ export async function incrementWorkspaceUsage(input: {
 }
 
 export async function resetWorkspaceUsage(workspaceId: string, monthKey?: string): Promise<void> {
+  if (!workspaceId.trim()) {
+    return;
+  }
+
   const usage = await readWorkspaceUsage(workspaceId);
   const resolvedMonthKey = monthKey || getCurrentMonthKey();
   delete usage[resolvedMonthKey];
@@ -138,7 +174,7 @@ export async function getWorkspaceBillingState(
   workspaceId: string,
   tenantId: string,
 ): Promise<WorkspaceBillingState> {
-  if (!isFirebaseConfigured) {
+  if (!isFirebaseConfigured || !hasWorkspaceContext(workspaceId, tenantId)) {
     return {
       workspaceId,
       tenantId,
@@ -177,14 +213,17 @@ export async function recordWorkspaceBillingHook(input: {
   if (!isFirebaseConfigured) {
     throw FIREBASE_BILLING_CONFIG_ERROR;
   }
+  if (!hasWorkspaceContext(input.workspaceId, input.tenantId)) {
+    throw FIREBASE_BILLING_CONTEXT_ERROR;
+  }
 
   const eventRef = doc(billingHooksCollection(input.workspaceId));
   const event: WorkspaceBillingHookDocument = {
+    ...input.payload,
     id: eventRef.id,
     tenantId: input.tenantId,
     workspaceId: input.workspaceId,
     createdAt: nowIso(),
-    ...input.payload,
   };
 
   await setDoc(eventRef, event, { merge: true });
@@ -213,6 +252,9 @@ export async function updateWorkspacePlan(input: {
 }): Promise<WorkspaceBillingState> {
   if (!isFirebaseConfigured) {
     throw FIREBASE_BILLING_CONFIG_ERROR;
+  }
+  if (!hasWorkspaceContext(input.workspaceId, input.tenantId)) {
+    throw FIREBASE_BILLING_CONTEXT_ERROR;
   }
 
   const nextState: WorkspaceBillingState = {
@@ -266,7 +308,7 @@ export async function listWorkspaceBillingHooks(input: {
   workspaceId: string;
   maxItems?: number;
 }): Promise<WorkspaceBillingHookDocument[]> {
-  if (!isFirebaseConfigured) {
+  if (!isFirebaseConfigured || !input.workspaceId.trim()) {
     return [];
   }
 
@@ -289,6 +331,23 @@ export async function getWorkspaceBillingOverview(input: {
   billingState: WorkspaceBillingState;
   billingHooks: WorkspaceBillingHookDocument[];
 }> {
+  if (!hasWorkspaceContext(input.workspaceId, input.tenantId)) {
+    return {
+      currentPlan: 'free',
+      usage: {},
+      currentMonthUsage: DEFAULT_USAGE,
+      billingState: {
+        workspaceId: input.workspaceId,
+        tenantId: input.tenantId,
+        plan: 'free',
+        status: 'active',
+        updatedAt: nowIso(),
+        updatedByUserId: 'system',
+      },
+      billingHooks: [],
+    };
+  }
+
   const [billingState, usage, billingHooks] = await Promise.all([
     getWorkspaceBillingState(input.workspaceId, input.tenantId),
     readWorkspaceUsage(input.workspaceId),

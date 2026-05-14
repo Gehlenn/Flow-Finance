@@ -63,6 +63,27 @@ function nodeId(type: string, key: string): string {
   return `${type}:${key.toLowerCase().replace(/\s+/g, '_').slice(0, 40)}`;
 }
 
+function parseGraphDate(value: string): Date | null {
+  const dateOnly = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    const year = Number(dateOnly[1]);
+    const month = Number(dateOnly[2]) - 1;
+    const day = Number(dateOnly[3]);
+    const localDate = new Date(year, month, day);
+    return Number.isNaN(localDate.getTime()) ? null : localDate;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatGraphDateOnly(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // ─── PART 3 — buildFinancialGraph ────────────────────────────────────────────
 
 /**
@@ -125,7 +146,8 @@ export function buildFinancialGraph(
 
   for (const tx of baseTxs) {
     if (tx.type !== TransactionType.DESPESA) continue;
-    const txDate = new Date(tx.date).getTime();
+    const txDate = parseGraphDate(tx.date)?.getTime();
+    if (txDate === undefined) continue;
 
     // Category aggregation
     const catKey = tx.category ?? 'Outros';
@@ -181,13 +203,24 @@ export function buildFinancialGraph(
   // ── Step 1e: Merchant nodes ─────────────────────────────────────────────
   for (const [mKey, agg] of Object.entries(merchantAgg)) {
     const mNodeId = nodeId('merchant', mKey);
-    const sortedDates = [...agg.dates].sort();
+    const sortedDates = [...agg.dates].sort((a, b) => {
+      const left = parseGraphDate(a);
+      const right = parseGraphDate(b);
+      if (!left && !right) return a.localeCompare(b);
+      if (!left) return -1;
+      if (!right) return 1;
+      return left.getTime() - right.getTime();
+    });
     const meta: MerchantNodeMeta = {
       name:          mKey,
       total_spent:   agg.total,
       visit_count:   agg.count,
       avg_amount:    agg.total / agg.count,
-      last_seen:     sortedDates[sortedDates.length - 1] ?? '',
+      last_seen:     (() => {
+        const lastDate = sortedDates[sortedDates.length - 1];
+        const parsed = lastDate ? parseGraphDate(lastDate) : null;
+        return parsed ? formatGraphDateOnly(parsed) : '';
+      })(),
       category_hint: agg.categories[0],
     };
     nodes.set(mNodeId, {
@@ -287,7 +320,9 @@ export function buildFinancialGraph(
   const txByDay: Record<string, string[]> = {}; // date → [merchantNodeId]
   for (const tx of baseTxs) {
     if (tx.type !== TransactionType.DESPESA) continue;
-    const dayKey = tx.date.slice(0, 10);
+    const parsedDate = parseGraphDate(tx.date);
+    if (!parsedDate) continue;
+    const dayKey = formatGraphDateOnly(parsedDate);
     const merchant = (tx.merchant ?? '').trim() || tx.description?.split(' ').slice(0, 3).join(' ');
     if (!merchant) continue;
     const mNodeId = nodeId('merchant', merchant.toLowerCase());

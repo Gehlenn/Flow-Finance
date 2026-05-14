@@ -9,6 +9,7 @@ import { checkAPIHealth } from './apiGuard';
 import { protectChunkLoading } from './chunkGuard';
 import { validateServiceWorker } from './serviceWorkerGuard';
 import { checkAppVersion } from './versionGuard';
+import { logError, logInfo, logWarn } from '../utils/logger';
 
 // Prevents DOM XSS when interpolating data from network responses into innerHTML.
 function escapeHtml(value: unknown): string {
@@ -32,13 +33,17 @@ let config: RuntimeConfig = DEFAULT_CONFIG;
 
 export async function initializeRuntimeGuard(userConfig?: Partial<RuntimeConfig>): Promise<void> {
   if (isInitialized) {
-    console.warn('[Runtime Guard] Already initialized');
+    logWarn('[Runtime Guard] Already initialized', {
+      fallback: 'runtime-guard-already-initialized',
+    });
     return;
   }
 
   config = { ...DEFAULT_CONFIG, ...userConfig };
 
-  console.log('[Runtime Guard] Initializing protection systems...');
+  logInfo('[Runtime Guard] Initializing protection systems...', {
+    fallback: 'runtime-guard-initializing',
+  });
 
   const results: GuardResult[] = [];
 
@@ -53,7 +58,9 @@ export async function initializeRuntimeGuard(userConfig?: Partial<RuntimeConfig>
     const swResult = await validateServiceWorker();
     results.push(swResult);
   } catch (error) {
-    console.error('[Runtime Guard] Service worker validation failed:', error);
+    logError('[Runtime Guard] Service worker validation failed', error, {
+      fallback: 'runtime-guard-service-worker-validation-failed',
+    });
   }
 
   // 3. API health check
@@ -61,7 +68,9 @@ export async function initializeRuntimeGuard(userConfig?: Partial<RuntimeConfig>
     const apiResult = await checkAPIHealth();
     results.push(apiResult);
   } catch (error) {
-    console.error('[Runtime Guard] API health check failed:', error);
+    logError('[Runtime Guard] API health check failed', error, {
+      fallback: 'runtime-guard-api-health-check-failed',
+    });
   }
 
   // 4. Deploy version consistency check
@@ -69,16 +78,24 @@ export async function initializeRuntimeGuard(userConfig?: Partial<RuntimeConfig>
     const versionResult = await checkAppVersion();
     results.push(versionResult);
   } catch (error) {
-    console.error('[Runtime Guard] Version check failed:', error);
+    logError('[Runtime Guard] Version check failed', error, {
+      fallback: 'runtime-guard-version-check-failed',
+    });
   }
 
   // Log results
-  console.log('[Runtime Guard] Initialization complete:', results);
+  logInfo('[Runtime Guard] Initialization complete', {
+    results,
+    fallback: 'runtime-guard-initialization-complete',
+  });
 
   // Report critical issues
   const criticalIssues = results.filter((r) => r.status === 'critical' || r.status === 'error');
   if (criticalIssues.length > 0) {
-    console.error('[Runtime Guard] Critical issues detected:', criticalIssues);
+    logError('[Runtime Guard] Critical issues detected', new Error('Critical runtime issues detected'), {
+      criticalIssues,
+      fallback: 'runtime-guard-critical-issues-detected',
+    });
     showCriticalErrorUI(criticalIssues);
   }
 
@@ -92,8 +109,10 @@ function startPeriodicChecks(): void {
   // Periodic API health check
   if (config.apiHealthCheckInterval) {
     setInterval(() => {
-      checkAPIHealth().catch((err) =>
-        console.error('[Runtime Guard] Periodic API check failed:', err)
+    checkAPIHealth().catch((err) =>
+        logError('[Runtime Guard] Periodic API check failed', err, {
+          fallback: 'runtime-guard-periodic-api-check-failed',
+        })
       );
     }, config.apiHealthCheckInterval);
   }
@@ -101,8 +120,10 @@ function startPeriodicChecks(): void {
   // Periodic version check
   if (config.versionCheckInterval) {
     setInterval(() => {
-      checkAppVersion().catch((err) =>
-        console.error('[Runtime Guard] Periodic version check failed:', err)
+    checkAppVersion().catch((err) =>
+        logError('[Runtime Guard] Periodic version check failed', err, {
+          fallback: 'runtime-guard-periodic-version-check-failed',
+        })
       );
     }, config.versionCheckInterval);
   }

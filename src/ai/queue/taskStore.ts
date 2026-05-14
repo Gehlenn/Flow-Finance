@@ -5,6 +5,7 @@
 
 import { AITask, AITaskStatus, AITaskPriority } from './taskTypes';
 import { getActiveWorkspaceScopedStorageKey } from '../../utils/workspaceStorage';
+import { logInfo, logWarn } from '../../utils/logger';
 
 const STORAGE_KEY = 'flow_ai_task_queue';
 const MAX_STORED_TASKS = 100;
@@ -43,7 +44,11 @@ class TaskStore {
       }
       this.initialized = true;
     } catch (error) {
-      console.error('[TaskStore] Failed to load from storage:', error);
+      logWarn('[TaskStore] Failed to load from storage; using empty queue', {
+        storageKey: this.activeStorageKey,
+        error,
+        fallback: 'task-store-load-failed',
+      });
       this.tasks = new Map();
       this.initialized = true;
     }
@@ -55,7 +60,11 @@ class TaskStore {
       const obj = Object.fromEntries(this.tasks);
       localStorage.setItem(this.activeStorageKey, JSON.stringify(obj));
     } catch (error) {
-      console.error('[TaskStore] Failed to save to storage:', error);
+      logWarn('[TaskStore] Failed to save to storage; keeping in-memory queue', {
+        storageKey: this.activeStorageKey,
+        error,
+        fallback: 'task-store-save-failed',
+      });
     }
   }
 
@@ -75,7 +84,11 @@ class TaskStore {
     }
 
     if (cleaned > 0) {
-      console.log(`[TaskStore] Cleaned ${cleaned} expired tasks`);
+      logInfo('[TaskStore] Cleaned expired tasks', {
+        cleaned,
+        storageKey: this.activeStorageKey,
+        fallback: 'task-store-cleaned-expired-tasks',
+      });
       this.saveToStorage();
     }
   }

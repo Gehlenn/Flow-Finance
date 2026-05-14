@@ -19,7 +19,9 @@ import { CashflowPrediction } from './riskAnalyzer';
 import { AIInsight } from './insightGenerator';
 import { learnMemory } from './aiMemory';
 import { buildFinancialGraph, getTopMerchants, getCategorySpending, detectSubscriptionCandidates } from './financialGraph';
+import { generateSmartBudget } from '../engines/finance/budgetEngine';
 import { makeId, formatCurrency } from '../../utils/helpers';
+import { logWarn } from '../utils/logger';
 import { 
   hasBehavior, 
   getSpendingPatterns, 
@@ -49,12 +51,29 @@ function now(): string {
   return new Date().toISOString();
 }
 
+function parseAutopilotDate(value: string): Date | null {
+  const dateOnly = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    const year = Number(dateOnly[1]);
+    const month = Number(dateOnly[2]) - 1;
+    const day = Number(dateOnly[3]);
+    const localDate = new Date(year, month, day);
+    return Number.isNaN(localDate.getTime()) ? null : localDate;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 // Note: `getMonthTxs` remains here because it supports monthsAgo.
 function getMonthTxs(txs: Transaction[], monthsAgo: number): Transaction[] {
   const d = new Date();
   const from = new Date(d.getFullYear(), d.getMonth() - monthsAgo, 1);
   const to   = new Date(d.getFullYear(), d.getMonth() - monthsAgo + 1, 0, 23, 59, 59);
-  return txs.filter(t => { const td = new Date(t.date); return td >= from && td <= to; });
+  return txs.filter(t => {
+    const td = parseAutopilotDate(t.date);
+    return Boolean(td && td >= from && td <= to);
+  });
 }
 
 function totalExpenses(txs: Transaction[]): number {
@@ -98,10 +117,10 @@ export function runFinancialAutopilot(
   // ── NOVO: Overspending em tempo real por categoria ───────────────────────
   // Para cada categoria, compara gasto do mês com orçamento (se existir) ou média histórica
   // Gera alerta imediato se ultrapassar
-  // TODO: Integrar com fonte real de orçamentos do usuário
-  const categoryBudgets: Record<string, number> = {};
-  // Exemplo: categoryBudgets['Alimentação'] = 800;
-  // (No futuro, buscar do perfil do usuário)
+  const smartBudget = generateSmartBudget(base, 'Undefined');
+  const categoryBudgets: Record<string, number> = Object.fromEntries(
+    smartBudget.lines.map((line) => [line.category, line.suggestedLimit]),
+  );
 
   // Calcula média histórica de cada categoria (últimos 3 meses)
   const monthsToCheck = 3;
@@ -206,7 +225,7 @@ export function runFinancialAutopilot(
 
   // ── PART 6: Detecção de assinaturas ──────────────────────────────────────
   const last90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-  const recentTxs = base.filter(t => new Date(t.date) >= last90);
+  const recentTxs = base.filter(t => (parseAutopilotDate(t.date)?.getTime() ?? Number.NEGATIVE_INFINITY) >= last90.getTime());
 
   const subTxs = recentTxs.filter(t =>
     t.type === TransactionType.DESPESA &&
@@ -340,7 +359,7 @@ export function runFinancialAutopilot(
   const smallRecent = base.filter(t =>
     t.type === TransactionType.DESPESA &&
     t.amount < 30 &&
-    new Date(t.date) >= last30
+    (parseAutopilotDate(t.date)?.getTime() ?? Number.NEGATIVE_INFINITY) >= last30.getTime()
   );
   if (smallRecent.length >= 8) {
     const smallTotal = smallRecent.reduce((s, t) => s + t.amount, 0);
@@ -408,7 +427,12 @@ export function runFinancialAutopilot(
         created_at: now(),
       });
     }
-  } catch (err) { console.warn('[Autopilot] Graph context unavailable:', err instanceof Error ? err : new Error(String(err))); }
+  } catch (err) {
+    logWarn('[Autopilot] Graph context unavailable; continuing without graph enrichment', {
+      error: err,
+      userId: 'local',
+    });
+  }
 
   // ─── AI MEMORY SYSTEM 2.0 — Behavioral actions ────────────────────────────
   try {
@@ -486,7 +510,10 @@ export function runFinancialAutopilot(
       });
     }
   } catch (err) {
-    console.error('[Autopilot] Error loading AI memories:', err);
+    logWarn('[Autopilot] Error loading AI memories; continuing without behavioral context', {
+      error: err,
+      userId: 'local',
+    });
   }
 
   // Ordenar: high → medium → low, warnings primeiro
@@ -511,7 +538,7 @@ export async function learnAutopilotPatterns(
 ): Promise<void> {
   const base = transactions.filter(t => !t.generated);
   const last90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-  const recent = base.filter(t => new Date(t.date) >= last90);
+  const recent = base.filter(t => (parseAutopilotDate(t.date)?.getTime() ?? Number.NEGATIVE_INFINITY) >= last90.getTime());
 
   const hasDelivery = recent.some(t => matchKeywords(t.description, DELIVERY_KEYWORDS));
   if (hasDelivery) {

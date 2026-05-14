@@ -204,7 +204,8 @@ function loadState(): SaasStoreState {
         Object.entries(parsed.userPlans ?? {}).filter(([, plan]) => plan === 'free' || plan === 'pro'),
       ) as Record<string, PlanId>,
     };
-  } catch {
+  } catch (error) {
+    logger.warn({ error, filePath }, 'Failed to load legacy SaaS store; falling back to empty state');
     stateCache = cloneState(EMPTY_STATE);
   }
 
@@ -242,7 +243,15 @@ async function persistState(state: SaasStoreState): Promise<void> {
   // Legacy JSON blob — best-effort backup only, not source of truth.
   if (!areLegacyStateBlobsDisabled()) {
     void saveJsonState(POSTGRES_STATE_KEY, state as unknown as Record<string, unknown>).catch((error) => {
-      logger.warn({ error }, 'Failed to persist legacy SaaS blob to Postgres');
+      logger.warn({
+        error,
+        key: POSTGRES_STATE_KEY,
+        workspaceCount: Object.keys(state.usageByWorkspace).length,
+        userCount: Object.keys(state.usageByUser).length,
+        billingHookWorkspaceCount: Object.keys(state.billingHooksByWorkspace).length,
+        usageEventWorkspaceCount: Object.keys(state.usageEventsByWorkspace).length,
+        fallback: 'saas-legacy-json-backup-failed',
+      }, 'Failed to persist legacy SaaS blob to Postgres');
     });
   }
 }
@@ -652,6 +661,13 @@ export async function initializeSaasStorePersistence(): Promise<void> {
       ]),
     ),
   }).catch((error) => {
-    logger.warn({ error }, 'Failed to backfill normalized SaaS store to Postgres');
+    logger.warn({
+      error,
+      key: POSTGRES_STATE_KEY,
+      workspaceCount: Object.keys(stateCache?.usageByWorkspace ?? {}).length,
+      billingHookWorkspaceCount: Object.keys(stateCache?.billingHooksByWorkspace ?? {}).length,
+      usageEventWorkspaceCount: Object.keys(stateCache?.usageEventsByWorkspace ?? {}).length,
+      fallback: 'saas-backfill-to-postgres-failed',
+    }, 'Failed to backfill normalized SaaS store to Postgres');
   });
 }

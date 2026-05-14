@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { logWarn } from '../src/utils/logger';
 
 export interface PerformanceMetrics {
   // Core Web Vitals
@@ -47,7 +48,9 @@ export const usePerformanceMonitoring = () => {
   useEffect(() => {
     // Check if Performance API is available
     if (!('performance' in window) || !('PerformanceObserver' in window)) {
-      console.warn('Performance API not supported');
+      logWarn('[Performance Monitoring] Performance API not supported', {
+        fallback: 'performance-api-not-supported',
+      });
       return;
     }
 
@@ -93,7 +96,10 @@ export const usePerformanceMonitoring = () => {
     try {
       observer.observe({ entryTypes: ['largest-contentful-paint', 'first-input', 'layout-shift', 'paint', 'navigation'] });
     } catch (error) {
-      console.warn('Performance observer setup failed:', error);
+      logWarn('[Performance Monitoring] Performance observer setup failed', {
+        error,
+        fallback: 'performance-observer-setup-failed',
+      });
     }
 
     // Get memory usage if available

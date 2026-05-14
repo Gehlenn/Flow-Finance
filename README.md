@@ -9,7 +9,7 @@ Aplicação SaaS de gestão financeira com foco em fluxo de caixa, transações,
 - Estado do ciclo: `bloqueado`
 - Suíte global: `verde`
 - Billing Stripe sandbox: `validado localmente`
-- Bloqueio principal remanescente: ambiente-alvo do Vercel ainda incompleto para fechamento honesto de observabilidade e validação externa
+- Bloqueio principal remanescente: backend do Vercel desalinhado com o contrato de API; na revalidacao de `2026-05-08` a raiz responde `200`, mas `/health`, `/api/health` e `/api/version` continuam em `404`
 
 ## Links oficiais do projeto
 
@@ -41,6 +41,7 @@ Use estes documentos como trilha principal antes de tomar decisões de produto, 
 - Changelog operacional: [docs/CHANGELOG.md](./docs/CHANGELOG.md)
 - Status de deploy: [docs/DEPLOYMENT_STATUS.md](./docs/DEPLOYMENT_STATUS.md)
 - Configuração de Vercel e observabilidade: [docs/VERCEL_CONFIG.md](./docs/VERCEL_CONFIG.md)
+- Checklist de recuperação do Vercel: [docs/VERCEL_RECOVERY_CHECKLIST.md](./docs/VERCEL_RECOVERY_CHECKLIST.md)
 - Evidência operacional do Stripe sandbox: [docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](./docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)
 - Índice de auditorias e evidências: [docs/AUDIT_AND_EVIDENCE_INDEX.md](./docs/AUDIT_AND_EVIDENCE_INDEX.md)
 
@@ -152,7 +153,7 @@ Observacao operacional:
 
 ## O que ainda bloqueia fechamento do ciclo
 
-1. Preview ou ambiente alvo do Vercel ainda protegido ou indisponivel para validacao externa completa.
+1. Backend do Vercel precisa voltar a expor `/health`, `/api/health` e `/api/version` no dominio oficial.
 2. Variaveis de ambiente do destino ainda precisam de fechamento consistente:
    - `VITE_SENTRY_DSN` (preferencial no frontend)
    - `SENTRY_DSN` (backend e fallback legado do frontend no build)
@@ -192,9 +193,10 @@ VERCEL_TARGET_URL=https://seu-preview.vercel.app npm run health:vercel
 
 ## Prioridades imediatas
 
-1. Fechar configuracao de ambiente do Vercel para observabilidade e versao.
-2. Liberar ou compartilhar o preview protegido para validar os endpoints reais.
-3. Consolidar a validacao externa de readiness no destino.
+1. Corrigir o root directory/alias do backend no Vercel para voltar ao contrato de API.
+2. Fechar configuracao de ambiente do Vercel para observabilidade e versao.
+3. Liberar ou compartilhar o preview protegido para validar os endpoints reais.
+4. Consolidar a validacao externa de readiness no destino.
 4. Manter `docs/` e vault coerentes em PT-BR, com separacao clara entre material vivo e historico.
 
 ## Regra de documentacao

@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { logWarn } from '../utils/logger';
 import {
   CashFlowPrediction,
   ShortfallRisk,
@@ -11,6 +12,33 @@ import {
   PredictionAlert,
   ChartDataPoint,
 } from '../../shared/types/prediction';
+
+function parsePredictionDate(value: string | Date): Date | null {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  const dateOnly = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    const year = Number(dateOnly[1]);
+    const month = Number(dateOnly[2]) - 1;
+    const day = Number(dateOnly[3]);
+    const localDate = new Date(year, month, day);
+    return Number.isNaN(localDate.getTime()) ? null : localDate;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatPredictionDateKey(value: string | Date): string {
+  const parsed = parsePredictionDate(value);
+  if (!parsed) return '1970-01-01';
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -52,7 +80,7 @@ export function usePredictions(days: number = 30): UsePredictionsReturn {
       const recentHistory = historicalData.slice(-30);
       for (const point of recentHistory) {
         chartPoints.push({
-          date: point.date.toISOString().split('T')[0],
+          date: formatPredictionDateKey(point.date),
           balance: point.balance,
           predictedMin: point.balance,
           predictedMax: point.balance,
@@ -65,10 +93,9 @@ export function usePredictions(days: number = 30): UsePredictionsReturn {
 
     // Add prediction data
     for (const day of prediction.dailyPredictions) {
+      const parsedDayDate = parsePredictionDate(day.date);
       chartPoints.push({
-        date: day.date instanceof Date 
-          ? day.date.toISOString().split('T')[0] 
-          : new Date(day.date).toISOString().split('T')[0],
+        date: formatPredictionDateKey(parsedDayDate ?? day.date),
         balance: day.predictedBalance,
         predictedMin: day.confidenceInterval.min,
         predictedMax: day.confidenceInterval.max,
@@ -124,14 +151,14 @@ export function usePredictions(days: number = 30): UsePredictionsReturn {
       const predictionData: CashFlowPrediction = {
         ...result.data,
         dateRange: {
-          start: new Date(result.data.dateRange.start),
-          end: new Date(result.data.dateRange.end),
+      start: parsePredictionDate(result.data.dateRange.start) ?? new Date(),
+      end: parsePredictionDate(result.data.dateRange.end) ?? new Date(),
         },
         dailyPredictions: result.data.dailyPredictions.map((d: any) => ({
           ...d,
-          date: new Date(d.date),
+      date: parsePredictionDate(d.date) ?? new Date(),
         })),
-        generatedAt: new Date(result.data.generatedAt),
+      generatedAt: parsePredictionDate(result.data.generatedAt) ?? new Date(),
       };
 
       setPrediction(predictionData);
@@ -147,7 +174,12 @@ export function usePredictions(days: number = 30): UsePredictionsReturn {
       if (err instanceof Error && err.name === 'AbortError') {
         return; // Ignore aborted requests
       }
-      console.error('[usePredictions] Error:', err);
+      logWarn('[usePredictions] fetchPrediction failed', {
+        route: 'cash-flow',
+        days,
+        endpoint: `${API_BASE_URL}/predictions/cash-flow`,
+        error: err,
+      });
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       if (controller.signal.aborted === false) {
@@ -181,7 +213,7 @@ export function usePredictions(days: number = 30): UsePredictionsReturn {
       if (result.success && result.data) {
         const risk: ShortfallRisk = {
           ...result.data,
-          predictedDate: new Date(result.data.predictedDate),
+      predictedDate: parsePredictionDate(result.data.predictedDate) ?? new Date(),
         };
         setShortfallRisk(risk);
         
@@ -201,7 +233,12 @@ export function usePredictions(days: number = 30): UsePredictionsReturn {
         }
       }
     } catch (err) {
-      console.warn('[usePredictions] Shortfall fetch failed:', err);
+      logWarn('[usePredictions] Shortfall fetch failed', {
+        route: 'shortfall-risk',
+        endpoint: `${API_BASE_URL}/predictions/shortfall-risk`,
+        error: err,
+        fallback: 'use-predictions-shortfall-fetch-failed',
+      });
     }
   }, []);
 
@@ -240,14 +277,14 @@ export function usePredictions(days: number = 30): UsePredictionsReturn {
       const predictionData: CashFlowPrediction = {
         ...result.data,
         dateRange: {
-          start: new Date(result.data.dateRange.start),
-          end: new Date(result.data.dateRange.end),
+      start: parsePredictionDate(result.data.dateRange.start) ?? new Date(),
+      end: parsePredictionDate(result.data.dateRange.end) ?? new Date(),
         },
         dailyPredictions: result.data.dailyPredictions.map((d: any) => ({
           ...d,
-          date: new Date(d.date),
+      date: parsePredictionDate(d.date) ?? new Date(),
         })),
-        generatedAt: new Date(result.data.generatedAt),
+      generatedAt: parsePredictionDate(result.data.generatedAt) ?? new Date(),
       };
 
       setPrediction(predictionData);
@@ -259,7 +296,12 @@ export function usePredictions(days: number = 30): UsePredictionsReturn {
       await fetchShortfallRisk();
 
     } catch (err) {
-      console.error('[usePredictions] Refresh error:', err);
+      logWarn('[usePredictions] refreshPrediction failed', {
+        route: 'refresh',
+        days,
+        endpoint: `${API_BASE_URL}/predictions/refresh`,
+        error: err,
+      });
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
@@ -292,7 +334,12 @@ export function usePredictions(days: number = 30): UsePredictionsReturn {
         setSeasonalPatterns(result.data);
       }
     } catch (err) {
-      console.warn('[usePredictions] Seasonality fetch failed:', err);
+      logWarn('[usePredictions] Seasonality fetch failed', {
+        route: 'seasonality',
+        endpoint: `${API_BASE_URL}/predictions/seasonality`,
+        error: err,
+        fallback: 'use-predictions-seasonality-fetch-failed',
+      });
     }
   }, []);
 

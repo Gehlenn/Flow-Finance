@@ -5,10 +5,15 @@ import AIInput from '../../components/AIInput';
 
 const interpretTextMock = vi.fn();
 const interpretImageMock = vi.fn();
+const logWarnMock = vi.fn();
 
 vi.mock('../../src/ai/aiInterpreter', () => ({
   interpretText: (...args: unknown[]) => interpretTextMock(...args),
   interpretImage: (...args: unknown[]) => interpretImageMock(...args),
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: (...args: unknown[]) => logWarnMock(...args),
 }));
 
 describe('AIInput', () => {
@@ -48,6 +53,40 @@ describe('AIInput', () => {
     expect(onAddTransactions).not.toHaveBeenCalled();
     expect(onAddReminders).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('mostra diagnostico visivel quando a interpretacao retorna unknown', async () => {
+    interpretTextMock.mockResolvedValue({
+      intent: 'unknown',
+      data: [],
+      confidence: 0.1,
+      diagnostic: {
+        kind: 'ai_uncertain',
+        message: 'Nao consegui entender com seguranca o que voce quis registrar.',
+        suggestion: 'Use o modo manual ou descreva valor, data e tipo de forma mais direta.',
+      },
+    });
+
+    render(
+      <AIInput
+        onClose={vi.fn()}
+        onAddTransactions={vi.fn()}
+        onAddReminders={vi.fn()}
+      />
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Diga ou escreva o que aconteceu...'), {
+      target: { value: 'algo muito vago' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar Inteligente/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Diagnóstico de entrada/i)).toBeTruthy();
+    });
+    expect(screen.getByText(/Nao consegui entender com seguranca o que voce quis registrar/i)).toBeTruthy();
+    expect(screen.getByText(/Use o modo manual ou descreva valor, data e tipo de forma mais direta/i)).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('Nao consegui entender');
   });
 
   it('confirma quando a IA retorna transacoes validas', async () => {
@@ -144,6 +183,44 @@ describe('AIInput', () => {
     const payload = onAddTransactions.mock.calls[0][0] as Array<Record<string, unknown>>;
     expect(payload).toHaveLength(1);
     expect(payload[0].description).toBe('Primeira');
+
     expect(payload[0].amount).toBe(120);
+    expect(logWarnMock).toHaveBeenCalledWith(
+      '[AIInput] Multiple transactions returned; using the first draft only',
+      expect.objectContaining({
+        origin: 'text',
+        count: 2,
+        fallback: 'ai-input-single-draft-multiple-transactions',
+      }),
+    );
+  });
+
+  it('mostra diagnostico visivel quando a leitura da imagem falha', async () => {
+    interpretImageMock.mockRejectedValueOnce(new Error('image failed'));
+
+    const { container } = render(
+      <AIInput
+        onClose={vi.fn()}
+        onAddTransactions={vi.fn()}
+        onAddReminders={vi.fn()}
+      />,
+    );
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement | null;
+    expect(fileInput).toBeTruthy();
+
+    const file = new File(['fake'], 'receipt.png', { type: 'image/png' });
+    fireEvent.change(fileInput!, { target: { files: [file] } });
+
+    expect(await screen.findByRole('status')).toBeTruthy();
+    expect(screen.getByText(/A IA nao conseguiu ler a imagem enviada agora/i)).toBeTruthy();
+    expect(screen.getAllByText(/foto mais/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole('alert').textContent).toContain('Erro ao ler imagem');
+    expect(logWarnMock).toHaveBeenCalledWith(
+      '[AIInput] Failed to process AI input',
+      expect.objectContaining({
+        fallback: 'ai-input-processing-failed',
+      }),
+    );
   });
 });

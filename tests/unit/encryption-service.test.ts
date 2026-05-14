@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const mockLogWarn = vi.fn();
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: mockLogWarn,
+}));
+
 type EncryptCall = {
   algorithm: AesGcmParams;
   data: Uint8Array;
@@ -14,6 +20,7 @@ describe('encryption service', () => {
     vi.resetModules();
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
+    mockLogWarn.mockClear();
   });
 
   it('encrypts and decrypts payloads with a real IV in the envelope', async () => {
@@ -75,6 +82,13 @@ describe('encryption service', () => {
     const { decryptData } = await import('../../src/services/security/encryptionService');
 
     await expect(decryptData('not-base64')).resolves.toBeNull();
+    expect(mockLogWarn).toHaveBeenCalledWith(
+      '[Encryption] Failed to decrypt data',
+      expect.objectContaining({
+        error: expect.any(Error),
+        fallback: 'decryption-failed',
+      }),
+    );
   });
 
   it('falls back to plain JSON in development when encryption fails', async () => {
@@ -96,10 +110,48 @@ describe('encryption service', () => {
     await setEncryptedLocalStorage('settings', { theme: 'dark', pin: 1234 });
 
     expect(localStorage.getItem('flow_encrypted_settings')).toBe(JSON.stringify({ theme: 'dark', pin: 1234 }));
+    expect(mockLogWarn).toHaveBeenCalledWith(
+      '[Encryption] Failed to store encrypted data for key "settings"',
+      expect.objectContaining({
+        error: expect.any(Error),
+        storageKey: 'flow_encrypted_settings',
+        fallback: 'plain-json-development-only',
+      }),
+    );
 
     await expect(getEncryptedLocalStorage<{ theme: string; pin: number }>('settings')).resolves.toEqual({
       theme: 'dark',
       pin: 1234,
     });
+  });
+
+  it('registra aviso quando o fallback em texto puro nao pode ser parseado', async () => {
+    vi.stubEnv('MODE', 'development');
+
+    const mockCrypto = {
+      getRandomValues: vi.fn(),
+      subtle: {
+        generateKey: vi.fn().mockResolvedValue({} as CryptoKey),
+        encrypt: vi.fn().mockRejectedValue(new Error('crypto unavailable')),
+        decrypt: vi.fn().mockRejectedValue(new Error('crypto unavailable')),
+      },
+    } as unknown as Crypto;
+
+    vi.stubGlobal('crypto', mockCrypto);
+
+    const { setEncryptedLocalStorage, getEncryptedLocalStorage } = await import('../../src/services/security/encryptionService');
+
+    await setEncryptedLocalStorage('settings', { theme: 'dark' });
+    localStorage.setItem('flow_encrypted_settings', '{invalid-json');
+
+    await expect(getEncryptedLocalStorage('settings')).resolves.toBeNull();
+    expect(mockLogWarn).toHaveBeenCalledWith(
+      '[Encryption] Failed to parse plain-text fallback for key "settings"',
+      expect.objectContaining({
+        error: expect.any(Error),
+        storageKey: 'flow_encrypted_settings',
+        fallback: 'plain-json-parse-failed',
+      }),
+    );
   });
 });

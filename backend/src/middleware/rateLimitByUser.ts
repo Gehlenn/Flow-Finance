@@ -100,7 +100,13 @@ export function createRateLimitByUser(config: RateLimitByUserConfig) {
         ? await config.keyGenerator(req)
         : buildDefaultKey(req);
     } catch (error) {
-      logger.warn({ error }, 'Failed to generate rate limit key, falling back to IP');
+      logger.warn({
+        error,
+        hasKeyGenerator: typeof config.keyGenerator === 'function',
+        windowMs: config.windowMs,
+        max: config.max,
+        fallback: 'rate-limit-key-generation-failed',
+      }, 'Failed to generate rate limit key, falling back to IP');
       key = buildDefaultKey(req);
     }
 

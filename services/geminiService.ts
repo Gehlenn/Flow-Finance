@@ -12,6 +12,7 @@ import { InterpretResponse } from '../types';
 
 import { Transaction, Reminder, TransactionData, TransactionType, Category } from "../types";
 import { API_ENDPOINTS, apiRequest } from "../src/config/api.config";
+import { logError, logWarn } from "../src/utils/logger";
 
 type DailyInsightsApiResponse = { insights?: any[] } | any[];
 type StrategicInsightsApiResponse = { report?: any } | any;
@@ -133,7 +134,9 @@ export class GeminiService {
         }
       );
     } catch (error) {
-      console.warn('[AIService] processSmartInput unavailable, using deterministic fallback');
+      logWarn('[AIService] processSmartInput unavailable, using deterministic fallback', error, {
+        fallback: 'ai-process-smart-input-fallback',
+      });
       return buildSmartInputFallback(text);
     }
   }
@@ -173,7 +176,9 @@ export class GeminiService {
 
       return [normalized];
     } catch (error) {
-      console.error('[AIService] parseFinancialImage failed:', error);
+      logError('[AIService] parseFinancialImage failed', error, {
+        fallback: 'ai-parse-financial-image-failed',
+      });
       return [];
     }
   }
@@ -199,7 +204,9 @@ export class GeminiService {
 
       return Array.isArray(response) ? response : (response.insights || []);
     } catch (error) {
-      console.warn('[AIService] generateDailyInsights unavailable, using empty fallback');
+      logWarn('[AIService] generateDailyInsights unavailable, using empty fallback', error, {
+        fallback: 'ai-generate-daily-insights-fallback',
+      });
       return [];
     }
   }
@@ -218,7 +225,9 @@ export class GeminiService {
         }
       );
     } catch (error) {
-      console.error('[AIService] classifyTransactions failed:', error);
+      logError('[AIService] classifyTransactions failed', error, {
+        fallback: 'ai-classify-transactions-failed',
+      });
       return [];
     }
   }
@@ -244,7 +253,9 @@ export class GeminiService {
 
       return Array.isArray(response) ? response : (response.report ?? response);
     } catch (error) {
-      console.warn('[AIService] generateStrategicReport unavailable, using null fallback');
+      logWarn('[AIService] generateStrategicReport unavailable, using null fallback', error, {
+        fallback: 'ai-generate-strategic-report-fallback',
+      });
       return null;
     }
   }
@@ -264,7 +275,9 @@ export class GeminiService {
       );
       return result.tokenCount;
     } catch (error) {
-      console.error('[AIService] countTokens failed:', error);
+      logError('[AIService] countTokens failed', error, {
+        fallback: 'ai-count-tokens-failed',
+      });
       return 0;
     }
   }
@@ -286,7 +299,9 @@ export class GeminiService {
         return { title: ins.title, description: ins.description, type: t };
       });
     } catch (error) {
-      console.error('[AIService] generateFinancialConsultancy failed:', error);
+      logError('[AIService] generateFinancialConsultancy failed', error, {
+        fallback: 'ai-generate-financial-consultancy-failed',
+      });
       return [];
     }
   }
@@ -302,7 +317,9 @@ export class GeminiService {
         }
       );
     } catch (error) {
-      console.error('[AIService] generateCFO failed:', error);
+      logError('[AIService] generateCFO failed', error, {
+        fallback: 'ai-generate-cfo-failed',
+      });
       return { answer: '' };
     }
   }

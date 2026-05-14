@@ -10,6 +10,8 @@
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+import { logWarn } from '../../utils/logger';
+
 const STORAGE_KEY_PREFIX = 'flow_encrypted_';
 const ENCRYPTION_VERSION = '1';
 const ALGORITHM = {
@@ -58,7 +60,10 @@ export async function encryptData<T>(data: T): Promise<string> {
     // Convert to base64
     return btoa(String.fromCharCode(...combined));
   } catch (error) {
-    console.error('[Encryption] Failed to encrypt data:', error);
+    logWarn('[Encryption] Failed to encrypt data', {
+      error,
+      fallback: 'encryption-failed',
+    });
     throw error;
   }
 }
@@ -73,7 +78,10 @@ export async function decryptData<T>(encrypted: string): Promise<T | null> {
     // Extract version, IV, and encrypted data
     const version = combined[0];
     if (version !== parseInt(ENCRYPTION_VERSION)) {
-      console.warn('[Encryption] Unsupported encryption version:', version);
+      logWarn('[Encryption] Unsupported encryption version', {
+        version,
+        fallback: 'unsupported-encryption-version',
+      });
       return null;
     }
 
@@ -87,7 +95,10 @@ export async function decryptData<T>(encrypted: string): Promise<T | null> {
     const serialized = new TextDecoder().decode(decrypted);
     return JSON.parse(serialized);
   } catch (error) {
-    console.error('[Encryption] Failed to decrypt data:', error);
+    logWarn('[Encryption] Failed to decrypt data', {
+      error,
+      fallback: 'decryption-failed',
+    });
     return null;
   }
 }
@@ -102,7 +113,11 @@ export async function setEncryptedLocalStorage<T>(key: string, value: T): Promis
     const encrypted = await encryptData(value);
     localStorage.setItem(`${STORAGE_KEY_PREFIX}${key}`, encrypted);
   } catch (error) {
-    console.error(`[Encryption] Failed to store encrypted data for key "${key}":`, error);
+    logWarn(`[Encryption] Failed to store encrypted data for key "${key}"`, {
+      error,
+      storageKey: `${STORAGE_KEY_PREFIX}${key}`,
+      fallback: 'plain-json-development-only',
+    });
     // Fallback to unencrypted (for development only)
     if (import.meta.env.MODE === 'development') {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}${key}`, JSON.stringify(value));
@@ -125,13 +140,22 @@ export async function getEncryptedLocalStorage<T>(key: string): Promise<T | null
     if (import.meta.env.MODE === 'development') {
       try {
         return JSON.parse(stored) as T;
-      } catch {
+      } catch (error) {
+        logWarn(`[Encryption] Failed to parse plain-text fallback for key "${key}"`, {
+          error,
+          storageKey: `${STORAGE_KEY_PREFIX}${key}`,
+          fallback: 'plain-json-parse-failed',
+        });
         return null;
       }
     }
     return null;
   } catch (error) {
-    console.error(`[Encryption] Failed to retrieve encrypted data for key "${key}":`, error);
+    logWarn(`[Encryption] Failed to retrieve encrypted data for key "${key}"`, {
+      error,
+      storageKey: `${STORAGE_KEY_PREFIX}${key}`,
+      fallback: 'encrypted-storage-read-failed',
+    });
     return null;
   }
 }

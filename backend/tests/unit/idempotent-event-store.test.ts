@@ -1,8 +1,22 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { IdempotentEventStore, type RedisLike } from '../../src/services/clinic/IdempotentEventStore';
 
+const mockWarn = vi.fn();
+
+vi.mock('../../src/config/logger', () => ({
+  default: {
+    warn: mockWarn,
+    info: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
 describe('IdempotentEventStore atomic idempotency', () => {
+  beforeEach(() => {
+    mockWarn.mockClear();
+  });
+
   function basePayload() {
     return {
       type: 'payment_received',
@@ -78,5 +92,67 @@ describe('IdempotentEventStore atomic idempotency', () => {
     expect(result).toBe(true);
     expect((redis as any).get).toHaveBeenCalled();
     expect((redis as any).setEx).toHaveBeenCalled();
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: expect.stringContaining('idempotent:clinic-automation:evt_999'),
+        error: expect.any(Error),
+        ttlSeconds: expect.any(Number),
+        fallback: 'idempotent-event-atomic-set-failed',
+      }),
+      'Atomic Redis SET NX/EX failed, trying positional fallback'
+    );
+  });
+
+  it('registra aviso e ignora payload invalido ao listar eventos processados', async () => {
+    const redis = {
+      get: vi.fn().mockResolvedValue('{"invalid-json"'),
+      set: vi.fn(),
+      setEx: vi.fn(),
+      exists: vi.fn(),
+      del: vi.fn(),
+      keys: vi.fn().mockResolvedValue(['idempotent:clinic-automation:evt_bad']),
+      ttl: vi.fn(),
+      ping: vi.fn(),
+    } as unknown as RedisLike;
+
+    const store = new IdempotentEventStore(redis);
+    const result = await store.listProcessedBySource('clinic-automation');
+
+    expect(result).toEqual([]);
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: 'idempotent:clinic-automation:evt_bad',
+        error: expect.any(Error),
+        sourceSystem: 'clinic-automation',
+        fallback: 'idempotent-event-list-parse-failed',
+      }),
+      'Ignoring invalid idempotent record payload'
+    );
+  });
+
+  it('registra erro ao parsear um registro individual corrompido', async () => {
+    const redis = {
+      get: vi.fn().mockResolvedValue('{"invalid-json"'),
+      set: vi.fn(),
+      setEx: vi.fn(),
+      exists: vi.fn(),
+      del: vi.fn(),
+      keys: vi.fn(),
+      ttl: vi.fn(),
+      ping: vi.fn(),
+    } as unknown as RedisLike;
+
+    const store = new IdempotentEventStore(redis);
+    const record = await store.getProcessedRecord('clinic-automation', 'evt_bad');
+
+    expect(record).toBeNull();
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: 'idempotent:clinic-automation:evt_bad',
+        error: expect.any(Error),
+        fallback: 'idempotent-event-parse-failed',
+      }),
+      'Failed to parse stored record'
+    );
   });
 });

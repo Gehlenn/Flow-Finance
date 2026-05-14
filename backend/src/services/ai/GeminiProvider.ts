@@ -95,7 +95,10 @@ export class GeminiProvider extends IAIProvider {
       await model.generateContent('ping');
       return true;
     } catch (error) {
-      logger.error('Gemini health check failed', { provider: 'gemini' });
+      logger.error('Gemini health check failed', {
+        provider: 'gemini',
+        error: error instanceof Error ? error.message : String(error),
+      });
       return false;
     }
   }

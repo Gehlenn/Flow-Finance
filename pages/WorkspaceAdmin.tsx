@@ -31,6 +31,7 @@ import {
   canManageWorkspaceMembers,
   canViewWorkspaceAudit,
 } from '../src/security/workspacePermissions';
+import { logWarn } from '../src/utils/logger';
 import type { Tab } from '../hooks/useNavigationTabs';
 
 interface WorkspaceAdminPageProps {
@@ -40,6 +41,38 @@ interface WorkspaceAdminPageProps {
   activeTenantName?: string | null;
   activeWorkspaceRole?: WorkspaceRole | null;
   onNavigateToTab: (tab: Tab) => void;
+}
+
+function buildWorkspaceAdminDiagnostic(action: string): { title: string; message: string; suggestion: string } {
+  if (/checkout|portal|faturamento/i.test(action)) {
+    return {
+      title: 'Falha de faturamento',
+      message: 'A operacao de faturamento nao concluiu agora.',
+      suggestion: 'Confirme a sessao, o workspace e tente novamente.',
+    };
+  }
+
+  if (/membro/i.test(action)) {
+    return {
+      title: 'Falha na gestao de membros',
+      message: 'A operacao de membros nao concluiu agora.',
+      suggestion: 'Revise a permissao do usuario e tente novamente.',
+    };
+  }
+
+  if (/plano/i.test(action) || /workspace/i.test(action)) {
+    return {
+      title: 'Falha na operacao do workspace',
+      message: 'A operacao do workspace nao concluiu agora.',
+      suggestion: 'Atualize a tela e tente novamente com a mesma sessao.',
+    };
+  }
+
+  return {
+    title: 'Falha na operacao do workspace',
+    message: 'A operacao nao concluiu agora.',
+    suggestion: 'Tente novamente em alguns instantes.',
+  };
 }
 
 const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
@@ -57,10 +90,11 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
   const [billingHooks, setBillingHooks] = useState<WorkspaceBillingHookDocument[]>([]);
   const [billingCatalog, setBillingCatalog] = useState<WorkspacePlanCatalog | null>(null);
   const [currentPlan, setCurrentPlan] = useState<'free' | 'pro'>('free');
-  const [monthlyUsageSummary, setMonthlyUsageSummary] = useState('0 transactions · 0 AI · 0 bank connections');
+  const [monthlyUsageSummary, setMonthlyUsageSummary] = useState('0 transações · 0 consultas de IA · 0 conexões bancárias');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorDiagnostic, setErrorDiagnostic] = useState<{ title: string; message: string; suggestion: string } | null>(null);
   const [memberUserId, setMemberUserId] = useState('');
   const [memberRole, setMemberRole] = useState<WorkspaceRole>('member');
 
@@ -93,9 +127,9 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
     setBillingCatalog(planCatalog);
     setCurrentPlan(planCatalog.currentPlan || billingOverview.currentPlan);
     setMonthlyUsageSummary(
-      `${billingOverview.currentMonthUsage.transactions} transactions · ` +
+      `${billingOverview.currentMonthUsage.transactions} transações · ` +
       `${billingOverview.currentMonthUsage.aiQueries} AI · ` +
-      `${billingOverview.currentMonthUsage.bankConnections} bank connections`,
+      `${billingOverview.currentMonthUsage.bankConnections} conexões bancárias`,
     );
     setWorkspaceMembers(members);
     setAuditEvents(audit);
@@ -110,6 +144,7 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
 
     setLoading(true);
     setError(null);
+    setErrorDiagnostic(null);
     try {
       const availableWorkspaces = await listUserWorkspaces(userId);
       const identity = getCurrentWorkspaceIdentity();
@@ -120,8 +155,14 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
       setActiveWorkspace(active);
       await loadWorkspaceData(active);
     } catch (loadError) {
-      console.error(loadError);
-      setError('Could not load workspace administration right now.');
+      logWarn('[WorkspaceAdmin] Failed to load workspace administration', {
+        error: loadError,
+        userId,
+        activeWorkspaceId: workspaceIdOverride || activeWorkspaceId,
+        fallback: 'workspace-admin-load-failed',
+      });
+      setError('Nao foi possivel carregar a administracao do workspace agora.');
+      setErrorDiagnostic(buildWorkspaceAdminDiagnostic('carregar a administracao'));
     } finally {
       setLoading(false);
     }
@@ -143,8 +184,13 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
     try {
       await loadWorkspaceData(nextWorkspace);
     } catch (switchError) {
-      console.error(switchError);
-      setError('Could not switch workspace.');
+      logWarn('[WorkspaceAdmin] Failed to switch workspace', {
+        error: switchError,
+        workspaceId,
+        fallback: 'workspace-admin-switch-failed',
+      });
+      setError('Nao foi possivel trocar o workspace.');
+      setErrorDiagnostic(buildWorkspaceAdminDiagnostic('trocar o workspace'));
     } finally {
       setBusy(false);
     }
@@ -166,8 +212,15 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
       });
       await loadWorkspaceData({ ...activeWorkspace, plan });
     } catch (planError) {
-      console.error(planError);
-      setError('Could not update the workspace plan.');
+      logWarn('[WorkspaceAdmin] Failed to update workspace plan', {
+        error: planError,
+        workspaceId: activeWorkspace.workspaceId,
+        tenantId: activeWorkspace.tenantId,
+        plan,
+        fallback: 'workspace-admin-plan-update-failed',
+      });
+      setError('Nao foi possivel atualizar o plano do workspace.');
+      setErrorDiagnostic(buildWorkspaceAdminDiagnostic('atualizar o plano do workspace'));
     } finally {
       setBusy(false);
     }
@@ -183,7 +236,7 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
 
   const redirectToBillingUrl = (url: string | null | undefined) => {
     if (!url || typeof window === 'undefined') {
-      throw new Error('Billing redirect URL is missing.');
+      throw new Error('A URL de redirecionamento de faturamento nao foi informada.');
     }
 
     window.location.assign(url);
@@ -203,8 +256,14 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
       });
       redirectToBillingUrl(session.url);
     } catch (billingError) {
-      console.error(billingError);
-      setError('Could not start Stripe checkout for this workspace.');
+      logWarn('[WorkspaceAdmin] Failed to start Stripe checkout', {
+        error: billingError,
+        workspaceId: activeWorkspace.workspaceId,
+        tenantId: activeWorkspace.tenantId,
+        fallback: 'workspace-admin-checkout-failed',
+      });
+      setError('Nao foi possivel iniciar o checkout do Stripe para este workspace.');
+      setErrorDiagnostic(buildWorkspaceAdminDiagnostic('iniciar o checkout do Stripe'));
     } finally {
       setBusy(false);
     }
@@ -224,8 +283,14 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
       });
       redirectToBillingUrl(session.url);
     } catch (billingError) {
-      console.error(billingError);
-      setError('Could not open the Stripe billing portal right now.');
+      logWarn('[WorkspaceAdmin] Failed to open Stripe billing portal', {
+        error: billingError,
+        workspaceId: activeWorkspace.workspaceId,
+        tenantId: activeWorkspace.tenantId,
+        fallback: 'workspace-admin-portal-failed',
+      });
+      setError('Nao foi possivel abrir o portal de faturamento do Stripe agora.');
+      setErrorDiagnostic(buildWorkspaceAdminDiagnostic('abrir o portal de faturamento do Stripe'));
     } finally {
       setBusy(false);
     }
@@ -250,14 +315,21 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
       setMemberRole('member');
       await loadWorkspaceData(activeWorkspace);
     } catch (memberError) {
-      console.error(memberError);
-      setError('Could not add the workspace member.');
+      logWarn('[WorkspaceAdmin] Failed to add workspace member', {
+        error: memberError,
+        workspaceId: activeWorkspace.workspaceId,
+        tenantId: activeWorkspace.tenantId,
+        memberUserId: memberUserId.trim(),
+        fallback: 'workspace-admin-add-member-failed',
+      });
+      setError('Nao foi possivel adicionar o membro ao workspace.');
+      setErrorDiagnostic(buildWorkspaceAdminDiagnostic('adicionar membro'));
     } finally {
       setBusy(false);
     }
   };
 
-  const handleRemoveMember = async (memberUserIdToRemove: string) => {
+  const handleRemoveMember = async (memberUserIdToRemover: string) => {
     if (!activeWorkspace || !userId) {
       return;
     }
@@ -268,13 +340,20 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
       await removeWorkspaceMember({
         tenantId: activeWorkspace.tenantId,
         workspaceId: activeWorkspace.workspaceId,
-        userId: memberUserIdToRemove,
+        userId: memberUserIdToRemover,
         removedByUserId: userId,
       });
       await loadWorkspaceData(activeWorkspace);
     } catch (memberError) {
-      console.error(memberError);
-      setError('Could not remove the workspace member.');
+      logWarn('[WorkspaceAdmin] Failed to remove workspace member', {
+        error: memberError,
+        workspaceId: activeWorkspace.workspaceId,
+        tenantId: activeWorkspace.tenantId,
+        memberUserId: memberUserIdToRemover,
+        fallback: 'workspace-admin-remove-member-failed',
+      });
+      setError('Nao foi possivel remover o membro do workspace.');
+      setErrorDiagnostic(buildWorkspaceAdminDiagnostic('remover membro'));
     } finally {
       setBusy(false);
     }
@@ -283,13 +362,13 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
   if (loading) {
     return (
       <div className="space-y-4 animate-in fade-in duration-500 pb-24">
-        <div className="bg-gradient-to-r from-[#0f766e] to-[#0f766e]/80 p-6 rounded-[2rem] text-white shadow-lg shadow-emerald-900/10">
-          <h2 className="text-2xl font-black tracking-tight">Workspace Admin</h2>
-          <p className="text-[10px] font-black uppercase tracking-widest text-white/70 mt-2">Loading workspace state</p>
+        <div className="bg-gradient-to-r from-emerald-700 to-emerald-600 p-6 rounded-[2rem] text-white shadow-lg shadow-emerald-900/10">
+          <h2 className="text-2xl font-black tracking-tight">Operacao do workspace</h2>
+          <p className="text-xs font-black uppercase tracking-widest text-white/70 mt-2">Carregando estado do workspace</p>
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 flex items-center gap-3">
           <Loader2 className="animate-spin text-emerald-600" size={18} />
-          <span className="text-sm font-bold text-slate-700 dark:text-slate-100">Preparing workspace administration...</span>
+          <span className="text-sm font-bold text-slate-700 dark:text-slate-100">Preparando a operacao do workspace...</span>
         </div>
       </div>
     );
@@ -298,19 +377,19 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
   if (!canManageMembers && !canManageBilling && !canSeeAudit) {
     return (
       <div className="space-y-4 animate-in fade-in duration-500 pb-24">
-        <div className="bg-gradient-to-r from-[#0f172a] to-[#1e293b] p-6 rounded-[2rem] text-white shadow-lg shadow-slate-900/20">
-          <h2 className="text-2xl font-black tracking-tight">Workspace Admin</h2>
-          <p className="text-[10px] font-black uppercase tracking-widest text-white/70 mt-2">Read-only workspace role</p>
+        <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-6 rounded-[2rem] text-white shadow-lg shadow-slate-900/20">
+          <h2 className="text-2xl font-black tracking-tight">Operacao do workspace</h2>
+          <p className="text-xs font-black uppercase tracking-widest text-white/70 mt-2">Funcao apenas leitura</p>
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 space-y-4">
           <p className="text-sm font-bold text-slate-700 dark:text-slate-100">
-            Your current role is view-only for {workspaceLabel}. Ask an owner or admin for elevated access.
+            Sua funcao atual e apenas leitura para {workspaceLabel}. Peça acesso de owner ou admin.
           </p>
           <button
             onClick={() => onNavigateToTab('settings')}
-            className="px-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-100"
+            className="px-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-700 text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-100"
           >
-            Back to settings
+            Voltar para configuracoes
           </button>
         </div>
       </div>
@@ -324,22 +403,22 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-24">
-      <div className="bg-gradient-to-r from-[#0f766e] to-[#0f766e]/80 p-6 rounded-[2rem] flex items-center justify-between shadow-lg shadow-emerald-900/10">
+      <div className="bg-gradient-to-r from-emerald-700 to-emerald-600 p-6 rounded-[2rem] flex items-center justify-between shadow-lg shadow-emerald-900/10">
         <div>
-          <h2 className="text-2xl font-black text-white tracking-tight">Workspace Admin</h2>
-          <p className="text-[10px] font-black uppercase tracking-widest text-white/70 mt-2">{tenantLabel} · {workspaceLabel}</p>
+          <h2 className="text-2xl font-black text-white tracking-tight">Operacao do workspace</h2>
+          <p className="text-xs font-black uppercase tracking-widest text-white/70 mt-2">{tenantLabel} · {workspaceLabel}</p>
         </div>
         <button
           onClick={() => onNavigateToTab('settings')}
-          className="px-4 py-3 rounded-2xl bg-white/10 text-white text-[10px] font-black uppercase tracking-widest border border-white/20"
+          className="px-4 py-3 rounded-2xl bg-white/10 text-white text-xs font-black uppercase tracking-widest border border-white/20"
         >
-          Settings
+          Configurações
         </button>
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 space-y-6">
         <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Workspace</label>
+          <label className="text-xs font-black uppercase tracking-widest text-slate-400">Workspace</label>
           <select
             value={activeWorkspace?.workspaceId || ''}
             onChange={(event) => void handleWorkspaceChange(event.target.value)}
@@ -355,19 +434,30 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
         </div>
 
         <>
-            {error && <p className="text-sm font-bold text-rose-500">{error}</p>}
+        {error && (
+          <div className="space-y-3">
+            <p className="text-sm font-bold text-rose-500">{error}</p>
+            {errorDiagnostic && (
+              <div role="status" className="rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-500/10 p-4 space-y-1">
+                <p className="text-xs font-black uppercase tracking-widest text-rose-700 dark:text-rose-300">{errorDiagnostic.title}</p>
+                <p className="text-xs font-bold text-rose-700 dark:text-rose-100">{errorDiagnostic.message}</p>
+                <p className="text-xs font-black uppercase tracking-widest text-rose-600 dark:text-rose-300">Próximo passo: {errorDiagnostic.suggestion}</p>
+              </div>
+            )}
+          </div>
+        )}
 
             <section className="space-y-3">
               <div className="flex items-center gap-3">
                 <ShieldCheck size={18} className="text-emerald-600" />
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Billing and usage</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white">Faturamento e uso do workspace</h3>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                  <p className="text-sm font-black text-slate-800 dark:text-white">Plan: {currentPlan.toUpperCase()}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Current month: {monthlyUsageSummary}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    Billing mode: {billingCatalog?.billingProvider || 'mock'}
+                  <p className="text-sm font-black text-slate-800 dark:text-white">Plano atual: {currentPlan.toUpperCase()}</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Mes atual: {monthlyUsageSummary}</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                    Modo de faturamento: {billingCatalog?.billingProvider || 'mock'}
                   </p>
                 </div>
                 <div className="space-y-3">
@@ -378,59 +468,59 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
                           <button
                             onClick={() => void handleOpenBillingPortal()}
                             disabled={!canManageBilling || busy || !stripePortalEnabled}
-                            className="w-full p-4 rounded-2xl bg-emerald-600 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
+                            className="w-full p-4 rounded-2xl bg-emerald-600 text-xs font-black uppercase tracking-widest text-white disabled:opacity-50"
                           >
-                            Open billing portal
+                            Abrir portal financeiro
                           </button>
                           {!stripePortalEnabled && (
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                              Portal will be available after the workspace is linked to a Stripe customer.
+                            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                              O portal ficara disponivel depois que o workspace estiver vinculado a um cliente Stripe.
                             </p>
                           )}
                         </>
                       ) : (
-                        <button
-                          onClick={() => void handleStartCheckout()}
-                          disabled={!canManageBilling || busy}
-                          className="w-full p-4 rounded-2xl bg-emerald-600 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
-                        >
-                          Start Pro checkout
-                        </button>
+                          <button
+                            onClick={() => void handleStartCheckout()}
+                            disabled={!canManageBilling || busy}
+                            className="w-full p-4 rounded-2xl bg-emerald-600 text-xs font-black uppercase tracking-widest text-white disabled:opacity-50"
+                          >
+                          Iniciar upgrade Pro
+                          </button>
                       )}
                     </div>
                   ) : showMockPlanButtons ? (
                     <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => void handlePlanChange('free')}
-                        disabled={!canManageBilling || busy || currentPlan === 'free'}
-                        className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-100 disabled:opacity-50"
-                      >
-                        Set Free
-                      </button>
-                      <button
-                        onClick={() => void handlePlanChange('pro')}
-                        disabled={!canManageBilling || busy || currentPlan === 'pro'}
-                        className="p-4 rounded-2xl bg-emerald-600 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
-                      >
-                        Set Pro
-                      </button>
+                        <button
+                          onClick={() => void handlePlanChange('free')}
+                          disabled={!canManageBilling || busy || currentPlan === 'free'}
+                          className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-700 text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-100 disabled:opacity-50"
+                        >
+                        Definir Free
+                        </button>
+                        <button
+                          onClick={() => void handlePlanChange('pro')}
+                          disabled={!canManageBilling || busy || currentPlan === 'pro'}
+                          className="p-4 rounded-2xl bg-emerald-600 text-xs font-black uppercase tracking-widest text-white disabled:opacity-50"
+                        >
+                        Definir Pro
+                        </button>
                     </div>
                   ) : (
-                    <div className="p-3 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                      Billing actions are unavailable until either Stripe or mock billing is configured for this environment.
+                    <div className="p-3 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-xs font-bold uppercase tracking-widest text-slate-400">
+                      As acoes de faturamento ficam indisponiveis ate que o Stripe ou o faturamento simulado estejam configurados neste ambiente.
                     </div>
                   )}
                 </div>
               </div>
               <div className="space-y-2">
                 {billingHooks.length === 0 ? (
-                  <div className="p-3 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    No billing events recorded for this workspace yet.
+                  <div className="p-3 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-xs font-bold uppercase tracking-widest text-slate-400">
+                    Nenhum evento de faturamento registrado para este workspace ainda.
                   </div>
                 ) : billingHooks.map((hook) => (
                   <div key={hook.id} className="p-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60">
                     <p className="text-sm font-black text-slate-800 dark:text-white">{hook.event}</p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{hook.plan.toUpperCase()} · {new Date(hook.createdAt).toLocaleString('pt-BR')}</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{hook.plan.toUpperCase()} · {new Date(hook.createdAt).toLocaleString('pt-BR')}</p>
                   </div>
                 ))}
               </div>
@@ -440,13 +530,13 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
               <section className="space-y-3">
                 <div className="flex items-center gap-3">
                   <Users size={18} className="text-indigo-600" />
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Members</h3>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white">Membros do workspace</h3>
                 </div>
                 <div className="grid grid-cols-[1fr_auto_auto] gap-2">
                   <input
                     value={memberUserId}
                     onChange={(event) => setMemberUserId(event.target.value)}
-                    placeholder="Member user id"
+                    placeholder="ID do usuario do membro"
                     className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-100"
                   />
                   <select
@@ -461,7 +551,7 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
                   <button
                     onClick={() => void handleAddMember()}
                     disabled={busy || !memberUserId.trim()}
-                    className="px-4 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                    className="px-4 rounded-2xl bg-indigo-600 text-white text-xs font-black uppercase tracking-widest disabled:opacity-50"
                   >
                     Add
                   </button>
@@ -471,14 +561,14 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
                     <div key={member.id} className="flex items-center justify-between p-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60">
                       <div>
                         <p className="text-sm font-black text-slate-800 dark:text-white">{member.userId}</p>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{member.role}</p>
+                        <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{member.role}</p>
                       </div>
                       <button
                         onClick={() => void handleRemoveMember(member.userId)}
                         disabled={busy || member.role === 'owner'}
-                        className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 text-rose-500 text-[10px] font-black uppercase tracking-widest disabled:opacity-40"
+                        className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 text-rose-500 text-xs font-black uppercase tracking-widest disabled:opacity-40"
                       >
-                        Remove
+                        Remover
                       </button>
                     </div>
                   ))}
@@ -491,24 +581,24 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <ReceiptText size={18} className="text-amber-600" />
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Audit trail</h3>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white">Trilha de auditoria do workspace</h3>
                   </div>
                   <button
                     onClick={() => onNavigateToTab('workspaceaudit')}
-                    className="px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 text-[10px] font-black uppercase tracking-widest"
+                    className="px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 text-xs font-black uppercase tracking-widest"
                   >
-                    Full audit
+                    Auditoria completa
                   </button>
                 </div>
                 <div className="space-y-2">
                   {auditEvents.length === 0 ? (
-                    <div className="p-3 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                      No audit events for this workspace yet.
+                    <div className="p-3 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-xs font-bold uppercase tracking-widest text-slate-400">
+                      Nenhum evento de auditoria para este workspace ainda.
                     </div>
                   ) : auditEvents.map((event) => (
                     <div key={event.id} className="p-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60">
                       <p className="text-sm font-black text-slate-800 dark:text-white">{event.action}</p>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{event.resourceType} · {event.resourceId} · {new Date(event.createdAt).toLocaleString('pt-BR')}</p>
+                      <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{event.resourceType} · {event.resourceId} · {new Date(event.createdAt).toLocaleString('pt-BR')}</p>
                     </div>
                   ))}
                 </div>
@@ -518,10 +608,10 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
             <section className="space-y-3">
               <div className="flex items-center gap-3">
                 <Sparkles size={18} className="text-violet-600" />
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Workspace readiness</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white">Prontidão do workspace</h3>
               </div>
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-100">
-                Firestore is now the source of truth for workspace members, billing state, billing hooks, usage tracking and audit events.
+                O Firestore agora é a fonte de verdade para membros do workspace, estado de faturamento, webhooks de faturamento, acompanhamento de uso e eventos de auditoria.
               </div>
             </section>
         </>
@@ -531,3 +621,4 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
 };
 
 export default WorkspaceAdminPage;
+

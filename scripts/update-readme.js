@@ -1,4 +1,4 @@
-import fs from 'fs';
+﻿import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -42,8 +42,8 @@ function generateTree(dir, prefix = '') {
     const filePath = path.join(dir, file);
     const stats = fs.statSync(filePath);
     
-    const connector = isLast ? '└── ' : '├── ';
-    const childPrefix = isLast ? '    ' : '│   ';
+    const connector = isLast ? 'â””â”€â”€ ' : 'â”œâ”€â”€ ';
+    const childPrefix = isLast ? '    ' : 'â”‚   ';
     
     output += `${prefix}${connector}${file}\n`;
     
@@ -57,19 +57,19 @@ function generateTree(dir, prefix = '') {
 
 function updateReadme() {
   if (!fs.existsSync(readmePath)) {
-    console.error('README.md not found!');
+    process.stderr.write('README.md not found!');
     process.exit(1);
   }
 
   let content = fs.readFileSync(readmePath, 'utf-8');
   const tree = generateTree(rootDir);
   
-  const startMarker = '## 📂 Estrutura de Pastas';
+  const startMarker = '## ðŸ“‚ Estrutura de Pastas';
   // Find the start of the section
   const startIndex = content.indexOf(startMarker);
   
   if (startIndex === -1) {
-    console.log('Section "## 📂 Estrutura de Pastas" not found. Appending it.');
+    process.stdout.write('Section "## ðŸ“‚ Estrutura de Pastas" not found. Appending it.');
     content += `\n\n${startMarker}\n\n\`\`\`text\n${tree}\`\`\`\n`;
   } else {
     // Find the end of the code block after the marker
@@ -84,12 +84,13 @@ function updateReadme() {
     } else {
         // If section exists but no code block, append it
         // This is a simple heuristic; might need manual adjustment if the format is different
-        console.log('Section found but no code block. Please check README format.');
+        process.stdout.write('Section found but no code block. Please check README format.');
     }
   }
 
   fs.writeFileSync(readmePath, content);
-  console.log('README.md structure updated successfully!');
+  process.stdout.write('README.md structure updated successfully!');
 }
 
 updateReadme();
+

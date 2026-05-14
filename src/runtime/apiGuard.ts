@@ -4,6 +4,7 @@
  */
 
 import { GuardResult } from './types';
+import { logWarn } from '../utils/logger';
 
 const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL ||
@@ -17,7 +18,12 @@ function isLocalNetworkTarget(url: string): boolean {
   try {
     const parsed = new URL(url, window.location.origin);
     return ['localhost', '127.0.0.1', '0.0.0.0'].includes(parsed.hostname);
-  } catch {
+  } catch (error) {
+    logWarn('[API Guard] Invalid API base URL', {
+      url,
+      error,
+      fallback: 'api-guard-invalid-base-url',
+    });
     return false;
   }
 }
@@ -71,7 +77,6 @@ export async function checkAPIHealth(): Promise<GuardResult> {
 
     if (response.ok) {
       apiOfflineMode = false;
-      console.log('[API Guard] Backend is healthy');
       return {
         guard: 'api',
         status: 'ok',
@@ -88,7 +93,10 @@ export async function checkAPIHealth(): Promise<GuardResult> {
       };
     } else {
       apiOfflineMode = true;
-      console.warn('[API Guard] Backend returned non-OK status:', response.status);
+      logWarn('[API Guard] Backend returned non-OK status', {
+        status: response.status,
+        fallback: 'api-guard-non-ok-status',
+      });
       return {
         guard: 'api',
         status: 'warning',
@@ -99,7 +107,10 @@ export async function checkAPIHealth(): Promise<GuardResult> {
     }
   } catch (error) {
     apiOfflineMode = true;
-    console.warn('[API Guard] Backend health check failed:', error);
+    logWarn('[API Guard] Backend health check failed', {
+      error,
+      fallback: 'api-guard-health-check-failed',
+    });
     return {
       guard: 'api',
       status: 'warning',

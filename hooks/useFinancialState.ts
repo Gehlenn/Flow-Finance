@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Account } from '../models/Account';
 import { Alert, Goal, Reminder, Transaction } from '../types';
+import { FinancialLeak } from '../src/ai/leakDetector';
 import { detectAndLearnPatterns } from '../src/ai/aiMemory';
 import { runAdaptiveLearning } from '../src/ai/adaptiveAIEngine';
 import { FinancialEventEmitter } from '../src/events/eventEngine';
 import { initEventListeners } from '../src/events/eventEngine';
+import { logWarn } from '../src/utils/logger';
 import {
   createAccount,
   createAlert,
@@ -25,6 +27,7 @@ import {
   updateReminder,
   updateTransaction,
 } from '../src/app/financeService';
+import { FinancialReport } from '../src/finance/reportEngine';
 import { useSyncEngine } from './useSyncEngine';
 
 interface UseFinancialStateOptions {
@@ -38,6 +41,8 @@ export function useFinancialState(options: UseFinancialStateOptions) {
   const { userId, activeTenantId, activeWorkspaceId, syncEngine } = options;
 
   const workspaceDefaultAccountRef = useRef<string | null>(null);
+  const [latestLeaks, setLatestLeaks] = useState<FinancialLeak[]>([]);
+  const [latestReport, setLatestReport] = useState<FinancialReport | null>(null);
   const accounts = syncEngine.entities.accounts;
   const transactions = syncEngine.entities.transactions;
   const goals = syncEngine.entities.goals;
@@ -90,7 +95,10 @@ export function useFinancialState(options: UseFinancialStateOptions) {
     if (userId && transactions.length >= 3) {
       detectAndLearnPatterns(userId, transactions);
       runAdaptiveLearning(userId, transactions).catch((error) => {
-        console.error('Falha ao executar aprendizado adaptativo:', error);
+        logWarn('[useFinancialState] Failed to execute adaptive learning', {
+          error,
+          fallback: 'use-financial-state-adaptive-learning-failed',
+        });
       });
     }
   }, [transactions, userId]);
@@ -104,6 +112,12 @@ export function useFinancialState(options: UseFinancialStateOptions) {
       transactions,
       accounts,
       userId,
+      onLeaks: (leaks: FinancialLeak[]) => {
+        setLatestLeaks(leaks);
+      },
+      onReport: (report: FinancialReport) => {
+        setLatestReport(report);
+      },
     }));
   }, [accounts, transactions, userId]);
 
@@ -122,7 +136,10 @@ export function useFinancialState(options: UseFinancialStateOptions) {
       { accounts: [defaultAccount] },
       { accounts: [] },
     ).catch((error) => {
-      console.error('Falha ao criar conta padrao do workspace:', error);
+      logWarn('[useFinancialState] Failed to create default workspace account', {
+        error,
+        fallback: 'use-financial-state-create-default-account-failed',
+      });
       workspaceDefaultAccountRef.current = null;
     });
   }, [
@@ -235,6 +252,8 @@ export function useFinancialState(options: UseFinancialStateOptions) {
     goals,
     reminders,
     alerts,
+    latestLeaks,
+    latestReport,
     addTransactions,
     updateTransaction: updateSingleTransaction,
     deleteTransaction: deleteSingleTransaction,

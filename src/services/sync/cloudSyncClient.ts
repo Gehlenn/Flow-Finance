@@ -38,6 +38,10 @@ export type FirestoreSyncContext = {
   workspaceId: string;
 };
 
+function hasWorkspaceContext(workspaceId?: string): boolean {
+  return Boolean(workspaceId?.trim());
+}
+
 function buildPullItems<TPayload extends SyncPayload>(items: Array<TPayload & { id: string }>): Array<SyncItem<TPayload>> {
   return items.map((item) => {
     const record = item as { updated_at?: string; created_at?: string; date?: string; id: string };
@@ -53,6 +57,14 @@ export async function pullSyncEntities<TPayload extends SyncPayload>(
   context: Pick<FirestoreSyncContext, 'workspaceId'>,
   since?: string,
 ): Promise<PullResponse<TPayload>> {
+  if (!hasWorkspaceContext(context.workspaceId)) {
+    return {
+      since: since || null,
+      serverTime: new Date().toISOString(),
+      entities: { accounts: [], transactions: [], goals: [], reminders: [] },
+    };
+  }
+
   const entities = await loadWorkspaceEntities(context.workspaceId);
 
   return {
@@ -73,6 +85,10 @@ export async function replaceSyncEntityCollection<TPayload extends SyncPayload>(
   previousItems: Array<TPayload & { id: string }>,
   context: FirestoreSyncContext,
 ): Promise<PushResponse> {
+  if (!hasWorkspaceContext(context.workspaceId)) {
+    throw new Error('Workspace sync requires a workspaceId.');
+  }
+
   return replaceWorkspaceEntityCollection(
     entity,
     nextItems,

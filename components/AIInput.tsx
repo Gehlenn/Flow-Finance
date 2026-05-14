@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { GeminiService } from '../services/geminiService';
 import { Transaction, TransactionType, Category, Reminder, ReminderData, ReminderType, TransactionData } from '../types';
 import { Account, ACCOUNT_TYPE_LABELS } from '../models/Account';
@@ -10,8 +10,9 @@ import {
   draftToTransaction,
 } from '../src/domain/intakeNormalizer';
 import { TransactionDraft, getUncertainFields } from '../src/domain/transactionDraft';
+import { logWarn } from '../src/utils/logger';
 
-// Web Speech API — not in all browsers/typings
+// Web Speech API â€” not in all browsers/typings
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
 }
@@ -47,25 +48,25 @@ const REMINDER_TYPE_MAP: Record<string, ReminderType> = {
   pessoal: ReminderType.PESSOAL,
   trabalho: ReminderType.TRABALHO,
   negocio: ReminderType.NEGOCIO,
-  negócio: ReminderType.NEGOCIO,
+  'negÃ³cio': ReminderType.NEGOCIO,
   investimento: ReminderType.INVESTIMENTO,
   saude: ReminderType.SAUDE,
-  saúde: ReminderType.SAUDE,
+  'saÃºde': ReminderType.SAUDE,
 };
 
 const REMINDER_PRIORITY_MAP: Record<string, Reminder['priority']> = {
   baixa: 'baixa',
   media: 'media',
-  média: 'media',
+  'mÃ©dia': 'media',
   alta: 'alta',
 };
 
 const TIPS = [
   { text: "Gastei 50 reais no Uber hoje", icon: <TrendingUp size={12}/> },
-  { text: "Recebi 2500 de salário agora", icon: <Check size={12}/> },
+  { text: "Recebi 2500 de salÃ¡rio agora", icon: <Check size={12}/> },
   { text: "Lembrar de pagar luz dia 10", icon: <Lightbulb size={12}/> },
   { text: "Comprei 300 reais em CDB", icon: <TrendingUp size={12}/> },
-  { text: "Almoço com cliente deu 120", icon: <Briefcase size={12}/> }
+  { text: "AlmoÃ§o com cliente deu 120", icon: <Briefcase size={12}/> }
 ];
 
 const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddReminders, accounts = [], userId = 'local' }) => {
@@ -75,6 +76,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
   const [isListening, setIsListening] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [diagnostic, setDiagnostic] = useState<{ message: string; suggestion?: string } | null>(null);
   const [intakeWarning, setIntakeWarning] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [clickedTipIndex, setClickedTipIndex] = useState<number | null>(null);
@@ -82,8 +84,8 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
     accounts.length > 0 ? accounts[0].id : undefined
   );
 
-  // ── Draft review state ────────────────────────────────────────────────────
-  // Quando confiança for média/baixa, o draft fica aqui para revisão antes de salvar.
+  // â”€â”€ Draft review state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Quando confianÃ§a for mÃ©dia/baixa, o draft fica aqui para revisÃ£o antes de salvar.
   const [pendingDraft, setPendingDraft] = useState<TransactionDraft | null>(null);
 
   // Estados para modo Manual
@@ -137,15 +139,19 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
 
   const ensureHasGeneratedItems = (count: number, kind: 'transaction' | 'reminder') => {
     if (count > 0) return;
-    if (kind === 'transaction') throw new Error('Nenhuma transação foi gerada pela IA');
+    if (kind === 'transaction') throw new Error('Nenhuma transaÃ§Ã£o foi gerada pela IA');
     throw new Error('Nenhum lembrete foi gerado pela IA');
   };
 
   const pickSingleTransaction = (items: TransactionData[], origin: 'text' | 'image') => {
     ensureHasGeneratedItems(items.length, 'transaction');
     if (items.length > 1) {
-      console.warn(`[AIInput] ${origin} retornou ${items.length} transações; fluxo single-draft usando apenas a primeira.`);
-      setIntakeWarning('A IA detectou múltiplas transações. Neste fluxo, apenas a primeira será usada e você deve revisar antes de salvar.');
+      logWarn('[AIInput] Multiple transactions returned; using the first draft only', {
+        origin,
+        count: items.length,
+        fallback: 'ai-input-single-draft-multiple-transactions',
+      });
+      setIntakeWarning('A IA detectou mÃºltiplas transaÃ§Ãµes. Neste fluxo, apenas a primeira serÃ¡ usada e vocÃª deve revisar antes de salvar.');
     }
     return items[0];
   };
@@ -153,20 +159,21 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
   const handleSuccess = () => {
     setIsLoading(false);
     setIntakeWarning(null);
+    setDiagnostic(null);
     setIsSuccess(true);
     setTimeout(() => {
       onClose();
     }, 1500);
   };
 
-  // Persiste um draft aprovado (caminho único de save)
+  // Persiste um draft aprovado (caminho Ãºnico de save)
   const commitDraft = (draft: TransactionDraft) => {
     onAddTransactions([draftToTransaction(draft) as Partial<Transaction>]);
     setPendingDraft(null);
     handleSuccess();
   };
 
-  // Decide se exibe revisão ou salva diretamente
+  // Decide se exibe revisÃ£o ou salva diretamente
   const routeDraft = (draft: TransactionDraft, forceReview = false) => {
     if (draft.confidenceLevel === 'high' && !forceReview) {
       commitDraft(draft);
@@ -181,6 +188,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
     setIsLoading(true);
     setError(null);
     setIntakeWarning(null);
+    setDiagnostic(null);
     try {
       const output = await interpretText(
         inputText,
@@ -212,11 +220,23 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
         onAddReminders(reminders);
         handleSuccess();
       } else {
-        throw new Error('intent desconhecido');
+        setDiagnostic(output.diagnostic ?? {
+          message: 'Nao consegui entender com seguranca o que voce quis registrar.',
+          suggestion: 'Use o modo manual ou descreva valor, data e tipo de forma mais direta.',
+        });
+        setError('Nao consegui entender. Tente ser mais especifico ou use o modo manual.');
+        setIsLoading(false);
       }
     } catch (err: unknown) {
-      console.error('AIInput error', err);
-      setError("Não consegui entender. Tente ser mais específico ou use o modo manual.");
+      logWarn('[AIInput] Failed to process AI input', {
+        error: err,
+        fallback: 'ai-input-processing-failed',
+      });
+      setDiagnostic({
+        message: 'A IA nao conseguiu processar este lancamento agora.',
+        suggestion: 'Tente novamente em alguns instantes ou use o modo manual.',
+      });
+      setError("NÃ£o consegui entender. Tente ser mais especÃ­fico ou use o modo manual.");
       setIsLoading(false);
     }
   };
@@ -224,9 +244,10 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIntakeWarning(null);
+    setDiagnostic(null);
     const val = parseFloat(manualData.amount);
     if (!manualData.description || isNaN(val)) {
-      setError("Preencha a descrição e um valor válido.");
+      setError("Preencha a descriÃ§Ã£o e um valor vÃ¡lido.");
       return;
     }
     const draft = normalizeManual({
@@ -239,7 +260,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
       recurrenceType: manualData.recurring ? manualData.recurrence_type : undefined,
       recurrenceInterval: manualData.recurring ? manualData.recurrence_interval : undefined,
     });
-    // Manual sempre alta confiança — salva direto
+    // Manual sempre alta confianÃ§a â€” salva direto
     onAddTransactions([{
       ...draftToTransaction(draft) as Partial<Transaction>,
       recurring: manualData.recurring,
@@ -255,6 +276,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
     setIsLoading(true);
     setError(null);
     setIntakeWarning(null);
+    setDiagnostic(null);
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64 = (reader.result as string).split(',')[1];
@@ -277,14 +299,23 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
         });
         routeDraft(draft, hasAmbiguousBatch);
       } catch (err) {
-        setError("Erro ao ler imagem. Tente uma foto mais nítida.");
+        logWarn('[AIInput] Failed to process AI input', {
+          error: err,
+          fileType: file.type,
+          fallback: 'ai-input-processing-failed',
+        });
+        setDiagnostic({
+          message: 'A IA nao conseguiu ler a imagem enviada agora.',
+          suggestion: 'Envie uma foto mais nÃ­tida ou use o modo manual para registrar os dados.',
+        });
+        setError("Erro ao ler imagem. Tente uma foto mais nÃ­tida.");
         setIsLoading(false);
       }
     };
     reader.readAsDataURL(file);
   };
 
-  // ── Draft Review Panel ────────────────────────────────────────────────────
+  // â”€â”€ Draft Review Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (pendingDraft) {
     const uncertainFields = getUncertainFields(pendingDraft.fieldConfidences ?? {});
     const isUncertain = (field: string) => uncertainFields.includes(field as keyof typeof pendingDraft.fieldConfidences);
@@ -296,7 +327,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
             <div className="flex items-center gap-2">
               <AlertTriangle size={16} className="text-amber-500" />
               <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">
-                {pendingDraft.confidenceLevel === 'low' ? 'Revisão obrigatória' : 'Confirme os campos'}
+                {pendingDraft.confidenceLevel === 'low' ? 'RevisÃ£o obrigatÃ³ria' : 'Confirme os campos'}
               </span>
             </div>
             <button onClick={() => setPendingDraft(null)} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
@@ -305,6 +336,17 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
           </div>
 
           <div className="p-6 flex flex-col gap-4">
+            {diagnostic && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-500/10 px-3 py-3 text-amber-950 dark:text-amber-100">
+                <p className="text-[9px] font-black uppercase tracking-widest">DiagnÃ³stico de entrada</p>
+                <p className="mt-1 text-[10px] font-bold leading-relaxed">{diagnostic.message}</p>
+                {diagnostic.suggestion && (
+                  <p className="mt-1 text-[9px] font-black uppercase tracking-widest opacity-90">
+                    PrÃ³ximo passo: {diagnostic.suggestion}
+                  </p>
+                )}
+              </div>
+            )}
             {intakeWarning && (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-[10px] font-bold text-amber-600 dark:text-amber-300">
                 {intakeWarning}
@@ -312,14 +354,14 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
             )}
             <p className="text-[10px] text-slate-400 font-medium">
               {pendingDraft.confidenceLevel === 'low'
-                ? 'A IA não conseguiu extrair alguns dados com certeza. Campos destacados precisam de confirmação.'
+                ? 'A IA nÃ£o conseguiu extrair alguns dados com certeza. Campos destacados precisam de confirmaÃ§Ã£o.'
                 : 'Verifique os campos destacados antes de salvar.'}
             </p>
 
-            {/* Descrição */}
+            {/* DescriÃ§Ã£o */}
             <div className={`rounded-2xl p-3 border ${isUncertain('description') ? 'border-amber-300 bg-amber-50 dark:bg-amber-500/10' : 'border-slate-100 dark:border-slate-800'}`}>
               <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">
-                Descrição {isUncertain('description') && <span className="text-amber-500 ml-1">⚠</span>}
+                DescriÃ§Ã£o {isUncertain('description') && <span className="text-amber-500 ml-1">âš </span>}
               </label>
               <input
                 className="w-full text-sm bg-transparent text-slate-800 dark:text-white outline-none"
@@ -331,7 +373,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
             {/* Valor */}
             <div className={`rounded-2xl p-3 border ${isUncertain('amount') ? 'border-amber-300 bg-amber-50 dark:bg-amber-500/10' : 'border-slate-100 dark:border-slate-800'}`}>
               <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">
-                Valor {isUncertain('amount') && <span className="text-amber-500 ml-1">⚠</span>}
+                Valor {isUncertain('amount') && <span className="text-amber-500 ml-1">âš </span>}
               </label>
               <input
                 type="number"
@@ -360,7 +402,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
             {/* Categoria */}
             <div className={`rounded-2xl p-3 border ${isUncertain('category') ? 'border-amber-300 bg-amber-50 dark:bg-amber-500/10' : 'border-slate-100 dark:border-slate-800'}`}>
               <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">
-                Categoria {isUncertain('category') && <span className="text-amber-500 ml-1">⚠</span>}
+                Categoria {isUncertain('category') && <span className="text-amber-500 ml-1">âš </span>}
               </label>
               <select
                 className="w-full text-sm bg-transparent text-slate-800 dark:text-white outline-none"
@@ -404,19 +446,30 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
               onClick={() => setMode('ai')} 
               className={`px-6 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${mode === 'ai' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}
             >
-              Inteligência Artificial
+              InteligÃªncia Artificial
             </button>
             <button 
               onClick={() => setMode('manual')} 
               className={`px-6 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${mode === 'manual' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}
             >
-              Lançamento Manual
+              LanÃ§amento Manual
             </button>
           </div>
           <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"><X size={20} /></button>
         </div>
 
         <div className="p-8 flex-1">
+          {diagnostic && (
+            <div role="status" className="mb-4 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/30 rounded-2xl text-amber-700 dark:text-amber-200 text-[10px] font-bold">
+              <div className="font-black uppercase tracking-widest">DiagnÃ³stico de entrada</div>
+              <div className="mt-1 leading-relaxed">{diagnostic.message}</div>
+              {diagnostic.suggestion && (
+                <div className="mt-1 uppercase tracking-widest text-[9px] opacity-90">
+                  PrÃ³ximo passo: {diagnostic.suggestion}
+                </div>
+              )}
+            </div>
+          )}
           {intakeWarning && (
             <div role="status" className="mb-4 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/30 rounded-2xl text-amber-600 dark:text-amber-300 text-[10px] font-bold flex items-center gap-2">
               <AlertTriangle size={14} className="shrink-0" /> {intakeWarning}
@@ -531,7 +584,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
           ) : (
             <form onSubmit={handleManualSubmit} className={`space-y-4 animate-in slide-in-from-right-4 duration-300 ${isSuccess ? 'opacity-0 scale-95 transition-all duration-500' : ''}`}>
               <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Descrição</label>
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">DescriÃ§Ã£o</label>
                 <input 
                   type="text" required
                   value={manualData.description}
@@ -559,7 +612,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                     onChange={e => setManualData({...manualData, type: e.target.value as TransactionType})}
                     className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-bold text-sm text-slate-800 dark:text-white border-none appearance-none"
                   >
-                    <option value={TransactionType.DESPESA}>Despesa (Saída)</option>
+                    <option value={TransactionType.DESPESA}>Despesa (SaÃ­da)</option>
                     <option value={TransactionType.RECEITA}>Receita (Entrada)</option>
                   </select>
                 </div>
@@ -586,7 +639,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                 </div>
               </div>
 
-              {/* Recorrência */}
+              {/* RecorrÃªncia */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
                   <div>
@@ -605,13 +658,13 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                 {manualData.recurring && (
                   <div className="animate-in slide-in-from-top-2 duration-200 flex gap-3">
                     <div className="flex-1 space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Frequência</label>
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">FrequÃªncia</label>
                       <select
                         value={manualData.recurrence_type}
                         onChange={e => setManualData({ ...manualData, recurrence_type: e.target.value as any })}
                         className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-bold text-sm text-slate-800 dark:text-white border-none appearance-none"
                       >
-                        <option value="daily">Diário</option>
+                        <option value="daily">DiÃ¡rio</option>
                         <option value="weekly">Semanal</option>
                         <option value="monthly">Mensal</option>
                       </select>
@@ -636,7 +689,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                 disabled={isSuccess}
                 className={`w-full py-5 rounded-[1.8rem] font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all mt-4 flex items-center justify-center gap-2 ${isSuccess ? 'bg-emerald-500 text-white scale-105' : 'bg-slate-900 dark:bg-indigo-600 text-white'}`}
               >
-                {isSuccess ? <Check size={16} className="animate-bounce" /> : 'Salvar Lançamento'}
+                {isSuccess ? <Check size={16} className="animate-bounce" /> : 'Salvar LanÃ§amento'}
               </button>
             </form>
           )}
@@ -647,3 +700,4 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
 };
 
 export default AIInput;
+

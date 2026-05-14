@@ -8,7 +8,12 @@ vi.mock('../../src/ai/aiDebugService', () => ({
   logAIDebug: vi.fn(),
 }));
 
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: vi.fn(),
+}));
+
 import { interpretImage, interpretText } from '../../src/ai/aiInterpreter';
+import { logWarn } from '../../src/utils/logger';
 
 describe('aiInterpreter', () => {
   beforeEach(() => {
@@ -16,8 +21,6 @@ describe('aiInterpreter', () => {
   });
 
   it('logs contextual data when text interpretation fails', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-
     const result = await interpretText(
       'gastei 50',
       'user-1',
@@ -25,16 +28,14 @@ describe('aiInterpreter', () => {
     );
 
     expect(result.intent).toBe('unknown');
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[AI Interpreter] Text interpretation failed:',
+    expect(logWarn).toHaveBeenCalledWith(
+      '[AI Interpreter] Text interpretation failed; returning unknown intent',
       expect.objectContaining({
         userId: 'user-1',
         inputLength: 9,
         error: expect.any(Error),
       }),
     );
-
-    warnSpy.mockRestore();
   });
 
   it('normalizes invalid model intents to unknown and drops structured data', async () => {
@@ -53,8 +54,6 @@ describe('aiInterpreter', () => {
   });
 
   it('logs contextual data when image interpretation fails', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-
     const result = await interpretImage(
       'data:image/png;base64,abc',
       'image/png',
@@ -64,8 +63,8 @@ describe('aiInterpreter', () => {
     );
 
     expect(result.intent).toBe('unknown');
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[AI Interpreter] Image interpretation failed:',
+    expect(logWarn).toHaveBeenCalledWith(
+      '[AI Interpreter] Image interpretation failed; returning unknown intent',
       expect.objectContaining({
         userId: 'user-1',
         mimeType: 'image/png',
@@ -73,7 +72,5 @@ describe('aiInterpreter', () => {
         error: expect.any(Error),
       }),
     );
-
-    warnSpy.mockRestore();
   });
 });

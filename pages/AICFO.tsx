@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+﻿import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Transaction } from '../types';
 import { Account } from '../models/Account';
 import { makeId } from '../src/utils/helpers';
@@ -9,6 +9,7 @@ import {
   generateCFOResponse,
   learnFromConversation,
 } from '../src/ai/aiCFO';
+import { logWarn } from '../src/utils/logger';
 import { runAIPipelineSync } from '../src/ai/aiOrchestrator';
 import {
   Send, Loader2, BrainCircuit, Sparkles,
@@ -32,12 +33,12 @@ interface AICFOProps {
 // ─── Quick prompts ────────────────────────────────────────────────────────────
 
 const QUICK_PROMPTS: { label: string; question: string; icon: React.ReactNode }[] = [
-  { label: 'Posso gastar esta semana?', question: 'Posso gastar esta semana?', icon: <Wallet size={13} /> },
-  { label: 'Qual meu risco nos proximos 7 dias?', question: 'Qual meu risco nos proximos 7 dias?', icon: <AlertTriangle size={13} /> },
-  { label: 'O que ainda falta entrar?', question: 'O que ainda falta entrar?', icon: <TrendingUp size={13} /> },
-  { label: 'O que vence em breve?', question: 'O que vence em breve?', icon: <HelpCircle size={13} /> },
-  { label: 'Resumo do mes', question: 'Resumo do mes', icon: <Sparkles size={13} /> },
-  { label: 'Onde posso cortar gastos?', question: 'Onde posso cortar gastos?', icon: <PiggyBank size={13} /> },
+  { label: 'Posso pagar a semana?', question: 'Posso pagar a semana?', icon: <Wallet size={13} /> },
+  { label: 'Qual o risco da semana?', question: 'Qual o risco da semana?', icon: <AlertTriangle size={13} /> },
+  { label: 'O que entra até o mês fechar?', question: 'O que entra até o mês fechar?', icon: <TrendingUp size={13} /> },
+  { label: 'O que vence agora?', question: 'O que vence agora?', icon: <HelpCircle size={13} /> },
+  { label: 'Resumo do caixa', question: 'Resumo do caixa', icon: <Sparkles size={13} /> },
+  { label: 'Onde cortar hoje?', question: 'Onde cortar hoje?', icon: <PiggyBank size={13} /> },
 ];
 
 // ─── Intent badge ─────────────────────────────────────────────────────────────
@@ -59,7 +60,18 @@ interface Message {
   text: string;
   intent?: CFOIntent;
   timestamp: string;
+  diagnostic?: {
+    kind: 'ai_unavailable';
+    message: string;
+    suggestion?: string;
+  };
 }
+
+const buildConversationLearningDiagnostic = (): { title: string; message: string; suggestion: string } => ({
+  title: 'Aprendizado da conversa indisponivel',
+  message: 'Nao foi possivel atualizar o aprendizado do CFO em segundo plano agora.',
+  suggestion: 'Envie uma nova pergunta ou tente novamente quando a conexao do workspace estiver estável.',
+});
 
 const UserBubble: React.FC<{ msg: Message }> = ({ msg }) => (
   <div className="flex justify-end gap-3 animate-in slide-in-from-right-4 duration-300">
@@ -67,7 +79,7 @@ const UserBubble: React.FC<{ msg: Message }> = ({ msg }) => (
       <div className="bg-indigo-600 text-white px-5 py-3.5 rounded-[1.8rem] rounded-tr-lg shadow-md shadow-indigo-500/20">
         <p className="text-sm font-bold leading-relaxed">{msg.text}</p>
       </div>
-      <p className="text-[8px] text-slate-400 mt-1 text-right font-bold">
+      <p className="text-xs text-slate-400 mt-1 text-right font-bold">
         {new Date(msg.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
       </p>
     </div>
@@ -87,15 +99,26 @@ const AssistantBubble: React.FC<{ msg: Message }> = ({ msg }) => {
       <div className="max-w-[85%]">
         <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-5 py-4 rounded-[1.8rem] rounded-tl-lg shadow-sm">
           {intentStyle && (
-            <span className={`inline-block text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full mb-2 ${intentStyle.color}`}>
+            <span className={`inline-block text-xs font-black uppercase tracking-widest px-2 py-0.5 rounded-full mb-2 ${intentStyle.color}`}>
               {intentStyle.label}
             </span>
+          )}
+          {msg.diagnostic && (
+            <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+              <p className="text-xs font-black uppercase tracking-widest">Diagnóstico da IA</p>
+              <p className="mt-1 text-[11px] font-bold leading-relaxed">{msg.diagnostic.message}</p>
+              {msg.diagnostic.suggestion && (
+                <p className="mt-1 text-xs font-black uppercase tracking-widest opacity-90">
+                  Próximo passo: {msg.diagnostic.suggestion}
+                </p>
+              )}
+            </div>
           )}
           <p className="text-sm text-slate-700 dark:text-slate-200 font-bold leading-relaxed whitespace-pre-line">{msg.text}</p>
         </div>
         <div className="flex items-center gap-2 mt-1 ml-1">
           <ShieldCheck size={9} className="text-emerald-500" />
-          <p className="text-[7px] text-slate-400 font-bold">Consultivo · Não constitui garantia financeira</p>
+          <p className="text-xs text-slate-400 font-bold">Consultivo · Não constitui garantia financeira</p>
         </div>
       </div>
     </div>
@@ -117,7 +140,7 @@ const TypingBubble: React.FC = () => (
           />
         ))}
       </div>
-      <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest ml-1">Lendo dados do workspace...</p>
+      <p className="text-xs text-slate-400 font-black uppercase tracking-widest ml-1">Lendo dados do workspace...</p>
     </div>
   </div>
 );
@@ -134,14 +157,14 @@ const WelcomeScreen: React.FC<{
     </div>
     <div className="text-center">
       <h3 className="text-xl font-black text-slate-900 dark:text-white">{AI_CFO_COPY.welcomeTitle}</h3>
-      <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mt-1">{AI_CFO_COPY.welcomeSubtitle}</p>
+      <p className="text-xs font-black text-indigo-500 uppercase tracking-widest mt-1">{AI_CFO_COPY.welcomeSubtitle}</p>
       <p className="text-xs text-slate-500 dark:text-slate-400 mt-3 font-bold leading-relaxed max-w-xs">
         {AI_CFO_COPY.welcomeDescription}
       </p>
     </div>
 
     <div className="w-full flex flex-col gap-2">
-      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-center mb-1">Perguntas rápidas para decisão</p>
+      <p className="text-xs font-black text-slate-400 uppercase tracking-widest text-center mb-1">Perguntas rápidas do caixa</p>
       {prompts.map(p => (
         <button
           key={p.question}
@@ -159,7 +182,7 @@ const WelcomeScreen: React.FC<{
 
     <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl w-full">
       <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
-      <p className="text-[8px] text-slate-400 font-bold leading-relaxed">
+      <p className="text-xs text-slate-400 font-bold leading-relaxed">
         Respostas consultivas com base nos seus dados reais. Nao substituem analise ou orientacao especializada.
       </p>
     </div>
@@ -178,6 +201,7 @@ const AICFO: React.FC<AICFOProps> = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [learningDiagnostic, setLearningDiagnostic] = useState<{ title: string; message: string; suggestion: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -229,13 +253,18 @@ const AICFO: React.FC<AICFOProps> = ({
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
+    setLearningDiagnostic(null);
 
     // Detectar intent
     const intent = analyzeFinancialQuestion(question);
 
     // Aprender padrões da conversa em background
     learnFromConversation(userId, question, intent).catch(e => {
-      console.error('Erro ao aprender a partir da conversa:', e);
+      logWarn('[AICFO] Failed to learn from conversation', {
+        error: e,
+        fallback: 'aicfo-learn-from-conversation-failed',
+      });
+      setLearningDiagnostic(buildConversationLearningDiagnostic());
     });
 
     try {
@@ -246,9 +275,14 @@ const AICFO: React.FC<AICFOProps> = ({
         text: response.answer,
         intent,
         timestamp: response.timestamp,
+        diagnostic: response.diagnostic,
       };
       setMessages(prev => [...prev, cfoMsg]);
-    } catch {
+    } catch (error) {
+      logWarn('[AICFO] Failed to generate CFO response', {
+        error,
+        fallback: 'aicfo-generate-response-failed',
+      });
       setMessages(prev => [...prev, {
         id: makeId(),
         role: 'assistant',
@@ -274,11 +308,11 @@ const AICFO: React.FC<AICFOProps> = ({
     <div className="flex flex-col h-[calc(100vh-8rem)] animate-in fade-in duration-700">
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] p-5 rounded-[2rem] flex justify-between items-center shadow-lg shadow-indigo-500/20 shrink-0 relative overflow-hidden mb-4">
+      <div className="bg-gradient-to-r from-indigo-600 to-violet-500 p-5 rounded-[2rem] flex justify-between items-center shadow-lg shadow-indigo-500/20 shrink-0 relative overflow-hidden mb-4">
         <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 blur-3xl -mr-16 -mt-16 pointer-events-none" />
         <div className="relative z-10">
           <h2 className="text-xl font-black text-white tracking-tight leading-none">{AI_CFO_COPY.headerTitle}</h2>
-          <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mt-1">{AI_CFO_COPY.headerSubtitle}</p>
+          <p className="text-xs font-black text-white/70 uppercase tracking-widest mt-1">{AI_CFO_COPY.headerSubtitle}</p>
         </div>
         <div className="flex items-center gap-2 relative z-10">
           {messages.length > 0 && (
@@ -296,6 +330,14 @@ const AICFO: React.FC<AICFOProps> = ({
         </div>
       </div>
 
+      {learningDiagnostic && (
+        <div role="status" className="mb-4 rounded-2xl border border-amber-100 bg-amber-50/80 p-3 dark:border-amber-500/20 dark:bg-amber-500/10">
+          <p className="text-xs font-black uppercase tracking-widest text-amber-600">{learningDiagnostic.title}</p>
+          <p className="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">{learningDiagnostic.message}</p>
+          <p className="mt-1 text-xs font-bold text-amber-500">{learningDiagnostic.suggestion}</p>
+        </div>
+      )}
+
       {/* Snapshot financeiro rápido */}
       <div className="grid grid-cols-3 gap-2 mb-4 shrink-0">
         {[
@@ -304,7 +346,7 @@ const AICFO: React.FC<AICFOProps> = ({
           { label: '30 dias', value: intelligence.context.cashflowForecast.in30Days },
         ].map(({ label, value }) => (
           <div key={label} className="bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 text-center">
-            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{label}</p>
             <p className={`text-xs font-black mt-0.5 ${value >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>
               {hideValues ? '••••' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)}
             </p>
@@ -314,7 +356,7 @@ const AICFO: React.FC<AICFOProps> = ({
 
       {!canUseRichAiContext && (
         <div className="mb-4 rounded-2xl border border-indigo-100 bg-indigo-50/80 p-3 dark:border-indigo-500/20 dark:bg-indigo-500/10">
-          <p className="text-[8px] font-black uppercase tracking-widest text-indigo-600">Modo Free</p>
+          <p className="text-xs font-black uppercase tracking-widest text-indigo-600">Modo Free</p>
           <p className="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
             O apoio financeiro IA segue disponivel no Free com contexto essencial. No Pro, as respostas ganham mais profundidade historica e leitura de cenarios.
           </p>
@@ -322,17 +364,17 @@ const AICFO: React.FC<AICFOProps> = ({
       )}
 
       <div className="flex flex-wrap gap-2 mb-4 shrink-0">
-        <span className="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-[8px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">
+        <span className="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-xs font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">
           Confiança {Math.round(intelligence.context.confidence.overall * 100)}%
         </span>
-        <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
+        <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
           Recorrências {intelligence.recurringCount}
         </span>
-        <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${hasStrongGrounding ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'}`}>
-          {hasStrongGrounding ? 'Base ancorada' : 'Base incompleta'}
+        <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest ${hasStrongGrounding ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'}`}>
+          {hasStrongGrounding ? 'Base suficiente' : 'Base incompleta'}
         </span>
         {intelligence.dominantCategoryLabel && (
-          <span className="px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 text-[8px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-300">
+          <span className="px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 text-xs font-black uppercase tracking-widest text-violet-600 dark:text-violet-300">
             {intelligence.dominantCategoryLabel}
           </span>
         )}
@@ -383,7 +425,7 @@ const AICFO: React.FC<AICFOProps> = ({
             <button
               key={p.question}
               onClick={() => sendMessage(p.question)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl text-[9px] font-black text-slate-500 dark:text-slate-400 whitespace-nowrap hover:border-indigo-200 hover:text-indigo-600 transition-all shrink-0"
+              className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl text-xs font-black text-slate-500 dark:text-slate-400 whitespace-nowrap hover:border-indigo-200 hover:text-indigo-600 transition-all shrink-0"
             >
               {p.icon} {p.label}
             </button>
@@ -395,3 +437,4 @@ const AICFO: React.FC<AICFOProps> = ({
 };
 
 export default AICFO;
+

@@ -43,7 +43,7 @@ vi.mock('../../src/config/gemini', () => ({
   generateContent: mocks.geminiGenerateContentMock,
 }));
 
-import { generateContent } from '../../src/config/ai';
+import { estimateTokens, generateContent } from '../../src/config/ai';
 
 const baselineEnv = {
   OPENAI_API_KEY: 'openai-key',
@@ -152,6 +152,21 @@ describe('config/ai observability', () => {
         requestId: 'req-empty',
       }),
       'No AI provider configured. Set OPENAI_API_KEY or GEMINI_API_KEY in .env'
+    );
+  });
+
+  it('registra aviso quando a estimativa de tokens cai para heuristica', async () => {
+    const estimateTokensMock = vi.mocked(await import('../../src/config/openai')).estimateTokens;
+    estimateTokensMock.mockRejectedValueOnce(new Error('estimate unavailable'));
+
+    await expect(estimateTokens('texto curto')).resolves.toBe(3);
+
+    expect(mocks.loggerMock.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'ai_token_estimate_fallback',
+        error: 'estimate unavailable',
+      }),
+      'Falling back to heuristic token estimate'
     );
   });
 });

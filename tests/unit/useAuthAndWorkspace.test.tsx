@@ -8,10 +8,12 @@ const authWorkspaceMocks = vi.hoisted(() => ({
   mockBootstrapBackendSessionFromFirebase: vi.fn(),
   mockBootstrapBackendSessionWithPasswordLogin: vi.fn(),
   mockEnsureActiveWorkspace: vi.fn(),
+  mockHydrateGoalsFromCloud: vi.fn(),
   mockGetE2EAuthBootstrap: vi.fn(),
   mockSetUser: vi.fn(),
   mockClearUser: vi.fn(),
   mockAddBreadcrumb: vi.fn(),
+  mockLogWarn: vi.fn(),
   mockSignOut: vi.fn().mockResolvedValue(undefined),
   isFirebaseConfigured: true,
 }));
@@ -36,8 +38,16 @@ vi.mock('../../src/services/workspaceSession', () => ({
   clearActiveWorkspace: vi.fn(),
 }));
 
+vi.mock('../../src/services/localSyncService', () => ({
+  hydrateGoalsFromCloud: authWorkspaceMocks.mockHydrateGoalsFromCloud,
+}));
+
 vi.mock('../../src/utils/e2eAuthBootstrap', () => ({
   getE2EAuthBootstrap: authWorkspaceMocks.mockGetE2EAuthBootstrap,
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: authWorkspaceMocks.mockLogWarn,
 }));
 
 vi.mock('../../src/config/sentry', () => ({
@@ -64,6 +74,7 @@ describe('useAuthAndWorkspace', () => {
         email: 'local@flow.dev',
       },
     });
+    authWorkspaceMocks.mockHydrateGoalsFromCloud.mockResolvedValue(undefined);
     authWorkspaceMocks.mockEnsureActiveWorkspace.mockResolvedValue({
       workspaceId: 'ws_1',
       tenantId: 'tenant_1',
@@ -148,6 +159,61 @@ describe('useAuthAndWorkspace', () => {
       userId: 'local-local',
       name: null,
     });
+  });
+
+  it('desativa a sync backend quando a hidratacao do workspace falha no login local', async () => {
+    authWorkspaceMocks.isFirebaseConfigured = false;
+    authWorkspaceMocks.mockEnsureActiveWorkspace.mockRejectedValueOnce(new Error('workspace offline'));
+    const { result } = renderHook(() => useAuthAndWorkspace());
+
+    await act(async () => {
+      await result.current.handleDevelopmentLogin({
+        email: 'local@flow.dev',
+        password: '123456',
+      });
+    });
+
+    expect(result.current.isLoggedIn).toBe(true);
+    expect(result.current.backendSyncEnabled).toBe(false);
+    expect(result.current.user.id).toBe('local-user-1');
+    expect(result.current.activeWorkspace.workspaceId).toBeNull();
+    expect(authWorkspaceMocks.mockLogWarn).toHaveBeenCalledWith(
+      '[Auth] Development login workspace hydration failed',
+      expect.objectContaining({
+        userId: 'local-user-1',
+        email: 'local@flow.dev',
+        fallback: 'auth-development-workspace-hydration-failed',
+      }),
+    );
+  });
+
+  it('desativa a sync backend quando o bootstrap do token firebase falha', async () => {
+    authWorkspaceMocks.mockBootstrapBackendSessionFromFirebase.mockRejectedValueOnce(new Error('token failure'));
+    const { result } = renderHook(() => useAuthAndWorkspace());
+
+    act(() => {
+      authListener?.({
+        uid: 'user-1',
+        email: 'user@test.dev',
+        displayName: 'Flow User',
+        getIdToken: vi.fn().mockResolvedValue('firebase-token'),
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoggedIn).toBe(true);
+      expect(result.current.backendSyncEnabled).toBe(false);
+    });
+
+    expect(result.current.user.id).toBe('user-1');
+    expect(authWorkspaceMocks.mockLogWarn).toHaveBeenCalledWith(
+      '[Auth] Failed to bootstrap backend token',
+      expect.objectContaining({
+        userId: 'user-1',
+        email: 'user@test.dev',
+        fallback: 'auth-backend-token-bootstrap-failed',
+      }),
+    );
   });
 
   it('limpa sessao local no logout quando Firebase nao esta configurado', async () => {

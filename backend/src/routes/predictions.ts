@@ -8,6 +8,7 @@ import { QueryDocumentSnapshot, DocumentData } from 'firebase-admin/firestore';
 import { PredictionEngine } from '../services/PredictionEngine';
 import { authMiddleware } from '../middleware/auth';
 import { PredictionApiResponse, CashFlowPrediction, TransactionHistory } from '../types/prediction';
+import logger from '../config/logger';
 
 type HistoricalTransaction = TransactionHistory['transactions'][number];
 
@@ -225,7 +226,12 @@ router.get('/cash-flow', authMiddleware, async (req, res): Promise<any> => {
     } as PredictionApiResponse);
 
   } catch (error) {
-    console.error('[Predictions API] Error:', error);
+    logger.warn({
+      error,
+      route: 'cash-flow',
+      userId: req.userId,
+      days: typeof req.query.days === 'string' ? parseInt(req.query.days, 10) || 30 : 30,
+    }, '[Predictions API] Error');
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error',
@@ -289,7 +295,7 @@ router.get('/shortfall-risk', authMiddleware, async (req, res): Promise<any> => 
     } as PredictionApiResponse);
 
   } catch (error) {
-    console.error('[Predictions API] Shortfall error:', error);
+    logger.warn({ error, route: 'shortfall-risk', userId: req.userId }, '[Predictions API] Shortfall error');
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error',
@@ -343,7 +349,7 @@ router.get('/seasonality', authMiddleware, async (req, res): Promise<any> => {
     } as PredictionApiResponse);
 
   } catch (error) {
-    console.error('[Predictions API] Seasonality error:', error);
+    logger.warn({ error, route: 'seasonality', userId: req.userId }, '[Predictions API] Seasonality error');
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error',
@@ -436,7 +442,7 @@ router.post('/refresh', authMiddleware, async (req, res): Promise<any> => {
     } as PredictionApiResponse);
 
   } catch (error) {
-    console.error('[Predictions API] Refresh error:', error);
+    logger.warn({ error, route: 'refresh', userId: req.userId, days: req.body?.days || 30 }, '[Predictions API] Refresh error');
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error',

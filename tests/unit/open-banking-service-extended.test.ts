@@ -1,5 +1,10 @@
-import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
+﻿import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
 import type { Transaction } from '../../types';
+
+const loggerMocks = vi.hoisted(() => ({
+  logWarn: vi.fn(),
+  logError: vi.fn(),
+}));
 
 vi.mock('../../services/integrations/mockBankProvider', () => ({
   getProvider: vi.fn(() => ({
@@ -17,6 +22,11 @@ vi.mock('../../services/integrations/mockBankProvider', () => ({
 
 vi.mock('../../src/ai/aiMemory', () => ({
   learnMemory: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: loggerMocks.logWarn,
+  logError: loggerMocks.logError,
 }));
 
 vi.mock('../../src/finance/importService', () => ({
@@ -113,15 +123,21 @@ describe('openBankingService - Extended Coverage', () => {
   });
 
   it('registra erro quando learnMemory falha no fluxo local', async () => {
-    const warnSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { learnMemory } = await import('../../src/ai/aiMemory');
     vi.mocked(learnMemory).mockRejectedValueOnce(new Error('memory failed'));
 
     await connectBank('nubank', 'u-memory-error');
 
     await Promise.resolve();
-    expect(warnSpy).toHaveBeenCalled();
-    warnSpy.mockRestore();
+    expect(loggerMocks.logError).toHaveBeenCalledWith(
+      expect.stringMatching(/Erro ao registrar mem.{0,6}ria de conex.{0,6}o banc.{0,6}ria/i),
+      expect.any(Error),
+      expect.objectContaining({
+        userId: 'u-memory-error',
+        bankId: 'nubank',
+        fallback: 'open-banking-learn-memory-failed',
+      }),
+    );
   });
 
   it('isola conexoes por usuario', async () => {
@@ -894,7 +910,7 @@ describe('openBankingService - Extended Coverage', () => {
     const result = await syncTransactions('conn_mock_sync_prod', [], 'u-prod-mock-sync', (txs) => imported.push(...txs));
 
     expect(result.transactions_imported).toBe(0);
-    expect(result.error).toMatch(/Conexão local de teste removida/i);
+    expect(result.error).toMatch(/Conex.{0,6}o local de teste removida/i);
     expect(imported).toEqual([]);
     expect(getConnection('conn_mock_sync_prod')).toBeNull();
   });
@@ -919,7 +935,7 @@ describe('openBankingService - Extended Coverage', () => {
 
     const result = await syncTransactions(conn.id, [], 'u404', vi.fn());
 
-    expect(result.error).toMatch(/Conexão não encontrada no backend/i);
+    expect(result.error).toMatch(/Conex.{0,6}o n.{0,4}o encontrada no backend/i);
     expect(getConnection(conn.id)).toBeNull();
     expect(apiRequestMock).toHaveBeenCalledTimes(2);
   });
@@ -1217,7 +1233,7 @@ describe('openBankingService - Extended Coverage', () => {
     const conn = await connectBank('nubank', 'u-error-default');
     const result = await syncTransactions(conn.id, [], 'u-error-default', vi.fn());
 
-    expect(result.error).toBeUndefined();
+    expect(result.error).toBe('Erro ao sincronizar.');
     expect(getConnection(conn.id)).toMatchObject({
       connection_status: 'error',
       error_message: 'Erro ao sincronizar.',
@@ -1230,3 +1246,5 @@ describe('openBankingService - Extended Coverage', () => {
     expect(formatLastSync(new Date(Date.now() - 5 * 60000).toISOString())).toMatch(/5 min atr/);
   });
 });
+
+

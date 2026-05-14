@@ -8,6 +8,7 @@ import { aiTaskQueue } from './src/ai/queue';
 import { initializeFinancialEventPipeline } from './src/events/financialEventPipeline';
 import { registerEventListeners } from './src/events/listeners/registerListeners';
 import { AIControlPanel } from './src/debug/aiPanel/AIControlPanel';
+import { logError, logInfo, logWarn } from './src/utils/logger';
 
 if (import.meta.env.DEV && typeof window !== 'undefined') {
   const isLocal = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
@@ -16,15 +17,19 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
     navigator.serviceWorker
       .getRegistrations()
       .then((regs) => Promise.all(regs.map((r) => r.unregister())))
-      .then(() => console.info('[SW Guard] Service workers removidos em DEV'))
-      .catch((err) => console.warn('[SW Guard] Falha ao remover SW em DEV', err));
+      .then(() => logInfo('[SW Guard] Service workers removidos em DEV'))
+      .catch((err) => logWarn('[SW Guard] Falha ao remover SW em DEV', err, {
+        fallback: 'sw-guard-unregister-failed',
+      }));
 
     if ('caches' in window) {
       caches
         .keys()
         .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
-        .then(() => console.info('[SW Guard] Caches limpos em DEV'))
-        .catch((err) => console.warn('[SW Guard] Falha ao limpar caches em DEV', err));
+        .then(() => logInfo('[SW Guard] Caches limpos em DEV'))
+        .catch((err) => logWarn('[SW Guard] Falha ao limpar caches em DEV', err, {
+          fallback: 'sw-guard-cache-cleanup-failed',
+        }));
     }
   }
 }
@@ -46,42 +51,51 @@ async function initializeApp() {
         enableAutoReload: true,
       });
     } catch (error) {
-      console.error('[App] Runtime guard initialization failed:', error);
+      logError('[App] Runtime guard initialization failed', error, {
+        fallback: 'app-runtime-guard-initialization-failed',
+      });
       // Continue anyway - some guards may still be active
     }
   } else {
-    console.info('[App] Benchmark mode enabled - runtime guards skipped');
+    logInfo('[App] Benchmark mode enabled - runtime guards skipped');
   }
 
   // AI task queue initialization
 
   try {
     aiTaskQueue.initialize();
-    console.log('[App] AI Task Queue initialized');
+    logInfo('[App] AI Task Queue initialized');
   } catch (error) {
-    console.error('[App] AI Task Queue initialization failed:', error);
+    logError('[App] AI Task Queue initialization failed', error, {
+      fallback: 'app-ai-task-queue-initialization-failed',
+    });
     // Non-critical - app can run without task queue
   }
 
   try {
     initializeFinancialEventPipeline();
-    console.log('[App] Financial Event Pipeline initialized');
+    logInfo('[App] Financial Event Pipeline initialized');
   } catch (error) {
-    console.error('[App] Financial Event Pipeline initialization failed:', error);
+    logError('[App] Financial Event Pipeline initialization failed', error, {
+      fallback: 'app-financial-event-pipeline-initialization-failed',
+    });
   }
 
   try {
     registerEventListeners();
   } catch (error) {
-    console.error('[App] Event listeners registration failed:', error);
+    logError('[App] Event listeners registration failed', error, {
+      fallback: 'app-event-listeners-registration-failed',
+    });
   }
 
   // Version log
 
-  console.info(
-    `%c[Flow Finance] v0.6.3 | ${import.meta.env.MODE} | event-listeners + cache + observability`,
-    'color: #34d399; font-weight: bold;'
-  );
+  logInfo('[Flow Finance] bootstrap version banner', {
+    version: '0.6.3',
+    mode: import.meta.env.MODE,
+    features: ['event-listeners', 'cache', 'observability'],
+  });
 
   // Service worker auto-update
 
@@ -97,7 +111,7 @@ async function initializeApp() {
             if (newWorker) {
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  console.log('[SW] New version available, reload recommended');
+                  logInfo('[SW] New version available, reload recommended');
                   // Optionally notify user or auto-reload after delay
                 }
               });
@@ -136,7 +150,9 @@ async function initializeApp() {
 
 // Start app initialization
 initializeApp().catch((error) => {
-  console.error('[App] Fatal initialization error:', error);
+  logError('[App] Fatal initialization error', error, {
+    fallback: 'app-fatal-initialization-error',
+  });
   document.body.innerHTML = `
     <div style="
       display: flex;

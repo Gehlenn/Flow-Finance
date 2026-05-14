@@ -47,6 +47,31 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
     }
   };
 
+  const getAuthDiagnostic = (code: string) => {
+    switch (code) {
+      case 'auth/configuration-not-found':
+        return {
+          title: 'Diagnóstico de autenticação',
+          message: 'O login real depende das variáveis do Firebase no frontend ou do login local de desenvolvimento.',
+          suggestion: 'Verifique VITE_FIREBASE_* no frontend ou habilite VITE_AUTH_ALLOW_INSECURE_LOCAL_LOGIN no ambiente local.',
+        };
+      case 'auth/local-login-failed':
+        return {
+          title: 'Diagnóstico de sessão local',
+          message: 'O backend local rejeitou a autenticação insegura de desenvolvimento.',
+          suggestion: 'Confirme se o backend está ativo, se a sessão dev foi carregada e se o login local está liberado.',
+        };
+      case 'auth/unauthorized-domain':
+        return {
+          title: 'Diagnóstico de domínio',
+          message: 'O domínio atual não está autorizado no Firebase.',
+          suggestion: 'Adicione o domínio na lista de Authorized Domains do projeto Firebase.',
+        };
+      default:
+        return null;
+    }
+  };
+
   const handleSocialLogin = async (provider: AuthProvider) => {
     if (!isFirebaseConfigured) {
       setError({ code: 'auth/configuration-not-found', message: getFirebaseErrorMessage('auth/configuration-not-found') });
@@ -190,6 +215,15 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
                 <div role="alert" aria-live="polite" className="p-2.5 bg-rose-500/5 border border-rose-500/20 rounded-xl flex items-center gap-2 text-rose-500 animate-in shake">
                   <AlertCircle size={14} className="shrink-0" />
                   <p className="text-[9px] font-bold">{error.message}</p>
+                </div>
+              )}
+              {error && getAuthDiagnostic(error.code) && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+                  <p className="text-[8px] font-black uppercase tracking-widest">{getAuthDiagnostic(error.code)?.title}</p>
+                  <p className="mt-1 text-[10px] font-bold leading-relaxed">{getAuthDiagnostic(error.code)?.message}</p>
+                  <p className="mt-1 text-[9px] font-black uppercase tracking-widest opacity-90">
+                    Próximo passo: {getAuthDiagnostic(error.code)?.suggestion}
+                  </p>
                 </div>
               )}
 

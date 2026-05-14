@@ -5,6 +5,11 @@ import { describe, expect, it, vi } from 'vitest';
 import Autopilot from '../../pages/Autopilot';
 import { Category, TransactionType, type Transaction } from '../../types';
 import { Account } from '../../models/Account';
+import { learnAutopilotPatterns } from '../../src/ai/financialAutopilot';
+
+const autopilotMocks = vi.hoisted(() => ({
+  logWarn: vi.fn(),
+}));
 
 vi.mock('../../src/ai/aiOrchestrator', () => ({
   runAIPipelineSync: vi.fn(() => ({
@@ -32,6 +37,10 @@ vi.mock('../../src/ai/financialAutopilot', () => ({
   learnAutopilotPatterns: vi.fn(async () => undefined),
 }));
 
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: autopilotMocks.logWarn,
+}));
+
 const baseTransactions: Transaction[] = [
   {
     id: 'tx-1',
@@ -56,6 +65,30 @@ const baseAccounts: Account[] = [
 ];
 
 describe('Autopilot refresh', () => {
+  it('shows a visible diagnostic when background learning fails', async () => {
+    vi.mocked(learnAutopilotPatterns).mockRejectedValueOnce(new Error('learning failed'));
+
+    render(
+      <Autopilot
+        transactions={baseTransactions}
+        accounts={baseAccounts}
+        userId="u1"
+        workspacePlan="pro"
+        hideValues={false}
+      />,
+    );
+
+    expect(await screen.findByRole('status')).toBeTruthy();
+    expect(screen.getByText(/Aprendizado do Autopilot indisponivel/i)).toBeTruthy();
+    expect(screen.getByText(/Nao foi possivel atualizar o aprendizado automatico em segundo plano agora/i)).toBeTruthy();
+    expect(autopilotMocks.logWarn).toHaveBeenCalledWith(
+      '[Autopilot] Failed to learn patterns',
+      expect.objectContaining({
+        fallback: 'autopilot-learning-failed',
+      }),
+    );
+  });
+
   it('restaura as acoes dispensadas sem prometer recomputar analise', () => {
     vi.useFakeTimers();
     render(

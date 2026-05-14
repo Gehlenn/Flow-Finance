@@ -4,6 +4,7 @@
  */
 
 import { GuardResult } from './types';
+import { logError, logInfo, logWarn } from '../utils/logger';
 
 const EXPECTED_CACHE_VERSION = 'flow-finance-v3';
 
@@ -23,7 +24,11 @@ export async function validateServiceWorker(): Promise<GuardResult> {
     const staleCaches = cacheNames.filter((name) => !name.includes('v3'));
 
     if (staleCaches.length > 0) {
-      console.warn('[SW Guard] Found stale caches:', staleCaches);
+      logWarn('[SW Guard] Found stale caches', {
+        staleCaches,
+        expectedCacheVersion: EXPECTED_CACHE_VERSION,
+        fallback: 'service-worker-stale-caches',
+      });
       await cleanStaleCaches(staleCaches);
       
       return {
@@ -40,7 +45,10 @@ export async function validateServiceWorker(): Promise<GuardResult> {
       registration.update();
     }
 
-    console.log('[SW Guard] Service worker validated');
+    logInfo('[SW Guard] Service worker validated', {
+      expectedCacheVersion: EXPECTED_CACHE_VERSION,
+      fallback: 'service-worker-validated',
+    });
 
     return {
       guard: 'serviceworker',
@@ -49,7 +57,10 @@ export async function validateServiceWorker(): Promise<GuardResult> {
       timestamp: Date.now(),
     };
   } catch (error) {
-    console.error('[SW Guard] Validation failed:', error);
+    logError('[SW Guard] Validation failed', error, {
+      expectedCacheVersion: EXPECTED_CACHE_VERSION,
+      fallback: 'service-worker-validation-failed',
+    });
     return {
       guard: 'serviceworker',
       status: 'error',
@@ -60,12 +71,19 @@ export async function validateServiceWorker(): Promise<GuardResult> {
 }
 
 async function cleanStaleCaches(cacheNames: string[]): Promise<void> {
-  console.log('[SW Guard] Cleaning stale caches...');
+  logInfo('[SW Guard] Cleaning stale caches', {
+    staleCacheCount: cacheNames.length,
+    fallback: 'service-worker-cleaning-stale-caches',
+  });
   
   await Promise.all(
     cacheNames.map(async (cacheName) => {
       const deleted = await caches.delete(cacheName);
-      console.log(`[SW Guard] Cache "${cacheName}" deleted:`, deleted);
+      logInfo('[SW Guard] Cache deleted', {
+        cacheName,
+        deleted,
+        fallback: 'service-worker-cache-deleted',
+      });
     })
   );
 }
@@ -75,5 +93,8 @@ export async function clearAllCaches(): Promise<void> {
 
   const cacheNames = await caches.keys();
   await Promise.all(cacheNames.map((name) => caches.delete(name)));
-  console.log('[SW Guard] All caches cleared');
+  logInfo('[SW Guard] All caches cleared', {
+    cacheCount: cacheNames.length,
+    fallback: 'service-worker-caches-cleared',
+  });
 }

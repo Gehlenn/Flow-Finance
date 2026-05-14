@@ -116,6 +116,16 @@ export function createClinicIntegrationRoutes(
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
 
+      logger.error(
+        {
+          service: 'clinic-automation',
+          error: err.message,
+          stack: err.stack,
+          fallback: 'clinic-health-failed',
+        },
+        'Clinic automation health check failed',
+      );
+
       res.status(503).json({
         service: 'clinic-automation',
         healthy: false,

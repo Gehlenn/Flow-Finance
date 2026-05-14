@@ -1,5 +1,6 @@
 import { makeId } from '../utils/helpers';
 import { getActiveWorkspaceScopedStorageKey } from '../utils/workspaceStorage';
+import { logWarn } from '../utils/logger';
 
 const STORAGE_KEY = 'flow_ai_memory';
 
@@ -19,13 +20,29 @@ export interface AIMemory {
 function readAll(): AIMemory[] {
   try {
     return JSON.parse(localStorage.getItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY)) || '[]');
-  } catch {
+  } catch (error) {
+    logWarn('[AIMemory] Failed to parse memory storage; returning empty set', {
+      storageKey: getActiveWorkspaceScopedStorageKey(STORAGE_KEY),
+      error,
+      fallback: 'ai-memory-parse-failed',
+    });
     return [];
   }
 }
 
 function writeAll(entries: AIMemory[]): void {
   localStorage.setItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY), JSON.stringify(entries));
+}
+
+function parseMemoryDate(value: string): Date | null {
+  const trimmed = value.trim();
+  const dateOnlyMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const parsed = new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 export function getAIMemorySnapshot(userId: string): AIMemory[] {
@@ -98,7 +115,7 @@ export async function detectAndLearnPatterns(
 
   // Detectar gastos no fim de semana
   const weekendSpending = transactions.filter(t => {
-    const day = new Date(t.date).getDay();
+    const day = parseMemoryDate(t.date)?.getDay();
     return t.type === TransactionType.DESPESA && (day === 0 || day === 6);
   });
   const totalSpending = transactions.filter(t => t.type === TransactionType.DESPESA);

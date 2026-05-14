@@ -1,5 +1,40 @@
 import { Transaction, TransactionType } from '../../../../types';
 
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function formatRecurringDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseRecurringDate(dateValue: string): Date | null {
+  const trimmed = dateValue.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const dateOnlyMatch = DATE_ONLY_PATTERN.exec(trimmed);
+  if (dateOnlyMatch) {
+    const year = Number(dateOnlyMatch[1]);
+    const month = Number(dateOnlyMatch[2]) - 1;
+    const day = Number(dateOnlyMatch[3]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() !== year
+      || localDate.getMonth() !== month
+      || localDate.getDate() !== day
+    ) {
+      return null;
+    }
+    return localDate;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export interface DetectedRecurringTransaction {
   merchant: string;
   amount: number;
@@ -15,13 +50,16 @@ function averageCadenceDays(transactions: Transaction[]): number {
   }
 
   const sorted = [...transactions].sort(
-    (left, right) => new Date(left.date).getTime() - new Date(right.date).getTime()
+    (left, right) => (parseRecurringDate(left.date)?.getTime() ?? 0) - (parseRecurringDate(right.date)?.getTime() ?? 0)
   );
 
   let totalDiff = 0;
   for (let index = 1; index < sorted.length; index += 1) {
-    const current = new Date(sorted[index].date).getTime();
-    const previous = new Date(sorted[index - 1].date).getTime();
+    const current = parseRecurringDate(sorted[index].date)?.getTime();
+    const previous = parseRecurringDate(sorted[index - 1].date)?.getTime();
+    if (current == null || previous == null) {
+      continue;
+    }
     totalDiff += Math.max(1, Math.round((current - previous) / (1000 * 60 * 60 * 24)));
   }
 
@@ -52,10 +90,22 @@ export const recurringDetector = {
       .map((group) => {
         const cadenceDays = averageCadenceDays(group);
         const sorted = [...group].sort(
-          (left, right) => new Date(left.date).getTime() - new Date(right.date).getTime()
+          (left, right) => (parseRecurringDate(left.date)?.getTime() ?? 0) - (parseRecurringDate(right.date)?.getTime() ?? 0)
         );
         const lastTransaction = sorted[sorted.length - 1];
-        const nextExpectedDate = new Date(lastTransaction.date);
+        const nextExpectedDate = parseRecurringDate(lastTransaction.date);
+        if (!nextExpectedDate) {
+          const fallbackDate = new Date();
+          fallbackDate.setDate(fallbackDate.getDate() + cadenceDays);
+          return {
+            merchant: lastTransaction.merchant || lastTransaction.description || 'unknown',
+            amount: Math.abs(lastTransaction.amount),
+            occurrences: group.length,
+            cadenceDays,
+            nextExpectedDate: formatRecurringDateKey(fallbackDate),
+            sample: lastTransaction,
+          };
+        }
         nextExpectedDate.setDate(nextExpectedDate.getDate() + cadenceDays);
 
         return {
@@ -63,7 +113,7 @@ export const recurringDetector = {
           amount: Math.abs(lastTransaction.amount),
           occurrences: group.length,
           cadenceDays,
-          nextExpectedDate: nextExpectedDate.toISOString(),
+          nextExpectedDate: formatRecurringDateKey(nextExpectedDate),
           sample: lastTransaction,
         };
       });

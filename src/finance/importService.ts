@@ -13,6 +13,7 @@ import { FinancialEventEmitter } from '../events/eventEngine';
 import { learnMemory } from '../ai/aiMemory';
 import { parsePdfStatementText } from '../importers/pdfStatementImporter';
 import { classifyTransactionsWithAI } from '../services/ai/categorizationService';
+import { logError, logWarn } from '../utils/logger';
 
 // ─── Import result model ──────────────────────────────────────────────────────
 
@@ -52,30 +53,74 @@ function parseDate(raw: string): string {
   if (!raw) return new Date().toISOString();
 
   const cleaned = raw.trim();
+  const toLocalDateKey = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const dateOnly = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    const year = Number(dateOnly[1]);
+    const month = Number(dateOnly[2]) - 1;
+    const day = Number(dateOnly[3]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() === year
+      && localDate.getMonth() === month
+      && localDate.getDate() === day
+    ) {
+      return toLocalDateKey(localDate);
+    }
+  }
 
   // OFX: YYYYMMDD or YYYYMMDDHHMMSS[.mmm][±hh:mm]
   const ofxMatch = cleaned.match(/^(\d{4})(\d{2})(\d{2})/);
   if (ofxMatch) {
-    return new Date(`${ofxMatch[1]}-${ofxMatch[2]}-${ofxMatch[3]}`).toISOString();
+    const year = Number(ofxMatch[1]);
+    const month = Number(ofxMatch[2]) - 1;
+    const day = Number(ofxMatch[3]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() === year
+      && localDate.getMonth() === month
+      && localDate.getDate() === day
+    ) {
+      return toLocalDateKey(localDate);
+    }
   }
 
   // DD/MM/YYYY or DD-MM-YYYY
   const brMatch = cleaned.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
   if (brMatch) {
-    return new Date(`${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`).toISOString();
+    const year = Number(brMatch[3]);
+    const month = Number(brMatch[2]) - 1;
+    const day = Number(brMatch[1]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() === year
+      && localDate.getMonth() === month
+      && localDate.getDate() === day
+    ) {
+      return toLocalDateKey(localDate);
+    }
   }
 
   // MM/DD/YYYY (US format)
   const usMatch = cleaned.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
   if (usMatch) {
-    const d = new Date(cleaned);
-    if (!isNaN(d.getTime())) return d.toISOString();
-  }
-
-  // ISO 8601 — YYYY-MM-DD
-  const isoMatch = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (isoMatch) {
-    return new Date(cleaned).toISOString();
+    const year = Number(usMatch[3]);
+    const month = Number(usMatch[1]) - 1;
+    const day = Number(usMatch[2]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() === year
+      && localDate.getMonth() === month
+      && localDate.getDate() === day
+    ) {
+      return toLocalDateKey(localDate);
+    }
   }
 
   // Fallback
@@ -134,9 +179,22 @@ function markDuplicates(
   imported: ImportedTransaction[],
   existing: Transaction[]
 ): ImportedTransaction[] {
+  const parseComparableDate = (dateValue: string): number | null => {
+    const trimmed = dateValue.trim();
+    const dateOnly = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const parsed = dateOnly
+      ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+      : new Date(trimmed);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
+  };
+
   return imported.map(item => {
     const dup = existing.some(ex => {
-      const sameDate = Math.abs(new Date(ex.date).getTime() - new Date(item.raw_date).getTime()) < 86400000 * 2;
+      const existingDate = parseComparableDate(ex.date);
+      const importedDate = parseComparableDate(item.raw_date);
+      const sameDate = existingDate !== null && importedDate !== null
+        ? Math.abs(existingDate - importedDate) < 86400000 * 2
+        : false;
       const sameAmt  = Math.abs(ex.amount - item.raw_amount) < 0.01;
       const sameDesc = ex.description.toLowerCase().includes(item.raw_description.toLowerCase().slice(0, 8));
       return sameDate && sameAmt && sameDesc;
@@ -317,7 +375,12 @@ export async function parsePDF(file: File): Promise<ImportedTransaction[]> {
         ? (row.category as Category)
         : undefined,
     }));
-  } catch {
+  } catch (error) {
+    logWarn('[ImportService] PDF parsing failed; returning empty result', {
+      fileName: file.name,
+      error,
+      fallback: 'import-service-pdf-parse-failed',
+    });
     return [];
   }
 }
@@ -347,7 +410,11 @@ export async function classifyImportedTransactions(
       if (item.merchant && (r?.confidence ?? 0) > 0.7) {
         const key = `merchant_${item.merchant.toLowerCase().replace(/\s+/g, '_').slice(0, 20)}`;
         learnMemory(userId, key, category, r.confidence ?? 0.7).catch(e => {
-          console.error('importService learnMemory error:', e);
+          logError('[ImportService] learnMemory error', e, {
+            userId,
+            merchant: item.merchant,
+            fallback: 'import-service-learn-memory-failed',
+          });
         });
       }
 
@@ -361,7 +428,13 @@ export async function classifyImportedTransactions(
         type: normalizedType,
       };
     });
-  } catch {
+  } catch (error) {
+    logWarn('[ImportService] AI classification failed; using default categories', {
+      userId,
+      transactionCount: transactions.length,
+      error,
+      fallback: 'import-service-ai-classification-failed',
+    });
     return transactions.map(item => ({
       ...item,
       category: item.category ?? Category.PESSOAL,
@@ -384,7 +457,13 @@ export async function detectFormat(file: File): Promise<ImportFormat> {
     const head = await file.slice(0, 200).text();
     if (head.includes('OFXHEADER') || head.includes('<OFX>')) return 'ofx';
     if (head.startsWith('%PDF')) return 'pdf';
-  } catch { /* silencioso */ }
+  } catch (error) {
+    logWarn('[ImportService] Failed to inspect file header; falling back to unknown format', {
+      fileName: file.name,
+      error,
+      fallback: 'import-service-header-inspection-failed',
+    });
+  }
 
   return 'unknown';
 }

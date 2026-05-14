@@ -18,6 +18,7 @@ import {
   BankingHealth,
 } from '../services/integrations/openBankingService';
 import { runBankSync, getSyncStatusSummary, getLastSyncReport, formatSyncDuration } from '../src/finance/bankSyncEngine';
+import { logWarn } from '../src/utils/logger';
 import {
   Building2, Wifi, WifiOff, RefreshCw, Loader2, Plus, X,
   CheckCircle2, AlertCircle, ChevronRight, Zap, Clock,
@@ -35,6 +36,40 @@ interface OpenBankingProps {
 }
 
 type PageView = 'list' | 'add';
+
+function buildOpenBankingDiagnostic(message: string): { title: string; message: string; suggestion: string } {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes('providermode=pluggy') || normalized.includes('modo simulado') || normalized.includes('mock')) {
+    return {
+      title: 'Open Banking em modo simulado',
+      message: 'O backend ainda nao liberou o fluxo real.',
+      suggestion: 'Volte o provider para pluggy e recarregue a tela.',
+    };
+  }
+
+  if (normalized.includes('token') || normalized.includes('sessao') || normalized.includes('login')) {
+    return {
+      title: 'Falha de sessao Open Banking',
+      message: 'A operacao precisa de sessao valida no backend.',
+      suggestion: 'Confirme login e token do backend antes de repetir a acao.',
+    };
+  }
+
+  if (normalized.includes('sincronizar')) {
+    return {
+      title: 'Falha ao sincronizar o banco',
+      message: 'A sincronizacao nao concluiu agora.',
+      suggestion: 'Recarregue o status do backend e tente novamente.',
+    };
+  }
+
+  return {
+    title: 'Open Banking indisponivel',
+    message: 'A operacao nao concluiu como esperado.',
+    suggestion: 'Atualize a tela e tente novamente.',
+  };
+}
 
 // ─── Status pill ──────────────────────────────────────────────────────────────
 
@@ -138,6 +173,7 @@ const BankCard: React.FC<{
 
         {!confirmDisconnect ? (
           <button
+            aria-label={`Desconectar ${conn.bank_name}`}
             onClick={() => setConfirmDisconnect(true)}
             className="px-5 flex items-center justify-center gap-1.5 text-[9px] font-black text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
           >
@@ -323,18 +359,60 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
   const [lastResults, setLastResults] = useState<Record<string, SyncResult>>({});
   const [syncAllLoading, setSyncAllLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [reloadError, setReloadError] = useState<string | null>(null);
   const [bankingHealth, setBankingHealth] = useState<BankingHealth | null>(null);
   const [pluggyEnabled, setPluggyEnabled] = useState(false);
-    const strictProductionMode = import.meta.env.MODE === 'production';
-    const simulatedBackendBlocked = strictProductionMode && !pluggyEnabled;
+  const strictProductionMode = import.meta.env.MODE === 'production';
+  const simulatedBackendBlocked = strictProductionMode && !pluggyEnabled;
 
   const [pluggyConnectToken, setPluggyConnectToken] = useState<string | null>(null);
   const [pluggyConnectors, setPluggyConnectors] = useState<PluggyConnector[]>([]);
+  const [pluggyLoadError, setPluggyLoadError] = useState<string | null>(null);
+  const [pluggyLoadRetry, setPluggyLoadRetry] = useState(0);
+  const pluggyRecoveryVisible = bankingHealth?.providerMode === 'mock' || bankingHealth?.pluggyConfigured === false;
+  const pluggyRecoveryHint = bankingHealth?.providerMode === 'mock'
+    ? 'O backend está em modo mock. Para liberar o fluxo real, volte o provider para pluggy.'
+    : bankingHealth?.pluggyConfigured === false
+      ? 'O backend respondeu sem configuração Pluggy. Verifique a credencial e recarregue a tela.'
+      : 'Recarregue o status do backend e tente novamente.';
+  const reloadRecoveryHint = pluggyRecoveryVisible ? pluggyRecoveryHint : null;
+  const reloadDiagnostic = reloadError ? buildOpenBankingDiagnostic(reloadError) : null;
+  const actionRecoveryHint = actionError
+    ? (
+      /modo simulado|providerMode=pluggy|backend está em modo simulado/i.test(actionError)
+        ? 'Volte o provider para pluggy e recarregue a página antes de tentar novamente.'
+        : /login\/token|sessão|token/i.test(actionError)
+          ? 'Confirme a sessão do usuário e o token do backend antes de repetir a ação.'
+          : /desconectar/i.test(actionError)
+            ? 'Recarregue a lista de conexões e tente desconectar novamente.'
+            : /sincronizar/i.test(actionError)
+              ? 'Recarregue o status do backend e tente sincronizar novamente.'
+              : /Nenhuma conexão apta/i.test(actionError)
+                ? 'Resolva um banco em erro ou reconecte uma conta para liberar o sync.'
+                : 'Recarregue o status do backend e tente novamente.'
+    )
+    : null;
+  const actionDiagnostic = actionError ? buildOpenBankingDiagnostic(actionError) : null;
 
   const reload = useCallback(async () => {
-    const fresh = await reloadConnections(userId);
-    setConnections(fresh);
+    try {
+      const fresh = await reloadConnections(userId);
+      setConnections(fresh);
+      setReloadError(null);
+    } catch (error: unknown) {
+      logWarn('[OpenBanking] Failed to reload bank connections', {
+        error,
+        fallback: 'open-banking-reload-connections-failed',
+      });
+      setReloadError('Não foi possível carregar as conexões bancárias. Atualize a tela ou tente novamente.');
+    }
   }, [userId]);
+
+  const openAddView = () => {
+    setActionError(null);
+    setReloadError(null);
+    setView('add');
+  };
 
   useEffect(() => {
     void reload();
@@ -352,6 +430,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
     let cancelled = false;
 
     const loadPluggyData = async () => {
+      setPluggyLoadError(null);
       const health = await getBankingHealth();
       const isAvailable = Boolean(health?.providerMode === 'pluggy' && health?.pluggyConfigured);
 
@@ -365,8 +444,22 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
       }
 
       const [connectors, token] = await Promise.all([
-        listPluggyConnectors(),
-        createPluggyConnectToken(userId).catch((err) => { console.warn('[OpenBanking] Failed to create Pluggy Connect token:', err); return null; }),
+        listPluggyConnectors().catch((err) => {
+          logWarn('[OpenBanking] Failed to load Pluggy connectors', {
+          error: err,
+          fallback: 'open-banking-load-pluggy-connectors-failed',
+        });
+          setPluggyLoadError('Conectores Pluggy indisponíveis. O widget pode abrir sem lista de bancos atualizada.');
+          return [];
+        }),
+        createPluggyConnectToken(userId).catch((err) => {
+          logWarn('[OpenBanking] Failed to create Pluggy Connect token', {
+          error: err,
+          fallback: 'open-banking-create-pluggy-token-failed',
+        });
+          setPluggyLoadError('Token Pluggy indisponível. Atualize a tela ou tente novamente em alguns instantes.');
+          return null;
+        }),
       ]);
 
       if (cancelled) return;
@@ -375,13 +468,21 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
     };
 
     if (view === 'add') {
-      loadPluggyData().catch((err) => console.error('Falha ao carregar Pluggy:', err));
+      loadPluggyData().catch((err) => {
+        logWarn('[OpenBanking] Failed to load Pluggy status', {
+          error: err,
+          fallback: 'open-banking-load-pluggy-status-failed',
+        });
+        if (!cancelled) {
+          setPluggyLoadError('Não foi possível carregar o status do Open Banking. Verifique o backend antes de conectar.');
+        }
+      });
     }
 
     return () => {
       cancelled = true;
     };
-  }, [userId, view]);
+  }, [userId, view, pluggyLoadRetry]);
 
   const normalizeBankId = (value: string): string => (
     value
@@ -398,7 +499,10 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
     const itemId = data?.item?.id;
 
     if (!itemId) {
-      console.error('Pluggy success sem itemId:', payload);
+      logWarn('[OpenBanking] Pluggy success without itemId', {
+        payload,
+        fallback: 'open-banking-pluggy-success-without-item-id',
+      });
       return;
     }
 
@@ -416,7 +520,10 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
       const message = mapPluggyConnectErrorMessage(err);
       setActionError(message);
       if (!/modo de teste|sandbox/i.test(message)) {
-        console.error('Falha ao registrar item Pluggy no backend:', err);
+        logWarn('[OpenBanking] Failed to register Pluggy item in backend', {
+          error: err,
+          fallback: 'open-banking-register-pluggy-item-failed',
+        });
       }
     } finally {
       setConnectingBank(null);
@@ -427,7 +534,10 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
     const message = mapPluggyConnectErrorMessage(error);
     setActionError(message);
     if (!/modo de teste|sandbox/i.test(message)) {
-      console.error('Erro no Pluggy Connect:', error);
+      logWarn('[OpenBanking] Pluggy Connect error', {
+        error,
+        fallback: 'open-banking-pluggy-connect-error',
+      });
     }
   };
 
@@ -447,7 +557,10 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
       setView('list');
     } catch (err: any) {
       setActionError('Não foi possível conectar no banco real. Verifique login/token e tente novamente.');
-      console.error('Connect failed:', err);
+      logWarn('[OpenBanking] Connect failed', {
+        error: err,
+        fallback: 'open-banking-connect-failed',
+      });
     } finally {
       setConnectingBank(null);
     }
@@ -456,8 +569,17 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
   // ── Disconnect ─────────────────────────────────────────────────────────────
 
   const handleDisconnect = async (id: string) => {
-    await disconnectBank(id);
-    await reload();
+    try {
+      setActionError(null);
+      await disconnectBank(id);
+      await reload();
+    } catch (error: unknown) {
+      logWarn('[OpenBanking] Disconnect failed', {
+        error,
+        fallback: 'open-banking-disconnect-failed',
+      });
+      setActionError('Não foi possível desconectar o banco. Atualize a lista e tente novamente.');
+    }
   };
 
   // ── Sync single ────────────────────────────────────────────────────────────
@@ -485,6 +607,12 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
         setActionError(result.error);
       }
       setLastResults(prev => ({ ...prev, [id]: result }));
+    } catch (error: unknown) {
+      logWarn('[OpenBanking] Sync failed', {
+        error,
+        fallback: 'open-banking-sync-failed',
+      });
+      setActionError('Não foi possível sincronizar este banco. Verifique o backend e tente novamente.');
     } finally {
       setSyncingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
       await reload();
@@ -500,7 +628,10 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
     }
 
     const connected = connections.filter(c => c.connection_status !== 'error');
-    if (!connected.length) return;
+    if (!connected.length) {
+      setActionError('Nenhuma conexão apta para sincronizar. Resolva os bancos em erro ou reconecte a conta.');
+      return;
+    }
     setSyncAllLoading(true);
     try {
       await Promise.all(connected.map(c => handleSync(c.id)));
@@ -541,19 +672,93 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
         </div>
       </div>
 
+      {reloadError && (
+        <div role="alert" className="flex items-start gap-2 px-4 py-3 rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+          <AlertCircle size={14} className="shrink-0 mt-0.5" />
+          <div className="flex flex-col gap-2 flex-1">
+            <p className="text-[10px] font-bold leading-relaxed">{reloadError}</p>
+            {reloadRecoveryHint && (
+              <p className="text-[9px] font-black uppercase tracking-widest opacity-80">{reloadRecoveryHint}</p>
+            )}
+            {reloadDiagnostic && (
+              <div role="status" className="rounded-2xl border border-rose-200 bg-white/70 dark:bg-slate-900/60 p-3 space-y-1">
+                <p className="text-[9px] font-black uppercase tracking-widest">{reloadDiagnostic.title}</p>
+                <p className="text-[10px] font-bold leading-relaxed">{reloadDiagnostic.message}</p>
+                <p className="text-[8px] font-black uppercase tracking-widest">Próximo passo: {reloadDiagnostic.suggestion}</p>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => void reload()}
+              className="self-start inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-600 text-white text-[9px] font-black uppercase tracking-widest hover:bg-rose-700 transition-colors"
+            >
+              <RefreshCw size={11} />
+              Recarregar conexões
+            </button>
+          </div>
+        </div>
+      )}
+
       {actionError && (
         <div role="alert" className="flex items-start gap-2 px-4 py-3 rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
           <AlertCircle size={14} className="shrink-0 mt-0.5" />
-          <p className="text-[10px] font-bold leading-relaxed">{actionError}</p>
+          <div className="flex flex-col gap-1">
+            <p className="text-[10px] font-bold leading-relaxed">{actionError}</p>
+            {actionRecoveryHint && (
+              <p className="text-[9px] font-black uppercase tracking-widest opacity-80">{actionRecoveryHint}</p>
+            )}
+            {actionDiagnostic && (
+              <div role="status" className="rounded-2xl border border-rose-200 bg-white/70 dark:bg-slate-900/60 p-3 space-y-1 mt-1">
+                <p className="text-[9px] font-black uppercase tracking-widest">{actionDiagnostic.title}</p>
+                <p className="text-[10px] font-bold leading-relaxed">{actionDiagnostic.message}</p>
+                <p className="text-[8px] font-black uppercase tracking-widest">Próximo passo: {actionDiagnostic.suggestion}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {pluggyLoadError && (
+        <div role="status" className="flex items-start gap-2 px-4 py-3 rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          <AlertCircle size={14} className="shrink-0 mt-0.5" />
+          <div className="flex flex-col gap-2 flex-1">
+            <div className="flex flex-col gap-1">
+              <p className="text-[10px] font-bold leading-relaxed">{pluggyLoadError}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest opacity-80">{pluggyRecoveryHint}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPluggyLoadRetry((current) => current + 1)}
+              className="self-start inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-600 text-white text-[9px] font-black uppercase tracking-widest hover:bg-amber-700 transition-colors"
+            >
+              <RefreshCw size={11} />
+              Tentar novamente
+            </button>
+          </div>
+        </div>
+      )}
+
+      {pluggyRecoveryVisible && !pluggyLoadError && (
+        <div role="status" className="flex items-start gap-2 px-4 py-3 rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          <AlertCircle size={14} className="shrink-0 mt-0.5" />
+          <div className="flex flex-col gap-1">
+            <p className="text-[10px] font-bold leading-relaxed">
+              Ambiente em modo simulado detectado ({bankingHealth?.providerMode || 'desconhecido'}). Em produção, conexões e sync reais ficam bloqueados para evitar dados fictícios.
+            </p>
+            <p className="text-[9px] font-black uppercase tracking-widest opacity-80">{pluggyRecoveryHint}</p>
+          </div>
         </div>
       )}
 
       {simulatedBackendBlocked && (
         <div className="flex items-start gap-2 px-4 py-3 rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
           <AlertCircle size={14} className="shrink-0 mt-0.5" />
-          <p className="text-[10px] font-bold leading-relaxed">
-            Ambiente em modo simulado detectado ({bankingHealth?.providerMode || 'desconhecido'}). Em produção, conexões e sync reais ficam bloqueados para evitar dados fictícios.
-          </p>
+          <div className="flex flex-col gap-1">
+            <p className="text-[10px] font-bold leading-relaxed">
+              Ambiente em modo simulado detectado ({bankingHealth?.providerMode || 'desconhecido'}). Em produção, conexões e sync reais ficam bloqueados para evitar dados fictícios.
+            </p>
+            <p className="text-[9px] font-black uppercase tracking-widest opacity-80">{pluggyRecoveryHint}</p>
+          </div>
         </div>
       )}
 
@@ -637,7 +842,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
                 </p>
               </div>
               <button
-                onClick={() => setView('add')}
+                onClick={openAddView}
                 disabled={simulatedBackendBlocked}
                 className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-indigo-500/25"
               >
@@ -649,7 +854,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
           {/* Add button when already have connections */}
           {anyConnected && (
             <button
-              onClick={() => setView('add')}
+              onClick={openAddView}
               disabled={simulatedBackendBlocked}
               className="w-full flex items-center gap-3 p-4 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl text-slate-400 hover:border-indigo-300 hover:text-indigo-500 dark:hover:border-indigo-500/40 transition-colors group"
             >
@@ -690,3 +895,4 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
 };
 
 export default OpenBankingPage;
+

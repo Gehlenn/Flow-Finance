@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+﻿import React, { useMemo } from 'react';
 import { Transaction } from '../types';
 import { runAIPipelineSync } from '../src/ai/aiOrchestrator';
 import { AIInsight } from '../src/ai/insightGenerator';
@@ -54,10 +54,10 @@ const InsightCard: React.FC<{ insight: AIInsight }> = ({ insight }) => {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-slate-800 dark:text-white leading-snug">{insight.message}</p>
         <div className="flex items-center gap-2 mt-2">
-          <span className={`text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${s.badge}`}>
+          <span className={`text-xs font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${s.badge}`}>
             {SEVERITY_LABEL[insight.severity ?? 'low']}
           </span>
-          <span className="text-[8px] text-slate-400 font-bold capitalize">{insight.type}</span>
+          <span className="text-xs text-slate-400 font-bold capitalize">{insight.type}</span>
         </div>
       </div>
     </div>
@@ -73,7 +73,7 @@ const RiskCard: React.FC<{ alert: FinancialRiskAlert }> = ({ alert }) => {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-slate-800 dark:text-white leading-snug">{alert.message}</p>
-        <span className={`inline-block mt-2 text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${s.badge}`}>
+        <span className={`inline-block mt-2 text-xs font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${s.badge}`}>
           Risco {SEVERITY_LABEL[alert.severity]}
         </span>
       </div>
@@ -114,6 +114,21 @@ const Insights: React.FC<InsightsProps> = ({
   const canUseHistoricalComparisons = canAccessFeature(workspacePlan, 'historicalComparisons');
   const visibleInsights = canUseAdvancedInsights ? insights : insights.slice(0, 2);
   const visibleRisks = canUseAdvancedInsights ? risks : risks.slice(0, 1);
+  const nextActionSummary = useMemo(() => {
+    if (prediction.in7Days < 0) {
+      return 'Cobrir a lacuna da próxima semana antes de assumir novos compromissos.';
+    }
+
+    if (prediction.in30Days < 0) {
+      return 'Atenção: cortar saídas agora para evitar saldo negativo no mês.';
+    }
+
+    if (health_score < 60) {
+      return 'Reduzir despesas variáveis e revisar recorrências.';
+    }
+
+    return 'Manter ritmo e confirmar as próximas entradas.';
+  }, [health_score, prediction.in30Days, prediction.in7Days]);
 
   const fmt = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -125,14 +140,14 @@ const Insights: React.FC<InsightsProps> = ({
     <div className="flex flex-col gap-6 animate-in fade-in duration-700 pb-24">
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] p-6 rounded-[2rem] flex justify-between items-center shadow-lg shadow-indigo-500/20 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-indigo-600 to-violet-500 p-6 rounded-[2rem] flex justify-between items-center shadow-lg shadow-indigo-500/20 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 blur-3xl -mr-16 -mt-16 pointer-events-none" />
         <div className="relative z-10">
-          <h2 className="text-2xl font-black text-white tracking-tight leading-none">Insights</h2>
-          <p className="text-[8px] font-black text-white/80 uppercase tracking-widest mt-2">
+          <h2 className="text-2xl font-black text-white tracking-tight leading-none">Leituras financeiras</h2>
+          <p className="text-xs font-black text-white/80 uppercase tracking-widest mt-2">
             Workspace: {activeWorkspaceName || 'Carregando workspace'}
           </p>
-          <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mt-1.5">Análise Financeira com IA</p>
+          <p className="text-xs font-black text-white/70 uppercase tracking-widest mt-1.5">Decisão rápida com IA</p>
         </div>
         <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center text-white relative z-10">
           <Brain size={22} />
@@ -142,8 +157,8 @@ const Insights: React.FC<InsightsProps> = ({
       {isEmpty && (
         <div className="flex flex-col items-center py-16 gap-4 text-slate-300 dark:text-slate-600">
           <Sparkles size={40} />
-          <p className="text-[10px] font-black uppercase tracking-widest text-center">
-            Adicione transações para ver seus insights
+          <p className="text-xs font-black uppercase tracking-widest text-center">
+            Adicione transações para ver as leituras do caixa
           </p>
         </div>
       )}
@@ -155,9 +170,9 @@ const Insights: React.FC<InsightsProps> = ({
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Activity size={16} className={hs.text} />
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Saúde Financeira</p>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Saúde do caixa</p>
               </div>
-              <span className={`text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full text-white ${hs.bg}`}>
+              <span className={`text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full text-white ${hs.bg}`}>
                 {health_label}
               </span>
             </div>
@@ -171,9 +186,18 @@ const Insights: React.FC<InsightsProps> = ({
                 style={{ width: `${health_score}%` }}
               />
             </div>
-            <p className="text-[8px] text-slate-400 mt-2">
+            <p className="text-xs text-slate-400 mt-2">
               {pipeline.processing_ms}ms · pipeline v{pipeline.computed_at ? '0.3' : '—'}
             </p>
+            <div className="mt-4 flex items-start gap-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 p-4 border border-slate-100 dark:border-slate-700">
+              <Zap size={16} className="text-indigo-500 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">Próxima ação</p>
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-snug mt-1">
+                  {nextActionSummary}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* ── Projeção Rápida ─────────────────────────────────────────── */}
@@ -184,7 +208,7 @@ const Insights: React.FC<InsightsProps> = ({
               { label: '30 dias', value: prediction.in30Days },
             ].map(({ label, value }) => (
               <div key={label} className="flex flex-col gap-1 items-center text-center">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{label}</p>
                 <p className={`text-sm font-black ${value >= 0 ? 'text-white' : 'text-rose-400'}`}>
                   {hideValues ? '••••' : fmt(value)}
                 </p>
@@ -196,20 +220,20 @@ const Insights: React.FC<InsightsProps> = ({
             <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-5 border border-slate-100 dark:border-slate-700 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
                 <Brain size={16} className="text-indigo-500" />
-                <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Contexto Avancado</h3>
+                <h3 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Contexto avançado</h3>
               </div>
               <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-[8px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">
+                <span className="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-xs font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">
                   Confianca {Math.round(intelligence.context.confidence.overall * 100)}%
                 </span>
-                <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
+                <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
                   Recorrencias {intelligence.recurringCount}
                 </span>
-                <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
+                <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
                   Dados {intelligence.merchantCoveragePercent}%
                 </span>
                 {intelligence.dominantCategoryLabel && (
-                  <span className="px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 text-[8px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-300">
+                  <span className="px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 text-xs font-black uppercase tracking-widest text-violet-600 dark:text-violet-300">
                     {intelligence.dominantCategoryLabel}
                   </span>
                 )}
@@ -221,8 +245,8 @@ const Insights: React.FC<InsightsProps> = ({
           <section>
             <div className="flex items-center gap-2 mb-3">
               <Lightbulb size={16} className="text-indigo-500" />
-              <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Insights Financeiros</h3>
-              <span className="ml-auto text-[8px] font-black bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full">{visibleInsights.length}</span>
+              <h3 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Sinais do caixa</h3>
+              <span className="ml-auto text-xs font-black bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full">{visibleInsights.length}</span>
             </div>
             <div className="flex flex-col gap-3">
               {visibleInsights.length === 0 ? (
@@ -241,14 +265,14 @@ const Insights: React.FC<InsightsProps> = ({
             <section>
               <div className="flex items-center gap-2 mb-3">
                 <BarChart3 size={16} className="text-violet-500" />
-                <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Perfil Financeiro</h3>
+              <h3 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Perfil de fluxo</h3>
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
                 <div className="flex items-center gap-4 mb-4">
                   <span className="text-4xl">{profileResult.emoji}</span>
                   <div>
                     <p className="text-lg font-black text-slate-900 dark:text-white">{profileResult.label}</p>
-                    <p className="text-[8px] font-black text-violet-500 uppercase tracking-widest">{profileResult.profile}</p>
+                    <p className="text-xs font-black text-violet-500 uppercase tracking-widest">{profileResult.profile}</p>
                   </div>
                 </div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 font-bold leading-relaxed mb-4">
@@ -264,14 +288,14 @@ const Insights: React.FC<InsightsProps> = ({
                       const pct = Math.round((score / maxScore) * 100);
                       return (
                         <div key={key} className="flex items-center gap-3">
-                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-tight w-28 shrink-0 truncate">{key.replace('_', ' ')}</p>
+                          <p className="text-xs font-black text-slate-400 uppercase tracking-tight w-28 shrink-0 truncate">{key.replace('_', ' ')}</p>
                           <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-700"
                               style={{ width: `${pct}%` }}
                             />
                           </div>
-                          <p className="text-[8px] font-black text-slate-400 w-8 text-right">{pct}%</p>
+                          <p className="text-xs font-black text-slate-400 w-8 text-right">{pct}%</p>
                         </div>
                       );
                     })}
@@ -284,9 +308,9 @@ const Insights: React.FC<InsightsProps> = ({
           <section>
             <div className="flex items-center gap-2 mb-3">
               <ShieldAlert size={16} className="text-rose-500" />
-              <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Alertas Financeiros</h3>
+              <h3 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Riscos do caixa</h3>
               {visibleRisks.length > 0 && (
-                <span className="ml-auto text-[8px] font-black bg-rose-50 dark:bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-full">{visibleRisks.length}</span>
+                <span className="ml-auto text-xs font-black bg-rose-50 dark:bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-full">{visibleRisks.length}</span>
               )}
             </div>
             <div className="flex flex-col gap-3">
@@ -304,7 +328,7 @@ const Insights: React.FC<InsightsProps> = ({
           {!canUseAdvancedInsights && (
             <UpgradePromptCard
               compact
-              title="Insights aprofundados e comparativos"
+              title="Leituras avançadas e comparativas"
               description="Voce ja tem sinais essenciais no Free. O Pro adiciona contexto avancado para tomada de decisao com mais previsibilidade."
               bullets={[
                 'perfil financeiro detalhado',
@@ -317,7 +341,7 @@ const Insights: React.FC<InsightsProps> = ({
           {/* Footer note */}
           <div className="flex items-start gap-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
             <Info size={14} className="text-slate-400 shrink-0 mt-0.5" />
-            <p className="text-[9px] text-slate-400 font-bold leading-relaxed">
+            <p className="text-xs text-slate-400 font-bold leading-relaxed">
               Análises geradas dinamicamente com base nas suas transações. Nenhum dado é enviado para servidores externos.
             </p>
           </div>
@@ -328,3 +352,4 @@ const Insights: React.FC<InsightsProps> = ({
 };
 
 export default Insights;
+

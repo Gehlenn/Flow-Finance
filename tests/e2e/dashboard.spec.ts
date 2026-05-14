@@ -1,9 +1,9 @@
-import { test, expect, Page } from '@playwright/test';
+﻿import { test, expect, Page } from '@playwright/test';
 import { skipIfNoAuthShell } from './helpers/skipHelpers';
 import { gotoAuthedApp } from './helpers/appBootstrap';
 import { clickWithRetry } from './helpers/resilientActions';
 
-const NAV_LABELS = [/Inicio|Caixa|Home/i, /Transacoes|Historico/i, /Fluxo/i, /Apoio IA|Consultor IA/i, /Ajustes|Settings/i];
+const NAV_LABELS = [/Inicio|Caixa|Home/i, /Transacoes|Historico/i, /Fluxo|Receitas/i, /Apoio IA|Consultor IA/i, /Ajustes|Settings/i];
 
 async function visibleNavCount(page: Page): Promise<number> {
   let count = 0;
@@ -57,5 +57,21 @@ test.describe('Dashboard', () => {
     }
 
     await expect(page.locator('body')).toBeVisible();
+  });
+
+  test('should capture dashboard screenshots for UI audit', async ({ page }, testInfo) => {
+    await skipIfNoAuthShell(page);
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.locator('body')).toBeVisible();
+    const desktopShot = testInfo.outputPath('dashboard-desktop.png');
+    await page.screenshot({ path: desktopShot, fullPage: true });
+    await testInfo.attach('dashboard-desktop', { path: desktopShot, contentType: 'image/png' });
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.locator('body')).toBeVisible();
+    const mobileShot = testInfo.outputPath('dashboard-mobile.png');
+    await page.screenshot({ path: mobileShot, fullPage: true });
+    await testInfo.attach('dashboard-mobile', { path: mobileShot, contentType: 'image/png' });
   });
 });

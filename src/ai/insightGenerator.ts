@@ -1,6 +1,7 @@
 import { Transaction, TransactionType, Category } from '../../types';
 import { Account } from '../../models/Account';
 import { makeId, now, formatCurrency } from '../../utils/helpers';
+import { logWarn } from '../utils/logger';
 
 // ─── Model (PART 1) ───────────────────────────────────────────────────────────
 
@@ -20,9 +21,19 @@ function getMonthTransactions(transactions: Transaction[], monthsAgo: number): T
   const target = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
   const targetEnd = new Date(now.getFullYear(), now.getMonth() - monthsAgo + 1, 0, 23, 59, 59);
   return transactions.filter(t => {
-    const d = new Date(t.date);
+    const d = parseInsightDate(t.date);
     return d >= target && d <= targetEnd;
   });
+}
+
+function parseInsightDate(value: string): Date {
+  const trimmed = value.trim();
+  const dateOnlyMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    return new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]));
+  }
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
 }
 
 function totalExpenses(txs: Transaction[]): number {
@@ -79,7 +90,7 @@ export function generateFinancialInsights(
     t.type === TransactionType.DESPESA && t.amount < 50
   );
   const last30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const recentSmall = smallPurchases.filter(t => new Date(t.date) >= last30);
+  const recentSmall = smallPurchases.filter(t => parseInsightDate(t.date) >= last30);
 
   if (recentSmall.length >= 5) {
     const totalSmall = recentSmall.reduce((sum, t) => sum + t.amount, 0);
@@ -166,7 +177,12 @@ export function generateFinancialInsights(
           created_at: now(),
         });
       }
-    } catch (err) { console.warn('[InsightGenerator] Graph insights unavailable:', err instanceof Error ? err : new Error(String(err))); }
+    } catch (err) {
+      logWarn('[InsightGenerator] Graph insights unavailable; continuing without graph enrichment', {
+        userId,
+        error: err,
+      });
+    }
   }
 
   return insights;

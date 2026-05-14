@@ -18,6 +18,7 @@ import {
   TimePatternValue,
 } from './memoryTypes';
 import { FinancialPatterns } from '../../engines/finance/patternDetector/financialPatternDetector';
+import { logInfo, logWarn } from '../../utils/logger';
 import {
   analyzeSpendingPatterns,
   analyzeMerchantCategories,
@@ -183,7 +184,12 @@ class AIMemoryEngine {
    */
   async updateAIMemory(userId: string, transactions: Transaction[]): Promise<number> {
     if (transactions.length < this.learningConfig.minOccurrences) {
-      console.log('[AI Memory Engine] Not enough transactions to learn from');
+      logWarn('[AI Memory Engine] Not enough transactions to learn from', {
+        userId,
+        transactionCount: transactions.length,
+        minOccurrences: this.learningConfig.minOccurrences,
+        fallback: 'ai-memory-engine-not-enough-transactions',
+      });
       return 0;
     }
 
@@ -255,9 +261,16 @@ class AIMemoryEngine {
         memoriesUpdated++;
       }
 
-      console.log(`[AI Memory Engine] Updated ${memoriesUpdated} memories for user ${userId}`);
+      logInfo('[AI Memory Engine] Updated memories for user', {
+        userId,
+        memoriesUpdated,
+        fallback: 'ai-memory-engine-updated-memories',
+      });
     } catch (error) {
-      console.error('[AI Memory Engine] Error updating memories:', error);
+      logWarn('[AI Memory Engine] Error updating memories; continuing without persistence', {
+        userId,
+        error,
+      });
     }
 
     return memoriesUpdated;

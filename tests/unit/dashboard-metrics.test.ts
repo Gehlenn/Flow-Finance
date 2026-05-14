@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import {
   buildDashboardFocusNote,
   buildDashboardReminderStateSummary,
@@ -46,7 +46,7 @@ describe('dashboard metrics', () => {
         amount: 200,
         type: TransactionType.DESPESA,
         category: Category.PESSOAL,
-        description: 'Despesa do mês',
+        description: 'Despesa do mÃªs',
         date: '2026-04-03T12:00:00.000Z',
       },
       {
@@ -54,7 +54,7 @@ describe('dashboard metrics', () => {
         amount: 999,
         type: TransactionType.RECEITA,
         category: Category.NEGOCIO,
-        description: 'Receita de outro mês',
+        description: 'Receita de outro mÃªs',
         date: '2026-03-20T12:00:00.000Z',
       },
     ];
@@ -71,7 +71,7 @@ describe('dashboard metrics', () => {
       },
       {
         id: 'r2',
-        title: 'Recebimento concluído',
+        title: 'Recebimento concluÃ­do',
         date: '2026-04-11T09:00:00.000Z',
         type: ReminderType.NEGOCIO,
         amount: 150,
@@ -89,7 +89,7 @@ describe('dashboard metrics', () => {
       },
       {
         id: 'r3',
-        title: 'Outro mês',
+        title: 'Outro mÃªs',
         date: '2026-05-01T09:00:00.000Z',
         type: ReminderType.NEGOCIO,
         amount: 800,
@@ -123,7 +123,7 @@ describe('dashboard metrics', () => {
     });
 
     expect(note.title).toBe('Recebiveis vencidos pedem acao');
-    expect(note.description).toContain('R$ 320,00');
+    expect(note.description).toMatch(/R\$\s*320,00/);
   });
 
   it('falls back to alert review when there is no pending or overdue revenue', () => {
@@ -139,6 +139,22 @@ describe('dashboard metrics', () => {
     });
 
     expect(note.title).toBe('Alertas pedem revisao');
+  });
+
+  it('prioritizes negative balance when there is no receivable pressure', () => {
+    const note = buildDashboardFocusNote({
+      currentBalance: -420,
+      inflowMonth: 1000,
+      outflowMonth: 800,
+      projectedRevenueMonth: 700,
+      pendingRevenueMonth: 0,
+      overdueRevenueAmount: 0,
+      confirmedRevenueMonth: 700,
+      activeAlerts: 0,
+    });
+
+    expect(note.title).toBe('Saldo negativo pede revisao');
+    expect(note.description).toMatch(/R\$\s*420,00/);
   });
 
   it('keeps pending and overdue calculations domain-agnostic even with extra metadata', () => {
@@ -226,3 +242,6 @@ describe('dashboard metrics', () => {
     expect(summary.dueThisWeekCount).toBe(2);
   });
 });
+
+
+

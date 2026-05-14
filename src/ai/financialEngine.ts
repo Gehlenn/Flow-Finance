@@ -59,9 +59,22 @@ function filterByMonth(transactions: Transaction[], monthsAgo: number): Transact
   const from = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
   const to = new Date(now.getFullYear(), now.getMonth() - monthsAgo + 1, 0, 23, 59, 59);
   return transactions.filter(t => {
-    const d = new Date(t.date);
-    return d >= from && d <= to;
+    const parsed = parseFinancialEngineDate(t.date);
+    if (!parsed) return false;
+
+    return parsed >= from && parsed <= to;
   });
+}
+
+function parseFinancialEngineDate(value: string): Date | null {
+  const trimmed = value.trim();
+  const dateOnly = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    const parsed = new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function calcSummary(txs: Transaction[]): PeriodSummary {
@@ -112,7 +125,7 @@ export function runFinancialEngine(transactions: Transaction[]): FinancialState 
   const windowStart = new Date(now.getFullYear() - 1, now.getMonth(), 1);
   const windowEnd = new Date(now.getFullYear() + 1, now.getMonth(), 1);
 
-  const base_transactions = transactions.filter(t => !t.generated);
+  const base_transactions = transactions.filter(t => !t.generated && parseFinancialEngineDate(t.date) !== null);
   const all_transactions = expandTransactionsWithRecurring(base_transactions, windowStart, windowEnd);
   const generated_transactions = all_transactions.filter(t => t.generated);
 

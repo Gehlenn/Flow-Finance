@@ -16,6 +16,7 @@ import { detectFinancialRisks } from '../riskAnalyzer';
 import { detectSubscriptions } from '../subscriptionDetector';
 import { detectSalary } from '../salaryDetector';
 import { detectFixedExpenses } from '../fixedExpenseDetector';
+import { logError, logInfo, logWarn } from '../../utils/logger';
 
 class AIWorker {
   private isRunning = false;
@@ -25,12 +26,16 @@ class AIWorker {
 
   start(): void {
     if (this.isRunning) {
-      console.warn('[AI Worker] Already running');
+      logWarn('[AI Worker] Already running', {
+        fallback: 'ai-worker-already-running',
+      });
       return;
     }
 
     this.isRunning = true;
-    console.log('[AI Worker] Starting...');
+    logInfo('[AI Worker] Starting...', {
+      fallback: 'ai-worker-starting',
+    });
     this.poll();
   }
 
@@ -40,7 +45,9 @@ class AIWorker {
       clearTimeout(this.pollingTimer);
       this.pollingTimer = null;
     }
-    console.log('[AI Worker] Stopped');
+    logInfo('[AI Worker] Stopped', {
+      fallback: 'ai-worker-stopped',
+    });
   }
 
   private poll(): void {
@@ -49,7 +56,9 @@ class AIWorker {
     // Process next task
     this.processNextTask()
       .catch((error) => {
-        console.error('[AI Worker] Processing error:', error);
+        logError('[AI Worker] Processing error while polling queue', error, {
+          scope: 'ai-worker',
+        });
       })
       .finally(() => {
         // Schedule next poll
@@ -79,7 +88,12 @@ class AIWorker {
     }
 
     this.processingTaskId = task.id;
-    console.log(`[AI Worker] Processing task ${task.id} (${task.type})`);
+    logInfo('[AI Worker] Processing task', {
+      taskId: task.id,
+      taskType: task.type,
+      userId: task.userId,
+      fallback: 'ai-worker-processing-task',
+    });
 
     // Update status to processing
     taskStore.updateTaskStatus(task.id, AITaskStatus.PROCESSING);
@@ -91,7 +105,13 @@ class AIWorker {
       const result = await this.executeTask(task);
       
       const executionTime = Date.now() - startTime;
-      console.log(`[AI Worker] Task ${task.id} completed in ${executionTime}ms`);
+      logInfo('[AI Worker] Task completed', {
+        taskId: task.id,
+        taskType: task.type,
+        userId: task.userId,
+        executionTime,
+        fallback: 'ai-worker-task-completed',
+      });
 
       // Update task with result
       taskStore.updateTask(task.id, {
@@ -106,13 +126,13 @@ class AIWorker {
       const executionTime = Date.now() - startTime;
       const errorMessage = error?.message || 'Unknown error';
 
-      console.error('[AI Worker] Task execution failed:', {
+      logError('[AI Worker] Task execution failed', error, {
         taskId: task.id,
         taskType: task.type,
         userId: task.userId,
         retryCount: task.retryCount,
         maxRetries: task.maxRetries,
-        error: error instanceof Error ? error : new Error(String(error)),
+        executionTime,
       });
 
       // Check if should retry
@@ -122,7 +142,14 @@ class AIWorker {
           status: AITaskStatus.PENDING,
           retryCount: task.retryCount,
         });
-        console.log(`[AI Worker] Task ${task.id} will be retried (${task.retryCount}/${task.maxRetries})`);
+        logInfo('[AI Worker] Task will be retried', {
+          taskId: task.id,
+          taskType: task.type,
+          userId: task.userId,
+          retryCount: task.retryCount,
+          maxRetries: task.maxRetries,
+          fallback: 'ai-worker-task-will-be-retried',
+        });
       } else {
         taskStore.updateTaskStatus(task.id, AITaskStatus.FAILED, errorMessage);
         this.emitProgress(task.id, AITaskStatus.FAILED, 0, `Failed: ${errorMessage}`);

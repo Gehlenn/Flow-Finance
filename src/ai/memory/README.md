@@ -158,7 +158,7 @@ import { updateAIMemory } from './src/ai/memory';
 
 // Analisa transações e atualiza memórias
 const memoriesUpdated = await updateAIMemory(userId, transactions);
-console.log(`${memoriesUpdated} memórias atualizadas`);
+// `memoriesUpdated` indica quantas memórias foram atualizadas
 ```
 
 ### Consultar Padrões de Gastos
@@ -168,7 +168,7 @@ import { getSpendingPatterns } from './src/ai/memory';
 
 const patterns = getSpendingPatterns(userId);
 patterns.forEach(pattern => {
-  console.log(pattern.description);
+  // Exiba `pattern.description` na UI ou em um painel de debug
   // "Você gasta em média R$ 250,00 aos finais de semana"
 });
 ```
@@ -180,7 +180,7 @@ import { getMerchantCategories } from './src/ai/memory';
 
 const merchants = getMerchantCategories(userId);
 merchants.forEach(merchant => {
-  console.log(`${merchant.merchantName}: ${merchant.frequency} visitas/mês`);
+  // Exiba merchantName e frequency em uma UI ou relatório
 });
 ```
 
@@ -190,7 +190,7 @@ merchants.forEach(merchant => {
 import { hasBehavior, getUserBehaviors } from './src/ai/memory';
 
 if (hasBehavior(userId, 'impulsive_spending')) {
-  console.log('Usuário tem padrão de gastos impulsivos');
+  // O usuário tem padrão de gastos impulsivos
 }
 
 const behaviors = getUserBehaviors(userId);
@@ -204,8 +204,7 @@ import { getFinancialProfile } from './src/ai/memory';
 
 const profile = getFinancialProfile(userId);
 if (profile) {
-  console.log(`Perfil: ${profile.profile}`); // conservative/moderate/aggressive
-  console.log(`Taxa de poupança: ${profile.savingsRate}%`);
+  // Perfil e taxa de poupança podem ser exibidos no painel
 }
 ```
 
@@ -378,11 +377,11 @@ aiMemoryStore.clear();
 ```typescript
 // Ver todas as memórias
 import { aiMemoryStore } from './src/ai/memory';
-console.log(aiMemoryStore.getAllMemories());
+aiMemoryStore.getAllMemories();
 
 // Ver estatísticas
 import { getMemoryStats } from './src/ai/memory';
-console.log(getMemoryStats(userId));
+getMemoryStats(userId);
 
 // Forçar atualização
 import { updateAIMemory } from './src/ai/memory';

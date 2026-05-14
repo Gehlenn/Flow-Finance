@@ -51,31 +51,31 @@ function readEnvFile(envFilePath) {
 }
 
 function printHumanReport({ envFilePath, env, result }) {
-  console.log('Flow Finance - Auth Readiness Check');
-  console.log('===================================');
-  console.log(`env file: ${envFilePath}`);
-  console.log('');
+  process.stdout.write('Flow Finance - Auth Readiness Check\n');
+  process.stdout.write('===================================\n');
+  process.stdout.write(`env file: ${envFilePath}\n`);
+  process.stdout.write('\n');
 
   for (const key of OPTIONAL_BACKEND_KEYS) {
-    console.log(`${key}: ${env[key] ? 'SET' : 'MISSING'}`);
+    process.stdout.write(`${key}: ${env[key] ? 'SET' : 'MISSING'}\n`);
   }
 
   for (const key of REQUIRED_FIREBASE_KEYS) {
-    console.log(`${key}: ${env[key] ? 'SET' : 'MISSING'}`);
+    process.stdout.write(`${key}: ${env[key] ? 'SET' : 'MISSING'}\n`);
   }
 
-  console.log('');
+  process.stdout.write('\n');
   if (result.ready) {
-    console.log('READY: local auth smoke prerequisites are satisfied.');
+    process.stdout.write('READY: local auth smoke prerequisites are satisfied.\n');
     return;
   }
 
-  console.log('NOT READY: missing prerequisites.');
+  process.stdout.write('NOT READY: missing prerequisites.\n');
   if (!result.hasBackend) {
-    console.log('- Set one backend URL: VITE_BACKEND_URL or VITE_API_PROD_URL');
+    process.stdout.write('- Set one backend URL: VITE_BACKEND_URL or VITE_API_PROD_URL\n');
   }
   if (result.missingFirebase.length > 0) {
-    console.log(`- Missing Firebase keys: ${result.missingFirebase.join(', ')}`);
+    process.stdout.write(`- Missing Firebase keys: ${result.missingFirebase.join(', ')}\n`);
   }
 }
 
@@ -96,12 +96,12 @@ async function run() {
     };
 
     if (jsonOutput) {
-      console.log(JSON.stringify(output, null, 2));
+      process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
     } else {
-      console.log('Flow Finance - Auth Readiness Check');
-      console.log('===================================');
-      console.log(`env file not found: ${envFilePath}`);
-      console.log('Create .env.local from .env.local.example before real auth smoke test.');
+      process.stdout.write('Flow Finance - Auth Readiness Check\n');
+      process.stdout.write('===================================\n');
+      process.stdout.write(`env file not found: ${envFilePath}\n`);
+      process.stdout.write('Create .env.local from .env.local.example before real auth smoke test.\n');
     }
 
     process.exit(2);
@@ -111,12 +111,12 @@ async function run() {
   const result = evaluateAuthReadiness(env);
 
   if (jsonOutput) {
-    console.log(JSON.stringify({
+    process.stdout.write(`${JSON.stringify({
       ready: result.ready,
       envFilePath,
       hasBackend: result.hasBackend,
       missingFirebase: result.missingFirebase,
-    }, null, 2));
+    }, null, 2)}\n`);
   } else {
     printHumanReport({ envFilePath, env, result });
   }
@@ -130,7 +130,7 @@ const invokedDirectly = process.argv[1]
 
 if (invokedDirectly) {
   run().catch((error) => {
-    console.error(JSON.stringify({ error: error.message }, null, 2));
+    process.stderr.write(`${JSON.stringify({ error: error.message }, null, 2)}\n`);
     process.exit(1);
   });
 }

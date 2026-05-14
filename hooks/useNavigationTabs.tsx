@@ -2,18 +2,27 @@
 import { Loader2, Activity } from 'lucide-react';
 import { Account } from '../models/Account';
 import { Alert, Goal, Reminder, Transaction } from '../types';
+import { FinancialLeak } from '../src/ai/leakDetector';
+import { FinancialReport } from '../src/finance/reportEngine';
 import type { WorkspaceRole } from '../src/services/workspaceSession';
 import { canAccessFeature } from '../src/app/monetizationPlan';
 import UpgradePromptCard from '../components/UpgradePromptCard';
+import { logWarn } from '../src/utils/logger';
 
 const lazyWithRetry = (importFn: () => Promise<any>) => {
   return lazy(() =>
     importFn().catch((error) => {
-      console.error('[Navigation] Failed to load module, retrying...', error);
+      logWarn('[Navigation] Failed to load module, retrying', {
+        error,
+        fallback: 'navigation-module-load-retry',
+      });
       return new Promise((resolve) => setTimeout(resolve, 1000))
         .then(() => importFn())
         .catch((retryError) => {
-          console.error('[Navigation] Module load failed after retry', retryError);
+          logWarn('[Navigation] Module load failed after retry', {
+            error: retryError,
+            fallback: 'navigation-module-load-failed',
+          });
         });
     }),
   );
@@ -74,6 +83,8 @@ export interface NavigationRenderContext {
   alerts: Alert[];
   reminders: Reminder[];
   goals: Goal[];
+  latestLeaks?: FinancialLeak[];
+  latestReport?: FinancialReport | null;
   onToggleHideValues: () => void;
   onNavigateToTab: (tab: Tab) => void;
   onUpdateProfileName: (name: string) => void;
@@ -126,7 +137,6 @@ export function useNavigationTabs() {
               reminders={context.reminders}
               hideValues={context.hideValues}
               onNavigateToInsights={() => context.onNavigateToTab('insights')}
-              onNavigateToAccounts={() => context.onNavigateToTab('accounts')}
               onNavigateToHistory={() => context.onNavigateToTab('history')}
               onNavigateToFlow={() => context.onNavigateToTab('flow')}
             />
@@ -282,6 +292,8 @@ export function useNavigationTabs() {
               transactions={context.transactions}
               accounts={context.accounts}
               userId={context.userId ?? 'local'}
+              leaks={context.latestLeaks}
+              report={context.latestReport}
             />
           </Suspense>
         ) : null;

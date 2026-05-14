@@ -136,7 +136,7 @@ function createQuestion() {
 }
 
 async function collectTestersInteractive(ask) {
-  console.log(`
+  process.stdout.write(`
 ╔═════════════════════════════════════════════════════════╗
 ║  Flow Finance v0.9.6 - Beta Testing Coordinator        ║
 ║                                                         ║
@@ -148,7 +148,7 @@ async function collectTestersInteractive(ask) {
   let addMore = true;
 
   while (addMore) {
-    console.log(`\n--- Tester ${testers.length + 1} ---`);
+    process.stdout.write(`\n--- Tester ${testers.length + 1} ---`);
 
     const name = String(await ask('Full name: ')).trim();
     const email = String(await ask('Email: ')).trim();
@@ -216,13 +216,13 @@ async function main() {
     if (parsed.nonInteractive) {
       testers = parsed.testers;
       testingDate = parsed.testingDate;
-      console.log('Running in non-interactive mode');
+      process.stdout.write('Running in non-interactive mode');
     } else {
       const q = createQuestion();
       closeQuestion = q.close;
       testers = await collectTestersInteractive(q.ask);
 
-      console.log(`\nCollected ${testers.length} testers`);
+      process.stdout.write(`\nCollected ${testers.length} testers`);
       testingDate = String(await q.ask('\nWhen do you want to start testing? (e.g., tomorrow at 09:00): ')).trim();
     }
 
@@ -247,13 +247,13 @@ async function main() {
     fs.writeFileSync(invitesPath, invites.join('\n\n' + '='.repeat(70) + '\n\n'));
     fs.writeFileSync(feedbackPath, generateFeedbackForm());
 
-    console.log(`\nSetup complete. Generated files:\n- ${BETA_TESTERS_FILE}\n- ${invitesPath}\n- ${feedbackPath}`);
+    process.stdout.write(`\nSetup complete. Generated files:\n- ${BETA_TESTERS_FILE}\n- ${invitesPath}\n- ${feedbackPath}`);
 
     if (closeQuestion) {
       closeQuestion();
     }
   } catch (error) {
-    console.error('Error:', error.message);
+    process.stderr.write('Error:', error.message);
     if (closeQuestion) {
       closeQuestion();
     }
@@ -268,3 +268,4 @@ const invokedDirectly = process.argv[1]
 if (invokedDirectly) {
   main();
 }
+

@@ -71,7 +71,11 @@ export class ExternalIntegrationWrapper {
 
     if (this.isCircuitOpen()) {
       logger.warn(
-        { integration: this.config.integrationName },
+        {
+          integration: this.config.integrationName,
+          circuitOpen: true,
+          fallback: 'circuit-open',
+        },
         'Circuit breaker open — request rejected',
       );
       return {
@@ -116,6 +120,17 @@ export class ExternalIntegrationWrapper {
     }
 
     this.onFailure();
+
+    logger.error(
+      {
+        integration: this.config.integrationName,
+        attempts: this.config.maxRetries,
+        error: lastError?.message ?? 'Unknown error',
+        circuitOpen: this.getCircuitState().isOpen,
+        fallback: 'external-call-exhausted',
+      },
+      'External call failed after exhausting retries',
+    );
 
     return {
       success: false,

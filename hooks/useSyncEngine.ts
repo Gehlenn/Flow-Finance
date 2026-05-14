@@ -11,6 +11,7 @@ import {
   saveUserProfile,
   subscribeToUserProfile,
 } from '../src/services/firestoreWorkspaceStore';
+import { logWarn } from '../src/utils/logger';
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 
@@ -147,7 +148,10 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
           setHasLoadedEntities(true);
         }
       } catch (error) {
-        console.error('Falha ao carregar dados sincronizados:', error);
+        logWarn('[useSyncEngine] Failed to load synced entities', {
+          error,
+          fallback: 'use-sync-engine-load-entities-failed',
+        });
         if (cloudSyncEnabled) {
           onDisableCloudSync();
         } else {
@@ -181,10 +185,16 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
       },
       (error) => {
         if (isSyncPermissionError(error)) {
-          console.warn('Permissao/autenticacao insuficiente no Firestore:', error);
+          logWarn('[useSyncEngine] Firestore permission denied while subscribing to user profile', {
+            error,
+            fallback: 'use-sync-engine-firestore-permission-denied',
+          });
           onDisableCloudSync();
         } else {
-          console.error('Erro na conexao com Firestore:', error);
+          logWarn('[useSyncEngine] Firestore connection error while subscribing to user profile', {
+            error,
+            fallback: 'use-sync-engine-firestore-connection-error',
+          });
         }
 
         if (shouldDisplaySyncConnectionError(error)) {
@@ -220,7 +230,10 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
       setSyncStatus('synced');
       setTimeout(() => setSyncStatus('idle'), 2000);
     } catch (error) {
-      console.error('Erro ao sincronizar perfil:', error);
+      logWarn('[useSyncEngine] Failed to sync profile', {
+        error,
+        fallback: 'use-sync-engine-profile-sync-failed',
+      });
       if (isSyncPermissionError(error)) {
         onDisableCloudSync();
       }
@@ -313,7 +326,10 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
       setTimeout(() => setSyncStatus('idle'), 2000);
       return { entities: nextEntities, idMaps };
     } catch (error) {
-      console.error('Erro ao sincronizar entidades:', error);
+      logWarn('[useSyncEngine] Failed to sync entities', {
+        error,
+        fallback: 'use-sync-engine-entities-sync-failed',
+      });
       if (cloudSyncEnabled) {
         onDisableCloudSync();
       } else {

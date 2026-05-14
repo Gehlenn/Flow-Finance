@@ -93,7 +93,10 @@ export class OpenAIProvider extends IAIProvider {
       const models = await this.client.models.list();
       return !!models.data;
     } catch (error) {
-      logger.error('OpenAI health check failed', { provider: 'openai' });
+      logger.error('OpenAI health check failed', {
+        provider: 'openai',
+        error: error instanceof Error ? error.message : String(error),
+      });
       return false;
     }
   }

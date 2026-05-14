@@ -22,11 +22,12 @@ import {
   getConnections,
   getConnection,
   fullSync,
-  formatLastSync,
+  parseLastSyncDate,
 } from '../../services/integrations/openBankingService';
 import { FinancialEventEmitter } from '../events/eventEngine';
 import { detectSalary, SalaryDetectionResult } from '../ai/salaryDetector';
 import { detectFixedExpenses, FixedExpenseReport } from '../ai/fixedExpenseDetector';
+import { logWarn } from '../utils/logger';
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -91,13 +92,22 @@ function saveSyncReport(report: BankSyncReport): void {
     const existing: BankSyncReport[] = JSON.parse(localStorage.getItem(SYNC_REPORTS_KEY) || '[]');
     const updated = [report, ...existing].slice(0, MAX_REPORTS);
     localStorage.setItem(SYNC_REPORTS_KEY, JSON.stringify(updated));
-  } catch { /* silencioso */ }
+  } catch (error) {
+    logWarn('[BankSyncEngine] Failed to persist sync report:', {
+      error,
+      storageKey: SYNC_REPORTS_KEY,
+    });
+  }
 }
 
 export function getSyncReports(): BankSyncReport[] {
   try {
     return JSON.parse(localStorage.getItem(SYNC_REPORTS_KEY) || '[]');
-  } catch {
+  } catch (error) {
+    logWarn('[BankSyncEngine] Failed to read sync reports; returning empty set', {
+      error,
+      storageKey: SYNC_REPORTS_KEY,
+    });
     return [];
   }
 }
@@ -261,11 +271,21 @@ export async function runBankSync(
 
   try {
     salaryAnalysis = detectSalary(allTransactions);
-  } catch { /* non-blocking */ }
+  } catch (error) {
+    logWarn('[BankSyncEngine] Salary analysis failed; continuing without insights', {
+      error,
+      transactionCount: allTransactions.length,
+    });
+  }
 
   try {
     fixedExpenseReport = detectFixedExpenses(allTransactions);
-  } catch { /* non-blocking */ }
+  } catch (error) {
+    logWarn('[BankSyncEngine] Fixed expense analysis failed; continuing without insights', {
+      error,
+      transactionCount: allTransactions.length,
+    });
+  }
 
   emit({ type: 'done', bank_name: 'Todos', message: `Sync completo. ${totalImported} transações importadas.`, progress: 100 });
 
@@ -342,10 +362,11 @@ export async function syncSingleBank(
       sync_duration_ms:      Date.now() - t0,
     };
   } catch (err: any) {
-    console.warn('[BankSyncEngine] Single bank sync failed:', {
+    logWarn('[BankSyncEngine] Single bank sync failed', {
       connectionId,
       bankName: conn.bank_name,
       error: err?.message ?? 'Erro desconhecido',
+      fallback: 'bank-sync-single-bank-failed',
     });
     return {
       connection_id:         connectionId,
@@ -387,7 +408,13 @@ export function startAutoSync(
         onUpdateAccount,
         { userId, days: 7 } // daily sync = only last 7 days
       );
-    } catch { /* silencioso */ }
+    } catch (error) {
+      logWarn('[BankSyncEngine] Auto sync failed', {
+        userId,
+        error,
+        fallback: 'bank-sync-auto-sync-failed',
+      });
+    }
   }, intervalMinutes * 60 * 1000);
 }
 
@@ -420,9 +447,10 @@ export function getSyncStatusSummary(userId: string): {
     .sort()
     .reverse();
   const lastSync = lastSyncTimes[0] ?? null;
+  const lastSyncDate = parseLastSyncDate(lastSync ?? undefined);
 
   // Needs sync if last sync was > 4 hours ago or never
-  const needsSync = !lastSync || (Date.now() - new Date(lastSync).getTime()) > 4 * 60 * 60 * 1000;
+  const needsSync = !lastSyncDate || (Date.now() - lastSyncDate.getTime()) > 4 * 60 * 60 * 1000;
 
   return {
     total_banks: conns.length,

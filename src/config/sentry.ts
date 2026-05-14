@@ -1,3 +1,5 @@
+import { logInfo, logWarn } from '../utils/logger';
+
 type SeverityLevel = 'fatal' | 'error' | 'warning' | 'log' | 'info' | 'debug';
 type SentryModule = typeof import('@sentry/react');
 type SentryEnv = {
@@ -30,7 +32,10 @@ async function loadSentry(): Promise<SentryModule | null> {
         return mod;
       })
       .catch((error) => {
-        console.warn('Failed to load Sentry module:', error);
+        logWarn('Failed to load Sentry module', {
+          error,
+          fallback: 'sentry-module-load-failed',
+        });
         return null;
       });
   }
@@ -87,7 +92,9 @@ export const initSentry = () => {
     });
 
     sentryInitialized = true;
-    console.log('Sentry initialized for error tracking');
+    logInfo('Sentry initialized for error tracking', {
+      fallback: 'sentry-initialized',
+    });
   });
 };
 
@@ -210,5 +217,7 @@ export const useErrorReporting = () => {
     addBreadcrumb,
   };
 };
+
+
 
 
