@@ -1,9 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
+﻿import { describe, expect, it, vi } from 'vitest';
 import { getDaysUntilSalaryDay, generateAdaptiveInsights } from '../../src/ai/adaptiveAIEngine';
 import * as aiMemory from '../../src/ai/aiMemory';
 import { Category, TransactionType } from '../../types';
 
-const mockLogWarn = vi.fn();
+const { mockLogWarn } = vi.hoisted(() => ({
+  mockLogWarn: vi.fn(),
+}));
 
 vi.mock('../../src/utils/logger', () => ({
   logWarn: mockLogWarn,
@@ -64,3 +66,4 @@ describe('adaptiveAIEngine', () => {
     snapshotSpy.mockRestore();
   });
 });
+
