@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+﻿import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import CashFlow from '../../components/CashFlow';
@@ -51,7 +51,7 @@ describe('CashFlow clipboard diagnostic', () => {
 
     expect(await screen.findByText(/Falha ao copiar resumo/i)).toBeTruthy();
     expect(screen.getByText(/O navegador bloqueou a copia do texto do fluxo/i)).toBeTruthy();
-    expect(screen.getByText(/Proximo passo:/i)).toBeTruthy();
+    expect(screen.getByText(/Pr.*ximo passo:/i)).toBeTruthy();
     expect(cashFlowClipboardMocks.logWarn).toHaveBeenCalledWith(
       '[CashFlow] Failed to copy summary',
       expect.objectContaining({
@@ -60,3 +60,4 @@ describe('CashFlow clipboard diagnostic', () => {
     );
   });
 });
+

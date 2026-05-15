@@ -1,6 +1,6 @@
-import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+﻿import React from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import GoalsPage from '../../pages/Goals';
 import { Category, type Goal } from '../../types';
@@ -106,7 +106,7 @@ describe('Goals contribution modal', () => {
       expect(screen.getByRole('status')).toBeTruthy();
     });
 
-    expect(screen.getByText(/Nao foi possivel registrar o aporte/i)).toBeTruthy();
+    expect(screen.getAllByText(/Nao foi possivel registrar o aporte/i).length).toBeGreaterThan(0);
     expect(goalsLoggerMock.logWarn).toHaveBeenCalledWith(
       '[Goals] Failed to contribute to goal',
       expect.objectContaining({
@@ -115,3 +115,5 @@ describe('Goals contribution modal', () => {
     );
   });
 });
+
+

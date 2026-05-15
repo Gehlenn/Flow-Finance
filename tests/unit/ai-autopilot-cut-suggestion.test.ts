@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+﻿import { describe, it, expect, vi, afterEach } from 'vitest';
 import { runFinancialAutopilot } from '../../src/ai/financialAutopilot';
 import { TransactionType } from '../../types';
 import { Account } from '../../models/Account';
@@ -10,7 +10,7 @@ function makeTx(partial) {
     type: partial.type,
     category: partial.category,
     description: partial.description || '',
-    date: partial.date || new Date().toISOString(),
+    date: partial.date,
     merchant: partial.merchant || '',
     recurring: partial.recurring || false,
     generated: false,
@@ -18,25 +18,34 @@ function makeTx(partial) {
 }
 
 describe('runFinancialAutopilot - Sugestão de corte automático', () => {
-  it('gera sugestão de corte quando gasto do mês ultrapassa média histórica da categoria', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('gera sugestão de corte quando gasto do mês ultrapassa limite calculado', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-15T12:00:00.000Z'));
+
     const accounts: Account[] = [
-      { id: '1', user_id: 'u', name: 'Conta', type: 'cash', balance: 1000, currency: 'BRL', created_at: new Date().toISOString() }
+      { id: '1', user_id: 'u', name: 'Conta', type: 'cash', balance: 1000, currency: 'BRL', created_at: '2026-01-01T00:00:00.000Z' },
     ];
-    const now = new Date();
+
     const txs = [
-      // Histórico: 3 meses atrás
-      makeTx({ amount: 100, type: TransactionType.DESPESA, category: 'Alimentação', date: new Date(now.getFullYear(), now.getMonth() - 3, 5).toISOString() }),
-      makeTx({ amount: 120, type: TransactionType.DESPESA, category: 'Alimentação', date: new Date(now.getFullYear(), now.getMonth() - 2, 5).toISOString() }),
-      makeTx({ amount: 110, type: TransactionType.DESPESA, category: 'Alimentação', date: new Date(now.getFullYear(), now.getMonth() - 1, 5).toISOString() }),
-      // Mês atual: ultrapassa média
-      makeTx({ amount: 200, type: TransactionType.DESPESA, category: 'Alimentação', date: new Date(now.getFullYear(), now.getMonth(), 5).toISOString() }),
+      makeTx({ amount: 200, type: TransactionType.RECEITA, category: 'Servicos', date: '2026-04-02' }),
+      makeTx({ amount: 100, type: TransactionType.DESPESA, category: 'CategoriaTesteCorte', date: '2026-01-05' }),
+      makeTx({ amount: 120, type: TransactionType.DESPESA, category: 'CategoriaTesteCorte', date: '2026-02-05' }),
+      makeTx({ amount: 110, type: TransactionType.DESPESA, category: 'CategoriaTesteCorte', date: '2026-03-05' }),
+      makeTx({ amount: 200, type: TransactionType.DESPESA, category: 'CategoriaTesteCorte', date: '2026-04-05' }),
     ];
+
     const prediction = { balance_30_days: 100, balance_7_days: 100, current_balance: 1000, projected_expenses: 0, projected_income: 0 };
     const insights = [];
+
     const actions = runFinancialAutopilot(accounts, txs, prediction, insights);
-    const cutSuggestion = actions.find(a => a.title && a.title.includes('Sugestão de corte em Alimentação'));
+    const cutSuggestion = actions.find((a) => a.type === 'optimization' && a.category === 'CategoriaTesteCorte');
+
     expect(cutSuggestion).toBeDefined();
-    expect(cutSuggestion.type).toBe('optimization');
-    expect(cutSuggestion.value).toBeGreaterThan(0);
+    expect(cutSuggestion?.title).toContain('Sugestão de corte');
+    expect(cutSuggestion?.value ?? 0).toBeGreaterThan(0);
   });
 });

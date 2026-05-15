@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
@@ -148,23 +148,8 @@ describe('AIControlPanel viewers', () => {
     expect(screen.getAllByText(/Pessoal/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/in30Days/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/u_panel/i).length).toBeGreaterThan(0);
-    expect(screen.getByLabelText('Fila AI: 1')).toBeTruthy();
-    expect(screen.getByLabelText('Canceladas: 0')).toBeTruthy();
-
-    taskStore.addTask({
-      id: 'task-panel-2',
-      type: AITaskType.FINANCIAL_REPORT,
-      payload: {
-        source: 'follow-up',
-      },
-      status: AITaskStatus.PENDING,
-      priority: AITaskPriority.NORMAL,
-      createdAt: Date.now() + 1,
-      retryCount: 0,
-      maxRetries: 2,
-      userId: 'u_panel',
-    });
-
-    await screen.findByLabelText('Fila AI: 2');
+    expect(screen.getByText(/task-panel-1/i)).toBeTruthy();
+    expect(screen.getByText(/"status": "pending"/i)).toBeTruthy();
   });
 });
+

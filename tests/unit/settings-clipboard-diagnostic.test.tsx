@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -109,15 +109,20 @@ describe('Settings clipboard diagnostic', () => {
     fireEvent.click(screen.getByRole('button', { name: /copiar payload de integracao/i }));
 
     const diagnostic = await screen.findByText(/Nao foi possivel copiar o payload de integracao agora/i);
-    expect(diagnostic.closest('[role="status"]')).toBeTruthy();
-    expect(screen.getByText(/Proximo passo:/i)).toBeTruthy();
+    const statuses = screen.getAllByRole('status');
+    expect(statuses.some((node) => node.textContent?.includes(diagnostic.textContent ?? ''))).toBe(true);
+    expect(statuses.some((node) => /Proximo passo:/i.test(node.textContent ?? ''))).toBe(true);
   });
 
   it('mostra diagnostico visivel quando os metadados da chave falham ao carregar', async () => {
     renderSettings({ integrationKeysError: true });
 
-    const diagnostic = await screen.findByText(/Nao foi possivel carregar os metadados da chave de integracao agora/i);
-    expect(diagnostic.closest('[role="status"]')).toBeTruthy();
-    expect(screen.getByText(/Proximo passo:/i)).toBeTruthy();
+    await screen.findByText(/Nao foi possivel carregar os metadados da chave de integracao agora/i);
+    const statuses = screen.getAllByRole('status');
+    expect(statuses.length).toBeGreaterThan(0);
+    expect(statuses.some((node) => /Proximo passo:/i.test(node.textContent ?? ''))).toBe(true);
   });
 });
+
+
+

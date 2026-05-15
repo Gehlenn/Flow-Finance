@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -78,14 +78,14 @@ describe('Insights plan render', () => {
       />,
     );
 
-    expect(screen.getByText(/Leituras avançadas e comparativas/i)).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: /Contexto avançado/i })).toBeNull();
-    expect(screen.getByText(/Próxima ação/i)).toBeTruthy();
+    expect(screen.getByText(/Leituras avan/i)).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: /Contexto avan/i })).toBeNull();
+    expect(screen.getByText(/Pr.*xima a.*o/i)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Abrir assistente/i }));
     expect(onNavigateToTab).toHaveBeenCalledWith('assistant');
     fireEvent.click(screen.getByRole('button', { name: /Criar lembrete/i }));
     expect(onCreateReminder).toHaveBeenCalledWith(expect.objectContaining({
-      title: 'Revisar a pr?xima a??o do caixa',
+      title: expect.stringMatching(/Revisar a pr.*xima a.*o do caixa/i),
       priority: 'media',
     }));
     fireEvent.click(screen.getByRole('button', { name: /Acompanhar risco/i }));
@@ -115,15 +115,15 @@ describe('Insights plan render', () => {
       />,
     );
 
-    expect(screen.getByText(/Contexto avançado/i)).toBeTruthy();
-    expect(screen.queryByText(/Leituras avançadas e comparativas/i)).toBeNull();
+    expect(screen.getByText(/Contexto avan/i)).toBeTruthy();
+    expect(screen.queryByText(/Leituras avan/i)).toBeNull();
     expect(screen.getByText(/Perfil de fluxo/i)).toBeTruthy();
-    expect(screen.getByText(/Próxima ação/i)).toBeTruthy();
+    expect(screen.getByText(/Pr.*xima a.*o/i)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Ver metas/i }));
     expect(onNavigateToTab).toHaveBeenCalledWith('goals');
     fireEvent.click(screen.getByRole('button', { name: /Criar lembrete/i }));
     expect(onCreateReminder).toHaveBeenCalledWith(expect.objectContaining({
-      title: 'Revisar a pr?xima a??o do caixa',
+      title: expect.stringMatching(/Revisar a pr.*xima a.*o do caixa/i),
       priority: 'media',
     }));
     const riskButtons = screen.getAllByRole('button', { name: /Acompanhar risco/i });
@@ -139,3 +139,7 @@ describe('Insights plan render', () => {
     expect(onNavigateToTab).toHaveBeenCalledWith('flow');
   });
 });
+
+
+
+

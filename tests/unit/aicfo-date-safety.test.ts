@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+﻿import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { buildFinancialContext } from '../../src/ai/aiCFO';
 import { Category, TransactionType, type Transaction } from '../../types';
@@ -59,10 +59,13 @@ describe('aiCFO', () => {
       'user-1',
     );
 
-    expect(context).toContain('MÊS ATUAL:');
+    expect(context).toMatch(/M.+S ATUAL:/);
     expect(context).toContain('Receitas: R$');
     expect(context).toContain('1.000,00');
     expect(context).toContain('Despesas: R$');
     expect(context).toContain('250,00');
   });
 });
+
+
+
