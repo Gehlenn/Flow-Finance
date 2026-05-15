@@ -1,10 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { recognizeMock } = vi.hoisted(() => ({
+const { recognizeMock, mockLogWarn } = vi.hoisted(() => ({
   recognizeMock: vi.fn(),
+  mockLogWarn: vi.fn(),
 }));
-
-const mockLogWarn = vi.fn();
 
 vi.mock('tesseract.js', () => ({
   default: {
@@ -46,9 +45,10 @@ describe('ocrRecibo', () => {
     expect(resultado.erros[0]).toMatch(/Imagem base64 invalida/);
     expect(recognizeMock).not.toHaveBeenCalled();
     expect(mockLogWarn).toHaveBeenCalledWith(
-      '[OCRRecibo] Failed to validate base64 image data URI',
+      '[OCRRecibo] OCR processing failed',
       expect.objectContaining({
         error: expect.any(Error),
+        format: 'string',
       }),
     );
   });
@@ -88,3 +88,5 @@ describe('ocrRecibo', () => {
     );
   });
 });
+
+
