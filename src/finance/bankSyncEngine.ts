@@ -237,11 +237,12 @@ export async function runBankSync(
       totalImported += syncResult.transactions_imported;
       successCount++;
 
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'erro desconhecido';
       emit({
         type: 'error',
         bank_name: conn.bank_name,
-        message: `Erro ao sincronizar ${conn.bank_name}: ${err?.message ?? 'erro desconhecido'}`,
+        message: `Erro ao sincronizar ${conn.bank_name}: ${message}`,
         progress: baseProgress + 10,
       });
 
@@ -251,7 +252,7 @@ export async function runBankSync(
         status:                'error',
         transactions_imported: 0,
         balance_updated:       false,
-        error:                 err?.message ?? 'Erro desconhecido',
+        error:                 message,
         sync_duration_ms:      Date.now() - connT0,
       });
       failCount++;
@@ -361,11 +362,11 @@ export async function syncSingleBank(
       new_balance:           result.new_balance,
       sync_duration_ms:      Date.now() - t0,
     };
-  } catch (err: any) {
+  } catch (error: unknown) {
     logWarn('[BankSyncEngine] Single bank sync failed', {
       connectionId,
       bankName: conn.bank_name,
-      error: err?.message ?? 'Erro desconhecido',
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
       fallback: 'bank-sync-single-bank-failed',
     });
     return {
@@ -374,7 +375,7 @@ export async function syncSingleBank(
       status:                'error',
       transactions_imported: 0,
       balance_updated:       false,
-      error:                 err?.message ?? 'Erro desconhecido',
+      error:                 error instanceof Error ? error.message : 'Erro desconhecido',
       sync_duration_ms:      Date.now() - t0,
     };
   }

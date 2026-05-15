@@ -14,7 +14,7 @@ declare global {
       app: {
         locals: {
           db: FirebaseFirestore.Firestore;
-          [key: string]: any;
+          [key: string]: unknown;
         };
       };
     }

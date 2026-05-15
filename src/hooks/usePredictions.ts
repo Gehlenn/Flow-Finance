@@ -55,6 +55,8 @@ interface UsePredictionsReturn {
   dismissAlert: (alertId: string) => void;
 }
 
+type PredictionDay = CashFlowPrediction['dailyPredictions'][number];
+
 export function usePredictions(days: number = 30): UsePredictionsReturn {
   const [prediction, setPrediction] = useState<CashFlowPrediction | null>(null);
   const [shortfallRisk, setShortfallRisk] = useState<ShortfallRisk | null>(null);
@@ -154,7 +156,7 @@ export function usePredictions(days: number = 30): UsePredictionsReturn {
       start: parsePredictionDate(result.data.dateRange.start) ?? new Date(),
       end: parsePredictionDate(result.data.dateRange.end) ?? new Date(),
         },
-        dailyPredictions: result.data.dailyPredictions.map((d: any) => ({
+        dailyPredictions: result.data.dailyPredictions.map((d: PredictionDay) => ({
           ...d,
       date: parsePredictionDate(d.date) ?? new Date(),
         })),
@@ -280,7 +282,7 @@ export function usePredictions(days: number = 30): UsePredictionsReturn {
       start: parsePredictionDate(result.data.dateRange.start) ?? new Date(),
       end: parsePredictionDate(result.data.dateRange.end) ?? new Date(),
         },
-        dailyPredictions: result.data.dailyPredictions.map((d: any) => ({
+        dailyPredictions: result.data.dailyPredictions.map((d: PredictionDay) => ({
           ...d,
       date: parsePredictionDate(d.date) ?? new Date(),
         })),

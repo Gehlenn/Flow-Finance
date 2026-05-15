@@ -6,7 +6,7 @@
 
 import { subscribeToFinancialEvents } from '../eventEngine';
 import { cashflowPredictionEngine } from '../../engines/finance/cashflowPrediction/cashflowPredictionEngine';
-import { logError } from '../../utils/logger';
+import { logDebug, logError } from '../../utils/logger';
 import type { FinancialEvent } from '../../../models/FinancialEvent';
 import type { Transaction } from '../../../types';
 
@@ -27,7 +27,11 @@ export function registerForecastListener(): () => void {
 
     try {
       cashflowPredictionEngine.predict({ transactions, balance: (payload.balance as number) ?? 0 });
-      console.debug(`[ForecastListener] Previsão recalculada via evento "${event.type}" (${transactions.length} transações)`);
+      logDebug('[ForecastListener] Previsão recalculada via evento', {
+        eventType: event.type,
+        transactionCount: transactions.length,
+        balance: (payload.balance as number) ?? 0,
+      });
     } catch (error) {
       logError('[ForecastListener] Erro ao recalcular previsao', error, {
         fallback: 'forecast-recalculation-failed',

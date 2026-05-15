@@ -14,8 +14,25 @@ import { Transaction, Reminder, TransactionData, TransactionType, Category } fro
 import { API_ENDPOINTS, apiRequest } from "../src/config/api.config";
 import { logError, logWarn } from "../src/utils/logger";
 
-type DailyInsightsApiResponse = { insights?: any[] } | any[];
-type StrategicInsightsApiResponse = { report?: any } | any;
+type DailyInsightLike = {
+  title: string;
+  description: string;
+  type: string;
+};
+
+type StrategicReportLike = {
+  executiveSummary?: string;
+  actionPlan?: string[];
+  diagnostic?: {
+    kind?: string;
+    message?: string;
+    suggestion?: string;
+  };
+  [key: string]: unknown;
+};
+
+type DailyInsightsApiResponse = { insights?: DailyInsightLike[] } | DailyInsightLike[];
+type StrategicInsightsApiResponse = { report?: StrategicReportLike } | StrategicReportLike;
 
 function normalizeInput(raw: string): string {
   return raw
@@ -187,7 +204,7 @@ export class GeminiService {
    * Generate daily insights about transactions
    * Backend handles LLM call and analysis
    */
-  async generateDailyInsights(transactions: Transaction[]): Promise<any[]> {
+  async generateDailyInsights(transactions: Transaction[]): Promise<DailyInsightLike[]> {
     try {
       const response = await apiRequest<DailyInsightsApiResponse>(
         API_ENDPOINTS.AI.GENERATE_INSIGHTS,
@@ -236,7 +253,7 @@ export class GeminiService {
    * Generate strategic financial report
    * Backend handles detailed analysis
    */
-  async generateStrategicReport(transactions: Transaction[]): Promise<any> {
+  async generateStrategicReport(transactions: Transaction[]): Promise<StrategicReportLike | null> {
     try {
       const response = await apiRequest<StrategicInsightsApiResponse>(
         API_ENDPOINTS.AI.GENERATE_INSIGHTS,
@@ -251,7 +268,15 @@ export class GeminiService {
         }
       );
 
-      return Array.isArray(response) ? response : (response.report ?? response);
+      if (Array.isArray(response)) {
+        return (response[0] as StrategicReportLike | undefined) ?? null;
+      }
+
+      if ('report' in response) {
+        return (response.report as StrategicReportLike | undefined) ?? null;
+      }
+
+      return response as StrategicReportLike;
     } catch (error) {
       logWarn('[AIService] generateStrategicReport unavailable, using null fallback', error, {
         fallback: 'ai-generate-strategic-report-fallback',
@@ -290,7 +315,7 @@ export class GeminiService {
     { title: string; description: string; type: 'economy' | 'investment' | 'habit' | 'alert' }[]
   > {
     try {
-      const daily: any[] = await this.generateDailyInsights(transactions);
+      const daily: DailyInsightLike[] = await this.generateDailyInsights(transactions);
       return daily.map(ins => {
         let t: 'economy' | 'investment' | 'habit' | 'alert' = 'economy';
         if (ins.type === 'alerta') t = 'alert';

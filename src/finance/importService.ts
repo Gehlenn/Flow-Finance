@@ -203,6 +203,13 @@ function markDuplicates(
   });
 }
 
+type OFXTransactionState = Partial<ImportedTransaction> & {
+  _date?: string;
+  _amt?: string;
+  _memo?: string;
+  _name?: string;
+};
+
 // ─── PART 2 — OFX Parser ─────────────────────────────────────────────────────
 
 export function parseOFX(content: string): ImportedTransaction[] {
@@ -235,20 +242,20 @@ export function parseOFX(content: string): ImportedTransaction[] {
   } else {
     // SGML OFX: line-by-line tags
     const lines = content.split(/\r?\n/).map(l => l.trim());
-    let currentTx: Partial<ImportedTransaction & { _date?: string; _amt?: string; _memo?: string; _name?: string }> = {};
+    let currentTx: OFXTransactionState = {};
     let inTx = false;
 
     for (const line of lines) {
       if (line === '<STMTTRN>') { inTx = true; currentTx = {}; continue; }
       if (line === '</STMTTRN>' && inTx) {
-        const rawAmt = (currentTx as any)._amt ?? '0';
+        const rawAmt = currentTx._amt ?? '0';
         const signedAmt = parseSignedAmount(rawAmt);
         const amount = Math.abs(signedAmt);
         if (amount > 0) {
           results.push({
-            raw_date:        parseDate((currentTx as any)._date ?? ''),
+            raw_date:        parseDate(currentTx._date ?? ''),
             raw_amount:      amount,
-            raw_description: ((currentTx as any)._memo || (currentTx as any)._name || 'Transação importada').trim(),
+            raw_description: ((currentTx._memo || currentTx._name || 'Transação importada').trim()),
             raw_type:        signedAmt < 0 ? TransactionType.DESPESA : TransactionType.RECEITA,
             selected: true,
           });
@@ -265,10 +272,10 @@ export function parseOFX(content: string): ImportedTransaction[] {
       const [, tag, value] = tagMatch;
       if (!inTx) continue;
       const tagUpper = tag.toUpperCase();
-      if (tagUpper === 'DTPOSTED' || tagUpper === 'DTUSER') (currentTx as any)._date = value;
-      else if (tagUpper === 'TRNAMT')                        (currentTx as any)._amt  = value;
-      else if (tagUpper === 'MEMO')                          (currentTx as any)._memo = value;
-      else if (tagUpper === 'NAME')                          (currentTx as any)._name = value;
+      if (tagUpper === 'DTPOSTED' || tagUpper === 'DTUSER') currentTx._date = value;
+      else if (tagUpper === 'TRNAMT')                        currentTx._amt  = value;
+      else if (tagUpper === 'MEMO')                          currentTx._memo = value;
+      else if (tagUpper === 'NAME')                          currentTx._name = value;
     }
   }
 
@@ -409,7 +416,7 @@ export async function classifyImportedTransactions(
 
       if (item.merchant && (r?.confidence ?? 0) > 0.7) {
         const key = `merchant_${item.merchant.toLowerCase().replace(/\s+/g, '_').slice(0, 20)}`;
-        learnMemory(userId, key, category, r.confidence ?? 0.7).catch(e => {
+        learnMemory(userId, key, category, r.confidence ?? 0.7, { source: 'transação' }).catch(e => {
           logError('[ImportService] learnMemory error', e, {
             userId,
             merchant: item.merchant,
@@ -522,8 +529,9 @@ export async function runImportPipeline(
       transactions = await classifyImportedTransactions(transactions, userId);
     }
 
-  } catch (err: any) {
-    errors.push(err?.message ?? 'Erro ao processar arquivo.');
+  } catch (error: unknown) {
+    const importError = error instanceof Error ? error : new Error('Erro ao processar arquivo.');
+    errors.push(importError.message);
   }
 
   onProgress?.('Concluído!', 100);

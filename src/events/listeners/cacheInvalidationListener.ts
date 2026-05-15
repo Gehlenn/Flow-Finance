@@ -7,6 +7,7 @@
 
 import { subscribeToFinancialEvents } from '../eventEngine';
 import { financialCache } from '../../cache/financialCache';
+import { logDebug } from '../../utils/logger';
 import type { FinancialEvent } from '../../../models/FinancialEvent';
 
 type InvalidationRule = {
@@ -50,7 +51,11 @@ export function registerCacheInvalidationListener(): () => void {
     allPrefixes.forEach((prefix) => {
       const invalidated = financialCache.invalidateByPrefix(prefix);
       if (invalidated > 0) {
-        console.debug(`[CacheInvalidationListener] ${invalidated} entrada(s) invalidada(s) para prefixo "${prefix}" via evento "${event.type}"`);
+        logDebug('[CacheInvalidationListener] cache invalidated by financial event', {
+          eventType: event.type,
+          prefix,
+          invalidated,
+        });
       }
     });
   });

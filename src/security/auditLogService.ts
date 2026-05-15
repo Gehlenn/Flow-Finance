@@ -11,7 +11,7 @@ export interface AuditLogEntry {
   event_type: string;
   entity: string;
   entity_id: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   timestamp: string;
 }
 
@@ -24,7 +24,7 @@ export function logAuditEvent(
   eventType: string,
   entity: string,
   entityId: string,
-  metadata: Record<string, any> = {}
+  metadata: Record<string, unknown> = {}
 ): void {
   const entry: AuditLogEntry = {
     id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,

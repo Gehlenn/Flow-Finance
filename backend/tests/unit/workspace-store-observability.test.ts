@@ -141,4 +141,69 @@ describe('workspaceStore observability', () => {
       );
     });
   });
+
+  it('faz backfill normalizado do workspace store vindo do JSON legado', async () => {
+    mocks.loadWorkspaceStoreState.mockResolvedValueOnce(null);
+    mocks.loadJsonState.mockResolvedValueOnce({
+      tenants: [],
+      workspaces: [
+        {
+          workspaceId: 'ws-2',
+          name: 'Workspace 2',
+          isDefault: false,
+          createdAt: '2026-05-10T00:00:00.000Z',
+          updatedAt: '2026-05-10T00:00:00.000Z',
+          plan: 'pro',
+          status: 'active',
+        },
+      ],
+      workspaceUsers: [
+        {
+          workspaceId: 'ws-2',
+          userId: 'user-2',
+          role: 'user',
+          joinedAt: '2026-05-10T00:00:00.000Z',
+          status: 'active',
+        },
+      ],
+      userPreferences: [],
+    });
+
+    const { initializeWorkspaceStorePersistence, resetWorkspaceStoreForTests } = await import('../../src/services/admin/workspaceStore');
+    resetWorkspaceStoreForTests();
+
+    await initializeWorkspaceStorePersistence();
+
+    await vi.waitFor(() => {
+      expect(mocks.saveWorkspaceStoreState).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mocks.saveWorkspaceStoreState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenants: [
+          expect.objectContaining({
+            tenantId: 'ws-2',
+            name: 'Workspace 2',
+            plan: 'pro',
+          }),
+        ],
+        workspaces: [
+          expect.objectContaining({
+            workspaceId: 'ws-2',
+            tenantId: 'ws-2',
+            isDefault: false,
+            plan: 'pro',
+          }),
+        ],
+        workspaceUsers: [
+          expect.objectContaining({
+            workspaceId: 'ws-2',
+            tenantId: 'ws-2',
+            role: 'member',
+          }),
+        ],
+        userPreferences: [],
+      }),
+    );
+  });
 });

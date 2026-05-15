@@ -309,7 +309,7 @@ function mapEnvelopeV1ToClinicPayload(envelope: ClinicWebhookEnvelopeV1): Clinic
       };
     default: {
       const exhaustive: never = envelope;
-      throw new Error(`Unsupported envelope eventType: ${(exhaustive as any).eventType}`);
+      throw new Error(`Unsupported envelope eventType: ${JSON.stringify(exhaustive)}`);
     }
   }
 }

@@ -22,6 +22,9 @@ import { buildFinancialGraph, invalidateGraphCache } from '../ai/financialGraph'
 import { FinancialLeak, detectFinancialLeaks } from '../ai/leakDetector';
 import { FinancialReport } from '../finance/reportEngine';
 import { generateMonthlyReport } from '../finance/reportEngine';
+import { AIInsight } from '../ai/insightGenerator';
+import { AutopilotAction } from '../ai/financialAutopilot';
+import { FinancialRiskAlert } from '../ai/riskAnalyzer';
 import { API_ENDPOINTS, getAuthHeaders, getStoredWorkspaceId } from '../config/api.config';
 import { logError, logInfo, logWarn } from '../utils/logger';
 
@@ -240,9 +243,9 @@ export function initEventListeners(
     transactions: Transaction[];
     accounts: Account[];
     userId: string;
-    onAutopilotActions?: (actions: any[]) => void;
-    onInsights?: (insights: any[]) => void;
-    onRisks?: (risks: any[]) => void;
+    onAutopilotActions?: (actions: AutopilotAction[]) => void;
+    onInsights?: (insights: AIInsight[]) => void;
+    onRisks?: (risks: FinancialRiskAlert[]) => void;
     onLeaks?: (leaks: FinancialLeak[]) => void;
     onReport?: (report: FinancialReport) => void;
   }

@@ -56,39 +56,43 @@ const getFirebaseStorage = (): FirebaseStorage => {
 // ─── OPTIMIZED FIREBASE OPERATIONS ──────────────────────────────────────────
 
 // Cache for frequently accessed data
-const dataCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+type FirebaseRecord = Record<string, unknown> & { id: string };
+type AccountRecord = FirebaseRecord & { user_id: string };
+type TransactionRecord = FirebaseRecord & { user_id: string };
+
+const dataCache = new Map<string, { data: unknown; timestamp: number; ttl: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-const getCachedData = (key: string) => {
+const getCachedData = <T,>(key: string): T | null => {
   const cached = dataCache.get(key);
   if (cached && Date.now() - cached.timestamp < cached.ttl) {
-    return cached.data;
+    return cached.data as T;
   }
   dataCache.delete(key);
   return null;
 };
 
-const setCachedData = (key: string, data: any, ttl = CACHE_TTL) => {
+const setCachedData = (key: string, data: unknown, ttl = CACHE_TTL) => {
   dataCache.set(key, { data, timestamp: Date.now(), ttl });
 };
 
 // ─── ACCOUNTS OPERATIONS ────────────────────────────────────────────────────
 
-export const getAccounts = async (userId: string): Promise<any[]> => {
+export const getAccounts = async (userId: string): Promise<FirebaseRecord[]> => {
   const cacheKey = `accounts_${userId}`;
-  const cached = getCachedData(cacheKey);
+  const cached = getCachedData<FirebaseRecord[]>(cacheKey);
   if (cached) return cached;
 
   const db = getFirebaseDb();
   const q = query(collection(db, 'accounts'), where('user_id', '==', userId));
   const snapshot = await getDocs(q);
-  const accounts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const accounts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as FirebaseRecord[];
 
   setCachedData(cacheKey, accounts);
   return accounts;
 };
 
-export const createAccount = async (account: any): Promise<void> => {
+export const createAccount = async (account: Record<string, unknown> & { user_id: string }): Promise<void> => {
   const db = getFirebaseDb();
   const docRef = doc(collection(db, 'accounts'));
   await setDoc(docRef, { ...account, id: docRef.id, created_at: new Date() });
@@ -97,7 +101,7 @@ export const createAccount = async (account: any): Promise<void> => {
   dataCache.delete(`accounts_${account.user_id}`);
 };
 
-export const updateAccount = async (account: any): Promise<void> => {
+export const updateAccount = async (account: AccountRecord): Promise<void> => {
   const db = getFirebaseDb();
   const docRef = doc(db, 'accounts', account.id);
   await updateDoc(docRef, { ...account, updated_at: new Date() });
@@ -116,9 +120,9 @@ export const deleteAccount = async (accountId: string, userId: string): Promise<
 
 // ─── TRANSACTIONS OPERATIONS (BATCHED) ──────────────────────────────────────
 
-export const getTransactions = async (userId: string, limitCount = 100): Promise<any[]> => {
+export const getTransactions = async (userId: string, limitCount = 100): Promise<FirebaseRecord[]> => {
   const cacheKey = `transactions_${userId}_${limitCount}`;
-  const cached = getCachedData(cacheKey);
+  const cached = getCachedData<FirebaseRecord[]>(cacheKey);
   if (cached) return cached;
 
   const db = getFirebaseDb();
@@ -129,13 +133,13 @@ export const getTransactions = async (userId: string, limitCount = 100): Promise
     limit(limitCount)
   );
   const snapshot = await getDocs(q);
-  const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as FirebaseRecord[];
 
   setCachedData(cacheKey, transactions, 2 * 60 * 1000); // 2 minutes cache
   return transactions;
 };
 
-export const batchCreateTransactions = async (transactions: any[]): Promise<void> => {
+export const batchCreateTransactions = async (transactions: TransactionRecord[]): Promise<void> => {
   if (transactions.length === 0) return;
 
   const db = getFirebaseDb();
@@ -153,7 +157,7 @@ export const batchCreateTransactions = async (transactions: any[]): Promise<void
   dataCache.delete(`transactions_${userId}_100`);
 };
 
-export const batchUpdateTransactions = async (transactions: any[]): Promise<void> => {
+export const batchUpdateTransactions = async (transactions: TransactionRecord[]): Promise<void> => {
   if (transactions.length === 0) return;
 
   const db = getFirebaseDb();
@@ -173,7 +177,7 @@ export const batchUpdateTransactions = async (transactions: any[]): Promise<void
 
 // ─── REAL-TIME SUBSCRIPTIONS ────────────────────────────────────────────────
 
-export const subscribeToTransactions = (userId: string, callback: (transactions: any[]) => void) => {
+export const subscribeToTransactions = (userId: string, callback: (transactions: FirebaseRecord[]) => void) => {
   const db = getFirebaseDb();
   const q = query(
     collection(db, 'transactions'),
@@ -183,17 +187,17 @@ export const subscribeToTransactions = (userId: string, callback: (transactions:
   );
 
   return onSnapshot(q, (snapshot) => {
-    const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as FirebaseRecord[];
     callback(transactions);
   });
 };
 
-export const subscribeToAccounts = (userId: string, callback: (accounts: any[]) => void) => {
+export const subscribeToAccounts = (userId: string, callback: (accounts: FirebaseRecord[]) => void) => {
   const db = getFirebaseDb();
   const q = query(collection(db, 'accounts'), where('user_id', '==', userId));
 
   return onSnapshot(q, (snapshot) => {
-    const accounts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const accounts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as FirebaseRecord[];
     callback(accounts);
   });
 };

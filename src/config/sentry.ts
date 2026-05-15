@@ -2,6 +2,16 @@ import { logInfo, logWarn } from '../utils/logger';
 
 type SeverityLevel = 'fatal' | 'error' | 'warning' | 'log' | 'info' | 'debug';
 type SentryModule = typeof import('@sentry/react');
+type SentryScopeLike = {
+  setTag: (key: string, value: unknown) => void;
+};
+type SentryLike = {
+  withScope?: (callback: (scope: SentryScopeLike) => void) => void;
+  captureException?: (error: Error) => void;
+  captureMessage?: (message: string, level?: SeverityLevel) => void;
+  setUser?: (user: { id: string; email?: string; username?: string } | null) => void;
+  addBreadcrumb?: (breadcrumb: { message: string; category: string; level: SeverityLevel }) => void;
+};
 type SentryEnv = {
   VITE_SENTRY_DSN?: string;
   SENTRY_DSN?: string;
@@ -123,17 +133,17 @@ const isPlatformNative = (): boolean => {
 /**
  * Report an error manually to Sentry
  */
-export const reportError = (error: Error, context?: Record<string, any>) => {
+export const reportError = (error: Error, context?: Record<string, unknown>) => {
   void loadSentry().then((Sentry) => {
     if (!Sentry) return;
-    const sentryAny = Sentry as any;
-    sentryAny.withScope?.((scope: any) => {
+    const sentry = Sentry as SentryLike;
+    sentry.withScope?.((scope) => {
       if (context) {
         Object.keys(context).forEach((key) => {
           scope.setTag(key, context[key]);
         });
       }
-      sentryAny.captureException?.(error);
+      sentry.captureException?.(error);
     });
   });
 };
@@ -141,17 +151,17 @@ export const reportError = (error: Error, context?: Record<string, any>) => {
 /**
  * Report a message to Sentry
  */
-export const reportMessage = (message: string, level: SeverityLevel = 'info', context?: Record<string, any>) => {
+export const reportMessage = (message: string, level: SeverityLevel = 'info', context?: Record<string, unknown>) => {
   void loadSentry().then((Sentry) => {
     if (!Sentry) return;
-    const sentryAny = Sentry as any;
-    sentryAny.withScope?.((scope: any) => {
+    const sentry = Sentry as SentryLike;
+    sentry.withScope?.((scope) => {
       if (context) {
         Object.keys(context).forEach((key) => {
           scope.setTag(key, context[key]);
         });
       }
-      sentryAny.captureMessage?.(message, level);
+      sentry.captureMessage?.(message, level);
     });
   });
 };
@@ -162,8 +172,8 @@ export const reportMessage = (message: string, level: SeverityLevel = 'info', co
 export const setUser = (user: { id: string; email?: string; username?: string }) => {
   void loadSentry().then((Sentry) => {
     if (!Sentry) return;
-    const sentryAny = Sentry as any;
-    sentryAny.setUser?.({
+    const sentry = Sentry as SentryLike;
+    sentry.setUser?.({
       id: user.id,
       email: user.email,
       username: user.username,
@@ -177,8 +187,8 @@ export const setUser = (user: { id: string; email?: string; username?: string })
 export const clearUser = () => {
   void loadSentry().then((Sentry) => {
     if (!Sentry) return;
-    const sentryAny = Sentry as any;
-    sentryAny.setUser?.(null);
+    const sentry = Sentry as SentryLike;
+    sentry.setUser?.(null);
   });
 };
 
@@ -188,8 +198,8 @@ export const clearUser = () => {
 export const addBreadcrumb = (message: string, category?: string, level?: SeverityLevel) => {
   void loadSentry().then((Sentry) => {
     if (!Sentry) return;
-    const sentryAny = Sentry as any;
-    sentryAny.addBreadcrumb?.({
+    const sentry = Sentry as SentryLike;
+    sentry.addBreadcrumb?.({
       message,
       category: category || 'custom',
       level: level || 'info',

@@ -243,7 +243,7 @@ export interface ErrorResponse {
   path?: string;
   requestId?: string;
   routeScope?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 // ─── SYSTEM ───────────────────────────────────────────────────────────────────

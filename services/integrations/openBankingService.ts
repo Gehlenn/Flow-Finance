@@ -20,7 +20,7 @@ import { Account } from '../../models/Account';
 import { BankConnection, BankProvider, SyncResult, BRAZILIAN_BANKS } from '../../models/BankConnection';
 import { getProvider, RawBankTransaction, ProviderKey } from './mockBankProvider';
 import { FinancialEventEmitter } from '../../src/events/eventEngine';
-import { classifyImportedTransactions } from '../../src/finance/importService';
+import { classifyImportedTransactions, ImportedTransaction } from '../../src/finance/importService';
 import { normalizeFromIntegration, draftToTransaction } from '../../src/domain/intakeNormalizer';
 import { learnMemory } from '../../src/ai/aiMemory';
 import { makeId } from '../../utils/helpers';
@@ -31,6 +31,10 @@ import { getActiveWorkspaceScopedStorageKey } from '../../src/utils/workspaceSto
 // â”€â”€â”€ Storage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CONNECTIONS_KEY = 'flow_bank_connections';
+
+type ClassifiedBankTransaction = ImportedTransaction & Partial<Transaction> & {
+  external_reference?: string;
+};
 
 function readConnections(): BankConnection[] {
   try { return JSON.parse(localStorage.getItem(getActiveWorkspaceScopedStorageKey(CONNECTIONS_KEY)) || '[]'); }
@@ -76,7 +80,7 @@ function getApiErrorStatus(error: unknown): number | null {
     return statusFromObject;
   }
 
-  const message = String((error as any)?.message ?? '');
+  const message = String((error as { message?: unknown })?.message ?? '');
   const match = message.match(/API Error\s+(\d{3})/);
   return match ? Number(match[1]) : null;
 }
@@ -86,7 +90,7 @@ function extractRequestId(error: unknown): string | null {
     return error.requestId;
   }
 
-  const fromObject = (error as any)?.requestId;
+  const fromObject = (error as { requestId?: unknown })?.requestId;
   return typeof fromObject === 'string' && fromObject.trim() ? fromObject.trim() : null;
 }
 
@@ -530,7 +534,7 @@ function normalizeBankTransactionsFromDraft(input: Array<Partial<Transaction>>):
       }
 
       if (typeof item.category === 'string' && !category) {
-        tx.category = item.category as any;
+        tx.category = item.category as Category;
       }
 
       if (typeof item.confidence_score === 'number') {
@@ -658,9 +662,9 @@ export async function syncTransactions(
     const mapped = newRaw.map(r => mapToTransaction(r));
 
     // PART 5 â€” Classificar com IA (reutiliza classifyImportedTransactions do importService)
-    let classified = mapped;
+    let classified: ClassifiedBankTransaction[] = mapped as ClassifiedBankTransaction[];
     try {
-      classified = await classifyImportedTransactions(mapped as any, userId) as any;
+      classified = await classifyImportedTransactions(mapped as ImportedTransaction[], userId) as ClassifiedBankTransaction[];
     } catch (error) {
       logWarn('[OpenBanking] AI classification failed during sync; using basic mapping fallback', {
         connectionId,
@@ -672,8 +676,7 @@ export async function syncTransactions(
 
     // Converter para Transaction final sempre via TransactionDraft
     const finalTxs = normalizeBankTransactionsFromDraft(
-      classified.map((item: any) => ({
-        id: item.id,
+      classified.map((item) => ({
         amount: item.raw_amount ?? item.amount,
         type: item.type ?? item.raw_type,
         category: item.category ?? Category.PESSOAL,

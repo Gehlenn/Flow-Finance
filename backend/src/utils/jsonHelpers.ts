@@ -22,7 +22,7 @@ function extractJsonString(raw: string): string {
  * Prevents SyntaxError from crashing the API.
  * Handles LLM responses that wrap JSON in markdown code fences or preamble text.
  */
-export function safeJsonParse<T = any>(
+export function safeJsonParse<T = unknown>(
   jsonString: string,
   context: string = 'unknown'
 ): T {
@@ -72,18 +72,38 @@ export function parseSafeLimit(value: unknown, defaultVal: number, max = 500): n
  * Validate that AI response contains expected fields
  */
 export function validateAIResponse(
-  parsed: any,
+  parsed: unknown,
   requiredFields: string[],
   context: string
 ): void {
-  const missing = requiredFields.filter(field => !(field in parsed));
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    logger.error(
+      {
+        context,
+        receivedType: Array.isArray(parsed) ? 'array' : typeof parsed,
+      },
+      'AI response missing required fields'
+    );
+
+    throw new AppError(
+      500,
+      'AI response incomplete',
+      {
+        code: 'INCOMPLETE_AI_RESPONSE',
+        missing: requiredFields,
+      }
+    );
+  }
+
+  const parsedRecord = parsed as Record<string, unknown>;
+  const missing = requiredFields.filter(field => !(field in parsedRecord));
   
   if (missing.length > 0) {
     logger.error(
       {
         context,
         missing,
-        received: Object.keys(parsed),
+        received: Object.keys(parsedRecord),
       },
       'AI response missing required fields'
     );

@@ -67,9 +67,10 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
           });
         }
       }
-    } catch (e: any) {
-      logWarn('[ExtratoImporter] CSV processing failed', { formato, error: e });
-      erros.push('Erro ao processar CSV: ' + e.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao processar CSV.';
+      logWarn('[ExtratoImporter] CSV processing failed', { formato, error: message });
+      erros.push('Erro ao processar CSV: ' + message);
     }
 
   } else if (formato === 'OFX') {
@@ -103,9 +104,10 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
       if (transacoesOFX.length === 0) {
         erros.push('Nenhuma transação encontrada no OFX.');
       }
-    } catch (e: any) {
-      logWarn('[ExtratoImporter] OFX processing failed', { formato, error: e });
-      erros.push('Erro ao processar OFX: ' + e.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao processar OFX.';
+      logWarn('[ExtratoImporter] OFX processing failed', { formato, error: message });
+      erros.push('Erro ao processar OFX: ' + message);
     }
   } else {
     erros.push('Formato não suportado nesta versão: ' + formato);

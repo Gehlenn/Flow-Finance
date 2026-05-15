@@ -47,6 +47,7 @@ export function initializeFinancialEventPipeline(): void {
       recordMetric('ai.queue.pending', stats.pending);
       recordMetric('ai.queue.processing', stats.processing);
       recordMetric('ai.queue.completed', stats.completed);
+      recordMetric('ai.queue.cancelled', stats.cancelled);
     } finally {
       recordDuration('event.transaction_created.total_ms', start);
     }
