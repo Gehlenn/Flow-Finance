@@ -30,7 +30,7 @@ describe('ExternalIntegrationWrapper observability', () => {
         integration: expect.stringMatching(/^observability-/),
         attempts: 1,
         error: 'integration down',
-        circuitOpen: false,
+        circuitOpen: true,
         fallback: 'external-call-exhausted',
       }),
       'External call failed after exhausting retries',

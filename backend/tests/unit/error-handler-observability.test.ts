@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { NextFunction, Request, Response } from 'express';
 
-const loggerError = vi.fn();
+const { loggerError } = vi.hoisted(() => ({
+  loggerError: vi.fn(),
+}));
 
 vi.mock('../../src/config/logger', () => ({
   default: {

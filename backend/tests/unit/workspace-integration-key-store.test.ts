@@ -1,7 +1,9 @@
 import crypto from 'crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const mockWarn = vi.fn();
+const { mockWarn } = vi.hoisted(() => ({
+  mockWarn: vi.fn(),
+}));
 
 vi.mock('../../src/config/logger', () => ({
   default: {

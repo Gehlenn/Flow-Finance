@@ -38,10 +38,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
   const getFirebaseErrorMessage = (code: string) => {
     switch (code) {
       case 'auth/configuration-not-found': return 'Autenticacao Firebase indisponivel neste ambiente. Configure as variaveis do frontend para habilitar login real.';
-      case 'auth/email-already-in-use': return 'Este e-mail jÃ¡ estÃ¡ sendo utilizado.';
+      case 'auth/email-already-in-use': return 'Este e-mail já está sendo utilizado.';
       case 'auth/weak-password': return 'A senha deve ter pelo menos 6 caracteres.';
-      case 'auth/invalid-email': return 'O e-mail informado nÃ£o Ã© vÃ¡lido.';
-      case 'auth/user-not-found': return 'UsuÃ¡rio nÃ£o localizado.';
+      case 'auth/invalid-email': return 'O e-mail informado não é válido.';
+      case 'auth/user-not-found': return 'Usuário não localizado.';
       case 'auth/wrong-password': return 'Senha incorreta. Tente novamente.';
       default: return 'Ocorreu um erro inesperado. Verifique os dados.';
     }
@@ -51,21 +51,21 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
     switch (code) {
       case 'auth/configuration-not-found':
         return {
-          title: 'DiagnÃ³stico de autenticaÃ§Ã£o',
-          message: 'O login real depende das variÃ¡veis do Firebase no frontend ou do login local de desenvolvimento.',
+          title: 'Diagnóstico de autenticação',
+          message: 'O login real depende das variáveis do Firebase no frontend ou do login local de desenvolvimento.',
           suggestion: 'Verifique VITE_FIREBASE_* no frontend ou habilite VITE_AUTH_ALLOW_INSECURE_LOCAL_LOGIN no ambiente local.',
         };
       case 'auth/local-login-failed':
         return {
-          title: 'DiagnÃ³stico de sessÃ£o local',
-          message: 'O backend local rejeitou a autenticaÃ§Ã£o insegura de desenvolvimento.',
-          suggestion: 'Confirme se o backend estÃ¡ ativo, se a sessÃ£o dev foi carregada e se o login local estÃ¡ liberado.',
+          title: 'Diagnóstico de sessão local',
+          message: 'O backend local rejeitou a autenticação insegura de desenvolvimento.',
+          suggestion: 'Confirme se o backend está ativo, se a sessão dev foi carregada e se o login local está liberado.',
         };
       case 'auth/unauthorized-domain':
         return {
-          title: 'DiagnÃ³stico de domÃ­nio',
-          message: 'O domÃ­nio atual nÃ£o estÃ¡ autorizado no Firebase.',
-          suggestion: 'Adicione o domÃ­nio na lista de Authorized Domains do projeto Firebase.',
+          title: 'Diagnóstico de domínio',
+          message: 'O domínio atual não está autorizado no Firebase.',
+          suggestion: 'Adicione o domínio na lista de Authorized Domains do projeto Firebase.',
         };
       default:
         return null;
@@ -157,7 +157,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
       return;
     }
     if (password.length < 6) {
-      setError({ code: 'local/short-password', message: "A senha precisa de no mÃ­nimo 6 caracteres." });
+      setError({ code: 'local/short-password', message: "A senha precisa de no mínimo 6 caracteres." });
       return;
     }
     setIsLoading(true);
@@ -224,7 +224,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
               <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-[2rem] space-y-2 text-center">
                 <FlaskConical size={24} className="mx-auto text-indigo-500" />
                 <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 leading-tight">
-                  OAuth restrito. Adicione este domÃ­nio nos domÃ­nios autorizados do Firebase para continuar.
+                  OAuth restrito. Adicione este domínio nos domínios autorizados do Firebase para continuar.
                 </p>
               </div>
             </div>
@@ -241,7 +241,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
                   <p className="text-xs font-semibold uppercase tracking-[0.08em]">{getAuthDiagnostic(error.code)?.title}</p>
                   <p className="mt-1 text-[10px] font-medium leading-relaxed">{getAuthDiagnostic(error.code)?.message}</p>
                   <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] opacity-90">
-                    PrÃ³ximo passo: {getAuthDiagnostic(error.code)?.suggestion}
+                    Próximo passo: {getAuthDiagnostic(error.code)?.suggestion}
                   </p>
                 </div>
               )}
@@ -317,7 +317,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
                 <form onSubmit={handleRecoverPassword} className="space-y-4 animate-in slide-in-from-right-4 duration-500">
                   <button type="button" onClick={() => setView('login')} className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase mb-1"><ChevronLeft size={14} /> Voltar</button>
                   <div className="space-y-3">
-                    <p className="text-[10px] font-medium text-slate-500 text-center leading-relaxed px-2">Enviaremos um link de recuperaÃ§Ã£o para o e-mail cadastrado.</p>
+                    <p className="text-[10px] font-medium text-slate-500 text-center leading-relaxed px-2">Enviaremos um link de recuperação para o e-mail cadastrado.</p>
                     <input type="email" required aria-label="E-mail para recuperar senha" autoComplete="email" placeholder="E-mail cadastrado" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-4 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-medium outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
                   </div>
                   <button type="submit" className="w-full py-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-2xl font-semibold text-[10px] uppercase active:scale-95 transition-all">Recuperar Senha</button>
@@ -343,7 +343,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
             <ShieldCheck size={14} className="text-emerald-500" /> AES-256 Secured
           </div>
           <div className="text-center opacity-30">
-            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.08em]">Â© Komodo Flow Finance</p>
+            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.08em]">© Komodo Flow Finance</p>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">Build v1.0.0 Stable</p>
           </div>
         </div>

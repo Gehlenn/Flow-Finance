@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { monitorIntegration } from '../../src/services/observability/monitorIntegration';
 
-const loggerError = vi.fn();
+const { loggerError } = vi.hoisted(() => ({
+  loggerError: vi.fn(),
+}));
 
 vi.mock('../../src/config/logger', () => ({
   default: {
@@ -22,6 +23,8 @@ vi.mock('@sentry/node', () => ({
   addBreadcrumb: vi.fn(),
   withScope: vi.fn(),
 }));
+
+import { monitorIntegration } from '../../src/services/observability/monitorIntegration';
 
 describe('monitorIntegration observability', () => {
   it('logs contextual data when the wrapped call fails', async () => {

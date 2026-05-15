@@ -19,7 +19,7 @@ vi.mock('../../src/app/secondaryFlowsCopy', () => ({
       title: 'Metas',
       subtitle: 'Acompanhe seus objetivos',
       emptyTitle: 'Sem metas',
-      emptyDescription: 'Crie uma meta para comeÃ§ar',
+      emptyDescription: 'Crie uma meta para começar',
     },
   },
 }));

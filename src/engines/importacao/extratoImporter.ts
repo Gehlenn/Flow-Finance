@@ -1,4 +1,4 @@
-﻿// MÃ³dulo de ImportaÃ§Ã£o de Extratos BancÃ¡rios (OFX/CSV/PDF)
+﻿// Módulo de Importação de Extratos Bancários (OFX/CSV/PDF)
 // v0.8.x â€“ Flow Finance
 
 import { Transaction, TransactionType, Category } from '../../../types';
@@ -14,13 +14,13 @@ export interface ImportacaoExtratoResultado {
 
 export interface ImportacaoExtratoOptions {
   arquivo: Buffer | string;
-  formato?: ExtratoFormato; // Se nÃ£o informado, tentar auto-detectar
+  formato?: ExtratoFormato; // Se não informado, tentar auto-detectar
 }
 
 /**
- * Importa extrato bancÃ¡rio em formato OFX, CSV ou PDF.
- * @param options OpÃ§Ãµes de importaÃ§Ã£o
- * @returns Resultado da importaÃ§Ã£o (transaÃ§Ãµes extraÃ­das, erros, formato detectado)
+ * Importa extrato bancário em formato OFX, CSV ou PDF.
+ * @param options Opções de importação
+ * @returns Resultado da importação (transações extraídas, erros, formato detectado)
  */
 export async function importarExtrato(options: ImportacaoExtratoOptions): Promise<ImportacaoExtratoResultado> {
   let formato: ExtratoFormato | undefined = options.formato;
@@ -51,7 +51,7 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
     };
   }
 
-  // Auto-detecÃ§Ã£o simples
+  // Auto-detecção simples
   if (!formato) {
     if (conteudo.trim().startsWith('<OFX')) formato = 'OFX';
     else if (conteudo.includes(',')) formato = 'CSV';
@@ -60,14 +60,14 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
 
   if (formato === 'CSV') {
     try {
-      // Espera cabeÃ§alho: Data,Descricao,Valor
+      // Espera cabeçalho: Data,Descricao,Valor
       const linhas = conteudo.split(/\r?\n/).filter(Boolean);
       const cabecalho = linhas[0].split(',').map(h => h.trim().toLowerCase());
       const idxData = cabecalho.indexOf('data');
       const idxDesc = cabecalho.indexOf('descricao');
       const idxValor = cabecalho.indexOf('valor');
       if (idxData === -1 || idxDesc === -1 || idxValor === -1) {
-        erros.push('CabeÃ§alho CSV invÃ¡lido. Esperado: Data,Descricao,Valor');
+        erros.push('Cabeçalho CSV inválido. Esperado: Data,Descricao,Valor');
       } else {
         for (let i = 1; i < linhas.length; i++) {
           const cols = linhas[i].split(',');
@@ -76,7 +76,7 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
           const descricao = cols[idxDesc].trim();
           const valor = parseFloat(cols[idxValor].replace(',', '.'));
           if (!data || !descricao || isNaN(valor)) {
-            erros.push(`Linha ${i + 1} invÃ¡lida: ${linhas[i]}`);
+            erros.push(`Linha ${i + 1} inválida: ${linhas[i]}`);
             continue;
           }
           transacoes.push({
@@ -107,9 +107,9 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
         };
         const data = getTag('DTPOSTED').slice(0,8); // AAAAMMDD
         const valor = parseFloat(getTag('TRNAMT').replace(',', '.'));
-        const descricao = getTag('MEMO') || getTag('NAME') || 'Sem descriÃ§Ã£o';
+        const descricao = getTag('MEMO') || getTag('NAME') || 'Sem descrição';
         if (!data || isNaN(valor)) {
-          erros.push('TransaÃ§Ã£o OFX invÃ¡lida: ' + bloco);
+          erros.push('Transação OFX inválida: ' + bloco);
           continue;
         }
         // Converte data AAAAMMDD para AAAA-MM-DD
@@ -125,7 +125,7 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
         });
       }
       if (transacoesOFX.length === 0) {
-        erros.push('Nenhuma transaÃ§Ã£o encontrada no OFX.');
+        erros.push('Nenhuma transação encontrada no OFX.');
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao processar OFX.';
@@ -133,7 +133,7 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
       erros.push('Erro ao processar OFX: ' + message);
     }
   } else {
-    erros.push('Formato nÃ£o suportado nesta versÃ£o: ' + formato);
+    erros.push('Formato não suportado nesta versão: ' + formato);
   }
 
   return {

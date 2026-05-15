@@ -144,7 +144,7 @@ const BankCard: React.FC<{
             <div className="flex items-center gap-1.5 mt-1">
               <Sparkles size={9} className="text-emerald-500" />
               <p className="text-[8px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                +{lastResult.transactions_imported} transaÃ§Ãµes importadas
+                +{lastResult.transactions_imported} transações importadas
               </p>
             </div>
           )}
@@ -245,17 +245,17 @@ const BankPicker: React.FC<{
       <div>
         <p className="text-[9px] font-semibold text-emerald-700 dark:text-emerald-300">
           {pluggyEnabled
-            ? 'ConexÃ£o segura Pluggy ativa'
+            ? 'Conexão segura Pluggy ativa'
             : manualConnectDisabled
-            ? 'Backend em modo simulado (bloqueado em produÃ§Ã£o)'
-            : 'ConexÃ£o segura simulada'}
+            ? 'Backend em modo simulado (bloqueado em produção)'
+            : 'Conexão segura simulada'}
         </p>
         <p className="text-[8px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5 leading-relaxed">
           {pluggyEnabled
-            ? 'Token gerado no backend e credenciais protegidas no servidor. Nenhum CLIENT_ID/SECRET Ã© exposto no navegador.'
+            ? 'Token gerado no backend e credenciais protegidas no servidor. Nenhum CLIENT_ID/SECRET é exposto no navegador.'
             : manualConnectDisabled
-            ? 'Para evitar dados fictÃ­cios em produÃ§Ã£o, conexÃ£o manual estÃ¡ desabilitada atÃ© o backend voltar para providerMode=pluggy.'
-            : 'Ambiente de demonstraÃ§Ã£o com dados fictÃ­cios. Nenhuma credencial bancÃ¡ria real Ã© solicitada.'}
+            ? 'Para evitar dados fictícios em produção, conexão manual está desabilitada até o backend voltar para providerMode=pluggy.'
+            : 'Ambiente de demonstração com dados fictícios. Nenhuma credencial bancária real é solicitada.'}
         </p>
       </div>
     </div>
@@ -322,7 +322,7 @@ const BankPicker: React.FC<{
 
     {/* Future providers */}
     <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700 p-4">
-      <p className="text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em] mb-3">Conectores disponÃ­veis</p>
+      <p className="text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em] mb-3">Conectores disponíveis</p>
       <div className="flex gap-2 flex-wrap">
         {(pluggyConnectors.length
           ? pluggyConnectors.slice(0, 10).map((c) => c.name)
@@ -335,8 +335,8 @@ const BankPicker: React.FC<{
       </div>
       <p className="text-[8px] text-slate-400 font-medium mt-2 leading-relaxed">
         {pluggyEnabled
-          ? 'Fluxo real Pluggy ativo: o widget gera Item e o backend registra a conexÃ£o com seguranÃ§a.'
-          : 'A arquitetura provider permite integrar qualquer API Open Banking sem reescrever o cÃ³digo.'}
+          ? 'Fluxo real Pluggy ativo: o widget gera Item e o backend registra a conexão com segurança.'
+          : 'A arquitetura provider permite integrar qualquer API Open Banking sem reescrever o código.'}
       </p>
     </div>
   </div>
@@ -371,23 +371,23 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
   const [pluggyLoadRetry, setPluggyLoadRetry] = useState(0);
   const pluggyRecoveryVisible = bankingHealth?.providerMode === 'mock' || bankingHealth?.pluggyConfigured === false;
   const pluggyRecoveryHint = bankingHealth?.providerMode === 'mock'
-    ? 'O backend estÃ¡ em modo mock. Para liberar o fluxo real, volte o provider para pluggy.'
+    ? 'O backend está em modo mock. Para liberar o fluxo real, volte o provider para pluggy.'
     : bankingHealth?.pluggyConfigured === false
-      ? 'O backend respondeu sem configuraÃ§Ã£o Pluggy. Verifique a credencial e recarregue a tela.'
+      ? 'O backend respondeu sem configuração Pluggy. Verifique a credencial e recarregue a tela.'
       : 'Recarregue o status do backend e tente novamente.';
   const reloadRecoveryHint = pluggyRecoveryVisible ? pluggyRecoveryHint : null;
   const reloadDiagnostic = reloadError ? buildOpenBankingDiagnostic(reloadError) : null;
   const actionRecoveryHint = actionError
     ? (
-      /modo simulado|providerMode=pluggy|backend estÃ¡ em modo simulado/i.test(actionError)
-        ? 'Volte o provider para pluggy e recarregue a pÃ¡gina antes de tentar novamente.'
-        : /login\/token|sessÃ£o|token/i.test(actionError)
-          ? 'Confirme a sessÃ£o do usuÃ¡rio e o token do backend antes de repetir a aÃ§Ã£o.'
+      /modo simulado|providerMode=pluggy|backend está em modo simulado/i.test(actionError)
+        ? 'Volte o provider para pluggy e recarregue a página antes de tentar novamente.'
+        : /login\/token|sessão|token/i.test(actionError)
+          ? 'Confirme a sessão do usuário e o token do backend antes de repetir a ação.'
           : /desconectar/i.test(actionError)
-            ? 'Recarregue a lista de conexÃµes e tente desconectar novamente.'
+            ? 'Recarregue a lista de conexões e tente desconectar novamente.'
             : /sincronizar/i.test(actionError)
               ? 'Recarregue o status do backend e tente sincronizar novamente.'
-              : /Nenhuma conexÃ£o apta/i.test(actionError)
+              : /Nenhuma conexão apta/i.test(actionError)
                 ? 'Resolva um banco em erro ou reconecte uma conta para liberar o sync.'
                 : 'Recarregue o status do backend e tente novamente.'
     )
@@ -404,7 +404,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
         error,
         fallback: 'open-banking-reload-connections-failed',
       });
-      setReloadError('NÃ£o foi possÃ­vel carregar as conexÃµes bancÃ¡rias. Atualize a tela ou tente novamente.');
+      setReloadError('Não foi possível carregar as conexões bancárias. Atualize a tela ou tente novamente.');
     }
   }, [userId]);
 
@@ -449,7 +449,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
           error: err,
           fallback: 'open-banking-load-pluggy-connectors-failed',
         });
-          setPluggyLoadError('Conectores Pluggy indisponÃ­veis. O widget pode abrir sem lista de bancos atualizada.');
+          setPluggyLoadError('Conectores Pluggy indisponíveis. O widget pode abrir sem lista de bancos atualizada.');
           return [];
         }),
         createPluggyConnectToken(userId).catch((err) => {
@@ -457,7 +457,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
           error: err,
           fallback: 'open-banking-create-pluggy-token-failed',
         });
-          setPluggyLoadError('Token Pluggy indisponÃ­vel. Atualize a tela ou tente novamente em alguns instantes.');
+          setPluggyLoadError('Token Pluggy indisponível. Atualize a tela ou tente novamente em alguns instantes.');
           return null;
         }),
       ]);
@@ -474,7 +474,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
           fallback: 'open-banking-load-pluggy-status-failed',
         });
         if (!cancelled) {
-          setPluggyLoadError('NÃ£o foi possÃ­vel carregar o status do Open Banking. Verifique o backend antes de conectar.');
+          setPluggyLoadError('Não foi possível carregar o status do Open Banking. Verifique o backend antes de conectar.');
         }
       });
     }
@@ -545,7 +545,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
 
   const handleConnect = async (bank: BankOption) => {
     if (simulatedBackendBlocked) {
-      setActionError('Open Banking real indisponÃ­vel: backend estÃ¡ em modo simulado. Aguarde providerMode=pluggy.');
+      setActionError('Open Banking real indisponível: backend está em modo simulado. Aguarde providerMode=pluggy.');
       return;
     }
 
@@ -556,7 +556,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
       await reload();
       setView('list');
     } catch (error: unknown) {
-      setActionError('NÃ£o foi possÃ­vel conectar no banco real. Verifique login/token e tente novamente.');
+      setActionError('Não foi possível conectar no banco real. Verifique login/token e tente novamente.');
       logWarn('[OpenBanking] Connect failed', {
         error,
         fallback: 'open-banking-connect-failed',
@@ -578,7 +578,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
         error,
         fallback: 'open-banking-disconnect-failed',
       });
-      setActionError('NÃ£o foi possÃ­vel desconectar o banco. Atualize a lista e tente novamente.');
+      setActionError('Não foi possível desconectar o banco. Atualize a lista e tente novamente.');
     }
   };
 
@@ -586,7 +586,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
 
   const handleSync = async (id: string) => {
     if (simulatedBackendBlocked) {
-      setActionError('SincronizaÃ§Ã£o real bloqueada: backend estÃ¡ em modo simulado (mock).');
+      setActionError('Sincronização real bloqueada: backend está em modo simulado (mock).');
       return;
     }
 
@@ -612,7 +612,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
         error,
         fallback: 'open-banking-sync-failed',
       });
-      setActionError('NÃ£o foi possÃ­vel sincronizar este banco. Verifique o backend e tente novamente.');
+      setActionError('Não foi possível sincronizar este banco. Verifique o backend e tente novamente.');
     } finally {
       setSyncingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
       await reload();
@@ -623,13 +623,13 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
 
   const handleSyncAll = async () => {
     if (simulatedBackendBlocked) {
-      setActionError('SincronizaÃ§Ã£o real bloqueada: backend estÃ¡ em modo simulado (mock).');
+      setActionError('Sincronização real bloqueada: backend está em modo simulado (mock).');
       return;
     }
 
     const connected = connections.filter(c => c.connection_status !== 'error');
     if (!connected.length) {
-      setActionError('Nenhuma conexÃ£o apta para sincronizar. Resolva os bancos em erro ou reconecte a conta.');
+      setActionError('Nenhuma conexão apta para sincronizar. Resolva os bancos em erro ou reconecte a conta.');
       return;
     }
     setSyncAllLoading(true);
@@ -684,7 +684,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
               <div role="status" className="rounded-2xl border border-rose-200 bg-white/70 dark:bg-slate-900/60 p-3 space-y-1">
                 <p className="text-[9px] font-semibold uppercase tracking-[0.08em]">{reloadDiagnostic.title}</p>
                 <p className="text-[10px] font-medium leading-relaxed">{reloadDiagnostic.message}</p>
-                <p className="text-[8px] font-semibold uppercase tracking-[0.08em]">PrÃ³ximo passo: {reloadDiagnostic.suggestion}</p>
+                <p className="text-[8px] font-semibold uppercase tracking-[0.08em]">Próximo passo: {reloadDiagnostic.suggestion}</p>
               </div>
             )}
             <button
@@ -693,7 +693,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
               className="self-start inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-600 text-white text-[9px] font-semibold uppercase tracking-[0.08em] hover:bg-rose-700 transition-colors"
             >
               <RefreshCw size={11} />
-              Recarregar conexÃµes
+              Recarregar conexões
             </button>
           </div>
         </div>
@@ -711,7 +711,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
               <div role="status" className="rounded-2xl border border-rose-200 bg-white/70 dark:bg-slate-900/60 p-3 space-y-1 mt-1">
                 <p className="text-[9px] font-semibold uppercase tracking-[0.08em]">{actionDiagnostic.title}</p>
                 <p className="text-[10px] font-medium leading-relaxed">{actionDiagnostic.message}</p>
-                <p className="text-[8px] font-semibold uppercase tracking-[0.08em]">PrÃ³ximo passo: {actionDiagnostic.suggestion}</p>
+                <p className="text-[8px] font-semibold uppercase tracking-[0.08em]">Próximo passo: {actionDiagnostic.suggestion}</p>
               </div>
             )}
           </div>
@@ -743,7 +743,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
           <AlertCircle size={14} className="shrink-0 mt-0.5" />
           <div className="flex flex-col gap-1">
             <p className="text-[10px] font-medium leading-relaxed">
-              Ambiente em modo simulado detectado ({bankingHealth?.providerMode || 'desconhecido'}). Em produÃ§Ã£o, conexÃµes e sync reais ficam bloqueados para evitar dados fictÃ­cios.
+              Ambiente em modo simulado detectado ({bankingHealth?.providerMode || 'desconhecido'}). Em produção, conexões e sync reais ficam bloqueados para evitar dados fictícios.
             </p>
             <p className="text-[9px] font-semibold uppercase tracking-[0.08em] opacity-80">{pluggyRecoveryHint}</p>
           </div>
@@ -755,7 +755,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
           <AlertCircle size={14} className="shrink-0 mt-0.5" />
           <div className="flex flex-col gap-1">
             <p className="text-[10px] font-medium leading-relaxed">
-              Ambiente em modo simulado detectado ({bankingHealth?.providerMode || 'desconhecido'}). Em produÃ§Ã£o, conexÃµes e sync reais ficam bloqueados para evitar dados fictÃ­cios.
+              Ambiente em modo simulado detectado ({bankingHealth?.providerMode || 'desconhecido'}). Em produção, conexões e sync reais ficam bloqueados para evitar dados fictícios.
             </p>
             <p className="text-[9px] font-semibold uppercase tracking-[0.08em] opacity-80">{pluggyRecoveryHint}</p>
           </div>
@@ -838,7 +838,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
               <div className="text-center px-6">
                 <p className="font-semibold text-slate-800 dark:text-white text-sm">Nenhum banco conectado</p>
                 <p className="text-[10px] text-slate-400 font-medium mt-1 leading-relaxed">
-                  Conecte sua conta para sincronizar transaÃ§Ãµes automaticamente com classificaÃ§Ã£o por IA
+                  Conecte sua conta para sincronizar transações automaticamente com classificação por IA
                 </p>
               </div>
               <button
@@ -872,7 +872,7 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
               <p className="text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Arquitetura modular</p>
             </div>
             <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-              Cada banco usa um <span className="text-indigo-500">IBankProvider</span> independente. Para integrar Pluggy, Belvo ou TrueLayer, basta implementar a interface e registrÃ¡-la â€” zero mudanÃ§as na UI.
+              Cada banco usa um <span className="text-indigo-500">IBankProvider</span> independente. Para integrar Pluggy, Belvo ou TrueLayer, basta implementar a interface e registrá-la â€” zero mudanças na UI.
             </p>
             <div className="flex gap-2 mt-3 flex-wrap">
               {[

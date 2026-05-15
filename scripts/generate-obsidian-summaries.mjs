@@ -92,7 +92,7 @@ function deriveKeyPoints(entry, text) {
   let inBullets = false;
 
   for (const rawLine of lines) {
-    const line = rawLine.replace(/^\uFEFF|^Ã¯Â»Â¿/, '').trim();
+    const line = rawLine.replace(/^\uFEFF|^\u00EF\u00BB\u00BF/, '').trim();
     if (!line) {
       if (inBullets && bullets.length >= 4) break;
       continue;

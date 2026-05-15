@@ -1,4 +1,4 @@
-﻿# IA - Fases TÃ©cnicas 1 e 2 (2026-05-14)
+﻿# IA - Fases Técnicas 1 e 2 (2026-05-14)
 
 ## Escopo
 Este plano detalha a execucao das entregas 1 e 2 da trilha de IA:

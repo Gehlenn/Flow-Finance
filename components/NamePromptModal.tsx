@@ -22,7 +22,7 @@ const NamePromptModal: React.FC<NamePromptModalProps> = ({ onSave }) => {
             <Sparkles size={32} />
           </div>
           <h2 className="text-2xl font-semibold text-slate-800 tracking-tight">Primeiro Passo</h2>
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-[0.08em] mt-2">Como vocÃª quer ser chamado?</p>
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-[0.08em] mt-2">Como você quer ser chamado?</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -43,7 +43,7 @@ const NamePromptModal: React.FC<NamePromptModalProps> = ({ onSave }) => {
             type="submit"
             className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-semibold text-xs uppercase tracking-[0.08em] shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 active:scale-[0.98]"
           >
-            ComeÃ§ar Agora <Check size={18} />
+            Começar Agora <Check size={18} />
           </button>
         </form>
       </div>

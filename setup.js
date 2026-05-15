@@ -29,7 +29,7 @@ const log = {
   info: (msg) => process.stdout.write(`â„¹ï¸  ${msg}`),
   success: (msg) => process.stdout.write(`âœ… ${msg}`),
   warning: (msg) => process.stdout.write(`âš ï¸  ${msg}`),
-  error: (msg) => process.stderr.write(`âŒ ${msg}\n`),
+  error: (msg) => process.stderr.write(`ERROR ${msg}\n`),
   title: (msg) => process.stdout.write(`\nðŸš€ ${msg}\n`),
 };
 

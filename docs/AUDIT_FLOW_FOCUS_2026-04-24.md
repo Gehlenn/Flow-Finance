@@ -1,45 +1,45 @@
-﻿# Auditoria de ExecuÃ§Ã£o - Flow Focus 2026-04 (2026-04-24)
+﻿# Auditoria de Execução - Flow Focus 2026-04 (2026-04-24)
 
 Data: 2026-04-24
-Escopo: alinhar o repositÃ³rio com o bundle canÃ´nico do vault e validar o hotfix da matriz de E2E.
+Escopo: alinhar o repositório com o bundle canônico do vault e validar o hotfix da matriz de E2E.
 
 ## Resumo
 
 - `npm run health:vercel` continua respeitando `VERCEL_TARGET_URL`.
 - `npm run test:critical` permanece como alias para `npm run test:coverage:critical`.
-- `npm run validate:e2e:matrix` e `npm run validate:e2e:matrix:dry` seguem disponÃ­veis.
+- `npm run validate:e2e:matrix` e `npm run validate:e2e:matrix:dry` seguem disponíveis.
 - `scripts/validate-e2e-matrix.mjs` agora chama o CLI do Playwright diretamente via `node`.
-- O workflow de CI passou a enviar `--project "Mobile Chrome"` e `--project "Mobile Safari"` de forma explÃ­cita.
+- O workflow de CI passou a enviar `--project "Mobile Chrome"` e `--project "Mobile Safari"` de forma explícita.
 - O backend continua com `npm run build` limpando `dist/` antes de compilar e `npm start` apontando para `dist/src/index.js`.
-- A observabilidade de IA segue com telemetria estruturada e agora inclui resumo de confianÃ§a quando o payload expÃµe sinais de confidence.
+- A observabilidade de IA segue com telemetria estruturada e agora inclui resumo de confiança quando o payload expõe sinais de confidence.
 - O dashboard e o assistente ganharam hierarquia mais operacional: caixa confirmado, previsao e pendencias agora aparecem com separacao visual mais clara.
-- A tela de login deixou de parecer uma tela genÃ©rica de SaaS e passou a explicitar o painel operacional de caixa e pendÃªncias.
-- A lista de transaÃ§Ãµes agora abre com leitura rÃ¡pida de confirmado, pendente e vencido, reduzindo o risco de leitura errada do caixa.
-- O painel de fluxo passou a separar caixa realizado, entradas e saÃ­das antes de abrir o diagnÃ³stico consultivo.
-- O intake compartilhado agora destaca que a IA triagem/revisÃ£o nÃ£o substitui validaÃ§Ã£o do caixa antes de salvar.
-- A tela de configuraÃ§Ãµes ficou mais operacional, com prioridade para workspace, acesso e suporte em vez de um painel genÃ©rico de SaaS.
+- A tela de login deixou de parecer uma tela genérica de SaaS e passou a explicitar o painel operacional de caixa e pendências.
+- A lista de transações agora abre com leitura rápida de confirmado, pendente e vencido, reduzindo o risco de leitura errada do caixa.
+- O painel de fluxo passou a separar caixa realizado, entradas e saídas antes de abrir o diagnóstico consultivo.
+- O intake compartilhado agora destaca que a IA triagem/revisão não substitui validação do caixa antes de salvar.
+- A tela de configurações ficou mais operacional, com prioridade para workspace, acesso e suporte em vez de um painel genérico de SaaS.
 
 ## Hotfix validado
 
-O gate de E2E tinha uma regressÃ£o quando o nome do projeto continha espaÃ§o. O wrapper anterior usava um `spawn` que podia falhar com `EINVAL` ao executar o projeto `Mobile Chrome` ou `Mobile Safari`.
+O gate de E2E tinha uma regressão quando o nome do projeto continha espaço. O wrapper anterior usava um `spawn` que podia falhar com `EINVAL` ao executar o projeto `Mobile Chrome` ou `Mobile Safari`.
 
-CorreÃ§Ã£o aplicada:
-- normalizaÃ§Ã£o dos argumentos `--project=...` no script `scripts/validate-e2e-matrix.mjs`;
-- execuÃ§Ã£o direta do CLI do Playwright via `node`, sem `npx`/wrapper de shell;
+Correção aplicada:
+- normalização dos argumentos `--project=...` no script `scripts/validate-e2e-matrix.mjs`;
+- execução direta do CLI do Playwright via `node`, sem `npx`/wrapper de shell;
 - ajuste do workflow para passar o nome do projeto como argumento separado.
 
-ValidaÃ§Ãµes executadas:
+Validações executadas:
 - `npm run test:ci`
 - `npm run validate:e2e:matrix:dry`
 - `npm run validate:e2e:matrix -- --project "Mobile Chrome" --list`
 - `npm run validate:e2e:matrix -- --project "Mobile Safari" --list`
 
-## Nova evidÃªncia de IA
+## Nova evidência de IA
 
 - `backend/tests/unit/ai-controller-confidence-summary.test.ts`
 - `backend/src/controllers/aiController.ts`
 
-## EvidÃªncia de UI
+## Evidência de UI
 
 - `components/Login.tsx`
 - `tests/unit/login.test.tsx`
@@ -58,38 +58,38 @@ ValidaÃ§Ãµes executadas:
 - `tests/unit/assistant-reminder-states.test.tsx`
 - `tests/unit/assistant-copy.test.ts`
 
-## Hotfix de sessÃ£o local
+## Hotfix de sessão local
 
-A IA no app tambÃ©m dependia de sessÃ£o backend vÃ¡lida. O ambiente local nÃ£o estava habilitando o fallback seguro de desenvolvimento, entÃ£o o frontend entrava em login Firebase sem conseguir fechar a troca de sessÃ£o no backend.
+A IA no app também dependia de sessão backend válida. O ambiente local não estava habilitando o fallback seguro de desenvolvimento, então o frontend entrava em login Firebase sem conseguir fechar a troca de sessão no backend.
 
-CorreÃ§Ã£o aplicada:
+Correção aplicada:
 - `VITE_AUTH_ALLOW_INSECURE_LOCAL_LOGIN=true` em `.env.local`;
 - `AUTH_ALLOW_INSECURE_LOCAL_LOGIN=true` em `backend/.env.local`;
-- atualizaÃ§Ã£o dos arquivos de exemplo para deixar o caminho explÃ­cito em novas instalaÃ§Ãµes.
+- atualização dos arquivos de exemplo para deixar o caminho explícito em novas instalações.
 
 Efeito esperado:
-- quando o Firebase local nÃ£o estiver com backend identity configurado, o fluxo de desenvolvimento cai para o login local controlado;
-- o frontend passa a receber token backend vÃ¡lido;
+- quando o Firebase local não estiver com backend identity configurado, o fluxo de desenvolvimento cai para o login local controlado;
+- o frontend passa a receber token backend válido;
 - as rotas de IA deixam de responder 401/fallback vazio no app local.
 
-## EvidÃªncias
+## Evidências
 
 - Arquivo do hotfix: `scripts/validate-e2e-matrix.mjs`
 - Workflow atualizado: `.github/workflows/tests.yml`
 - Teste novo: `tests/unit/validate-e2e-matrix.test.ts`
 - Arquivos de ambiente atualizados: `.env.local`, `backend/.env.local`, `.env.example`, `backend/.env.example`
 
-## ConclusÃ£o
+## Conclusão
 
-O gate de E2E ficou estÃ¡vel para projetos com espaÃ§o no nome e a suÃ­te geral permaneceu verde apÃ³s a correÃ§Ã£o.
-O fluxo de IA no app local agora depende do login de desenvolvimento habilitado por env para conseguir obter sessÃ£o backend.
+O gate de E2E ficou estável para projetos com espaço no nome e a suíte geral permaneceu verde após a correção.
+O fluxo de IA no app local agora depende do login de desenvolvimento habilitado por env para conseguir obter sessão backend.
 
 ## Open Banking Observability
 
 - `disconnectBank` agora registra falhas do backend/provider com diagnostico estruturado antes de remover a conexao local.
 - `fullSync` agora registra falha parcial de contas sem interromper a etapa de transacoes, mantendo o fluxo tolerante existente.
 - A tela de Open Banking agora mostra diagnostico visivel quando health, conectores ou token Pluggy falham ao carregar.
-- O bloco de carregamento do Pluggy agora expÃµe um botao de retry visivel para reabrir o fluxo sem recarregar a pagina inteira.
+- O bloco de carregamento do Pluggy agora expõe um botao de retry visivel para reabrir o fluxo sem recarregar a pagina inteira.
 - A recarga de conexoes bancarias agora mostra diagnostico visivel quando falha, em vez de deixar a tela sem explicacao.
 - A recarga de conexoes bancarias agora tambem oferece retry visivel no proprio alerta, mantendo o fluxo no mesmo contexto.
 - O alerta de recarga tambem reaproveita o hint de recuperacao do provider, em vez de deixar o usuario sem contexto quando o backend esta em mock.
@@ -98,9 +98,9 @@ O fluxo de IA no app local agora depende do login de desenvolvimento habilitado 
 - Sync em lote agora mostra erro visivel quando todas as conexoes listadas estao em erro.
 - Evidencia: `services/integrations/openBankingService.ts`, `pages/OpenBanking.tsx`, `tests/unit/open-banking-service-critical-branches.test.ts` e `tests/unit/open-banking-page.test.tsx`.
 
-## Limite desta sessÃ£o
+## Limite desta sessão
 
-- O `importService.ts` foi rechecado em UTF-8 e o aparente mojibake era apenas renderizaÃ§Ã£o do terminal; nÃ£o ficou limpeza de fonte aberta neste eixo.
+- O `importService.ts` foi rechecado em UTF-8 e o aparente mojibake era apenas renderização do terminal; não ficou limpeza de fonte aberta neste eixo.
 - O arquivo permaneceu limpo no `HEAD`, e `npm run type-check:app` continuou verde.
 
 ## Verificacao dedicada de mojibake
@@ -126,7 +126,7 @@ O fluxo de IA no app local agora depende do login de desenvolvimento habilitado 
 
 - `helpers.ts`, `cashflowPredictor.ts` e `CFOAdvisor.ts` agora validam date-only com roundtrip local, descartando datas impossiveis em vez de aceitar a normalizacao silenciosa do `Date`.
 - A cobertura remanescente do gate foi eliminada; `openBankingService.ts` agora fecha o ultimo ramo redundante de fallback de mensagem e o gate critico encerra sem branches pendentes.
-- `src/engines/importacao/pdfExtrato.ts` foi reescrito em UTF-8 limpo e voltou a compilar com `pdf-parse` via import dinÃ¢mico, eliminando o ultimo erro de `type-check`.
+- `src/engines/importacao/pdfExtrato.ts` foi reescrito em UTF-8 limpo e voltou a compilar com `pdf-parse` via import dinâmico, eliminando o ultimo erro de `type-check`.
 - O parser de PDF agora tem cobertura para texto vazio e rejeicao do parser, deixando o fallback de importacao visivel nos testes.
 - `FinanceCategory` agora tem uma unica fonte de verdade no engine de categorizacao, e o reexport em `transactionCategorizer.ts` preserva o contrato publico.
 ## Evidencia adicional desta sessao
@@ -149,8 +149,8 @@ O fluxo de IA no app local agora depende do login de desenvolvimento habilitado 
 
 ## Navegacao e Settings alinhados
 
-- A navegacao principal agora fala `InÃ­cio`, `TransaÃ§Ãµes`, `Fluxo`, `IA consultiva` e `ConfiguraÃ§Ãµes`.
-- `Settings` passou a abrir com linguagem operacional e rÃ³tulos de seÃ§Ã£o mais claros.
+- A navegacao principal agora fala `Início`, `Transações`, `Fluxo`, `IA consultiva` e `Configurações`.
+- `Settings` passou a abrir com linguagem operacional e rótulos de seção mais claros.
 - O fluxo de logout no teste de Settings foi fixado por role para evitar falso positivo textual.
 
 ## CashFlow clarity estabilizada
@@ -202,7 +202,7 @@ O fluxo de IA no app local agora depende do login de desenvolvimento habilitado 
 
 - A resposta vazia do CFO agora gera log de debug no painel de AI Debug Logs.
 - O painel deixa de ficar oco quando a IA falha e passa a mostrar a entrada, intent e motivo do fallback.
-- O teste 	ests/unit/ai-cfo-debug-log.test.ts cobre a gravaÃ§Ã£o do log local.
+- O teste 	ests/unit/ai-cfo-debug-log.test.ts cobre a gravação do log local.
 
 
 ## Chunk guard simplificado
@@ -1694,3 +1694,9 @@ O fluxo de IA no app local agora depende do login de desenvolvimento habilitado 
 - 2026-05-15: ai-service-initialization, banking-connection-store, event-store, firestore-admin e prediction-engine ganharam o ultimo caminho saudavel faltante.
 - ai-service-initialization agora valida singleton real e log de sucesso; banking-connection-store agora valida reuse do Firestore com ignoreUndefinedProperties; event-store persiste sem warn quando o arquivo grava normalmente; firestore-admin valida reuse e ausencia de error; prediction-engine valida cache Redis saudável sem warn.
 - Validado com npx vitest run backend/tests/unit/ai-service-initialization-observability.test.ts backend/tests/unit/banking-connection-store-observability.test.ts backend/tests/unit/event-store-observability.test.ts backend/tests/unit/firestore-admin-observability.test.ts backend/tests/unit/prediction-engine-observability.test.ts --pool=threads --maxWorkers=1, npm --prefix backend run type-check e npm run type-check:app.
+- 2026-05-15: revisão de bugs fechou drift de mocks hoisted, dead-letter da fila e contexto de observabilidade.
+- backend/tests/unit/auth-decode-token.test.ts, error-handler-observability.test.ts, event-queue.test.ts, monitor-integration-observability.test.ts e workspace-integration-key-store.test.ts passaram a usar vi.hoisted nos mocks consumidos por vi.mock.
+- backend/src/events/eventQueue.ts agora registra event-queue-dead-letter no momento em que o retry atinge MAX_RETRIES, sem depender de uma tentativa posterior.
+- backend/src/services/observability/monitorIntegration.ts passou a incluir userId nos logs de sucesso e erro de integracao.
+- O gate docs:check-mojibake voltou a ficar limpo depois da normalizacao de textos PT-BR corrompidos em app, docs, scripts e testes.
+- Validado com npx vitest run backend/tests/unit --pool=threads --maxWorkers=1 --reporter=dot --silent --bail=1, npx vitest run tests/unit/ai-input.test.tsx tests/unit/cashflow-clarity.test.tsx tests/unit/import-transactions-session.test.tsx tests/unit/open-banking-page.test.tsx tests/unit/useSyncEngine.test.tsx --pool=threads --maxWorkers=1, npm run docs:check-mojibake, npm run type-check:app e npm --prefix backend run type-check.

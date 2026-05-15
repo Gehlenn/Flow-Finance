@@ -57,10 +57,10 @@ function buildGoalsDiagnostic(kind: 'target' | 'contribute'): { title: string; m
 }
 
 const GOAL_PRESETS: Array<{ title: string; category: Category }> = [
-  { title: 'Reserva de emergÃªncia', category: Category.INVESTIMENTO },
+  { title: 'Reserva de emergência', category: Category.INVESTIMENTO },
   { title: 'Viagem', category: Category.PESSOAL },
   { title: 'Novo equipamento', category: Category.CONSULTORIO },
-  { title: 'Entrada do imÃ³vel', category: Category.INVESTIMENTO },
+  { title: 'Entrada do imóvel', category: Category.INVESTIMENTO },
 ];
 
 function getGoalProgress(goal: Goal): number {
@@ -401,7 +401,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
                 type="text"
                 value={formData.title}
                 onChange={(event) => setFormData((current) => ({ ...current, title: event.target.value }))}
-                placeholder="Ex: Reserva de EmergÃªncia"
+                placeholder="Ex: Reserva de Emergência"
                 className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
               />
             </div>
@@ -422,7 +422,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
                   <div role="status" className="mt-2 rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-500/10 p-3 space-y-1">
                     <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-rose-700 dark:text-rose-300">{targetAmountDiagnostic.title}</p>
                     <p className="text-[10px] font-medium text-rose-700 dark:text-rose-100">{targetAmountDiagnostic.message}</p>
-                    <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-rose-600 dark:text-rose-300">PrÃ³ximo passo: {targetAmountDiagnostic.suggestion}</p>
+                    <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-rose-600 dark:text-rose-300">Próximo passo: {targetAmountDiagnostic.suggestion}</p>
                   </div>
                 )}
               </div>
@@ -545,7 +545,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
                 <div role="status" className="mt-2 rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-500/10 p-3 space-y-1">
                   <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-rose-700 dark:text-rose-300">{contributeDiagnostic.title}</p>
                   <p className="text-[10px] font-medium text-rose-700 dark:text-rose-100">{contributeDiagnostic.message}</p>
-                  <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-rose-600 dark:text-rose-300">PrÃ³ximo passo: {contributeDiagnostic.suggestion}</p>
+                  <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-rose-600 dark:text-rose-300">Próximo passo: {contributeDiagnostic.suggestion}</p>
                 </div>
               )}
             </div>

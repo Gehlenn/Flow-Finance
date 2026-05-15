@@ -2,7 +2,7 @@
  * AI CONTROL PANEL â€” src/pages/AIControlPanel.tsx
  *
  * PART 6 â€” Painel de controle para o sistema de IA do Flow Finance.
- * PART 7 â€” VisÃ­vel apenas em modo desenvolvimento (IS_DEV).
+ * PART 7 â€” Visível apenas em modo desenvolvimento (IS_DEV).
  *
  * Design: dark terminal / command-center â€” monospace, scanline aesthetic,
  * deliberate brutalist density. Think "NASA mission control meets developer DevTools".
@@ -717,7 +717,7 @@ const MemoryTab: React.FC<{ userId: string }> = ({ userId }) => {
 
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 && !loadError ? (
-          <EmptyState icon={<Brain size={32} />} message="Nenhuma memÃ³ria encontrada" />
+          <EmptyState icon={<Brain size={32} />} message="Nenhuma memória encontrada" />
         ) : (
           <div className="divide-y divide-slate-800">
             {filtered.map(entry => (
@@ -815,7 +815,7 @@ const InsightsTab: React.FC<{ transactions: Transaction[]; userId: string }> = (
       <SectionHeader icon={<Sparkles size={11} />} title="Financial Insights" count={insights.length} />
       <div className="flex-1 overflow-y-auto">
         {insights.length === 0 ? (
-          <EmptyState icon={<Sparkles size={32} />} message="Sem insights â€” adicione transaÃ§Ãµes" />
+          <EmptyState icon={<Sparkles size={32} />} message="Sem insights â€” adicione transações" />
         ) : (
           <div className="p-3 flex flex-col gap-2">
             {insights.map(insight => (
@@ -867,7 +867,7 @@ const AutopilotTab: React.FC<{ transactions: Transaction[]; accounts: Account[] 
       <SectionHeader icon={<Bot size={11} />} title="Autopilot Actions" count={actions.length} />
       <div className="flex-1 overflow-y-auto">
         {actions.length === 0 ? (
-          <EmptyState icon={<Bot size={32} />} message="Nenhuma aÃ§Ã£o â€” dados insuficientes" />
+          <EmptyState icon={<Bot size={32} />} message="Nenhuma ação â€” dados insuficientes" />
         ) : (
           <div className="p-3 flex flex-col gap-2">
             {actions.map(action => {
@@ -1068,7 +1068,7 @@ const SubscriptionsTab: React.FC<{ transactions: Transaction[] }> = ({ transacti
                     <div className="flex items-center gap-1.5 mt-1.5">
                       <Calendar size={8} className="text-slate-500" />
                       <span className="font-mono text-xs text-slate-500">
-                        PrÃ³xima: {formatNextCharge(sub.next_expected)}
+                        Próxima: {formatNextCharge(sub.next_expected)}
                       </span>
                       <span className="font-mono text-xs text-slate-600 ml-auto">
                         Total: {fmt(sub.total_spent)}
@@ -1129,7 +1129,7 @@ const MoneyMapTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }
         {/* Segmented bar */}
         {map.distribution.length > 0 && (
           <div className="mb-4">
-            <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em] mb-2">DistribuiÃ§Ã£o</p>
+            <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em] mb-2">Distribuição</p>
             <div className="flex h-3 rounded overflow-hidden gap-px">
               {map.distribution.slice(0, 6).map(item => (
                 <div
@@ -1145,7 +1145,7 @@ const MoneyMapTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }
 
         {/* Category table */}
         {map.distribution.length === 0 ? (
-          <EmptyState icon={<BarChart3 size={32} />} message="Sem despesas no perÃ­odo" />
+          <EmptyState icon={<BarChart3 size={32} />} message="Sem despesas no período" />
         ) : (
           <div className="flex flex-col gap-1.5">
             {map.distribution.map(item => (
@@ -1191,7 +1191,7 @@ const LeaksTab: React.FC<{ transactions: Transaction[]; leaks?: FinancialLeak[] 
                       <AlertTriangle size={9} className="text-rose-500 shrink-0" />
                       <span className="font-mono text-xs text-rose-300 truncate">{leak.merchant}</span>
                     </div>
-                    <p className="font-mono text-xs text-slate-400 ml-3.5">R$ {leak.monthly_cost.toFixed(2)}/mÃªs - {leak.occurrences} ocorrÃªncias</p>
+                    <p className="font-mono text-xs text-slate-400 ml-3.5">R$ {leak.monthly_cost.toFixed(2)}/mês - {leak.occurrences} ocorrências</p>
                     <p className="font-mono text-xs text-slate-500 ml-3.5 mt-1">{leak.suggestion}</p>
                   </div>
                 </div>
@@ -1325,7 +1325,7 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <div className="bg-slate-800/50 rounded p-4">
-          <h4 className="font-mono text-xs text-slate-300 mb-3">Configurar CenÃ¡rio</h4>
+          <h4 className="font-mono text-xs text-slate-300 mb-3">Configurar Cenário</h4>
           <div className="space-y-3">
             <select
               value={scenario.type}
@@ -1334,7 +1334,7 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
             >
               <option value="extra_spending">Gasto Extra</option>
               <option value="monthly_savings">Economia Mensal</option>
-              <option value="months">ProjeÃ§Ã£o por Meses</option>
+              <option value="months">Projeção por Meses</option>
             </select>
 
             {scenario.type === 'extra_spending' && (
@@ -1352,7 +1352,7 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
                 <input
                   value={scenario.description}
                   onChange={e => setScenario({ ...scenario, description: e.target.value })}
-                  placeholder="DescriÃ§Ã£o"
+                  placeholder="Descrição"
                   className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-xs text-slate-300"
                 />
               </>
@@ -1370,7 +1370,7 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
                 <input
                   value={scenario.description}
                   onChange={e => setScenario({ ...scenario, description: e.target.value })}
-                  placeholder="DescriÃ§Ã£o"
+                  placeholder="Descrição"
                   className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-xs text-slate-300"
                 />
               </>
@@ -1378,7 +1378,7 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
 
             {scenario.type === 'months' && (
               <>
-                <label htmlFor="sim-months" className="font-mono text-xs text-slate-400">Meses da projeÃ§Ã£o</label>
+                <label htmlFor="sim-months" className="font-mono text-xs text-slate-400">Meses da projeção</label>
               <input
                   id="sim-months"
                   type="number"
@@ -1409,7 +1409,7 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
                 <p className="font-mono text-[12px] text-emerald-400">R$ {result.projected_balance.toFixed(2)}</p>
               </div>
               <div>
-                <p className="font-mono text-xs text-slate-500">PerÃ­odo</p>
+                <p className="font-mono text-xs text-slate-500">Período</p>
                 <p className="font-mono text-[12px] text-slate-300">{result.simulation_period} meses</p>
               </div>
             </div>
@@ -1750,7 +1750,7 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
                         <span className="font-mono text-xs text-slate-600 w-4 shrink-0">#{i + 1}</span>
                         <div className="flex-1 min-w-0">
                           <p className="font-mono text-xs text-amber-300 truncate">{m.name}</p>
-                          <p className="font-mono text-xs text-slate-500 mt-0.5">{m.visit_count}Ã— Â· avg {fmt(m.avg_amount)}</p>
+                          <p className="font-mono text-xs text-slate-500 mt-0.5">{m.visit_count}Ã— · avg {fmt(m.avg_amount)}</p>
                         </div>
                         <span className="font-mono text-xs text-slate-200 font-medium">{fmt(m.total_spent)}</span>
                         {selectedNode === m.merchant_id
@@ -1787,7 +1787,7 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
                     <div className="h-full bg-violet-500 rounded-full" style={{ width: `${Math.min(100, cat.percentage)}%` }} />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs text-slate-500">{cat.count} transaÃ§Ãµes Â· {cat.percentage.toFixed(1)}%</span>
+                    <span className="font-mono text-xs text-slate-500">{cat.count} transações · {cat.percentage.toFixed(1)}%</span>
                     {cat.top_merchants.length > 0 && (
                       <span className="font-mono text-xs text-slate-500 truncate max-w-[120px]">{cat.top_merchants.join(', ')}</span>
                     )}
@@ -1809,7 +1809,7 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
                   <div className="flex-1 min-w-0">
                     <p className="font-mono text-xs text-slate-200 truncate">{sub.name}</p>
                     <p className="font-mono text-xs text-slate-500 mt-0.5">
-                      {sub.visit_count}Ã— Â· {sub.is_confirmed_subscription ? 'âœ“ confirmada' : '? candidata'}
+                      {sub.visit_count}Ã— · {sub.is_confirmed_subscription ? 'âœ“ confirmada' : '? candidata'}
                     </p>
                   </div>
                   <span className={`font-mono text-xs font-medium ${sub.is_confirmed_subscription ? 'text-emerald-400' : 'text-amber-400'}`}>
@@ -1868,7 +1868,7 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
                   );
                 })}
               {graph.edges.filter(e => e.relation === 'co_occurs').length === 0 && (
-                <p className="font-mono text-xs text-slate-600">Sem co-ocorrÃªncias</p>
+                <p className="font-mono text-xs text-slate-600">Sem co-ocorrências</p>
               )}
             </div>
           </div>
@@ -1907,10 +1907,10 @@ const SystemStats: React.FC<{ transactions: Transaction[]; accounts: Account[]; 
   return (
     <div className="grid grid-cols-2 gap-2 px-3 pb-3">
       {[
-        { label: 'TransaÃ§Ãµes',     value: transactions.length,       icon: <ArrowRight size={9} />, color: 'text-indigo-400' },
+        { label: 'Transações',     value: transactions.length,       icon: <ArrowRight size={9} />, color: 'text-indigo-400' },
         { label: 'Contas',         value: accounts.length,           icon: <Database size={9} />,   color: 'text-sky-400' },
-        { label: 'MemÃ³rias',       value: stats.memory_count,        icon: <Brain size={9} />,      color: 'text-violet-400' },
-        { label: 'PadrÃµes',        value: stats.pattern_count,       icon: <GitBranch size={9} />,  color: 'text-amber-400' },
+        { label: 'Memórias',       value: stats.memory_count,        icon: <Brain size={9} />,      color: 'text-violet-400' },
+        { label: 'Padrões',        value: stats.pattern_count,       icon: <GitBranch size={9} />,  color: 'text-amber-400' },
         { label: 'Eventos',        value: events.length,             icon: <Activity size={9} />,   color: 'text-emerald-400' },
         { label: 'Fila AI',        value: queueStats.pending + queueStats.processing, icon: <Activity size={9} />, color: 'text-sky-300' },
         { label: 'Canceladas',     value: queueStats.cancelled,      icon: <X size={9} />,          color: 'text-slate-300' },
@@ -1968,7 +1968,7 @@ const FinancialHealthTab: React.FC<{ transactions: Transaction[] }> = ({ transac
         <div className="bg-slate-900/40 border border-slate-700/50 rounded p-3">
           <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em] mb-2">Alertas</p>
           {score.alerts.length === 0
-            ? <p className="font-mono text-xs text-emerald-400">Nenhum alerta crÃ­tico detectado.</p>
+            ? <p className="font-mono text-xs text-emerald-400">Nenhum alerta crítico detectado.</p>
             : score.alerts.map((alert, idx) => (
               <p key={idx} className="font-mono text-xs text-amber-300 mb-1">â€¢ {alert}</p>
             ))}
@@ -2019,7 +2019,7 @@ const SmartGoalsTab: React.FC<{ transactions: Transaction[] }> = ({ transactions
         </div>
 
         <div className="bg-slate-900/40 border border-slate-700/50 rounded p-3">
-          <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em] mb-1">RecomendaÃ§Ã£o IA</p>
+          <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em] mb-1">Recomendação IA</p>
           <p className="font-mono text-xs text-slate-200">{recommendation}</p>
         </div>
       </div>
@@ -2105,7 +2105,7 @@ const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts,
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-slate-500">
         <Shield size={40} className="opacity-30" />
-        <p className="font-mono text-xs uppercase tracking-[0.08em]">DisponÃ­vel apenas em modo DEV</p>
+        <p className="font-mono text-xs uppercase tracking-[0.08em]">Disponível apenas em modo DEV</p>
       </div>
     );
   }
@@ -2183,7 +2183,7 @@ const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts,
 
       {/* Footer */}
       <p className="font-mono text-xs text-slate-600 text-center pt-2 uppercase tracking-[0.08em]">
-        Flow Finance v0.4.0 Â· AI Control Panel Â· {IS_DEV ? 'Development' : 'Production'}
+        Flow Finance v0.4.0 · AI Control Panel · {IS_DEV ? 'Development' : 'Production'}
       </p>
     </div>
   );
@@ -2191,13 +2191,13 @@ const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts,
 
 export function formatPanelDateTime(timestamp: string): string {
   const dt = new Date(timestamp);
-  if (isNaN(dt.getTime())) return 'Data invÃ¡lida';
+  if (isNaN(dt.getTime())) return 'Data inválida';
   return dt.toLocaleString('pt-BR');
 }
 
 export function formatPanelTime(timestamp: string): string {
   const dt = new Date(timestamp);
-  if (isNaN(dt.getTime())) return 'HorÃ¡rio invÃ¡lido';
+  if (isNaN(dt.getTime())) return 'Horário inválido';
   return dt.toLocaleTimeString('pt-BR');
 }
 

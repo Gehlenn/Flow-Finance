@@ -18,7 +18,7 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, className = '
 
   return (
     <div className={`flex items-center ${s.gap} ${className} select-none group cursor-pointer overflow-visible`}>
-      {/* Container Esmaecido (Efeito de Sombra/Aura) - overflow-visible para nÃ£o cortar animaÃ§Ã£o */}
+      {/* Container Esmaecido (Efeito de Sombra/Aura) - overflow-visible para não cortar animação */}
       <div className={`${s.container} relative flex items-center justify-center transition-all duration-700 group-hover:scale-110 active:scale-95 overflow-visible`}>
         
         {/* Aura Suave (Expandida e sem cortes) */}
@@ -27,7 +27,7 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, className = '
         {/* Camada de esmaecimento de borda (Shadow Glow mais amplo) */}
         <div className="absolute inset-[-20%] bg-[radial-gradient(circle,_rgba(99,102,241,0.1)_0%,_rgba(99,102,241,0)_75%)] rounded-full pointer-events-none"></div>
         
-        {/* Ãcone Principal - overflow-visible Ã© CRÃTICO aqui */}
+        {/* Ícone Principal - overflow-visible é CRÍTICO aqui */}
         <svg 
           width="100%" 
           height="100%" 

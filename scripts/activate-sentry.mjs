@@ -25,7 +25,7 @@ const args = process.argv.slice(2);
 
 if (args.length < 2) {
   process.stderr.write(`
-âŒ Missing Sentry DSNs
+Missing Sentry DSNs
 
 Usage: node scripts/activate-sentry.mjs BACKEND_DSN FRONTEND_DSN
 
@@ -55,13 +55,13 @@ process.stdout.write(`
 
 const run = (cmd, label) => {
   try {
-    process.stdout.write(`\nâ–¶ï¸  ${label}...`);
+    process.stdout.write(`\n> ${label}...`);
     process.stdout.write(`   $ ${cmd}`);
     const output = execSync(cmd, { encoding: 'utf-8', stdio: 'inherit' });
-    process.stdout.write(`âœ… ${label} completed`);
+    process.stdout.write(`${label} completed`);
     return output;
   } catch (error) {
-    process.stderr.write(`âŒ ${label} failed`);
+    process.stderr.write(`${label} failed`);
     process.stderr.write(error.message);
     process.exit(1);
   }
@@ -126,7 +126,7 @@ const run = (cmd, label) => {
     process.exit(0);
 
   } catch (error) {
-    process.stderr.write('\nâŒ Activation failed:', error.message);
+    process.stderr.write('\nActivation failed:', error.message);
     process.exit(1);
   }
 })();

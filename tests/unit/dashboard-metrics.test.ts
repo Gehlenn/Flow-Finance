@@ -46,7 +46,7 @@ describe('dashboard metrics', () => {
         amount: 200,
         type: TransactionType.DESPESA,
         category: Category.PESSOAL,
-        description: 'Despesa do mÃªs',
+        description: 'Despesa do mês',
         date: '2026-04-03T12:00:00.000Z',
       },
       {
@@ -54,7 +54,7 @@ describe('dashboard metrics', () => {
         amount: 999,
         type: TransactionType.RECEITA,
         category: Category.NEGOCIO,
-        description: 'Receita de outro mÃªs',
+        description: 'Receita de outro mês',
         date: '2026-03-20T12:00:00.000Z',
       },
     ];
@@ -71,7 +71,7 @@ describe('dashboard metrics', () => {
       },
       {
         id: 'r2',
-        title: 'Recebimento concluÃ­do',
+        title: 'Recebimento concluído',
         date: '2026-04-11T09:00:00.000Z',
         type: ReminderType.NEGOCIO,
         amount: 150,
@@ -89,7 +89,7 @@ describe('dashboard metrics', () => {
       },
       {
         id: 'r3',
-        title: 'Outro mÃªs',
+        title: 'Outro mês',
         date: '2026-05-01T09:00:00.000Z',
         type: ReminderType.NEGOCIO,
         amount: 800,

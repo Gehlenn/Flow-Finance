@@ -69,6 +69,7 @@ export async function monitorIntegration<T>(
             durationMs,
             requestId: context.requestId,
             tenantId: context.tenantId,
+            userId: context.userId,
             featureFlag: context.featureFlag,
           },
           `integration:${context.integrationName}:${context.operation}:success`
@@ -99,6 +100,7 @@ export async function monitorIntegration<T>(
             errorType: err.constructor.name,
             requestId: context.requestId,
             tenantId: context.tenantId,
+            userId: context.userId,
             featureFlag: context.featureFlag,
             fallback: 'integration-monitor-error',
           },

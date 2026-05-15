@@ -77,7 +77,7 @@ test.describe('QA Exhaustivo - Flow Finance', () => {
     
     // Look for transaction forms
     const amountInputs = await page.locator('input[name*="amount"], input[placeholder*="valor"], input[placeholder*="amount"]').all();
-    const descInputs = await page.locator('input[name*="description"], input[placeholder*="descriÃ§Ã£o"], textarea').all();
+    const descInputs = await page.locator('input[name*="description"], input[placeholder*="descrição"], textarea').all();
     
   });
 

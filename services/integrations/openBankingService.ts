@@ -1,7 +1,7 @@
 ﻿/**
  * OPEN BANKING SERVICE
  *
- * Orquestrador central para sincronizaÃ§Ã£o bancÃ¡ria.
+ * Orquestrador central para sincronização bancária.
  *
  * Pipeline de sync:
  *   connectBank â†’ fetchAccounts â†’ fetchTransactions
@@ -350,7 +350,7 @@ export async function connectBank(
   }
 
   const bankMeta = BRAZILIAN_BANKS.find(b => b.id === bankId);
-  if (!bankMeta) throw new Error(`Banco "${bankId}" nÃ£o encontrado no catÃ¡logo.`);
+  if (!bankMeta) throw new Error(`Banco "${bankId}" não encontrado no catálogo.`);
 
   const provider = getProvider(bankMeta.provider as ProviderKey);
   const { external_id } = await provider.connect(bankId, userId);
@@ -369,9 +369,9 @@ export async function connectBank(
 
   saveConnection(conn);
 
-  // Aprender preferÃªncia de banco do usuÃ¡rio na AI Memory
+  // Aprender preferência de banco do usuário na AI Memory
   learnMemory(userId, `bank_${bankId}`, 'connected', 0.9).catch((e) => {
-    logError('Erro ao registrar memÃ³ria de conexÃ£o bancÃ¡ria', e, {
+    logError('Erro ao registrar memória de conexão bancária', e, {
       userId,
       bankId,
       fallback: 'open-banking-learn-memory-failed',
@@ -449,7 +449,7 @@ export async function syncAccounts(
         onUpdateAccount({ ...linked, balance: raw.balance });
       }
 
-      // Atualizar saldo no registro da conexÃ£o
+      // Atualizar saldo no registro da conexão
       updateStatus(connectionId, 'connected', { balance: raw.balance });
     }
   } catch (error: unknown) {
@@ -481,7 +481,7 @@ function mapToTransaction(raw: RawBankTransaction, accountId?: string): Partial<
     raw_date:        new Date(raw.date).toISOString(),
     raw_type:        isCredit ? TransactionType.RECEITA : TransactionType.DESPESA,
     merchant:        raw.merchant,
-    // Campos que serÃ£o preenchidos pela AI classification:
+    // Campos que serão preenchidos pela AI classification:
     type:            isCredit ? TransactionType.RECEITA : TransactionType.DESPESA,
     category:        Category.PESSOAL,
     description:     raw.description,
@@ -545,7 +545,7 @@ function normalizeBankTransactionsFromDraft(input: Array<Partial<Transaction>>):
     });
 }
 
-// â”€â”€â”€ Detectar duplicatas contra transaÃ§Ãµes existentes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€â”€ Detectar duplicatas contra transações existentes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function isDuplicate(raw: RawBankTransaction, existing: Transaction[]): boolean {
   return existing.some(ex => {
@@ -567,7 +567,7 @@ export async function syncTransactions(
 ): Promise<SyncResult> {
   const conn = getConnection(connectionId);
   if (!conn || !conn.external_account_id) {
-    return { connection_id: connectionId, transactions_imported: 0, balance_updated: false, synced_at: new Date().toISOString(), error: 'ConexÃ£o nÃ£o encontrada.' };
+    return { connection_id: connectionId, transactions_imported: 0, balance_updated: false, synced_at: new Date().toISOString(), error: 'Conexão não encontrada.' };
   }
 
   if (isProductionRuntime() && conn.provider === 'mock') {
@@ -577,7 +577,7 @@ export async function syncTransactions(
       transactions_imported: 0,
       balance_updated: false,
       synced_at: new Date().toISOString(),
-      error: 'ConexÃ£o local de teste removida. Conecte novamente usando o fluxo real.',
+      error: 'Conexão local de teste removida. Conecte novamente usando o fluxo real.',
     };
   }
 
@@ -623,7 +623,7 @@ export async function syncTransactions(
           transactions_imported: 0,
           balance_updated: false,
           synced_at: new Date().toISOString(),
-          error: 'ConexÃ£o nÃ£o encontrada no backend. Atualize a lista e reconecte o banco.',
+          error: 'Conexão não encontrada no backend. Atualize a lista e reconecte o banco.',
         };
       }
 
@@ -761,9 +761,9 @@ export function formatLastSync(lastSync?: string): string {
   const diff = Math.max(Date.now() - parsed.getTime(), 0);
   const mins = Math.floor(diff / 60000);
   if (mins < 1)  return 'Agora mesmo';
-  if (mins < 60) return `${mins} min atrÃ¡s`;
+  if (mins < 60) return `${mins} min atrás`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24)  return `${hrs}h atrÃ¡s`;
+  if (hrs < 24)  return `${hrs}h atrás`;
   return parsed.toLocaleDateString('pt-BR');
 }
 
