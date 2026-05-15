@@ -168,6 +168,7 @@ describe('workspaceStore observability', () => {
       ],
       userPreferences: [],
     });
+    mocks.saveWorkspaceStoreState.mockResolvedValueOnce(undefined);
 
     const { initializeWorkspaceStorePersistence, resetWorkspaceStoreForTests } = await import('../../src/services/admin/workspaceStore');
     resetWorkspaceStoreForTests();

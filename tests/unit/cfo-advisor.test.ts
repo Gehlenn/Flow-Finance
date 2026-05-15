@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+﻿import { describe, expect, it, vi } from 'vitest';
 import { CFOAdvisor } from '../../src/agents/cfo/CFOAdvisor';
 import { Category, TransactionType, type Transaction as AppTransaction } from '../../types';
 import { AICFOAgent } from '../../src/agents/cfo/AICFOAgent';
@@ -14,8 +14,6 @@ function buildDomainTransaction(
       date: string | Date;
     }
 ): DomainTransaction {
-  const normalizedDate = overrides.date instanceof Date ? overrides.date : new Date(overrides.date);
-
   return {
     userId: 'user-test',
     accountId: 'account-test',
@@ -25,7 +23,7 @@ function buildDomainTransaction(
     updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     merchant: undefined,
     ...overrides,
-    date: normalizedDate,
+    date: overrides.date as unknown as Date,
   };
 }
 
@@ -362,3 +360,5 @@ describe('CFOAdvisor', () => {
     analyzeSpy.mockRestore();
   });
 });
+
+

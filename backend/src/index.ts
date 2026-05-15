@@ -59,7 +59,13 @@ if (process.env.VERCEL === '1') {
     initializeAuditLogPersistence(),
     initializeSaasStorePersistence(),
   ]).catch((error) => {
-    logger.error({ error }, 'Failed to initialize persistence on serverless cold start');
+    logger.error({
+      error,
+      initializationTasks: ['workspaceStore', 'auditLog', 'saasStore'],
+      vercel: process.env.VERCEL,
+      nodeEnv: process.env.NODE_ENV,
+      fallback: 'serverless-cold-start-persistence-init-failed',
+    }, 'Failed to initialize persistence on serverless cold start');
   });
 }
 
@@ -89,7 +95,12 @@ if (process.env.OPENAI_API_KEY) {
     aiProviders.push('OpenAI');
     aiHealthStatus['OpenAI'] = 'healthy';
   } catch (error) {
-    logger.warn({ error }, 'Failed to initialize OpenAI');
+    logger.warn({
+      error,
+      provider: 'OpenAI',
+      hasApiKey: true,
+      fallback: 'openai-init-failed',
+    }, 'Failed to initialize OpenAI');
     aiHealthStatus['OpenAI'] = 'unhealthy';
   }
 }
@@ -100,7 +111,12 @@ if (process.env.GEMINI_API_KEY) {
     aiProviders.push('Gemini');
     aiHealthStatus['Gemini'] = 'healthy';
   } catch (error) {
-    logger.warn({ error }, 'Failed to initialize Gemini');
+    logger.warn({
+      error,
+      provider: 'Gemini',
+      hasApiKey: true,
+      fallback: 'gemini-init-failed',
+    }, 'Failed to initialize Gemini');
     aiHealthStatus['Gemini'] = 'unhealthy';
   }
 }

@@ -1647,3 +1647,24 @@ O fluxo de IA no app local agora depende do login de desenvolvimento habilitado 
 - 2026-05-15: workspace-store-observability passou a testar o backfill real via loadJsonState.
 - O teste de backfill deixou de depender de loadWorkspaceStoreState com dados prontos e passou a validar o warn workspace-store-backfill-failed no fallback correto.
 - Validado com npx vitest run backend/tests/unit/workspace-store-observability.test.ts --pool=threads --maxWorkers=1 e npm --prefix backend run type-check.
+- 2026-05-15: workspace-store-observability passou a cobrir o backfill normalizado vindo do JSON legado.
+- O teste de backfill agora valida o warn workspace-store-backfill-failed no caminho de falha e o saveWorkspaceStoreState com tenantId e role normalizados no caminho de sucesso.
+- Validado com npx vitest run backend/tests/unit/workspace-store-observability.test.ts --pool=threads --maxWorkers=1 e npm --prefix backend run type-check.
+- 2026-05-15: saas-store.observability passou a cobrir o backfill normalizado vindo do JSON legado.
+- O teste de backfill agora valida o warn saas-backfill-to-postgres-failed no caminho de falha e o saveWorkspaceSaasState com usageByWorkspace, billingHooksByWorkspace e usageEventsByWorkspace normalizados no caminho de sucesso.
+- Validado com npx vitest run backend/tests/unit/saas-store.test.ts --pool=threads --maxWorkers=1 e npm --prefix backend run type-check.
+- 2026-05-15: backend bootstrap observability passou a carregar contexto estruturado no cold start serverless e nas falhas de init OpenAI/Gemini.
+- O log de cold start agora inclui initializationTasks, vercel, nodeEnv e fallback serverless-cold-start-persistence-init-failed.
+- Os logs de init de AI agora incluem provider, hasApiKey e fallback openai-init-failed/gemini-init-failed.
+- Validado com npx vitest run backend/tests/unit/index-bootstrap-observability.test.ts --pool=threads --maxWorkers=1 e npm --prefix backend run type-check.
+- 2026-05-15: cfo-advisor.test.ts perdeu o ultimo as any e voltou a usar date normalizado tipado.
+- O helper de transacao do advisor agora converte Date ou string para o campo date sem cast solto.
+- Validado com npx vitest run tests/unit/cfo-advisor.test.ts --pool=threads --maxWorkers=1 e npm run type-check:app.
+- 2026-05-15: backend bootstrap, workspaceStore, saasStore e cfo-advisor fecharam a ultima rodada de observability e tipagem.
+- O cold start serverless agora registra contexto estruturado com initializationTasks, vercel, nodeEnv e fallback serverless-cold-start-persistence-init-failed.
+- workspaceStore e saasStore passaram a cobrir tanto o warn de backfill falho quanto o backfill normalizado vindo do JSON legado.
+- cfo-advisor.test.ts perdeu o ultimo as any real e voltou ao helper tipado de data normalizada.
+- Validado com npx vitest run backend/tests/unit/index-bootstrap-observability.test.ts backend/tests/unit/workspace-store-observability.test.ts backend/tests/unit/saas-store.test.ts tests/unit/cfo-advisor.test.ts --pool=threads --maxWorkers=1, npm --prefix backend run type-check e npm run type-check:app.
+- 2026-05-15: postgres-state-store-observability fechou falha e sucesso para workspace e SaaS persist.
+- saveWorkspaceStoreState e saveWorkspaceSaasState agora sao cobertos tanto no caminho de rollback quanto no caminho feliz de commit.
+- Validado com npx vitest run backend/tests/unit/postgres-state-store-observability.test.ts --pool=threads --maxWorkers=1 e npm --prefix backend run type-check.

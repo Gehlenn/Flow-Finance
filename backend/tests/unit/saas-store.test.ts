@@ -86,7 +86,7 @@ describe('saasStore', () => {
         error: expect.any(Error),
         key: 'saas_store_state',
         workspaceCount: 0,
-        userCount: 1,
+        userCount: 0,
         billingHookWorkspaceCount: 0,
         usageEventWorkspaceCount: 0,
         fallback: 'saas-legacy-json-backup-failed',
@@ -98,35 +98,130 @@ describe('saasStore', () => {
   it('registra aviso contextual quando falha o backfill normalizado para Postgres', async () => {
     fsMock.existsSync.mockReturnValue(true);
     fsMock.readFileSync.mockReturnValue('{}');
-    mockLoadWorkspaceSaasState.mockResolvedValue({
+    mockLoadWorkspaceSaasState.mockResolvedValue(null);
+    mockLoadJsonState.mockResolvedValue({
       usageByWorkspace: {
         workspace_a: {
           '2026-05': { transactions: 1, aiQueries: 0, bankConnections: 0 },
         },
       },
+      usageByUser: {},
       billingHooksByWorkspace: {
         workspace_a: [],
       },
+      billingHooksByUser: {},
       usageEventsByWorkspace: {
         workspace_a: [],
       },
+      userPlans: {},
     });
-    mockLoadJsonState.mockResolvedValue(null);
     mockSaveWorkspaceSaasState.mockRejectedValueOnce(new Error('backfill failed'));
 
     const { initializeSaasStorePersistence } = await import('../../src/utils/saasStore');
 
     await expect(initializeSaasStorePersistence()).resolves.toBeUndefined();
-    expect(mockWarn).toHaveBeenCalledWith(
+    await vi.waitFor(() => {
+      expect(mockWarn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: expect.any(Error),
+          key: 'saas_store_state',
+          workspaceCount: 1,
+          billingHookWorkspaceCount: 1,
+          usageEventWorkspaceCount: 1,
+          fallback: 'saas-backfill-to-postgres-failed',
+        }),
+        'Failed to backfill normalized SaaS store to Postgres',
+      );
+    });
+  });
+
+  it('faz backfill normalizado do SaaS store vindo do JSON legado', async () => {
+    fsMock.existsSync.mockReturnValue(true);
+    fsMock.readFileSync.mockReturnValue('{}');
+    mockLoadWorkspaceSaasState.mockResolvedValue(null);
+    mockLoadJsonState.mockResolvedValue({
+      usageByWorkspace: {
+        workspace_a: {
+          '2026-05': { transactions: 7, aiQueries: 2, bankConnections: 1 },
+        },
+      },
+      usageByUser: {
+        user_a: {
+          '2026-05': { transactions: 3, aiQueries: 1, bankConnections: 0 },
+        },
+      },
+      billingHooksByWorkspace: {
+        workspace_a: [
+          {
+            userId: 'user_a',
+            workspaceId: 'workspace_a',
+            plan: 'pro',
+            event: 'plan_changed',
+            amount: 0,
+            at: '2026-05-10T00:00:00.000Z',
+          },
+        ],
+      },
+      billingHooksByUser: {
+        user_a: [
+          {
+            userId: 'user_a',
+            plan: 'pro',
+            event: 'plan_changed',
+            amount: 0,
+            at: '2026-05-10T00:00:00.000Z',
+          },
+        ],
+      },
+      usageEventsByWorkspace: {
+        workspace_a: [
+          {
+            id: 'usage-1',
+            workspaceId: 'workspace_a',
+            userId: 'user_a',
+            resource: 'transactions',
+            amount: 7,
+            at: '2026-05-10T00:00:00.000Z',
+          },
+        ],
+      },
+      userPlans: {
+        user_a: 'pro',
+      },
+    });
+    mockSaveWorkspaceSaasState.mockResolvedValue(undefined);
+
+    const { initializeSaasStorePersistence } = await import('../../src/utils/saasStore');
+
+    await expect(initializeSaasStorePersistence()).resolves.toBeUndefined();
+    expect(mockSaveWorkspaceSaasState).toHaveBeenCalledWith(
       expect.objectContaining({
-        error: expect.any(Error),
-        key: 'saas_store_state',
-        workspaceCount: 1,
-        billingHookWorkspaceCount: 1,
-        usageEventWorkspaceCount: 1,
-        fallback: 'saas-backfill-to-postgres-failed',
+        usageByWorkspace: {
+          workspace_a: {
+            '2026-05': { transactions: 7, aiQueries: 2, bankConnections: 1 },
+          },
+        },
+        usageEventsByWorkspace: {
+          workspace_a: [
+            expect.objectContaining({
+              id: 'usage-1',
+              workspaceId: 'workspace_a',
+              resource: 'transactions',
+              amount: 7,
+            }),
+          ],
+        },
+        billingHooksByWorkspace: {
+          workspace_a: [
+            expect.objectContaining({
+              workspaceId: 'workspace_a',
+              plan: 'pro',
+              event: 'plan_changed',
+              amount: 0,
+            }),
+          ],
+        },
       }),
-      'Failed to backfill normalized SaaS store to Postgres',
     );
   });
 });

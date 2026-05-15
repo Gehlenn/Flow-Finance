@@ -99,6 +99,35 @@ describe('postgresStateStore observability', () => {
     expect(mocks.query).toHaveBeenCalledWith('ROLLBACK');
   });
 
+  it('persiste o workspace store com commit quando nao ha erro', async () => {
+    mocks.query.mockImplementation(async (text: string) => {
+      if (text === 'BEGIN' || text === 'COMMIT' || text === 'ROLLBACK') {
+        return { rows: [], rowCount: 0 };
+      }
+      return { rows: [], rowCount: 0 };
+    });
+
+    const { saveWorkspaceStoreState } = await import('../../src/services/persistence/postgresStateStore');
+
+    await expect(saveWorkspaceStoreState({
+      tenants: [
+        {
+          tenantId: 'tenant-1',
+          name: 'Tenant 1',
+          plan: 'free',
+          createdAt: '2026-05-10T00:00:00.000Z',
+          updatedAt: '2026-05-10T00:00:00.000Z',
+        },
+      ],
+      workspaces: [],
+      workspaceUsers: [],
+      userPreferences: [],
+    })).resolves.toBeUndefined();
+
+    expect(mocks.loggerError).not.toHaveBeenCalled();
+    expect(mocks.query).toHaveBeenCalledWith('COMMIT');
+  });
+
   it('registra contexto quando saveWorkspaceSaasState falha', async () => {
     mocks.query.mockImplementation(async (text: string) => {
       if (text === 'BEGIN' || text === 'COMMIT' || text === 'ROLLBACK') {
@@ -132,5 +161,29 @@ describe('postgresStateStore observability', () => {
       'Failed to persist workspace SaaS state',
     );
     expect(mocks.query).toHaveBeenCalledWith('ROLLBACK');
+  });
+
+  it('persiste o SaaS store com commit quando nao ha erro', async () => {
+    mocks.query.mockImplementation(async (text: string) => {
+      if (text === 'BEGIN' || text === 'COMMIT' || text === 'ROLLBACK') {
+        return { rows: [], rowCount: 0 };
+      }
+      return { rows: [], rowCount: 0 };
+    });
+
+    const { saveWorkspaceSaasState } = await import('../../src/services/persistence/postgresStateStore');
+
+    await expect(saveWorkspaceSaasState({
+      usageByWorkspace: {
+        'workspace-1': {
+          '2026-05': { transactions: 1, aiQueries: 2, bankConnections: 3 },
+        },
+      },
+      usageEventsByWorkspace: {},
+      billingHooksByWorkspace: {},
+    })).resolves.toBeUndefined();
+
+    expect(mocks.loggerError).not.toHaveBeenCalled();
+    expect(mocks.query).toHaveBeenCalledWith('COMMIT');
   });
 });

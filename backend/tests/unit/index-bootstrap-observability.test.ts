@@ -193,6 +193,28 @@ describe('backend bootstrap observability', () => {
     });
   });
 
+  it('chama workspaceStore, auditLog e saasStore no cold start serverless', async () => {
+    mocks.initializeWorkspaceStorePersistence.mockReset();
+    mocks.initializeWorkspaceStorePersistence.mockResolvedValue(undefined);
+    mocks.initializeAuditLogPersistence.mockResolvedValue(undefined);
+    mocks.initializeSaasStorePersistence.mockResolvedValue(undefined);
+
+    await import('../../src/index');
+
+    await vi.waitFor(() => {
+      expect(mocks.initializeWorkspaceStorePersistence).toHaveBeenCalledTimes(1);
+      expect(mocks.initializeAuditLogPersistence).toHaveBeenCalledTimes(1);
+      expect(mocks.initializeSaasStorePersistence).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mocks.loggerError).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        fallback: 'serverless-cold-start-persistence-init-failed',
+      }),
+      expect.any(String),
+    );
+  });
+
   it('registra contexto quando initOpenAI e initGemini falham', async () => {
     process.env.OPENAI_API_KEY = 'openai-test-key';
     process.env.GEMINI_API_KEY = 'gemini-test-key';
