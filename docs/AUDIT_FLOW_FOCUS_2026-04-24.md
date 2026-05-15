@@ -1521,7 +1521,129 @@ O fluxo de IA no app local agora depende do login de desenvolvimento habilitado 
 - `tests/unit/insights-plan-render.test.tsx` cobre o CTA por risco nos planos free e pro.
 - Validado com `rtk npm run test -- --run tests/unit/insights-plan-render.test.tsx --pool=threads --maxWorkers=1` e `rtk npm run type-check:app`.
 
+## CFO com CTA operacional na resposta
+- `pages/AICFO.tsx` agora oferece lembrete de acompanhamento e atalho para o fluxo de caixa direto na resposta do CFO.
+- O lembrete deriva prioridade do intent e mantém o assistente consultivo conectado a ação.
+- `tests/unit/aicfo-plan-render.test.tsx` cobre a nova ação operacional na resposta do CFO.
+- Validado com `rtk npm run test -- --run tests/unit/aicfo-plan-render.test.tsx --pool=threads --maxWorkers=1` e `rtk npm run type-check:app`.
+
 ## Governanca de memoria com perfil estruturado
 - `pages/AIControlPanel.tsx` agora mostra um recorte estruturado por padr?es, perfil e comerciantes na aba de mem?ria.
 - `tests/unit/ai-control-panel-memory-governance.test.tsx` cobre a presen?a desse perfil estruturado junto da governan?a existente.
 - Validado com `rtk npm run test -- --run tests/unit/ai-control-panel-memory-governance.test.tsx --pool=threads --maxWorkers=1` e `rtk npm run type-check:app`.
+
+- 2026-05-14: AIControlPanel ganhou revisao de memoria com Confirmar e Invalidar, alem de origem visivel por entry.
+- 2026-05-14: A memoria passou a carregar metadata opcional para manter estado de revisao e origem.
+- 2026-05-14: Memoria da IA ganhou origem persistida no armazenamento e painel com confirmacao/invalidaçao.
+- 2026-05-14: learnMemory passou a gravar metadata.source por default e aceitar origem explicita.
+- 2026-05-14: CFO passou a expor profundidade de resposta e a reduzir a abordagem quando a base e limitada.
+- 2026-05-14: AICFO mostra 'Profundidade reduzida' na conversa quando a base e fraca.
+- 2026-05-14: AIControlPanel ganhou tab de fila com status e tarefas recentes para conectar a fila de IA ao painel.
+- 2026-05-14: A fila passou a ser visivel no painel sem depender apenas do monitor de dev.
+- 2026-05-14: Harness de avaliacao do CFO passou a validar profundidade reduzida quando a base e limitada.
+- 2026-05-14: Trait de avaliacao novo cobre profundidade standard vs reduzida no CFO.
+- 2026-05-14: AIControlPanel ganhou acoes de fila para cancelar tarefas pendentes e limpar tarefas concluidas/falhas.
+- 2026-05-14: A fila do painel agora recarrega os estados apos cancelamento ou limpeza para refletir a operacao.
+- 2026-05-14: A fila do painel ganhou detalhe de task selecionada com payload, retries e estado visivel.
+- 2026-05-14: O detalhe da task fecha o ciclo de diagnostico sem precisar sair do painel de IA.
+- 2026-05-14: A fila do painel agora reage a eventos de mutacao da queue e recarrega automaticamente.
+- 2026-05-14: taskStore passou a emitir eventos de atualizacao, enfileiramento e limpeza para manter a UI sincronizada.
+- 2026-05-14: O resumo rapido do painel agora inclui o estado da fila de IA em tempo real.
+- 2026-05-14: O snapshot da fila entrou nas metricas de sistema para dar visao operacional sem abrir a aba Queue.
+- 2026-05-14: O viewer interno do painel agora expõe o snapshot da fila com label acessivel e refresh por evento.
+- 2026-05-14: O contador da fila no resumo rapido atualiza quando uma task nova e adicionada ao store.
+- 2026-05-14: A fila ganhou métrica de canceladas na API e no monitor dev.
+- 2026-05-14: A documentacao da queue foi atualizada para refletir os novos eventos e a nova estatistica.
+- 2026-05-14: O pipeline de eventos agora registra canceladas como métrica da fila.
+- 2026-05-14: O fluxo transaction_created ficou alinhado com a nova estatistica da queue.
+- 2026-05-14: O contrato de `getQueueStats()` agora inclui canceladas como campo coberto por teste.
+- 2026-05-14: A observabilidade da queue ficou alinhada com a telemetria consumida pelo painel e pelo pipeline.
+- 2026-05-14: O monitor dev da queue agora reage a update e clear com teste próprio de refresh.
+- 2026-05-14: A fila de dev ficou coberta para refresh por evento e limpeza manual.
+- 2026-05-14: taskStore passou a ter teste dedicado para eventos de enqueue, update e clear.
+- 2026-05-14: O contrato de refresh da queue ficou protegido no store e no monitor.
+- 2026-05-14: O clear global da queue agora tem teste dedicado para scope all.
+- 2026-05-14: O contrato de limpeza da queue ficou coberto para escopo individual e global.
+- 2026-05-14: aiMemory passou a ter teste de merge de metadata para revisar memoria com origem persistida.
+- 2026-05-14: O fluxo de revisao da memoria ganhou protecao para reviewState e source persistidos.
+- 2026-05-14: A fila de IA deixou de emitir evento de enqueue duplicado e passou a depender do taskStore como fonte unica.
+- 2026-05-14: O contrato de evento da fila agora usa o taskStore como emissor unico para refresh da UI.
+- 2026-05-14: A simulacao do painel de IA perdeu os casts any e ficou tipada por ramo.
+- 2026-05-14: O contrato da aba Simulation agora usa o tipo de cenário real sem holes de tipo.
+- 2026-05-14: O Parser Lab passou a tratar erro como unknown e exibir a mensagem normalizada ao usuario.
+- 2026-05-14: O caminho de erro do parser ficou coberto por teste de UX e log contextual.
+- 2026-05-14: O autopilot financeiro recebeu tipagem explicita para os payloads da queue.
+- 2026-05-14: A assinatura da queue e do autopilot ficou alinhada sem arrays unknown no caminho de analise.
+- 2026-05-14: O eventEngine deixou de expor callbacks any[] para insights, riscos e acoes.
+- 2026-05-14: A ponte entre o pipeline e a UI ficou tipada com os tipos reais do dominio.
+- 2026-05-14: O adaptador de Sentry ficou tipado sem casts any na superficie publica.
+- 2026-05-14: A integracao de observabilidade passou a usar um wrapper local com contrato tipado.
+- 2026-05-14: O CFO passou a tratar erro como unknown e normalizar a mensagem de fallback.
+- 2026-05-14: O caminho de falha do CFO ficou com log e diagnostico sem catch any.
+- 2026-05-14: O Parser Lab do painel passou a tipar o resultado como Transaction[].
+- 2026-05-14: O estado do parser nao depende mais de any[] para renderizar o preview.
+- 2026-05-15: O parser OFX do importService perdeu os casts any e passou a usar estado tipado.
+- 2026-05-15: O pipeline de importacao agora trata erro como unknown e normaliza a mensagem.
+- 2026-05-15: Login, importacao, recibo, previsoes e Open Banking perderam os ultimos catch any do fluxo principal.
+- 2026-05-15: O login passou a normalizar erro e codigo sem depender de any, e a importacao/recibo/previsoes seguiram o mesmo contrato.
+- 2026-05-15: BankSyncEngine, AIInterpreter, ExtratoImporter, AIQueueListener e AIWorker passaram a tratar erro como unknown.
+- 2026-05-15: O hook de performance, o importador OFX, o adaptive engine e os stores de memoria fecharam os ultimos casts any de infraestrutura.
+- 2026-05-15: Backend AI providers e predictions ficaram sem any no caminho principal.
+- 2026-05-15: backend/src/services/ai, backend/src/controllers/aiController.ts e backend/src/routes/predictions.ts passaram a usar erros unknown e listas tipadas.
+- 2026-05-15: Os testes de observabilidade de AI provider e AIServiceFactory foram ajustados para mocks construtiveis.
+- 2026-05-15: Clinic automation e integration observability perderam os ultimos any de telemetria, auditoria e idempotencia.
+- 2026-05-15: jsonHelpers, clinicAudit, IdempotentEventStore, IntegrationTelemetry e IntegrationMonitor ficaram tipados com guards e environment normalizado.
+- 2026-05-15: Os testes de idempotencia e clinic routes foram ajustados para os novos contratos sem any.
+- 2026-05-15: Os testes de auth, banking, oauth, AI e integration telemetry perderam os ultimos any do bloco de observability.
+- 2026-05-15: auth middleware, auth refresh, banking controller, oauth controller, AI controller, AIServiceFactory e integration telemetry test ficaram sem casts any no caminho principal.
+- 2026-05-15: A validacao do backend passou com type-check e uma bateria focada de testes de observability.
+- 2026-05-15: Os testes de AI security, auth firebase session, auth cookie, clinic payload limit, clinic AI enrichment queue e external integration auth perderam os ultimos any do lote legado.
+- 2026-05-15: O auth externo passou a testar o caminho real de compare de assinatura sem quebrar o compare da chave.
+- 2026-05-15: A fila clinica passou a validar o retry warning real em vez de um erro artificial.
+- 2026-05-15: authController login security e clinic automation contract perderam os ultimos any dos hotspots restantes.
+- 2026-05-15: O login agora trata email e password com trim antes de autenticar, bloqueando string vazia com espacos.
+- 2026-05-15: O contrato da automacao clinica passou a usar mocks e payloads tipados sem casts any no teste.
+- 2026-05-15: predictions.ts, sentry.ts, AISecurityGuard e backend/types/index.ts perderam os ultimos any reais do backend/src.
+- 2026-05-15: O contrato das rotas de previsao saiu de Promise<any> e passou a retornar void com respostas explicitas.
+- 2026-05-15: ai-security-middleware e rate-limit-by-user perderam os ultimos casts any dos testes restantes.
+- 2026-05-15: firebaseOptimized, geminiService, AIMemoryEngine e AIWorker ficaram sem os ultimos erros de tipagem pendentes.
+- 2026-05-15: O cache do Firebase passou a ser generico, o report estrategico ficou com retorno tipado e o worker de IA voltou a carregar o payload no escopo correto.
+- 2026-05-15: index.tsx, useNavigationTabs.tsx e vite.config.ts perderam os ultimos any de bootstrap e lazy loading.
+- 2026-05-15: Os testes de Accounts e WorkspaceAudit foram alinhados com a copy nova e a validacao de navegacao voltou verde.
+- 2026-05-15: ai-memory-engine, gemini-service-fallback e feature-gate perderam os ultimos any de teste ainda pendentes.
+- 2026-05-15: Os testes de memoria de IA, fallback de Gemini e feature gate foram tipados com TransactionData, Reminder e Request/Response.
+- 2026-05-15: assistant-reminder-states e ai-memory-branches perderam os ultimos any de teste ainda pendentes.
+- 2026-05-15: O assistente passou a usar o botao e o modal atualizados para alertas do caixa, e o branch de memoria ficou com fixtures de Transaction tipadas.
+- 2026-05-15: app-bootstrap-observability, backend-error-handler e ai-cfo-debug-log perderam os ultimos any de teste ainda pendentes.
+- 2026-05-15: O boundary de bootstrap ficou com props tipadas, o error handler passou a receber Request/Response e o debug do CFO ficou com retorno tipado do service.
+- 2026-05-15: app-bootstrap-observability, backend-error-handler e ai-cfo-debug-log ficaram sem os ultimos any do lote atual.
+- 2026-05-15: O teste de bootstrap passou a usar ErrorBoundaryProps, o error handler ficou com Request/Response tipados e o debug do CFO usa o retorno real do GeminiService.
+- 2026-05-15: backend-oauth, external-integration-auth e finance-controller perderam os ultimos any do lote atual.
+- 2026-05-15: OAuth, auth externa e finance controller passaram a usar Request/Response e mocks tipados sem casts any.
+- 2026-05-15: openbanking-render-guard e cashflow-predictor perderam os ultimos any do lote atual.
+- 2026-05-15: O guard de navegacao passou a tratar openbanking legacy como never e o cashflow predictor ficou com fixtures de Transaction e Account tipadas.
+- 2026-05-15: assistant-smart-alerts-fallback e dashboard-quick-actions perderam os ultimos any do lote atual.
+- 2026-05-15: O assistente passou a usar transactions tipadas e o fallback de alertas de caixa agora segue o modal atual sem casts soltos.
+- 2026-05-15: O dashboard quick actions ficou com ReminderType e Reminder tipados nas fixtures de recebiveis.
+- 2026-05-15: io-integrations.health, transaction-list-states e usePerformanceMonitoring perderam os ultimos any do lote atual.
+- 2026-05-15: O health check de IO passou a usar TransactionData tipado, a lista de transacoes validou o estado pendente com tipo local e o monitor de performance ficou sem cast no observer.
+- 2026-05-15: backend-controllers, import-transactions-draft-path, cashflowEngine, intakeNormalizer, task-store-branches e user-context perderam os ultimos any do lote atual.
+- 2026-05-15: Os controllers backend passaram a usar requests/responses tipados, o import draft path usou ImportedTransaction, o cashflow engine aceitou CashflowTransaction e os testes de runtime ficaram sem casts soltos.
+- 2026-05-15: event-engine-orchestrator-routing, smart-budget e task-store-core perderam os ultimos any do lote atual.
+- 2026-05-15: O event engine voltou a usar o modulo real, o smart budget ficou com arrays tipados e o task store passou a registrar detail como unknown nas emissões.
+- 2026-05-15: cfo-advisor, open-banking-service e multi-tenant-isolation perderam os ultimos any do lote atual.
+- 2026-05-15: open-banking-service-extended foi reestruturado com helpers tipados para provider, transactions e accounts, e o resto do bloco ficou sem casts any.
+- 2026-05-15: O fluxo de Open Banking permaneceu verde com as variantes local, backend, fallback e multi-tenant.
+- 2026-05-15: skipHelpers.ts do E2E foi tipado com TestInfo e perdeu o ultimo any executavel fora de testes/unit e backend/tests/unit.
+- 2026-05-15: Os unicos any restantes no repo estao em documentacao textual (READMEs e changelog), nao em codigo executavel.
+- 2026-05-15: README e changelog perderam os ultimos tokens any textuais; a busca final por any fora de docs voltou vazia.
+- 2026-05-15: O placeholder da fila clinica foi reescrito para refletir a heuristica local observavel.
+- 2026-05-15: Nao sobraram TODO/FIXME/HACK reais no codigo executavel; o que aparece fora disso e dependencia empacotada.
+- 2026-05-15: O helper de skip do E2E foi tipado com TestInfo e saiu do ultimo any executavel.
+- 2026-05-15: O monitor da AI Task Queue voltou a validar canceladas e refresh por evento com strings em UTF-8.
+- 2026-05-15: O adapter tipado de Sentry ganhou teste de compatibilidade com callback executado de verdade.
+- 2026-05-15: forecastListener, cacheInvalidationListener e aiQueueListener passaram a usar logDebug em vez de console.debug.
+- 2026-05-15: A ultima ocorrencia de console.debug em listeners de produto saiu do caminho executavel.
+- 2026-05-15: workspace-store-observability passou a testar o backfill real via loadJsonState.
+- O teste de backfill deixou de depender de loadWorkspaceStoreState com dados prontos e passou a validar o warn workspace-store-backfill-failed no fallback correto.
+- Validado com npx vitest run backend/tests/unit/workspace-store-observability.test.ts --pool=threads --maxWorkers=1 e npm --prefix backend run type-check.

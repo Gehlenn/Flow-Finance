@@ -21,10 +21,10 @@
 - Validadas e sem ocorrências
 
 #### Track 5 — Fortalecimento de tipos
-- `predictions.ts`: `(doc: any)` / `(t: any)` → tipos explícitos com helper `docToTransaction()`
-- `Assistant.tsx`: 8 ocorrências de `as any` removidas com cast tipado preciso
-- `ClinicAutomationService.ts`: `payload as any` removido; union discriminada resolve via narrowing do TypeScript
-- `firebaseOptimized.ts`, `AIInput.tsx`, `featureGate.ts`: limpeza complementar de `any`
+- `predictions.ts`: parâmetros tipados com helper `docToTransaction()`
+- `Assistant.tsx`: casts soltos removidos com tipagem explícita
+- `ClinicAutomationService.ts`: payload resolvido via union discriminada e narrowing do TypeScript
+- `firebaseOptimized.ts`, `AIInput.tsx`, `featureGate.ts`: limpeza complementar de tipos
 
 #### Track 6 — Tratamento de erros
 - `adminController.ts`, `bankingController.ts`, `saas.schema.ts`: catch blocks documentados
