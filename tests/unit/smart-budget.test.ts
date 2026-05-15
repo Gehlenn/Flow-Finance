@@ -9,7 +9,7 @@
 
       it('usa profile undefined corretamente', () => {
         const txs = [INCOME, PERSONAL(1000)];
-        const result = generateSmartBudget(txs, undefined as any);
+        const result = generateSmartBudget(txs, undefined);
         expect(result.targetSavingsRate).toBe(0.15);
       });
 
@@ -269,8 +269,8 @@ describe('generateSmartBudget', () => {
 
   it('não quebra com categorias duplicadas ou vazias', () => {
     const txs = [
-      makeTx({ amount: 100, type: TransactionType.DESPESA, category: '' as any }),
-      makeTx({ amount: 200, type: TransactionType.DESPESA, category: '' as any }),
+      makeTx({ amount: 100, type: TransactionType.DESPESA, category: '' as Category }),
+      makeTx({ amount: 200, type: TransactionType.DESPESA, category: '' as Category }),
     ];
     const result = generateSmartBudget(txs, 'Balanced');
     expect(result.lines.length).toBe(1);
@@ -278,7 +278,7 @@ describe('generateSmartBudget', () => {
   });
 
   it('lida com income e expenses zero', () => {
-    const txs: any[] = [];
+    const txs: Transaction[] = [];
     const result = generateSmartBudget(txs, 'Balanced');
     expect(result.totalIncome).toBe(0);
     expect(result.totalExpenses).toBe(0);

@@ -1,8 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 
-const loggerInfo = vi.fn();
-const loggerError = vi.fn();
-const loggerWarn = vi.fn();
+const { loggerInfo, loggerError, loggerWarn, OpenAIProviderMock, GeminiProviderMock } = vi.hoisted(() => ({
+  loggerInfo: vi.fn(),
+  loggerError: vi.fn(),
+  loggerWarn: vi.fn(),
+  OpenAIProviderMock: class {
+    constructor() {
+      throw new Error('openai init failed');
+    }
+  },
+  GeminiProviderMock: class {
+    constructor() {
+      throw new Error('gemini init failed');
+    }
+  },
+}));
 
 vi.mock('../../src/config/env', () => ({
   default: {
@@ -30,13 +42,6 @@ vi.mock('../../src/services/featureFlags/featureFlagService', () => ({
     isEnabled: vi.fn(() => true),
   },
 }));
-
-const OpenAIProviderMock = vi.fn().mockImplementation(() => {
-  throw new Error('openai init failed');
-});
-const GeminiProviderMock = vi.fn().mockImplementation(() => {
-  throw new Error('gemini init failed');
-});
 
 vi.mock('../../src/services/ai/OpenAIProvider', () => ({
   default: OpenAIProviderMock,

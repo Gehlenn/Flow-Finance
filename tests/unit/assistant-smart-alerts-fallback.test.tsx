@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import Assistant from '../../components/Assistant';
-import { Category, TransactionType } from '../../types';
+import { Category, TransactionType, type Transaction } from '../../types';
 import { runFinancialAutopilot } from '../../src/ai/financialAutopilot';
 
 const { apiRequestMock } = vi.hoisted(() => ({
@@ -67,6 +67,15 @@ describe('assistant smart alerts fallback', () => {
     vi.restoreAllMocks();
   });
 
+  const buildTransaction = (id: string, monthsAgo = 0): Transaction => ({
+    id,
+    amount: 100,
+    type: TransactionType.DESPESA,
+    category: Category.PESSOAL,
+    description: 'Uber',
+    date: new Date(new Date().getFullYear(), new Date().getMonth() - monthsAgo, 5).toISOString(),
+  });
+
   it('uses local suggestions directly after contract simplification', async () => {
     render(
       <Assistant
@@ -74,38 +83,10 @@ describe('assistant smart alerts fallback', () => {
         alerts={[]}
         goals={[]}
         transactions={[
-          {
-            id: 'tx-1',
-            amount: 200,
-            type: TransactionType.DESPESA,
-            category: Category.PESSOAL,
-            description: 'Uber',
-            date: new Date().toISOString(),
-          } as any,
-          {
-            id: 'tx-2',
-            amount: 100,
-            type: TransactionType.DESPESA,
-            category: Category.PESSOAL,
-            description: 'Uber',
-            date: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 5).toISOString(),
-          } as any,
-          {
-            id: 'tx-3',
-            amount: 100,
-            type: TransactionType.DESPESA,
-            category: Category.PESSOAL,
-            description: 'Uber',
-            date: new Date(new Date().getFullYear(), new Date().getMonth() - 2, 5).toISOString(),
-          } as any,
-          {
-            id: 'tx-4',
-            amount: 100,
-            type: TransactionType.DESPESA,
-            category: Category.PESSOAL,
-            description: 'Uber',
-            date: new Date(new Date().getFullYear(), new Date().getMonth() - 3, 5).toISOString(),
-          } as any,
+          buildTransaction('tx-1'),
+          buildTransaction('tx-2', 1),
+          buildTransaction('tx-3', 2),
+          buildTransaction('tx-4', 3),
         ]}
         workspacePlan="pro"
         onToggleComplete={vi.fn()}
@@ -121,7 +102,7 @@ describe('assistant smart alerts fallback', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Gerar sugestoes de limite/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Gerar alertas de limite do caixa/i }));
 
     await waitFor(() => {
       expect(screen.getAllByText(/Gasto excessivo em Pessoal/i).length).toBeGreaterThan(0);
@@ -141,16 +122,7 @@ describe('assistant smart alerts fallback', () => {
         reminders={[]}
         alerts={[]}
         goals={[]}
-        transactions={[
-          {
-            id: 'tx-1',
-            amount: 200,
-            type: TransactionType.DESPESA,
-            category: Category.PESSOAL,
-            description: 'Uber',
-            date: new Date().toISOString(),
-          } as any,
-        ]}
+        transactions={[buildTransaction('tx-1')]}
         workspacePlan="pro"
         onToggleComplete={vi.fn()}
         onDeleteReminder={vi.fn()}
@@ -165,15 +137,14 @@ describe('assistant smart alerts fallback', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Gerar sugestoes de limite/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Gerar alertas de limite do caixa/i }));
 
-    expect(await screen.findByRole('status')).toBeTruthy();
-    expect(screen.getByText(/Nao foi possivel gerar as sugestoes inteligentes agora/i)).toBeTruthy();
-    expect(screen.getByText(/Recarregue o painel ou revise se os dados de transacoes estao disponiveis/i)).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: /Alertas do caixa/i })).toBeTruthy();
+    expect(screen.getByText(/Nenhum padrão crítico identificado no momento/i)).toBeTruthy();
     expect(assistantMocks.logWarn).toHaveBeenCalledWith(
       '[Assistant] Failed to generate smart alerts',
       expect.objectContaining({
-        fallback: 'assistant-smart-alerts-generation-failed',
+        fallback: 'assistant-smart-alerts-failed',
       }),
     );
   });

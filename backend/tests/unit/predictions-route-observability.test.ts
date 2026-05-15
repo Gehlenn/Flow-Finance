@@ -169,14 +169,14 @@ describe('predictions route observability', () => {
 
     expect(response.status).toBe(500);
     expect(response.body.success).toBe(false);
-    expect(predictionMocks.loggerWarn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        route: 'refresh',
-        userId: 'user-1',
-        days: 30,
-        error: expect.any(Error),
-      }),
-      '[Predictions API] Refresh error',
-    );
+      expect(predictionMocks.loggerWarn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          route: 'refresh',
+          userId: 'user-1',
+          days: 30,
+          error: 'predictionEngine.clearCache is not a function',
+        }),
+        '[Predictions API] Refresh error',
+      );
   });
 });

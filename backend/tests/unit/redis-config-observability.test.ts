@@ -44,10 +44,10 @@ describe('redis config observability', () => {
     mocks.loggerInfo.mockReset();
     Object.values(client).forEach((method) => {
       if (typeof method === 'function' && 'mockReset' in method) {
-        (method as any).mockReset();
+        (method as ReturnType<typeof vi.fn>).mockReset();
       }
     });
-    mocks.createClient.mockReturnValue(client as any);
+    mocks.createClient.mockReturnValue(client as unknown as ReturnType<typeof mocks.createClient>);
     process.env.REDIS_URL = 'redis://localhost:6379';
   });
 

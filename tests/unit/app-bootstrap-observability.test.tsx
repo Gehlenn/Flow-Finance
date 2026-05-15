@@ -1,6 +1,12 @@
 import React from 'react';
 import { render } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ComponentType, ReactNode } from 'react';
+
+type ErrorBoundaryProps = {
+  children?: ReactNode;
+  onError?: (error: Error, info: { componentStack?: string }) => void;
+};
 
 const { logErrorMock } = vi.hoisted(() => ({
   logErrorMock: vi.fn(),
@@ -11,7 +17,7 @@ vi.mock('../../src/utils/logger', () => ({
 }));
 
 vi.mock('../../src/components/ErrorBoundary', () => ({
-  ErrorBoundary: ({ children, onError }: any) => {
+  ErrorBoundary: ({ children, onError }: ErrorBoundaryProps) => {
     onError?.(new Error('boundary boom'), { componentStack: 'stack' });
     return <>{children}</>;
   },

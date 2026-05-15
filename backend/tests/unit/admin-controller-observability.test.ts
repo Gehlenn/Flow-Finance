@@ -29,8 +29,13 @@ vi.mock('../../src/services/persistence/postgresStateStore', () => ({
 
 import { listAuditLogs } from '../../src/admin/adminController';
 
+type MockRes = {
+  json: ReturnType<typeof vi.fn>;
+  setHeader: ReturnType<typeof vi.fn>;
+};
+
 function makeRes() {
-  const res: any = {};
+  const res = {} as MockRes;
   res.json = vi.fn();
   res.setHeader = vi.fn();
   return res;

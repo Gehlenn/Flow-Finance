@@ -23,8 +23,14 @@ vi.mock('../../src/config/logger', () => ({
 import { AppError } from '../../src/middleware/errorHandler';
 import { firebaseSessionController } from '../../src/controllers/authController';
 
+type MockRes = {
+  status: ReturnType<typeof vi.fn>;
+  json: ReturnType<typeof vi.fn>;
+  cookie: ReturnType<typeof vi.fn>;
+};
+
 function makeRes() {
-  const res: any = {};
+  const res = {} as MockRes;
   res.status = vi.fn(() => res);
   res.json = vi.fn(() => res);
   res.cookie = vi.fn(() => res);
@@ -36,7 +42,7 @@ describe('authController Firebase session observability', () => {
     controllerMocks.isFirebaseIdentityVerificationConfigured.mockReturnValue(true);
     controllerMocks.verifyFirebaseIdToken.mockRejectedValueOnce(new Error('invalid firebase token'));
 
-    const req: any = {
+    const req = {
       path: '/api/auth/firebase',
       body: { idToken: 'firebase-id-token-123' },
       ip: '127.0.0.1',

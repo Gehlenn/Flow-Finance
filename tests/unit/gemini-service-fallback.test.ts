@@ -28,6 +28,7 @@ vi.mock('../../src/utils/logger', () => ({
 }));
 
 import { buildSmartInputFallback, GeminiService } from '../../services/geminiService';
+import type { Reminder, TransactionData } from '../../types';
 import { TransactionType, Category } from '../../types';
 
 describe('buildSmartInputFallback', () => {
@@ -36,7 +37,7 @@ describe('buildSmartInputFallback', () => {
 
     expect(output.intent).toBe('transaction');
     expect(output.data).toHaveLength(1);
-    const tx = output.data[0] as any;
+    const tx = output.data[0] as TransactionData;
     expect(tx.amount).toBe(50);
     expect(tx.type).toBe(TransactionType.DESPESA);
     expect(tx.category).toBe(Category.PESSOAL);
@@ -46,7 +47,7 @@ describe('buildSmartInputFallback', () => {
     const output = buildSmartInputFallback('Recebi 2500 de salario');
 
     expect(output.intent).toBe('transaction');
-    const tx = output.data[0] as any;
+    const tx = output.data[0] as TransactionData;
     expect(tx.amount).toBe(2500);
     expect(tx.type).toBe(TransactionType.RECEITA);
     expect(tx.category).toBe(Category.CONSULTORIO);
@@ -57,7 +58,7 @@ describe('buildSmartInputFallback', () => {
 
     expect(output.intent).toBe('reminder');
     expect(output.data).toHaveLength(1);
-    const reminder = output.data[0] as any;
+    const reminder = output.data[0] as Reminder;
     expect(reminder.title).toContain('Lembrar de pagar luz');
     expect(reminder.priority).toBe('média');
   });
@@ -83,7 +84,7 @@ describe('GeminiService.processSmartInput', () => {
     const output = await service.processSmartInput('Comprei 89,90 no mercado');
 
     expect(output.intent).toBe('transaction');
-    const tx = output.data[0] as any;
+    const tx = output.data[0] as TransactionData;
     expect(tx.amount).toBe(89.9);
     expect(tx.type).toBe(TransactionType.DESPESA);
     expect(logWarnMock).toHaveBeenCalledWith(

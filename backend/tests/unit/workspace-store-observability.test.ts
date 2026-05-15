@@ -103,7 +103,8 @@ describe('workspaceStore observability', () => {
   });
 
   it('registra contexto quando o backfill do workspace store falha', async () => {
-    mocks.loadWorkspaceStoreState.mockResolvedValueOnce({
+    mocks.loadWorkspaceStoreState.mockResolvedValueOnce(null);
+    mocks.loadJsonState.mockResolvedValueOnce({
       tenants: [],
       workspaces: [
         {

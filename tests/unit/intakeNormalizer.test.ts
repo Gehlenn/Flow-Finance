@@ -305,7 +305,7 @@ describe('draftToTransaction', () => {
       type: TransactionType.DESPESA,
     };
     const draft = normalizeManual(base);
-    (draft as any).source = 'scanner';
+    (draft as { source: string }).source = 'scanner';
     expect(draftToTransaction(draft).source).toBe('ai_image');
   });
 

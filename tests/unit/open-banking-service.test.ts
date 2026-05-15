@@ -1,4 +1,7 @@
-﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Category, TransactionType, type Transaction as AppTransaction } from '../../types';
+import type { ImportedTransaction } from '../../src/finance/importService';
+import type { Account } from '../../models/Account';
 
 // ─── Mock: provider mock (sem delays de rede) ─────────────────────────────────
 vi.mock('../../services/integrations/mockBankProvider', () => ({
@@ -9,8 +12,8 @@ vi.mock('../../services/integrations/mockBankProvider', () => ({
       { id: 'mock_acc1', name: 'Conta Corrente', balance: 4280.5, currency: 'BRL', type: 'checking' },
     ]),
     fetchTransactions: vi.fn().mockResolvedValue([
-      { id: 'tx1', date: new Date(Date.now() - 86400000).toISOString(), amount: -89.90, description: 'iFood', merchant: 'iFood' },
-      { id: 'tx2', date: new Date(Date.now() - 172800000).toISOString(), amount: 3200.00, description: 'Salário', merchant: 'Empresa SA' },
+      { id: 'tx1', date: new Date(Date.now() - 86400000).toISOString(), amount: -89.9, description: 'iFood', merchant: 'iFood' },
+      { id: 'tx2', date: new Date(Date.now() - 172800000).toISOString(), amount: 3200, description: 'Salário', merchant: 'Empresa SA' },
     ]),
   })),
 }));
@@ -22,8 +25,8 @@ vi.mock('../../src/ai/aiMemory', () => ({
 
 // ─── Mock: importService (classifyImportedTransactions usa IA) ───────────────
 vi.mock('../../src/finance/importService', () => ({
-  classifyImportedTransactions: vi.fn().mockImplementation((txs: any[]) =>
-    Promise.resolve(txs.map((t: any) => ({ ...t, category: 'PESSOAL', confidence: 0.3 })))
+  classifyImportedTransactions: vi.fn().mockImplementation((txs: ImportedTransaction[]) =>
+    Promise.resolve(txs.map((t) => ({ ...t, category: Category.PESSOAL, confidence: 0.3 })))
   ),
 }));
 
@@ -47,20 +50,35 @@ import {
   formatLastSync,
   getBankingHealth,
   listPluggyConnectors,
-  mapPluggyConnectErrorMessage
+  mapPluggyConnectErrorMessage,
 } from '../../services/integrations/openBankingService';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function makeAccount(id: string, name: string, balance = 1000) {
+function makeAccount(id: string, name: string, balance = 1000): Account {
   return {
     id,
     user_id: 'u1',
     name,
-    type: 'bank' as const,
+    type: 'bank',
     balance,
     currency: 'BRL',
     created_at: new Date().toISOString(),
+  };
+}
+
+function makeTransaction(
+  overrides: Pick<AppTransaction, 'id' | 'amount' | 'type' | 'category' | 'description' | 'date'> & Partial<AppTransaction>
+): AppTransaction {
+  return {
+    id: overrides.id,
+    amount: overrides.amount,
+    type: overrides.type,
+    category: overrides.category,
+    description: overrides.description,
+    date: overrides.date,
+    generated: false,
+    ...overrides,
   };
 }
 
@@ -93,7 +111,7 @@ describe('openBankingService (local mock mode)', () => {
     await connectBank('itau', 'bob');
 
     const aliceConns = getConnections('alice');
-    const bobConns   = getConnections('bob');
+    const bobConns = getConnections('bob');
 
     expect(aliceConns).toHaveLength(1);
     expect(aliceConns[0].user_id).toBe('alice');
@@ -138,7 +156,6 @@ describe('openBankingService (local mock mode)', () => {
   });
 
   it('disconnectBank is a no-op for unknown id', async () => {
-    // Should not throw
     await expect(disconnectBank('does-not-exist')).resolves.toBeUndefined();
   });
 
@@ -148,7 +165,7 @@ describe('openBankingService (local mock mode)', () => {
     const conn = await connectBank('nubank', 'user1');
 
     const accounts = [makeAccount('acc1', 'Nubank Check', 0)];
-    const updates: any[] = [];
+    const updates: Account[] = [];
 
     await syncAccounts(conn.id, accounts, (acc) => updates.push(acc));
 
@@ -157,7 +174,7 @@ describe('openBankingService (local mock mode)', () => {
   });
 
   it('syncAccounts is a no-op for unknown connectionId', async () => {
-    const updates: any[] = [];
+    const updates: Account[] = [];
     await syncAccounts('unknown-id', [], (acc) => updates.push(acc));
     expect(updates).toHaveLength(0);
   });
@@ -173,33 +190,35 @@ describe('openBankingService (local mock mode)', () => {
   it('syncTransactions imports new transactions (no duplicates)', async () => {
     const conn = await connectBank('nubank', 'user1');
 
-    const received: any[] = [];
+    const received: Array<Partial<AppTransaction>> = [];
     const result = await syncTransactions(conn.id, [], 'user1', (txs) => received.push(...txs));
 
-    expect(result.transactions_imported).toBe(2); // 2 mocked raw txs
-    expect(received).toHaveLength(2);    expect(received[0]).toMatchObject({
+    expect(result.transactions_imported).toBe(2);
+    expect(received).toHaveLength(2);
+    expect(received[0]).toMatchObject({
       source: 'integration',
     });
-    expect(received[0].external_reference).toBeTruthy();  });
+    expect(received[0].external_reference).toBeTruthy();
+  });
 
   it('syncTransactions skips duplicates (same date + amount + description)', async () => {
     const conn = await connectBank('nubank', 'user1');
 
-    // Pre-populate with a transaction that matches mock tx1
-    const existing = [{
-      id: 'existing-1',
-      amount: 89.90,
-      type: 'DESPESA' as any,
-      category: 'PESSOAL' as any,
-      description: 'iFood',
-      merchant: 'iFood',
-      date: new Date(Date.now() - 86400000).toISOString(),
-    }];
+    const existing: AppTransaction[] = [
+      makeTransaction({
+        id: 'existing-1',
+        amount: 89.9,
+        type: TransactionType.DESPESA,
+        category: Category.PESSOAL,
+        description: 'iFood',
+        merchant: 'iFood',
+        date: new Date(Date.now() - 86400000).toISOString(),
+      }),
+    ];
 
-    const received: any[] = [];
+    const received: Array<Partial<AppTransaction>> = [];
     const result = await syncTransactions(conn.id, existing, 'user1', (txs) => received.push(...txs));
 
-    // Only 1 new (tx2 = Salário), tx1 was deduplicated
     expect(result.transactions_imported).toBe(1);
   });
 
@@ -216,14 +235,14 @@ describe('openBankingService (local mock mode)', () => {
   it('fullSync runs accounts + transactions sync and returns SyncResult', async () => {
     const conn = await connectBank('nubank', 'user1');
     const accounts = [makeAccount('acc1', 'Nubank', 0)];
-    const updates: any[] = [];
-    const received: any[] = [];
+    const updates: Account[] = [];
+    const received: Array<Partial<AppTransaction>> = [];
 
     const result = await fullSync(conn.id, [], accounts, 'user1', (txs) => received.push(...txs), (acc) => updates.push(acc));
 
     expect(result.connection_id).toBe(conn.id);
     expect(result.transactions_imported).toBe(2);
-    expect(updates).toHaveLength(1); // account balance updated
+    expect(updates).toHaveLength(1);
   });
 
   // ─────────────────────── formatLastSync ──────────────────────────────────
@@ -249,13 +268,12 @@ describe('openBankingService (local mock mode)', () => {
   it('formatLastSync returns locale date for syncs > 24h ago', () => {
     const ts = new Date(Date.now() - 2 * 86400000).toISOString();
     const label = formatLastSync(ts);
-    expect(label).toMatch(/\d{2}\/\d{2}\/\d{4}/); // pt-BR date format
+    expect(label).toMatch(/\d{2}\/\d{2}\/\d{4}/);
   });
 
-    // ─────────────────────── mapPluggyConnectErrorMessage ─────────────────────
-    it('mapPluggyConnectErrorMessage retorna mensagem padrão para erro genérico', () => {
-      const msg = mapPluggyConnectErrorMessage({ message: 'erro desconhecido' });
-      expect(msg).toMatch(/Conexao Pluggy cancelada ou invalida/);
-    });
+  // ─────────────────────── mapPluggyConnectErrorMessage ─────────────────────
+  it('mapPluggyConnectErrorMessage retorna mensagem padrão para erro genérico', () => {
+    const msg = mapPluggyConnectErrorMessage({ message: 'erro desconhecido' });
+    expect(msg).toMatch(/Conexao Pluggy cancelada ou invalida/);
+  });
 });
-

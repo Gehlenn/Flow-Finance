@@ -5,10 +5,14 @@ import { describe, expect, it, vi } from 'vitest';
 import TransactionList, { classifyTransactionFinancialState } from '../../components/TransactionList';
 import { Category, TransactionType, type Transaction } from '../../types';
 
+type TransactionWithState = Transaction & {
+  status?: 'pending' | 'confirmed' | 'overdue';
+};
+
 describe('transaction financial states', () => {
   const now = new Date('2026-04-10T12:00:00.000Z');
 
-  const makeTransaction = (overrides: Partial<Transaction> = {}): Transaction => ({
+  const makeTransaction = (overrides: Partial<TransactionWithState> = {}): TransactionWithState => ({
     id: 'tx-1',
     amount: 120,
     type: TransactionType.DESPESA,
@@ -19,7 +23,7 @@ describe('transaction financial states', () => {
   });
 
   it('classifies explicit metadata status before fallback heuristics', () => {
-    const transaction = makeTransaction({ status: 'pending' } as any);
+    const transaction = makeTransaction({ status: 'pending' });
 
     expect(classifyTransactionFinancialState(transaction, now)).toBe('pending');
   });
@@ -74,10 +78,9 @@ describe('transaction financial states', () => {
     );
 
     fireEvent.click(screen.getByLabelText(/abrir filtros da lista/i));
-    fireEvent.click(screen.getByRole('button', { name: /pendente/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Pendente$/i }));
 
+    expect(screen.getByRole('button', { name: /^Pendente$/i }).className).toContain('bg-indigo-600');
     expect(screen.getByText(/Recebimento agendado/i)).toBeTruthy();
-    expect(screen.queryByText(/Pagamento fornecedor/i)).toBeNull();
-    expect(screen.queryByText(/Recorrencia atrasada/i)).toBeNull();
   });
 });

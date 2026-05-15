@@ -1,10 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-const mockWarn = vi.fn();
+const stripeMocks = vi.hoisted(() => ({
+  mockWarn: vi.fn(),
+}));
 
 vi.mock('../../src/config/logger', () => ({
   default: {
-    warn: mockWarn,
+    warn: stripeMocks.mockWarn,
   },
 }));
 
@@ -13,7 +15,7 @@ import { parseStripeWebhookEvent, verifyStripeWebhookSignature } from '../../src
 
 describe('stripeService', () => {
   beforeEach(() => {
-    mockWarn.mockClear();
+    stripeMocks.mockWarn.mockClear();
   });
 
   it('registra aviso contextual quando o webhook JSON e invalido', () => {
@@ -28,7 +30,7 @@ describe('stripeService', () => {
     expect((thrown as AppError).statusCode).toBe(400);
     expect((thrown as AppError).message).toBe('Invalid Stripe webhook JSON payload');
 
-    expect(mockWarn).toHaveBeenCalledWith(
+    expect(stripeMocks.mockWarn).toHaveBeenCalledWith(
       expect.objectContaining({
         error: expect.any(Error),
         rawLength: 8,
@@ -41,7 +43,7 @@ describe('stripeService', () => {
     process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test';
 
     expect(verifyStripeWebhookSignature('raw-body', undefined)).toBe(false);
-    expect(mockWarn).toHaveBeenCalledWith(
+    expect(stripeMocks.mockWarn).toHaveBeenCalledWith(
       expect.objectContaining({
         rawLength: 8,
         hasSignature: false,
@@ -50,9 +52,9 @@ describe('stripeService', () => {
       '[StripeService] Missing Stripe webhook signature header'
     );
 
-    mockWarn.mockClear();
+    stripeMocks.mockWarn.mockClear();
     expect(verifyStripeWebhookSignature('raw-body', 't=123')).toBe(false);
-    expect(mockWarn).toHaveBeenCalledWith(
+    expect(stripeMocks.mockWarn).toHaveBeenCalledWith(
       expect.objectContaining({
         rawLength: 8,
         hasSignature: true,
@@ -63,9 +65,9 @@ describe('stripeService', () => {
       '[StripeService] Malformed Stripe webhook signature header'
     );
 
-    mockWarn.mockClear();
+    stripeMocks.mockWarn.mockClear();
     expect(verifyStripeWebhookSignature('raw-body', 't=123,v1=deadbeef')).toBe(false);
-    expect(mockWarn).toHaveBeenCalledWith(
+    expect(stripeMocks.mockWarn).toHaveBeenCalledWith(
       expect.objectContaining({
         rawLength: 8,
         hasSignature: true,
@@ -74,9 +76,9 @@ describe('stripeService', () => {
       '[StripeService] Stripe webhook signature mismatch'
     );
 
-    mockWarn.mockClear();
+    stripeMocks.mockWarn.mockClear();
     expect(verifyStripeWebhookSignature('raw-body', `t=123,v1=${'a'.repeat(64)}`)).toBe(false);
-    expect(mockWarn).toHaveBeenCalledWith(
+    expect(stripeMocks.mockWarn).toHaveBeenCalledWith(
       expect.objectContaining({
         rawLength: 8,
         hasSignature: true,

@@ -1,24 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const addTaskMock = vi.fn();
-const getTaskMock = vi.fn();
-const updateTaskStatusMock = vi.fn();
+import { ACTIVE_WORKSPACE_STORAGE_KEY } from '../../src/config/api.config';
+
 const startMock = vi.fn();
 const stopMock = vi.fn();
 const logInfoMock = vi.fn();
 const logWarnMock = vi.fn();
-
-vi.mock('../../src/ai/queue/taskStore', () => ({
-  taskStore: {
-    addTask: (...args: unknown[]) => addTaskMock(...args),
-    getTask: (...args: unknown[]) => getTaskMock(...args),
-    updateTaskStatus: (...args: unknown[]) => updateTaskStatusMock(...args),
-    getTasksByUser: vi.fn(),
-    getTasksByStatus: vi.fn(),
-    getAllTasks: vi.fn(),
-    clearCompletedTasks: vi.fn(),
-  },
-}));
 
 vi.mock('../../src/ai/queue/AIWorker', () => ({
   aiWorker: {
@@ -37,82 +24,121 @@ vi.mock('../../src/utils/logger', () => ({
 }));
 
 describe('AITaskQueue observability', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetModules();
     vi.clearAllMocks();
     localStorage.clear();
+    localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, 'ws-queue-observability');
+
+    const { taskStore } = await import('../../src/ai/queue/taskStore');
+    taskStore.clear();
   });
 
   it('logs initialization, enqueue and cancel events with context', async () => {
     const { aiTaskQueue, enqueueTaskForUser } = await import('../../src/ai/queue/AITaskQueue');
     const { AITaskPriority, AITaskStatus, AITaskType } = await import('../../src/ai/queue/taskTypes');
+    const { taskStore } = await import('../../src/ai/queue/taskStore');
 
-    aiTaskQueue.initialize();
-    aiTaskQueue.initialize();
+    const enqueueEvents: CustomEvent[] = [];
+    const updateEvents: CustomEvent[] = [];
+    const enqueueHandler = (event: Event): void => {
+      enqueueEvents.push(event as CustomEvent);
+    };
+    const updateHandler = (event: Event): void => {
+      updateEvents.push(event as CustomEvent);
+    };
 
-    expect(startMock).toHaveBeenCalledTimes(1);
-    expect(logInfoMock).toHaveBeenCalledWith(
-      '[AI Task Queue] Initializing...',
-      expect.objectContaining({ fallback: 'ai-task-queue-initializing' }),
-    );
-    expect(logInfoMock).toHaveBeenCalledWith(
-      '[AI Task Queue] Ready',
-      expect.objectContaining({ fallback: 'ai-task-queue-ready' }),
-    );
-    expect(logWarnMock).toHaveBeenCalledWith(
-      '[AI Task Queue] Already initialized',
-      expect.objectContaining({ fallback: 'ai-task-queue-already-initialized' }),
-    );
+    window.addEventListener('ai-task-enqueued', enqueueHandler);
+    window.addEventListener('ai-task-updated', updateHandler);
 
-    const taskId = enqueueTaskForUser(
-      'user-1',
-      AITaskType.INSIGHT_GENERATION,
-      { accounts: [], transactions: [] },
-      {
-        priority: AITaskPriority.HIGH,
-        maxRetries: 4,
-      },
-    );
+    try {
+      aiTaskQueue.initialize();
+      aiTaskQueue.initialize();
 
-    expect(taskId).toBe('task-123');
-    expect(addTaskMock).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'task-123',
-      type: AITaskType.INSIGHT_GENERATION,
-      userId: 'user-1',
-      priority: AITaskPriority.HIGH,
-      maxRetries: 4,
-    }));
-    expect(logInfoMock).toHaveBeenCalledWith(
-      '[AI Task Queue] Task enqueued',
-      expect.objectContaining({
+      expect(startMock).toHaveBeenCalledTimes(1);
+      expect(logInfoMock).toHaveBeenCalledWith(
+        '[AI Task Queue] Initializing...',
+        expect.objectContaining({ fallback: 'ai-task-queue-initializing' }),
+      );
+      expect(logInfoMock).toHaveBeenCalledWith(
+        '[AI Task Queue] Ready',
+        expect.objectContaining({ fallback: 'ai-task-queue-ready' }),
+      );
+      expect(logWarnMock).toHaveBeenCalledWith(
+        '[AI Task Queue] Already initialized',
+        expect.objectContaining({ fallback: 'ai-task-queue-already-initialized' }),
+      );
+
+      const taskId = enqueueTaskForUser(
+        'user-1',
+        AITaskType.INSIGHT_GENERATION,
+        { accounts: [], transactions: [] },
+        {
+          priority: AITaskPriority.HIGH,
+          maxRetries: 4,
+        },
+      );
+
+      expect(taskId).toBe('task-123');
+      expect(taskStore.getTask('task-123')).toBeDefined();
+      expect(enqueueEvents).toHaveLength(1);
+      expect(enqueueEvents[0].detail).toEqual(expect.objectContaining({
         taskId: 'task-123',
         taskType: AITaskType.INSIGHT_GENERATION,
-        userId: 'user-1',
+        status: AITaskStatus.PENDING,
         priority: AITaskPriority.HIGH,
-        fallback: 'ai-task-queue-task-enqueued',
-      }),
-    );
+        userId: 'user-1',
+      }));
+      expect(logInfoMock).toHaveBeenCalledWith(
+        '[AI Task Queue] Task enqueued',
+        expect.objectContaining({
+          taskId: 'task-123',
+          taskType: AITaskType.INSIGHT_GENERATION,
+          userId: 'user-1',
+          priority: AITaskPriority.HIGH,
+          fallback: 'ai-task-queue-task-enqueued',
+        }),
+      );
 
-    getTaskMock.mockReturnValueOnce({
-      id: 'task-123',
-      status: AITaskStatus.PENDING,
-    });
+      expect(aiTaskQueue.getQueueStats()).toEqual({
+        pending: 1,
+        processing: 0,
+        completed: 0,
+        failed: 0,
+        cancelled: 0,
+      });
 
-    expect(aiTaskQueue.cancelTask('task-123')).toBe(true);
-    expect(updateTaskStatusMock).toHaveBeenCalledWith('task-123', AITaskStatus.CANCELLED);
-    expect(logInfoMock).toHaveBeenCalledWith(
-      '[AI Task Queue] Task cancelled',
-      expect.objectContaining({
+      expect(aiTaskQueue.cancelTask('task-123')).toBe(true);
+      expect(updateEvents).toHaveLength(1);
+      expect(updateEvents[0].detail).toEqual(expect.objectContaining({
         taskId: 'task-123',
-        fallback: 'ai-task-queue-task-cancelled',
-      }),
-    );
+        status: AITaskStatus.CANCELLED,
+        userId: 'user-1',
+      }));
+      expect(aiTaskQueue.getQueueStats()).toEqual({
+        pending: 0,
+        processing: 0,
+        completed: 0,
+        failed: 0,
+        cancelled: 1,
+      });
+      expect(logInfoMock).toHaveBeenCalledWith(
+        '[AI Task Queue] Task cancelled',
+        expect.objectContaining({
+          taskId: 'task-123',
+          fallback: 'ai-task-queue-task-cancelled',
+        }),
+      );
 
-    aiTaskQueue.shutdown();
-    expect(stopMock).toHaveBeenCalledTimes(1);
-    expect(logInfoMock).toHaveBeenCalledWith(
-      '[AI Task Queue] Shutdown complete',
-      expect.objectContaining({ fallback: 'ai-task-queue-shutdown-complete' }),
-    );
+      aiTaskQueue.shutdown();
+      expect(stopMock).toHaveBeenCalledTimes(1);
+      expect(logInfoMock).toHaveBeenCalledWith(
+        '[AI Task Queue] Shutdown complete',
+        expect.objectContaining({ fallback: 'ai-task-queue-shutdown-complete' }),
+      );
+    } finally {
+      window.removeEventListener('ai-task-enqueued', enqueueHandler);
+      window.removeEventListener('ai-task-updated', updateHandler);
+    }
   });
 });

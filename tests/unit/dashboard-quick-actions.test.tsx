@@ -3,8 +3,20 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Dashboard from '../../components/Dashboard';
+import { ReminderType, type Reminder } from '../../types';
 
 describe('dashboard quick actions', () => {
+  const buildReminder = (overrides: Partial<Reminder> = {}): Reminder => ({
+    id: 'rem-1',
+    title: 'Cobranca consulta',
+    date: new Date().toISOString(),
+    type: ReminderType.NEGOCIO,
+    amount: 200,
+    completed: false,
+    priority: 'media',
+    ...overrides,
+  });
+
   it('exposes contextual access to transactions, cash flow, insights and revenue forecast', () => {
     const onNavigateToHistory = vi.fn();
     const onNavigateToFlow = vi.fn();
@@ -77,16 +89,10 @@ describe('dashboard quick actions', () => {
         accounts={[]}
         alerts={[]}
         reminders={[
-          {
-            id: 'rem-1',
+          buildReminder({
             title: 'Cobranca consulta',
-            date: new Date().toISOString(),
-            type: 'Negócio' as any,
-            amount: 200,
-            completed: false,
-            priority: 'media',
             source: 'clinic-automation',
-          } as any,
+          }),
         ]}
         hideValues={false}
       />,
@@ -105,24 +111,17 @@ describe('dashboard quick actions', () => {
         accounts={[]}
         alerts={[]}
         reminders={[
-          {
+          buildReminder({
             id: 'pending-1',
             title: 'Recebimento futuro',
             date: '2099-04-10T09:00:00.000Z',
-            type: 'Negócio' as any,
-            amount: 200,
-            completed: false,
-            priority: 'media',
-          } as any,
-          {
+          }),
+          buildReminder({
             id: 'overdue-1',
             title: 'Recebimento vencido',
             date: '2020-04-10T09:00:00.000Z',
-            type: 'Negócio' as any,
-            amount: 150,
-            completed: false,
             priority: 'alta',
-          } as any,
+          }),
         ]}
         hideValues={false}
       />,

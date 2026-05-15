@@ -1,9 +1,14 @@
 import {
   IntegrationTelemetry,
   IntegrationContext,
-  IntegrationName
+  IntegrationName,
+  normalizeIntegrationEnvironment
 } from './IntegrationTelemetry';
 import { Logger } from 'pino';
+
+function normalizeErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 /**
  * IntegrationMonitor: Conjunto de helpers para instrumentar llamadas a integrações específicas.
@@ -25,7 +30,7 @@ export class IntegrationMonitor {
       integrationName: 'openai', // será sobrescrito por provider map
       operation,
       provider,
-      environment: (process.env.NODE_ENV || 'development') as any,
+      environment: normalizeIntegrationEnvironment(process.env.NODE_ENV),
       requestId: context?.requestId || 'unknown',
       tenantId: context?.tenantId,
       userId: context?.userId,
@@ -47,7 +52,7 @@ export class IntegrationMonitor {
       return result;
     } catch (error) {
       this.logger.error(
-        { provider, operation, requestId: baseContext.requestId, error: (error as Error).message },
+        { provider, operation, requestId: baseContext.requestId, error: normalizeErrorMessage(error) },
         `AI call failed: ${provider} - ${operation}`
       );
       throw error;
@@ -66,7 +71,7 @@ export class IntegrationMonitor {
       integrationName: 'stripe',
       operation,
       provider: 'stripe',
-      environment: (process.env.NODE_ENV || 'development') as any,
+      environment: normalizeIntegrationEnvironment(process.env.NODE_ENV),
       requestId: context?.requestId || 'unknown',
       tenantId: context?.tenantId,
       userId: context?.userId,
@@ -89,7 +94,7 @@ export class IntegrationMonitor {
       integrationName: 'firebase',
       operation,
       provider: 'firebase',
-      environment: (process.env.NODE_ENV || 'development') as any,
+      environment: normalizeIntegrationEnvironment(process.env.NODE_ENV),
       requestId: context?.requestId || 'unknown',
       tenantId: context?.tenantId,
       userId: context?.userId,
@@ -112,7 +117,7 @@ export class IntegrationMonitor {
       integrationName: 'pluggy',
       operation,
       provider: 'pluggy',
-      environment: (process.env.NODE_ENV || 'development') as any,
+      environment: normalizeIntegrationEnvironment(process.env.NODE_ENV),
       requestId: context?.requestId || 'unknown',
       tenantId: context?.tenantId,
       userId: context?.userId,
@@ -135,7 +140,7 @@ export class IntegrationMonitor {
       integrationName: 'clinic-automation',
       operation,
       provider: 'clinic-automation',
-      environment: (process.env.NODE_ENV || 'development') as any,
+      environment: normalizeIntegrationEnvironment(process.env.NODE_ENV),
       requestId: context?.requestId || 'unknown',
       tenantId: context?.tenantId,
       sourceSystem: 'clinic-automation',
@@ -152,12 +157,12 @@ export class IntegrationMonitor {
     integrationName: IntegrationName,
     reason: string,
     severity: 'low' | 'medium' | 'high',
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): void {
     const context: IntegrationContext = {
       integrationName,
       operation: 'fetch_data', // Usar operação válida
-      environment: (process.env.NODE_ENV || 'development') as any,
+      environment: normalizeIntegrationEnvironment(process.env.NODE_ENV),
       requestId: 'health-check',
       sourceSystem: 'flow'
     };
@@ -205,7 +210,7 @@ export class IntegrationMonitor {
         this.logger.error(
           {
             integrationName: integration,
-            error: error instanceof Error ? error.message : String(error),
+            error: normalizeErrorMessage(error),
             errorType: error instanceof Error ? error.constructor.name : typeof error,
             fallback: 'healthcheck-false',
           },
@@ -215,7 +220,7 @@ export class IntegrationMonitor {
           name: integration,
           healthy: false,
           lastChecked: new Date(),
-          message: (error as Error).message
+          message: normalizeErrorMessage(error)
         });
       }
     }

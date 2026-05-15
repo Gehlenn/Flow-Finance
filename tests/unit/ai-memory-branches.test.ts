@@ -8,6 +8,8 @@ vi.mock('../../src/utils/logger', () => ({
 
 import { ACTIVE_WORKSPACE_STORAGE_KEY } from '../../src/config/api.config';
 import { getAIMemorySnapshot, getUserMemoryProfile, type AIMemory } from '../../src/ai/aiMemory';
+import { Category, TransactionType } from '../../types';
+import type { Transaction } from '../../types';
 
 function setWorkspace(workspaceId: string): void {
   localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, workspaceId);
@@ -16,6 +18,18 @@ function setWorkspace(workspaceId: string): void {
 function setMemories(memories: AIMemory[] | Record<string, unknown>): void {
   const workspace = localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY) || 'global';
   localStorage.setItem(`flow_ai_memory:${workspace}`, JSON.stringify(memories));
+}
+
+function makeTx(id: string, date: string): Transaction {
+  return {
+    id,
+    amount: 50,
+    type: TransactionType.DESPESA,
+    category: Category.PESSOAL,
+    description: 'A',
+    date,
+    recurring: false,
+  } as Transaction;
 }
 
 describe('aiMemory branch coverage', () => {
@@ -76,9 +90,9 @@ describe('aiMemory branch coverage', () => {
 
     // datetime ISO string — cobre o branch else (non dateOnly)
     await detectAndLearnPatterns('user-parse', [
-      { id: 't1', amount: 50, type: 'despesa' as any, category: 'pessoal' as any, description: 'A', date: '2026-05-10T10:00:00.000Z', recurring: false },
-      { id: 't2', amount: 50, type: 'despesa' as any, category: 'pessoal' as any, description: 'A', date: '2026-05-11T10:00:00.000Z', recurring: false },
-      { id: 't3', amount: 50, type: 'despesa' as any, category: 'pessoal' as any, description: 'A', date: 'not-a-date', recurring: false },
+      makeTx('t1', '2026-05-10T10:00:00.000Z'),
+      makeTx('t2', '2026-05-11T10:00:00.000Z'),
+      makeTx('t3', 'not-a-date'),
     ]);
 
     // Não lança — apenas confirma que execução completa sem erro

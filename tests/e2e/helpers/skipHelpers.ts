@@ -1,4 +1,4 @@
-﻿import { test, Page } from '@playwright/test';
+import { test, type Page, type TestInfo } from '@playwright/test';
 
 /**
  * Environment-aware skip helpers for E2E tests
@@ -103,7 +103,7 @@ export async function skipIfBackendUnavailable(
  * Skip if running on mobile device
  * Useful for desktop-only tests
  */
-export async function skipIfMobile(testInfo: any): Promise<void> {
+export async function skipIfMobile(testInfo: TestInfo): Promise<void> {
   const isMobile = testInfo.project.use.isMobile || false;
   
   await skipIf(isMobile, {
@@ -117,7 +117,7 @@ export async function skipIfMobile(testInfo: any): Promise<void> {
  * Skip if running on desktop (opposite of skipIfMobile)
  * Useful for mobile-only tests
  */
-export async function skipIfDesktop(testInfo: any): Promise<void> {
+export async function skipIfDesktop(testInfo: TestInfo): Promise<void> {
   const isDesktop = !testInfo.project.use.isMobile;
   
   await skipIf(isDesktop, {
@@ -132,7 +132,7 @@ export async function skipIfDesktop(testInfo: any): Promise<void> {
  * Use for reporting and debugging
  */
 export function annotateSkipReason(
-  testInfo: any,
+  testInfo: TestInfo,
   reason: string,
   category: string
 ): void {

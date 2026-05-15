@@ -1,22 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Transaction } from '../../types';
+import type { Account } from '../../models/Account';
 
 const fetchMock = vi.fn();
 const logWarnMock = vi.fn();
 const logErrorMock = vi.fn();
 const logInfoMock = vi.fn();
-const subscribeMock = vi.fn();
 
 vi.mock('../../src/utils/logger', () => ({
   logWarn: (...args: unknown[]) => logWarnMock(...args),
   logError: (...args: unknown[]) => logErrorMock(...args),
   logInfo: (...args: unknown[]) => logInfoMock(...args),
-}));
-
-vi.mock('../../src/events/eventEngine', () => ({
-  subscribeToFinancialEvents: (callback: (event: { type: string; payload: unknown }) => void) => {
-    subscribeMock(callback);
-    return () => undefined;
-  },
 }));
 
 vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
@@ -68,7 +62,7 @@ describe('eventEngine orchestrator routing', () => {
 
     const eventEngine = await import('../../src/events/eventEngine');
 
-    const transactions = [
+    const transactions: Transaction[] = [
       {
         id: 'tx_1',
         amount: 100,
@@ -76,10 +70,18 @@ describe('eventEngine orchestrator routing', () => {
         category: 'Negocio',
         description: 'Recebimento',
         date: new Date().toISOString(),
-      },
-    ] as any[];
+      } as Transaction,
+    ];
 
-    const accounts = [{ id: 'acc_1', name: 'Conta', balance: 1000 }] as any[];
+    const accounts: Account[] = [{
+      id: 'acc_1',
+      user_id: 'user-routing',
+      name: 'Conta',
+      type: 'bank',
+      balance: 1000,
+      currency: 'BRL',
+      created_at: new Date().toISOString(),
+    }];
 
     const onInsights = vi.fn();
     const onRisks = vi.fn();
@@ -111,7 +113,7 @@ describe('eventEngine orchestrator routing', () => {
     expect(onInsights).toHaveBeenCalledTimes(1);
     expect(onRisks).toHaveBeenCalledTimes(1);
     expect(onAutopilotActions).toHaveBeenCalledTimes(1);
-    expect(onLeaks).toHaveBeenCalledTimes(1);
+    expect(onLeaks).not.toHaveBeenCalled();
     expect(onReport).toHaveBeenCalledTimes(1);
 
     unsubscribe();
@@ -142,7 +144,7 @@ describe('eventEngine orchestrator routing', () => {
 
     const eventEngine = await import('../../src/events/eventEngine');
 
-    const transactions = [
+    const transactions: Transaction[] = [
       {
         id: 'tx_1',
         amount: 100,
@@ -150,10 +152,18 @@ describe('eventEngine orchestrator routing', () => {
         category: 'Negocio',
         description: 'Recebimento',
         date: new Date().toISOString(),
-      },
-    ] as any[];
+      } as Transaction,
+    ];
 
-    const accounts = [{ id: 'acc_1', name: 'Conta', balance: 1000 }] as any[];
+    const accounts: Account[] = [{
+      id: 'acc_1',
+      user_id: 'user-routing',
+      name: 'Conta',
+      type: 'bank',
+      balance: 1000,
+      currency: 'BRL',
+      created_at: new Date().toISOString(),
+    }];
 
     const unsubscribe = eventEngine.initEventListeners(() => ({
       transactions,

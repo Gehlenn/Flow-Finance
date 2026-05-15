@@ -19,7 +19,7 @@ vi.mock('@sentry/node', () => ({
 
 describe('IntegrationTelemetry', () => {
   let telemetry: IntegrationTelemetry;
-  let loggerSpy: any;
+  let loggerSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     telemetry = new IntegrationTelemetry(logger);
@@ -178,18 +178,23 @@ describe('IntegrationTelemetry', () => {
 
   describe('request context integration', () => {
     it('deve ler requestId, userId e tenantId do AsyncLocalStorage', () => {
-      runWithRequestContext(
-        {
-          requestId: 'req-als',
-          userId: 'user-als',
-          tenantId: 'tenant-als',
-        },
-        () => {
-          expect((telemetry as any).getRequestId()).toBe('req-als');
-          expect((telemetry as any).getUserId()).toBe('user-als');
-          expect((telemetry as any).getTenantId()).toBe('tenant-als');
-        }
-      );
-    });
+    runWithRequestContext(
+      {
+        requestId: 'req-als',
+        userId: 'user-als',
+        tenantId: 'tenant-als',
+      },
+      () => {
+          const telemetryWithAccess = telemetry as IntegrationTelemetry & {
+            getRequestId(): string;
+            getUserId(): string | undefined;
+            getTenantId(): string | undefined;
+          };
+          expect(telemetryWithAccess.getRequestId()).toBe('req-als');
+          expect(telemetryWithAccess.getUserId()).toBe('user-als');
+          expect(telemetryWithAccess.getTenantId()).toBe('tenant-als');
+      }
+    );
   });
+});
 });

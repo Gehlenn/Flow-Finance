@@ -146,7 +146,7 @@ describe('taskStore branch coverage', () => {
     taskStore.updateTask('to-update', { result: { done: true }, retryCount: 1 });
 
     const updated = taskStore.getTask('to-update');
-    expect((updated?.result as any)?.done).toBe(true);
+    expect((updated?.result as { done?: boolean } | undefined)?.done).toBe(true);
     expect(updated?.retryCount).toBe(1);
   });
 });

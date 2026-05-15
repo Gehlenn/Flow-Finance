@@ -1,10 +1,23 @@
 import { describe, expect, it, vi } from 'vitest';
 import { IntegrationMonitor } from '../../src/services/observability/IntegrationMonitor';
 
+type TelemetryLike = {
+  checkHealthFor: (name: string) => Promise<{
+    name: string;
+    healthy: boolean;
+    lastChecked: Date;
+  }>;
+  recordDegradation: (...args: unknown[]) => void;
+};
+
+type LoggerLike = {
+  error: (...args: unknown[]) => void;
+};
+
 describe('IntegrationMonitor health observability', () => {
   it('logs contextual data when a dependency health check fails', async () => {
     const error = vi.fn();
-    const telemetry = {
+    const telemetry: TelemetryLike = {
       checkHealthFor: vi.fn(async (name: string) => {
         if (name === 'stripe') {
           throw new Error('stripe health offline');
@@ -17,9 +30,9 @@ describe('IntegrationMonitor health observability', () => {
         };
       }),
       recordDegradation: vi.fn(),
-    } as any;
+    };
 
-    const monitor = new IntegrationMonitor(telemetry, { error } as any);
+    const monitor = new IntegrationMonitor(telemetry as never, { error } as LoggerLike as never);
 
     const checks = await monitor.checkAllHealths();
 

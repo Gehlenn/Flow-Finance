@@ -41,8 +41,13 @@ vi.mock('../../src/config/logger', () => ({
 import { AppError } from '../../src/middleware/errorHandler';
 import { refreshController } from '../../src/controllers/authController';
 
+type MockRes = {
+  status: ReturnType<typeof vi.fn>;
+  json: ReturnType<typeof vi.fn>;
+};
+
 function makeRes() {
-  const res: any = {};
+  const res = {} as MockRes;
   res.status = vi.fn(() => res);
   res.json = vi.fn(() => res);
   return res;
@@ -55,7 +60,7 @@ describe('authController refresh observability', () => {
       throw new Error('refresh token expired');
     });
 
-    const req: any = {
+    const req = {
       body: { refreshToken: 'refresh-token-123' },
       path: '/api/auth/refresh',
       ip: '127.0.0.1',
@@ -67,7 +72,7 @@ describe('authController refresh observability', () => {
       refreshController(req, res, ((err?: unknown) => {
         next(err);
         resolve();
-      }) as any);
+      }));
     });
 
     expect(next).toHaveBeenCalledTimes(1);

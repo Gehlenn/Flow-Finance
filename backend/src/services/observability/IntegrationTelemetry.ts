@@ -25,6 +25,8 @@ export type IntegrationOperation =
   | 'fetch_data';
 
 export type IntegrationStatus = 'success' | 'error' | 'timeout' | 'degraded' | 'fallback';
+export type IntegrationEnvironment = 'development' | 'staging' | 'production';
+export type IntegrationSourceSystem = 'flow' | 'clinic-automation' | 'internal';
 
 export interface IntegrationContext {
   integrationName: IntegrationName;
@@ -32,11 +34,11 @@ export interface IntegrationContext {
   provider?: string;
   status?: IntegrationStatus;
   durationMs?: number;
-  environment: 'development' | 'staging' | 'production';
+  environment: IntegrationEnvironment;
   requestId: string;
   userId?: string;
   tenantId?: string;
-  sourceSystem?: 'flow' | 'clinic-automation' | 'internal';
+  sourceSystem?: IntegrationSourceSystem;
   retryCount?: number;
   httpStatus?: number;
   errorCode?: string;
@@ -72,31 +74,31 @@ export class IntegrationTelemetry {
    */
   static instrument(telemetry: IntegrationTelemetry, config: Partial<IntegrationContext>) {
     return function (
-      _target: any,
+      _target: unknown,
       _propertyKey: string,
       descriptor: PropertyDescriptor
     ) {
-      const originalMethod = descriptor.value;
-      descriptor.value = async function (...args: any[]) {
+      const originalMethod = descriptor.value as (...args: unknown[]) => unknown;
+      descriptor.value = async function (...args: unknown[]) {
         const context: IntegrationContext = {
           integrationName: config.integrationName || 'webhook',
           operation: config.operation || 'fetch_data',
-          environment: process.env.NODE_ENV as any,
+          environment: normalizeIntegrationEnvironment(process.env.NODE_ENV),
           requestId: telemetry.getRequestId(),
           userId: telemetry.getUserId(),
           tenantId: telemetry.getTenantId(),
-          sourceSystem: process.env.SOURCE_SYSTEM as any,
+          sourceSystem: normalizeIntegrationSourceSystem(process.env.SOURCE_SYSTEM),
           ...config
         };
 
         try {
           const result = await telemetry.executeWithTelemetry(
             context,
-            () => originalMethod.apply(this, args)
+            () => Promise.resolve(originalMethod.apply(this, args))
           );
           return result;
         } catch (error) {
-          telemetry.captureException(error as Error, context);
+          telemetry.captureException(error instanceof Error ? error : new Error(String(error)), context);
           throw error;
         }
       };
@@ -172,7 +174,7 @@ export class IntegrationTelemetry {
   /**
    * Registrar sucesso de chamada externa.
    */
-  recordSuccess(context: IntegrationContext, metadata?: Record<string, any>): void {
+  recordSuccess(context: IntegrationContext, metadata?: Record<string, unknown>): void {
     context.status = 'success';
     this.logIntegrationEvent(context, metadata);
 
@@ -314,7 +316,7 @@ export class IntegrationTelemetry {
    */
   private logIntegrationEvent(
     context: IntegrationContext,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): void {
     this.logger.info(
       {
@@ -394,4 +396,18 @@ export class IntegrationTelemetry {
       lastChecked: new Date()
     };
   }
+}
+
+export function normalizeIntegrationEnvironment(
+  value: unknown
+): IntegrationEnvironment {
+  return value === 'staging' || value === 'production' ? value : 'development';
+}
+
+export function normalizeIntegrationSourceSystem(
+  value: unknown
+): IntegrationSourceSystem | undefined {
+  return value === 'flow' || value === 'clinic-automation' || value === 'internal'
+    ? value
+    : undefined;
 }

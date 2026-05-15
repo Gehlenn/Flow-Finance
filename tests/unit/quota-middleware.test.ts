@@ -49,7 +49,7 @@ function makeReq(userId = 'user-test', workspaceId?: string) {
     params: {},
     query: {},
     body: {},
-  } as any;
+  } as { userId?: string; workspaceId?: string; header: ReturnType<typeof vi.fn>; params: Record<string, never>; query: Record<string, never>; body: Record<string, never> };
 }
 
 function makeRes() {
@@ -75,7 +75,7 @@ async function runMiddleware(
   const res = makeRes();
   const next = vi.fn();
   const mw = quotaMiddleware(resource, 1, options);
-  mw(req as any, res as any, next);
+  mw(req, res, next);
   await new Promise((resolve) => setTimeout(resolve, 0));
   return { req, res, next };
 }
@@ -224,12 +224,12 @@ describe('quotaMiddleware — sem userId', () => {
   });
 
   it('chama next() sem bloquear quando userId está ausente (auth deve bloquear antes)', async () => {
-    const req = { userId: undefined } as any;
+    const req = makeReq(undefined);
     const res = makeRes();
     const next = vi.fn();
 
     const mw = quotaMiddleware('aiQueries');
-    mw(req, res as any, next);
+    mw(req, res, next);
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(next).toHaveBeenCalled();

@@ -41,7 +41,7 @@ describe('IntegrationTelemetry observability', () => {
     };
 
     await expect(
-      telemetry.executeWithTelemetry(context as any, async () => {
+      telemetry.executeWithTelemetry(context, async () => {
         throw new Error('integration boom');
       })
     ).rejects.toThrow('integration boom');

@@ -5,6 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { financeMetricsController } from '../../backend/src/controllers/financeController';
+import type { Request, Response } from 'express';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -20,11 +21,11 @@ vi.mock('../../backend/src/config/logger', () => ({
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function req(body: unknown, userId = 'user-test') {
-  return { body, userId } as any;
+  return { body, userId } as unknown as Request & { userId: string; body: unknown };
 }
 
 function res() {
-  const r = { json: vi.fn(), status: vi.fn().mockReturnThis() } as any;
+  const r = { json: vi.fn(), status: vi.fn().mockReturnThis() } as unknown as Response;
   return r;
 }
 
@@ -148,7 +149,7 @@ describe('financeMetricsController', () => {
     const mockRes = res();
     await financeMetricsController(mockReq, mockRes, vi.fn());
     const { anomalies } = mockRes.json.mock.calls[0][0];
-    const spikeAnomalies = anomalies.filter((a: any) => a.type === 'expense_spike');
+    const spikeAnomalies = anomalies.filter((a: { type: string }) => a.type === 'expense_spike');
     expect(spikeAnomalies.length).toBeGreaterThan(0);
     expect(spikeAnomalies[0].ratioToMedian).toBeGreaterThan(2);
   });

@@ -14,6 +14,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { NextFunction, Request, Response } from 'express';
 import {
   connectBankController,
   disconnectBankController,
@@ -59,7 +60,7 @@ describe('Isolamento multi-tenant — listConnectionsController', () => {
     const mockReq = req({}, 'user-A', { userId: 'user-B' });
     const mockRes = res();
 
-    listConnectionsController(mockReq as any, mockRes as any, vi.fn());
+    listConnectionsController(mockReq as unknown as Request, mockRes as unknown as Response, vi.fn() as NextFunction);
     await flush();
 
     expect(mockRes.status).toHaveBeenCalledWith(403);
@@ -72,7 +73,7 @@ describe('Isolamento multi-tenant — listConnectionsController', () => {
     const mockReq = req({}, 'user-A', { userId: 'user-A' });
     const mockRes = res();
 
-    listConnectionsController(mockReq as any, mockRes as any, vi.fn());
+    listConnectionsController(mockReq as unknown as Request, mockRes as unknown as Response, vi.fn() as NextFunction);
     await flush();
 
     // userId correto: retorna lista (pode estar vazia em ambiente de teste)
@@ -84,7 +85,7 @@ describe('Isolamento multi-tenant — listConnectionsController', () => {
     const mockReq = { body: {}, userId: undefined, headers: {}, query: {} };
     const mockRes = res();
 
-    listConnectionsController(mockReq as any, mockRes as any, vi.fn());
+    listConnectionsController(mockReq as unknown as Request, mockRes as unknown as Response, vi.fn() as NextFunction);
     await flush();
 
     expect(mockRes.status).toHaveBeenCalledWith(401);
@@ -98,7 +99,7 @@ describe('Isolamento multi-tenant — connectBankController', () => {
     const mockReq = req({ bankId: 'nubank', userId: 'user-B' }, 'user-A');
     const mockRes = res();
 
-    connectBankController(mockReq as any, mockRes as any, vi.fn());
+    connectBankController(mockReq as unknown as Request, mockRes as unknown as Response, vi.fn() as NextFunction);
     await flush();
 
     expect(mockRes.status).toHaveBeenCalledWith(403);
@@ -108,7 +109,7 @@ describe('Isolamento multi-tenant — connectBankController', () => {
     const mockReq = reqNoAuth({ bankId: 'nubank' });
     const mockRes = res();
 
-    connectBankController(mockReq as any, mockRes as any, vi.fn());
+    connectBankController(mockReq as unknown as Request, mockRes as unknown as Response, vi.fn() as NextFunction);
     await flush();
 
     expect(mockRes.status).toHaveBeenCalledWith(401);
@@ -123,7 +124,7 @@ describe('Isolamento multi-tenant — disconnectBankController', () => {
     const mockReq = req({ connectionId: 'conn-pertence-a-user-A' }, 'user-B');
     const mockRes = res();
 
-    disconnectBankController(mockReq as any, mockRes as any, vi.fn());
+    disconnectBankController(mockReq as unknown as Request, mockRes as unknown as Response, vi.fn() as NextFunction);
     await flush();
 
     expect(mockRes.status).toHaveBeenCalledWith(404);
@@ -136,7 +137,7 @@ describe('Isolamento multi-tenant — disconnectBankController', () => {
     const mockReq = req({ connectionId: 'any-id', userId: 'user-B' }, 'user-A');
     const mockRes = res();
 
-    disconnectBankController(mockReq as any, mockRes as any, vi.fn());
+    disconnectBankController(mockReq as unknown as Request, mockRes as unknown as Response, vi.fn() as NextFunction);
     await flush();
 
     expect(mockRes.status).toHaveBeenCalledWith(403);
@@ -146,7 +147,7 @@ describe('Isolamento multi-tenant — disconnectBankController', () => {
     const mockReq = reqNoAuth({ connectionId: 'any-id' });
     const mockRes = res();
 
-    disconnectBankController(mockReq as any, mockRes as any, vi.fn());
+    disconnectBankController(mockReq as unknown as Request, mockRes as unknown as Response, vi.fn() as NextFunction);
     await flush();
 
     expect(mockRes.status).toHaveBeenCalledWith(401);
@@ -160,7 +161,7 @@ describe('Isolamento multi-tenant — syncBankController', () => {
     const mockReq = req({ connectionId: 'conn-pertence-a-outro-user', userId: 'user-C' }, 'user-C');
     const mockRes = res();
 
-    syncBankController(mockReq as any, mockRes as any, vi.fn());
+    syncBankController(mockReq as unknown as Request, mockRes as unknown as Response, vi.fn() as NextFunction);
     await flush();
 
     expect(mockRes.status).toHaveBeenCalledWith(404);
@@ -173,7 +174,7 @@ describe('Isolamento multi-tenant — syncBankController', () => {
     const mockReq = req({ connectionId: 'any-id', userId: 'user-D' }, 'user-C');
     const mockRes = res();
 
-    syncBankController(mockReq as any, mockRes as any, vi.fn());
+    syncBankController(mockReq as unknown as Request, mockRes as unknown as Response, vi.fn() as NextFunction);
     await flush();
 
     expect(mockRes.status).toHaveBeenCalledWith(403);
@@ -183,7 +184,7 @@ describe('Isolamento multi-tenant — syncBankController', () => {
     const mockReq = reqNoAuth({ connectionId: 'any-id' });
     const mockRes = res();
 
-    syncBankController(mockReq as any, mockRes as any, vi.fn());
+    syncBankController(mockReq as unknown as Request, mockRes as unknown as Response, vi.fn() as NextFunction);
     await flush();
 
     expect(mockRes.status).toHaveBeenCalledWith(401);
@@ -203,7 +204,7 @@ describe('Isolamento multi-tenant — assertConnectionOwnership (defense-in-dept
     // Primeiro, criamos uma conexão como user-LEGIT
     const connectReq = req({ bankId: 'nubank' }, 'user-LEGIT');
     const connectRes = res();
-    connectBankController(connectReq as any, connectRes as any, vi.fn());
+    connectBankController(connectReq as unknown as Request, connectRes as unknown as Response, vi.fn() as NextFunction);
     await flush();
 
     // Se a conexão foi criada, pega o ID
@@ -219,7 +220,7 @@ describe('Isolamento multi-tenant — assertConnectionOwnership (defense-in-dept
     // Agora user-ATTACKER tenta deletar essa conexão (que só pode estar na lista de user-LEGIT)
     const attackReq = req({ connectionId }, 'user-ATTACKER');
     const attackRes = res();
-    disconnectBankController(attackReq as any, attackRes as any, vi.fn());
+    disconnectBankController(attackReq as unknown as Request, attackRes as unknown as Response, vi.fn() as NextFunction);
     await flush();
 
     // Deve receber 404 (não está na lista de user-ATTACKER)
@@ -230,7 +231,7 @@ describe('Isolamento multi-tenant — assertConnectionOwnership (defense-in-dept
     // user-OWNER cria a conexão
     const connectReq = req({ bankId: 'itau' }, 'user-OWNER');
     const connectRes = res();
-    connectBankController(connectReq as any, connectRes as any, vi.fn());
+    connectBankController(connectReq as unknown as Request, connectRes as unknown as Response, vi.fn() as NextFunction);
     await flush();
 
     const connectedPayload = connectRes.json.mock.calls[0]?.[0];
@@ -244,7 +245,7 @@ describe('Isolamento multi-tenant — assertConnectionOwnership (defense-in-dept
     // user-THIEF tenta sincronizar a conexão de user-OWNER
     const attackReq = req({ connectionId, days: 7 }, 'user-THIEF');
     const attackRes = res();
-    syncBankController(attackReq as any, attackRes as any, vi.fn());
+    syncBankController(attackReq as unknown as Request, attackRes as unknown as Response, vi.fn() as NextFunction);
     await flush();
 
     // A conexão não existe na lista de user-THIEF → 404
@@ -260,7 +261,7 @@ describe('Isolamento multi-tenant — fluxo completo same-user (regressão)', ()
 
     const connectReq = req({ bankId: 'c6' }, userId);
     const connectRes = res();
-    connectBankController(connectReq as any, connectRes as any, vi.fn());
+    connectBankController(connectReq as unknown as Request, connectRes as unknown as Response, vi.fn() as NextFunction);
     await flush();
 
     // Não deve ter retornado 401 ou 403
@@ -269,7 +270,7 @@ describe('Isolamento multi-tenant — fluxo completo same-user (regressão)', ()
 
     const listReq = req({}, userId, { userId });
     const listRes = res();
-    listConnectionsController(listReq as any, listRes as any, vi.fn());
+    listConnectionsController(listReq as unknown as Request, listRes as unknown as Response, vi.fn() as NextFunction);
     await flush();
 
     expect(listRes.json).toHaveBeenCalled();

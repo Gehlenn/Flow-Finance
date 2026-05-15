@@ -26,6 +26,19 @@ vi.mock('../../src/config/logger', () => ({
 describe('postgresStateStore observability', () => {
   const originalEnabled = process.env.POSTGRES_STATE_STORE_ENABLED;
 
+  type WorkspaceStoreState = {
+    tenants: Array<{
+      tenantId: string;
+      name: string;
+      plan: string;
+      createdAt: string;
+      updatedAt: string;
+    }>;
+    workspaces: unknown[];
+    workspaceUsers: unknown[];
+    userPreferences: unknown[];
+  };
+
   beforeEach(() => {
     vi.resetModules();
     mocks.query.mockReset();
@@ -58,12 +71,20 @@ describe('postgresStateStore observability', () => {
   it('registra contexto quando saveWorkspaceStoreState falha', async () => {
     const { saveWorkspaceStoreState } = await import('../../src/services/persistence/postgresStateStore');
 
-    await expect(saveWorkspaceStoreState({
-      tenants: [{ tenantId: 'tenant-1', name: 'Tenant 1', plan: 'free', createdAt: '2026-05-10T00:00:00.000Z', updatedAt: '2026-05-10T00:00:00.000Z' } as any],
+    const state: WorkspaceStoreState = {
+      tenants: [{
+        tenantId: 'tenant-1',
+        name: 'Tenant 1',
+        plan: 'free',
+        createdAt: '2026-05-10T00:00:00.000Z',
+        updatedAt: '2026-05-10T00:00:00.000Z',
+      }],
       workspaces: [],
       workspaceUsers: [],
       userPreferences: [],
-    })).rejects.toThrow('tenant persist failed');
+    };
+
+    await expect(saveWorkspaceStoreState(state)).rejects.toThrow('tenant persist failed');
 
     expect(mocks.loggerError).toHaveBeenCalledWith(
       expect.objectContaining({

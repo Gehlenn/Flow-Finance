@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Request, Response } from 'express';
 
 const workspaceStoreMocks = vi.hoisted(() => ({
   getWorkspaceAsync: vi.fn(),
@@ -23,7 +24,7 @@ function makeResponse() {
   const res = {
     status: vi.fn(),
     json: vi.fn(),
-  } as any;
+  } as unknown as Response;
   res.status.mockReturnValue(res);
   return res;
 }
@@ -65,7 +66,7 @@ describe('async workspace authorization middlewares', () => {
       params: {},
       query: {},
       body: {},
-    } as any;
+    } as unknown as Request & { userId: string; workspaceId?: string; tenantId?: string; workspace?: { plan: string } };
     const res = makeResponse();
     const next = vi.fn();
 
@@ -89,7 +90,7 @@ describe('async workspace authorization middlewares', () => {
       userId: 'owner-1',
       workspaceId: 'ws-1',
       workspace: { plan: 'pro' },
-    } as any;
+    } as unknown as Request & { userId: string; workspaceId: string; workspace: { plan: string } };
     const res = makeResponse();
     const next = vi.fn();
 

@@ -25,8 +25,13 @@ vi.mock('../../src/config/logger', () => ({
 
 import { interpretController, generateInsightsController, cfoController } from '../../src/controllers/aiController';
 
+type MockRes = {
+  status: ReturnType<typeof vi.fn>;
+  json: ReturnType<typeof vi.fn>;
+};
+
 function makeRes() {
-  const res: any = {};
+  const res = {} as MockRes;
   res.status = vi.fn(() => res);
   res.json = vi.fn(() => res);
   return res;
@@ -36,7 +41,7 @@ describe('aiController observability', () => {
   it('logs contextual data when interpret generation falls back', async () => {
     controllerMocks.generateContent.mockRejectedValueOnce(new Error('interpret failed'));
 
-    const req: any = {
+    const req = {
       body: { text: 'gastei 50 com cafe' },
       userId: 'user-1',
     };
@@ -58,7 +63,7 @@ describe('aiController observability', () => {
   it('logs contextual data when insights generation falls back', async () => {
     controllerMocks.generateContent.mockRejectedValueOnce(new Error('insights failed'));
 
-    const req: any = {
+    const req = {
       body: {
         transactions: [
           { id: 'tx-1', amount: 10, type: 'expense', category: 'Pessoal', description: 'Cafe' },
@@ -86,7 +91,7 @@ describe('aiController observability', () => {
   it('logs contextual data when CFO generation fails', async () => {
     controllerMocks.generateContent.mockRejectedValueOnce(new Error('cfo failed'));
 
-    const req: any = {
+    const req = {
       body: {
         question: 'Como esta meu caixa?',
         context: 'Saldo confirmado: R$ 1000',

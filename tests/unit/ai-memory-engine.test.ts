@@ -38,7 +38,7 @@ function tx(
     date: new Date(Date.now() - daysAgo * 86400000).toISOString(),
     recurring,
     confidence_score: 0.8,
-  } as any;
+  } as Transaction;
 }
 
 /** Builds a realistic transaction set large enough for the engine to process. */

@@ -22,7 +22,7 @@ class MockAIProvider extends IAIProvider {
 
     return {
       content: `Mock response for ${request.model}`,
-      provider: this.config.name as any,
+      provider: this.config.name,
       model: this.config.models[request.model] || 'mock-model',
       latencyMs: 100,
       wasFallback: false,

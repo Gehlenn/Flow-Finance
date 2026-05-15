@@ -33,6 +33,11 @@ vi.mock('../../src/config/sentry', () => ({
 }));
 
 describe('auth middleware observability', () => {
+  type MockRes = {
+    status: ReturnType<typeof vi.fn>;
+    json: ReturnType<typeof vi.fn>;
+  };
+
   it('registra contexto quando authMiddleware falha ao extrair token', async () => {
     mocks.getAccessTokenFromRequest.mockImplementationOnce(() => {
       throw new Error('cookie parse failed');
@@ -40,8 +45,8 @@ describe('auth middleware observability', () => {
 
     const { authMiddleware } = await import('../../src/middleware/auth');
 
-    const req: any = { requestId: 'req-1', routeScope: 'private' };
-    const res: any = {
+    const req = { requestId: 'req-1', routeScope: 'private' };
+    const res: MockRes = {
       status: vi.fn(() => res),
       json: vi.fn(),
     };
@@ -67,8 +72,8 @@ describe('auth middleware observability', () => {
 
     const { optionalAuthMiddleware } = await import('../../src/middleware/auth');
 
-    const req: any = { requestId: 'req-2', routeScope: 'public' };
-    const res: any = {
+    const req = { requestId: 'req-2', routeScope: 'public' };
+    const res: MockRes = {
       status: vi.fn(() => res),
       json: vi.fn(),
     };

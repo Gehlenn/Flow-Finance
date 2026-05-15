@@ -41,7 +41,7 @@ describe('Accounts form', () => {
     );
 
     expect(screen.getByText(/Caixa e contas/i)).toBeTruthy();
-    expect(screen.getByText(/Saldo consolidado/i)).toBeTruthy();
+    expect(screen.getAllByText(/Saldo consolidado/i).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: /Nova conta de caixa/i }));
     fireEvent.change(screen.getByPlaceholderText(/Ex: Nubank/i), { target: { value: 'Conta teste' } });

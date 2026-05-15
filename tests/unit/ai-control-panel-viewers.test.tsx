@@ -148,5 +148,23 @@ describe('AIControlPanel viewers', () => {
     expect(screen.getAllByText(/Pessoal/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/in30Days/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/u_panel/i).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Fila AI: 1')).toBeTruthy();
+    expect(screen.getByLabelText('Canceladas: 0')).toBeTruthy();
+
+    taskStore.addTask({
+      id: 'task-panel-2',
+      type: AITaskType.FINANCIAL_REPORT,
+      payload: {
+        source: 'follow-up',
+      },
+      status: AITaskStatus.PENDING,
+      priority: AITaskPriority.NORMAL,
+      createdAt: Date.now() + 1,
+      retryCount: 0,
+      maxRetries: 2,
+      userId: 'u_panel',
+    });
+
+    await screen.findByLabelText('Fila AI: 2');
   });
 });

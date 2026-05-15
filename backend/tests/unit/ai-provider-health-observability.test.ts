@@ -1,6 +1,24 @@
 import { describe, expect, it, vi } from 'vitest';
 
-const loggerError = vi.fn();
+const { loggerError } = vi.hoisted(() => ({
+  loggerError: vi.fn(),
+}));
+
+vi.mock('openai', () => ({
+  OpenAI: class {
+    models = {
+      list: vi.fn(),
+    };
+  },
+}));
+
+vi.mock('@google/generative-ai', () => ({
+  GoogleGenerativeAI: class {
+    getGenerativeModel = vi.fn(() => ({
+      generateContent: vi.fn(),
+    }));
+  },
+}));
 
 vi.mock('../../src/config/logger', () => ({
   default: {
@@ -24,7 +42,7 @@ describe('AI provider health observability', () => {
       maxRetries: 2,
     });
 
-    (provider as any).client = {
+    (provider as unknown as { client: { models: { list: (...args: unknown[]) => Promise<unknown> } } }).client = {
       models: {
         list: vi.fn().mockRejectedValue(new Error('openai down')),
       },
@@ -50,7 +68,7 @@ describe('AI provider health observability', () => {
       maxRetries: 2,
     });
 
-    (provider as any).client = {
+    (provider as unknown as { client: { getGenerativeModel: (...args: unknown[]) => { generateContent: (...args: unknown[]) => Promise<unknown> } } }).client = {
       getGenerativeModel: vi.fn(() => ({
         generateContent: vi.fn().mockRejectedValue(new Error('gemini down')),
       })),

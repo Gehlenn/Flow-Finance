@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { TransactionType, Category } from '../../types';
 import { mapImportedItemsToDraftTransactions } from '../../pages/ImportTransactions';
+import type { ImportedTransaction } from '../../src/finance/importService';
 
 describe('ImportTransactions draft path', () => {
   it('converte itens selecionados para transacoes via TransactionDraft', () => {
-    const result = mapImportedItemsToDraftTransactions([
+    const items: ImportedTransaction[] = [
       {
         raw_date: '2026-04-09T10:00:00.000Z',
         raw_amount: 150,
@@ -31,7 +32,9 @@ describe('ImportTransactions draft path', () => {
         raw_type: TransactionType.DESPESA,
         selected: false,
       },
-    ] as any);
+    ];
+
+    const result = mapImportedItemsToDraftTransactions(items);
 
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({

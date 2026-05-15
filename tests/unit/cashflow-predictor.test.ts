@@ -36,11 +36,11 @@ function makeTx(
     recurrence_type,
     recurrence_interval: 1,
     confidence_score: 0.8,
-  } as any;
+  } as Transaction;
 }
 
 function makeAccount(id: string, balance: number): Account {
-  return { id, userId: 'u1', name: 'Conta', type: 'checking', balance, currency: 'BRL', isActive: true, createdAt: new Date(), updatedAt: new Date() } as any;
+  return { id, userId: 'u1', name: 'Conta', type: 'checking', balance, currency: 'BRL', isActive: true, createdAt: new Date(), updatedAt: new Date() } as Account;
 }
 
 // â”€â”€â”€ predictCashflow â”€â”€â”€

@@ -3,6 +3,7 @@ import { BACKEND_BASE_URL, API_ENDPOINTS, apiRequest } from '../../src/config/ap
 import { GeminiService } from '../../services/geminiService';
 import { getProvider } from '../../services/integrations/mockBankProvider';
 import { connectBank, disconnectBank, getConnections } from '../../services/integrations/openBankingService';
+import { TransactionType, type TransactionData } from '../../types';
 
 describe('IO Health Check - API contracts', () => {
   it('all configured endpoints should be fully qualified and use backend base url', () => {
@@ -123,7 +124,7 @@ describe('IO Health Check - AI proxy integration', () => {
 
     const service = new GeminiService();
     const result = await service.generateDailyInsights([
-      { amount: 10, description: 'mercado', category: 'Pessoal', type: 'Despesa' } as any,
+      { amount: 10, description: 'mercado', category: 'Pessoal', type: TransactionType.DESPESA } as TransactionData,
     ]);
 
     expect(Array.isArray(result)).toBe(true);

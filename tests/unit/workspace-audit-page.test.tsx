@@ -77,7 +77,7 @@ describe('WorkspaceAuditPage', () => {
       expect(screen.getByText(/Auditoria do workspace/i)).toBeTruthy();
       expect(screen.getByText(/workspace.plan_changed/i)).toBeTruthy();
       expect(screen.getByDisplayValue(/Últimos 30 dias/i)).toBeTruthy();
-      expect(screen.getByText(/Mostrando 1 evento carregado/i)).toBeTruthy();
+      expect(screen.getByText(/Mostrando 1 evento\(s\) carregado\(s\)/i)).toBeTruthy();
     });
   });
 

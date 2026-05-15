@@ -27,8 +27,13 @@ import {
   startGoogleOAuthController,
 } from '../../src/controllers/oauthController';
 
+type MockRes = {
+  status: ReturnType<typeof vi.fn>;
+  json: ReturnType<typeof vi.fn>;
+};
+
 function makeRes() {
-  const res: any = {};
+  const res = {} as MockRes;
   res.status = vi.fn(() => res);
   res.json = vi.fn(() => res);
   return res;
@@ -40,7 +45,7 @@ describe('oauthController observability', () => {
       throw new Error('Invalid OAuth redirect URI');
     });
 
-    const req: any = {
+    const req = {
       path: '/api/auth/oauth/google/start',
       query: { redirectUri: 'https://evil.example.com/callback' },
     };
@@ -70,7 +75,7 @@ describe('oauthController observability', () => {
   it('registra contexto ao falhar no callback OAuth do Google', async () => {
     controllerMocks.completeGoogleOAuthCallback.mockRejectedValueOnce(new Error('OAuth callback failed'));
 
-    const req: any = {
+    const req = {
       path: '/api/auth/oauth/google/callback',
       query: { code: 'abc123', state: 'oauth-state-1' },
       ip: '127.0.0.1',

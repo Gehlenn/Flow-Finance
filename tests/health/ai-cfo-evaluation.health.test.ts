@@ -50,5 +50,7 @@ describe('AI health - CFO evaluation harness', () => {
 
     expect(scoreAverage).toBeGreaterThanOrEqual(0.9);
     expect(failures).toHaveLength(0);
+    expect(results.some((result) => result.matchedTraits.includes('uses_reduced_depth_when_limited'))).toBe(true);
+    expect(results.some((result) => result.matchedTraits.includes('uses_standard_depth_when_strong'))).toBe(true);
   });
 });

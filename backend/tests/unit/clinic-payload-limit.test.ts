@@ -16,7 +16,7 @@ describe('createClinicPayloadLimitMiddleware', () => {
     middleware(req as Request, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    expect((res as any).status).not.toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 
   it('blocks payload above limit with 413', () => {
@@ -31,7 +31,7 @@ describe('createClinicPayloadLimitMiddleware', () => {
     middleware(req as Request, res, next);
 
     expect(next).not.toHaveBeenCalled();
-    expect((res as any).status).toHaveBeenCalledWith(413);
-    expect((res as any).json).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(413);
+    expect(res.json).toHaveBeenCalled();
   });
 });

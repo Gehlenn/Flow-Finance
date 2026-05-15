@@ -2,7 +2,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { NextFunction, Request, Response } from 'express';
 import crypto from 'crypto';
 
-const mockWarn = vi.fn();
+const { mockWarn } = vi.hoisted(() => ({
+  mockWarn: vi.fn(),
+}));
 
 vi.mock('../../src/config/logger', () => ({
   default: {
@@ -38,7 +40,7 @@ describe('externalIntegrationAuth', () => {
     statusMock.mockReturnValue({ json: jsonMock });
 
     res = {
-      status: statusMock as any,
+      status: statusMock,
     };
 
     next = vi.fn();
@@ -235,9 +237,12 @@ describe('externalIntegrationAuth', () => {
     process.env.FLOW_EXTERNAL_INTEGRATION_KEYS = 'valid-key';
     process.env.FLOW_EXTERNAL_INTEGRATION_HMAC_SECRETS = 'super-secret';
 
-    const timingSafeEqualSpy = vi.spyOn(crypto, 'timingSafeEqual').mockImplementation(() => {
-      throw new Error('timing failure');
-    });
+    const timingSafeEqualSpy = vi
+      .spyOn(crypto, 'timingSafeEqual')
+      .mockImplementationOnce(() => true)
+      .mockImplementationOnce(() => {
+        throw new Error('timing failure');
+      });
 
     req.headers['x-integration-key'] = 'valid-key';
     const timestamp = String(Math.floor(Date.now() / 1000));

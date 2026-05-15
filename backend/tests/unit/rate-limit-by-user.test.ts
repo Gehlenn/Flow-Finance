@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Request, Response } from 'express';
 
-const mockWarn = vi.fn();
+const { mockWarn } = vi.hoisted(() => ({
+  mockWarn: vi.fn(),
+}));
 
 vi.mock('../../src/config/logger', () => ({
   default: {
@@ -118,7 +120,10 @@ describe('Rate Limit by User', () => {
     const middleware = createRateLimitByUser({
       windowMs: 60000,
       max: 1,
-      keyGenerator: (req) => `custom::${(req as any).customId}`,
+      keyGenerator: (req) => {
+        const customReq = req as Request & { customId?: string };
+        return `custom::${customReq.customId}`;
+      },
     });
 
     const req1 = { headers: {}, customId: '123' } as unknown as Request;

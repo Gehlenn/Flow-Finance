@@ -103,7 +103,8 @@ describe('AI routes authz gates (viewer)', () => {
 
   it('blocks when workspace quota is exhausted (aiQueriesPerMonth=0)', async () => {
     const workspaceStore = await import('../../src/services/admin/workspaceStore');
-    (workspaceStore.getWorkspaceEntitlements as any).mockReturnValue({
+    const getWorkspaceEntitlementsMock = workspaceStore.getWorkspaceEntitlements as unknown as ReturnType<typeof vi.fn>;
+    getWorkspaceEntitlementsMock.mockReturnValue({
       limits: { transactionsPerMonth: 500, aiQueriesPerMonth: 0, bankConnections: 1 },
       features: ['advancedInsights'],
     });

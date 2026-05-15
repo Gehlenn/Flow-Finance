@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { TransactionType } from '../../types';
 import { calculateCashflow, calculateCashflowSummary } from '../../src/engines/finance/cashflowEngine';
+import type { CashflowTransaction } from '../../src/engines/finance/cashflowEngine';
 
 describe('cashflowEngine', () => {
   const txs = [
@@ -31,11 +32,11 @@ describe('cashflowEngine', () => {
   });
 
   it('lida com tipos indefinidos', () => {
-    const txsInvalid = [
+    const txsInvalid: CashflowTransaction[] = [
       { amount: 10 },
       { amount: 20, type: undefined },
     ];
-    const summary = calculateCashflowSummary(txsInvalid as any);
+    const summary = calculateCashflowSummary(txsInvalid);
     expect(summary.income).toBe(0);
     expect(summary.expenses).toBe(30);
     expect(summary.balance).toBe(-30);

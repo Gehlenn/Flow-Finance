@@ -88,5 +88,82 @@ describe('taskStore core flows', () => {
     taskStore.clearCompletedTasks();
     expect(taskStore.getTask('b-completed')).toBeUndefined();
   });
+
+  it('emits queue mutation events for add, update and clear flows', () => {
+    const events: Array<{ name: string; detail: unknown }> = [];
+    const handler = (event: Event): void => {
+      const custom = event as CustomEvent;
+      events.push({ name: event.type, detail: custom.detail });
+    };
+
+    window.addEventListener('ai-task-enqueued', handler);
+    window.addEventListener('ai-task-updated', handler);
+    window.addEventListener('ai-task-queue-cleared', handler);
+
+    try {
+      addTask(buildTask({ id: 'event-task', userId: 'user-a' }));
+      updateTaskStatus('event-task', AITaskStatus.COMPLETED);
+      taskStore.clearCompletedTasks('user-a');
+
+      expect(events).toEqual([
+        {
+          name: 'ai-task-enqueued',
+          detail: expect.objectContaining({
+            taskId: 'event-task',
+            taskType: AITaskType.INSIGHT_GENERATION,
+            status: AITaskStatus.PENDING,
+            priority: AITaskPriority.NORMAL,
+            userId: 'user-a',
+          }),
+        },
+        {
+          name: 'ai-task-updated',
+          detail: expect.objectContaining({
+            taskId: 'event-task',
+            status: AITaskStatus.COMPLETED,
+            userId: 'user-a',
+          }),
+        },
+        {
+          name: 'ai-task-queue-cleared',
+          detail: expect.objectContaining({
+            userId: 'user-a',
+            scope: 'user',
+          }),
+        },
+      ]);
+    } finally {
+      window.removeEventListener('ai-task-enqueued', handler);
+      window.removeEventListener('ai-task-updated', handler);
+      window.removeEventListener('ai-task-queue-cleared', handler);
+    }
+  });
+
+  it('emits global clear event with all scope', () => {
+    const events: Array<{ name: string; detail: unknown }> = [];
+    const handler = (event: Event): void => {
+      const custom = event as CustomEvent;
+      events.push({ name: event.type, detail: custom.detail });
+    };
+
+    window.addEventListener('ai-task-queue-cleared', handler);
+
+    try {
+      addTask(buildTask({ id: 'clear-all-task', userId: 'user-a', status: AITaskStatus.COMPLETED }));
+      taskStore.clearCompletedTasks();
+
+      expect(events).toEqual([
+        {
+          name: 'ai-task-queue-cleared',
+          detail: expect.objectContaining({
+            userId: null,
+            scope: 'all',
+          }),
+        },
+      ]);
+    } finally {
+      window.removeEventListener('ai-task-queue-cleared', handler);
+    }
+  });
 });
 

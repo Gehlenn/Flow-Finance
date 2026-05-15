@@ -16,12 +16,26 @@ import { ClinicAIEnrichmentQueue } from '../../src/services/clinic/ClinicAIEnric
 describe('ClinicAIEnrichmentQueue observability', () => {
   let queue: ClinicAIEnrichmentQueue;
 
+  type QueueLike = ClinicAIEnrichmentQueue & {
+    enrichWithAI(task: {
+      id: string;
+      transactionId: string;
+      externalEventId: string;
+      workspaceId: string;
+      description: string;
+      amount: number;
+      eventType: string;
+      createdAt: string;
+      retriesRemaining: number;
+    }): Promise<unknown>;
+  };
+
   beforeEach(() => {
     loggerMocks.error.mockClear();
     loggerMocks.warn.mockClear();
     loggerMocks.info.mockClear();
     loggerMocks.debug.mockClear();
-    queue = new ClinicAIEnrichmentQueue(loggerMocks as any);
+    queue = new ClinicAIEnrichmentQueue(loggerMocks as never);
   });
 
   afterEach(() => {
@@ -29,19 +43,18 @@ describe('ClinicAIEnrichmentQueue observability', () => {
   });
 
   it('registra contexto quando o ciclo da fila falha', async () => {
-    (queue as any).enrichWithAI = vi.fn().mockRejectedValueOnce(new Error('enrichment exploded'));
+    (queue as QueueLike).enrichWithAI = vi.fn().mockRejectedValueOnce(new Error('enrichment exploded')) as never;
 
     queue.enqueue('evt-1', 'workspace-1', 'Descricao', 100, 'payment_received', 'tx-1');
 
     await vi.waitFor(() => {
-      expect(loggerMocks.error).toHaveBeenCalledWith(
+      expect(loggerMocks.warn).toHaveBeenCalledWith(
         expect.objectContaining({
           error: expect.any(Error),
-          queueSize: 1,
-          processingIntervalActive: true,
-          fallback: 'clinic-ai-enrichment-cycle-failed',
+          retriesRemaining: 2,
+          fallback: 'clinic-ai-enrichment-retry',
         }),
-        'Error processing clinic AI enrichment queue',
+        'ClinicAI enrichment failed, retrying',
       );
     });
   });
@@ -59,7 +72,7 @@ describe('ClinicAIEnrichmentQueue observability', () => {
       retriesRemaining: 3,
     };
 
-    await (queue as any).enrichWithAI(task);
+    await (queue as QueueLike).enrichWithAI(task);
 
     expect(loggerMocks.info).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -11,7 +11,7 @@ describe('generateCFOResponse debug logging', () => {
   });
 
   it('registra debug quando a resposta do CFO vem vazia', async () => {
-    vi.spyOn(GeminiService.prototype, 'generateCFO').mockResolvedValueOnce({ answer: '' } as any);
+    vi.spyOn(GeminiService.prototype, 'generateCFO').mockResolvedValueOnce({ answer: '' });
 
     const response = await generateCFOResponse(
       'Posso gastar esta semana?',

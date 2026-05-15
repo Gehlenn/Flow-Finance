@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildCFOExplainability } from '../../src/ai/aiCFO';
+import { buildCFOExplainability, buildCFOResponseDepth } from '../../src/ai/aiCFO';
 
 describe('aiCFO explainability', () => {
   const context = [
@@ -43,5 +43,17 @@ describe('aiCFO explainability', () => {
     expect(explainability.confidence_band).toBe('low');
     expect(explainability.evidence.base_sufficiency).toBe('strong');
     expect(explainability.reasons_used.length).toBeGreaterThan(0);
+  });
+
+  it('reduz a profundidade quando a base e limitada', () => {
+    const limitedContext = [
+      'TOTAL DE TRANSACOES REGISTRADAS: 2',
+      'Confirmado (disponivel hoje): R$ 1.000,00',
+    ].join('\n');
+
+    const explainability = buildCFOExplainability(limitedContext, 'cash_position');
+
+    expect(explainability.evidence.base_sufficiency).toBe('limited');
+    expect(buildCFOResponseDepth(explainability)).toBe('reduced');
   });
 });

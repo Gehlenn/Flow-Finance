@@ -20,7 +20,7 @@ describe('usePerformanceMonitoring', () => {
 
   it('registra aviso quando a API de performance nao existe', () => {
     const hadPerformanceObserver = 'PerformanceObserver' in window;
-    const originalPerformanceObserver = (window as any).PerformanceObserver;
+    const originalPerformanceObserver = window.PerformanceObserver;
 
     Reflect.deleteProperty(window, 'PerformanceObserver');
 

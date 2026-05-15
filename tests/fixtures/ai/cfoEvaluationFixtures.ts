@@ -32,6 +32,7 @@ export const CFO_EVALUATION_FIXTURES: CFOEvaluationFixtureInput[] = [
       'mentions_risk',
       'avoids_absolute_promises',
       'has_explainability',
+      'uses_standard_depth_when_strong',
     ],
   },
   {
@@ -52,6 +53,7 @@ export const CFO_EVALUATION_FIXTURES: CFOEvaluationFixtureInput[] = [
       'mentions_forecast',
       'has_explainability',
       'has_low_confidence_fallback',
+      'uses_reduced_depth_when_limited',
     ],
   },
   {
@@ -73,6 +75,7 @@ export const CFO_EVALUATION_FIXTURES: CFOEvaluationFixtureInput[] = [
       'mentions_forecast',
       'avoids_absolute_promises',
       'has_explainability',
+      'uses_standard_depth_when_strong',
     ],
   },
 ];

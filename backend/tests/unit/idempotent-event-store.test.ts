@@ -2,13 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { IdempotentEventStore, type RedisLike } from '../../src/services/clinic/IdempotentEventStore';
 
-const mockWarn = vi.fn();
+const { mockWarn } = vi.hoisted(() => ({
+  mockWarn: vi.fn(),
+}));
+const { mockError } = vi.hoisted(() => ({
+  mockError: vi.fn(),
+}));
 
 vi.mock('../../src/config/logger', () => ({
   default: {
     warn: mockWarn,
     info: vi.fn(),
-    error: vi.fn(),
+    error: mockError,
   },
 }));
 
@@ -47,8 +52,8 @@ describe('IdempotentEventStore atomic idempotency', () => {
 
     expect(result).toBe(true);
     expect(setMock).toHaveBeenCalled();
-    expect((redis as any).get).not.toHaveBeenCalled();
-    expect((redis as any).setEx).not.toHaveBeenCalled();
+    expect(redis.get).not.toHaveBeenCalled();
+    expect(redis.setEx).not.toHaveBeenCalled();
   });
 
   it('uses atomic Redis SET NX/EX and returns false for duplicate key', async () => {
@@ -70,8 +75,8 @@ describe('IdempotentEventStore atomic idempotency', () => {
 
     expect(result).toBe(false);
     expect(setMock).toHaveBeenCalled();
-    expect((redis as any).get).not.toHaveBeenCalled();
-    expect((redis as any).setEx).not.toHaveBeenCalled();
+    expect(redis.get).not.toHaveBeenCalled();
+    expect(redis.setEx).not.toHaveBeenCalled();
   });
 
   it('falls back to get+setEx when atomic SET mode is unavailable', async () => {
@@ -90,8 +95,8 @@ describe('IdempotentEventStore atomic idempotency', () => {
     const result = await store.recordProcessed('clinic-automation', 'evt_999', 'int_009', 'success');
 
     expect(result).toBe(true);
-    expect((redis as any).get).toHaveBeenCalled();
-    expect((redis as any).setEx).toHaveBeenCalled();
+    expect(redis.get).toHaveBeenCalled();
+    expect(redis.setEx).toHaveBeenCalled();
     expect(mockWarn).toHaveBeenCalledWith(
       expect.objectContaining({
         key: expect.stringContaining('idempotent:clinic-automation:evt_999'),
@@ -146,7 +151,7 @@ describe('IdempotentEventStore atomic idempotency', () => {
     const record = await store.getProcessedRecord('clinic-automation', 'evt_bad');
 
     expect(record).toBeNull();
-    expect(mockWarn).toHaveBeenCalledWith(
+    expect(mockError).toHaveBeenCalledWith(
       expect.objectContaining({
         key: 'idempotent:clinic-automation:evt_bad',
         error: expect.any(Error),

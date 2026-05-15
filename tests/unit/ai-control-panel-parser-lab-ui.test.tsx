@@ -78,5 +78,6 @@ describe('AIControlPanel parser lab UI', () => {
         format: 'ofx',
       }),
     );
+    expect(screen.getByText('ofx offline')).toBeTruthy();
   });
 });

@@ -26,10 +26,11 @@ vi.mock('../../src/config/logger', () => ({
 }));
 
 vi.mock('../../src/services/clinic', () => ({
-  ClinicAutomationService: vi.fn().mockImplementation(() => ({
-    processWebhookEvent: vi.fn(),
-    healthCheck: mocks.healthCheckMock,
-  })),
+  ClinicAutomationService: class ClinicAutomationService {
+    processWebhookEvent = vi.fn();
+    healthCheck = mocks.healthCheckMock;
+    constructor() {}
+  },
 }));
 
 vi.mock('../../src/services/observability', () => ({
@@ -58,8 +59,8 @@ describe('clinic routes health observability', () => {
 
     const app = express();
     app.use('/api/integrations/clinic', createClinicIntegrationRoutes(
-      new (class {})() as any,
-      new (class {})() as any,
+      {} as never,
+      {} as never,
     ));
 
     const res = await request(app).get('/api/integrations/clinic/health');
