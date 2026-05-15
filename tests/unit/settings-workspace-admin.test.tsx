@@ -56,7 +56,28 @@ function renderSettings(
   options?: { integrationKeysConfigured?: boolean; generateError?: boolean; revokeError?: boolean },
 ) {
   settingsMocks.apiRequest.mockImplementation(async (endpoint: string, init?: { method?: string }) => {
+    if (String(endpoint).includes('/integration-keys/generate')) {
+      if (options?.generateError) {
+        throw new Error('generate failed');
+      }
+      return {
+        configured: true,
+        key: 'flw_test_secret',
+        keyPrefix: 'flw_test_',
+        createdAt: '2026-04-02T00:00:00.000Z',
+        warning: '',
+      };
+    }
+    if (String(endpoint) === '/integration-keys' && init?.method === 'DELETE') {
+      if (options?.revokeError) {
+        throw new Error('revoke failed');
+      }
       return { configured: false };
+    }
+    if (String(endpoint) === '/integration-keys') {
+      return options?.integrationKeysConfigured
+        ? { configured: true, keyPrefix: 'flw_test_', createdAt: '2026-04-02T00:00:00.000Z' }
+        : { configured: false };
     }
     if (String(endpoint).includes('/ai/cfo')) {
       return { answer: '' };
@@ -107,7 +128,7 @@ describe('Settings workspace admin entry', () => {
     renderSettings('viewer');
 
     await waitFor(() => {
-      expect(screen.getByText(/Plano:/i)).toBeTruthy();
+      expect(screen.getByText(/Operacao do workspace/i)).toBeTruthy();
     });
 
     expect(screen.queryByText(/Abrir admin do workspace/i)).toBeNull();
@@ -225,4 +246,3 @@ describe('Settings workspace admin entry', () => {
   });
 
 });
-
