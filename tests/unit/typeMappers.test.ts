@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+﻿import { describe, it, expect } from 'vitest';
 import { toDomainTransaction, toApiTransaction, toDomainAccount, toApiAccount, toDomainReminder, toApiReminder } from '../../src/utils/typeMappers';
 import { TransactionType, Category, ReminderType } from '../../types';
 
@@ -64,7 +64,7 @@ describe('typeMappers', () => {
       id: 'acc1',
       user_id: 'user1',
       name: 'Conta',
-      type: 'checking',
+      type: 'cash',
       balance: 500,
       currency: 'BRL',
       created_at: '2026-03-20T00:00:00.000Z',
@@ -74,7 +74,7 @@ describe('typeMappers', () => {
       id: 'acc1',
       user_id: 'user1',
       name: 'Conta',
-      type: 'checking',
+      type: 'cash',
       balance: 500,
       currency: 'BRL',
       created_at: '2026-03-20T00:00:00.000Z',
@@ -87,7 +87,7 @@ describe('typeMappers', () => {
       id: 'acc2',
       user_id: 'user2',
       name: 'Conta',
-      type: 'checking',
+      type: 'cash',
       balance: 500,
       currency: 'BRL',
       createdAt: '2026-03-20',
@@ -161,3 +161,4 @@ describe('typeMappers', () => {
     expect(new Date(reminder.date).getTime()).not.toBeNaN();
   });
 });
+

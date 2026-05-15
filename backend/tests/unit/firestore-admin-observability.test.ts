@@ -64,4 +64,20 @@ describe('firestoreAdmin observability', () => {
       '[ClinicFireStore] Firestore init failed - using memory fallback',
     );
   });
+
+  it('reusa a instancia do Firestore quando a inicializacao tem sucesso', async () => {
+    const firestoreInstance = { settings: vi.fn() };
+
+    mocks.initializeAppMock.mockReturnValue({ app: 'firestore-app' });
+    mocks.getFirestoreMock.mockReturnValue(firestoreInstance);
+    mocks.getAppsMock.mockReturnValue([]);
+
+    const { getFirestoreOrNull } = await import('../../src/utils/firestoreAdmin');
+
+    const firestore = await getFirestoreOrNull('ClinicFireStore');
+
+    expect(firestore).toBe(firestoreInstance);
+    expect(firestoreInstance.settings).toHaveBeenCalledWith({ ignoreUndefinedProperties: true });
+    expect(mocks.loggerMock.error).not.toHaveBeenCalled();
+  });
 });

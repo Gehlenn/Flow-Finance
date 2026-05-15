@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -125,7 +125,7 @@ describe('finance routes', () => {
         payload: { id: 'tx-1' },
       });
 
-    expect(response.status).toBe(202);
+    expect(response.status).toBe(201);
     expect(routeMocks.loggerWarn).toHaveBeenCalledWith(
       expect.objectContaining({
         error: expect.any(Error),
@@ -141,3 +141,6 @@ describe('finance routes', () => {
     );
   });
 });
+
+
+

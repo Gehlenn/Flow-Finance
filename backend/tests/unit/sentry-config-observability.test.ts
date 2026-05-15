@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const initMock = vi.fn();
 const loggerInfoMock = vi.fn();
@@ -37,10 +37,11 @@ describe('backend sentry config observability', () => {
 
     expect(initMock).toHaveBeenCalledTimes(1);
     expect(loggerInfoMock).toHaveBeenCalledWith(
-      'Sentry initialized for backend error tracking',
       expect.objectContaining({
         fallback: 'backend-sentry-initialized',
-      }),
+            }),
+      'Sentry initialized for backend error tracking',
     );
   });
 });
+

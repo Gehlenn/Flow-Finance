@@ -46,6 +46,33 @@ function buildHistory(transactionCount: number) {
 }
 
 describe('PredictionEngine observability', () => {
+  beforeEach(() => {
+    mocks.redisGet.mockReset();
+    mocks.redisSet.mockReset();
+    mocks.loggerWarn.mockReset();
+    mocks.redisGet.mockResolvedValue(null);
+    mocks.redisSet.mockResolvedValue(undefined);
+  });
+
+  it('nao registra warn quando o cache Redis responde normalmente', async () => {
+    mocks.redisGet.mockResolvedValueOnce(null);
+    mocks.redisSet.mockResolvedValueOnce(undefined);
+
+    const engine = new PredictionEngine({ defaultPredictionDays: 7 });
+    const history = buildHistory(12);
+
+    await expect(engine.predictCashFlow('user-ok', history, 7)).resolves.toMatchObject({
+      userId: 'user-ok',
+    });
+
+    expect(mocks.loggerWarn).not.toHaveBeenCalled();
+    expect(mocks.redisSet).toHaveBeenCalledWith(
+      expect.stringContaining('prediction:v1:user-ok'),
+      expect.any(String),
+      expect.any(Number),
+    );
+  });
+
   it('registra contexto quando a leitura do cache Redis falha e cai para memoria', async () => {
     mocks.redisGet.mockRejectedValueOnce(new Error('redis read failed'));
 

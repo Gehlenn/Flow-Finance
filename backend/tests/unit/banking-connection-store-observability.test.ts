@@ -6,20 +6,18 @@ const mocks = vi.hoisted(() => ({
   getFirestore: vi.fn(),
   applicationDefault: vi.fn(),
   cert: vi.fn(),
-  applyFirestoreSettingsOnce: vi.fn(),
   loggerError: vi.fn(),
 }));
 
 vi.mock('firebase-admin/app', () => ({
   initializeApp: mocks.initializeApp,
   getApps: mocks.getApps,
-  getFirestore: mocks.getFirestore,
   applicationDefault: mocks.applicationDefault,
   cert: mocks.cert,
 }));
 
-vi.mock('../../src/utils/firestoreAdmin', () => ({
-  applyFirestoreSettingsOnce: mocks.applyFirestoreSettingsOnce,
+vi.mock('firebase-admin/firestore', () => ({
+  getFirestore: mocks.getFirestore,
 }));
 
 vi.mock('../../src/config/logger', () => ({
@@ -37,15 +35,17 @@ describe('bankingConnectionStore observability', () => {
   const originalPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
   const originalApplicationCredentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetModules();
     mocks.initializeApp.mockReset();
     mocks.getApps.mockReset();
     mocks.getFirestore.mockReset();
     mocks.applicationDefault.mockReset();
     mocks.cert.mockReset();
-    mocks.applyFirestoreSettingsOnce.mockReset();
     mocks.loggerError.mockReset();
+
+    const { _resetFirestoreSettingsForTests } = await import('../../src/utils/firestoreAdmin');
+    _resetFirestoreSettingsForTests();
 
     process.env.FIREBASE_PROJECT_ID = 'flow-project';
     process.env.FIREBASE_CLIENT_EMAIL = 'flow@example.com';
@@ -106,5 +106,25 @@ describe('bankingConnectionStore observability', () => {
       }),
       'Failed to initialize Firebase Open Finance store',
     );
+  });
+
+  it('reusa o Firestore quando a inicializacao Firebase Open Finance funciona', async () => {
+    const firestoreInstance = { settings: vi.fn(), collection: vi.fn() };
+
+    mocks.initializeApp.mockReturnValueOnce({ app: 'firebase-open-finance' });
+    mocks.getFirestore.mockReturnValueOnce(firestoreInstance);
+
+    const { createBankingConnectionStore } = await import('../../src/services/openFinance/bankingConnectionStore');
+
+    const store = createBankingConnectionStore({ driver: 'firebase' });
+    await expect(store.getStatus()).resolves.toEqual({
+      driver: 'firebase',
+      enabled: true,
+      configured: true,
+      ready: true,
+    });
+
+    expect(mocks.loggerError).not.toHaveBeenCalled();
+    expect(firestoreInstance.settings).toHaveBeenCalledWith({ ignoreUndefinedProperties: true });
   });
 });

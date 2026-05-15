@@ -1668,3 +1668,29 @@ O fluxo de IA no app local agora depende do login de desenvolvimento habilitado 
 - 2026-05-15: postgres-state-store-observability fechou falha e sucesso para workspace e SaaS persist.
 - saveWorkspaceStoreState e saveWorkspaceSaasState agora sao cobertos tanto no caminho de rollback quanto no caminho feliz de commit.
 - Validado com npx vitest run backend/tests/unit/postgres-state-store-observability.test.ts --pool=threads --maxWorkers=1 e npm --prefix backend run type-check.
+- 2026-05-15: prediction-engine-observability ganhou caminho saudavel alem dos fallbacks de leitura e escrita do Redis.
+- O teste agora valida que o cache Redis responde normalmente sem gerar warn e com redisSet assíncrono bem sucedido.
+- Validado com npx vitest run backend/tests/unit/prediction-engine-observability.test.ts --pool=threads --maxWorkers=1 e npm --prefix backend run type-check.
+- 2026-05-15: firestore-admin-observability ganhou caminho saudavel alem da falha de bootstrap.
+- O teste agora valida reuse do Firestore, applyFirestoreSettingsOnce e ausencia de error log quando a inicializacao tem sucesso.
+- Validado com npx vitest run backend/tests/unit/firestore-admin-observability.test.ts --pool=threads --maxWorkers=1 e npm --prefix backend run type-check.
+- 2026-05-15: ai-service-initialization-observability ganhou caminho saudavel alem da falha de factory.
+- O teste agora valida initializeAIService e getAIService com singleton real e log de sucesso, alem do erro ai-service-unavailable.
+- Validado com npx vitest run backend/tests/unit/ai-service-initialization-observability.test.ts --pool=threads --maxWorkers=1 e npm --prefix backend run type-check.
+- 2026-05-15: banking-connection-store-observability ficou bilateral no Firebase Open Finance.
+- O teste agora valida bootstrap falho e reuse bem-sucedido do Firestore com applyFirestoreSettingsOnce e ignoreUndefinedProperties.
+- Validado com npx vitest run backend/tests/unit/banking-connection-store-observability.test.ts --pool=threads --maxWorkers=1 e npm --prefix backend run type-check.
+- 2026-05-15: authz-observability e aicfo-plan-render foram limpos de encoding/selector drift.
+- authz-observability perdeu o BOM e voltou a aguardar o middleware assíncrono com flush explícito.
+- aicfo-plan-render voltou a usar texto limpo e o seletor certo do CTA Ver fluxo.
+- Validado com npx vitest run backend/tests/unit/authz-observability.test.ts tests/unit/aicfo-plan-render.test.tsx --pool=threads --maxWorkers=1 e npm run type-check:app.
+- 2026-05-15: event-store-observability passou a aguardar explicitamente o caminho feliz.
+- O teste agora usa await no getDomainEvents para evitar promessa solta e manter a assercao resolvida real.
+- Validado com npx vitest run backend/tests/unit/event-store-observability.test.ts --pool=threads --maxWorkers=1.
+- 2026-05-15: clinic-integration e saas.integration passaram a isolar os stores de teste em arquivos temporarios.
+- clinic-integration agora usa WORKSPACE_STORE_FILE, SAAS_STORE_FILE e DOMAIN_EVENT_STORE_FILE sob .tmp.
+- saas.integration agora usa WORKSPACE_STORE_FILE e SAAS_STORE_FILE sob .tmp.
+- Validado com npm --prefix backend run type-check e npm run type-check:app.
+- 2026-05-15: ai-service-initialization, banking-connection-store, event-store, firestore-admin e prediction-engine ganharam o ultimo caminho saudavel faltante.
+- ai-service-initialization agora valida singleton real e log de sucesso; banking-connection-store agora valida reuse do Firestore com ignoreUndefinedProperties; event-store persiste sem warn quando o arquivo grava normalmente; firestore-admin valida reuse e ausencia de error; prediction-engine valida cache Redis saudável sem warn.
+- Validado com npx vitest run backend/tests/unit/ai-service-initialization-observability.test.ts backend/tests/unit/banking-connection-store-observability.test.ts backend/tests/unit/event-store-observability.test.ts backend/tests/unit/firestore-admin-observability.test.ts backend/tests/unit/prediction-engine-observability.test.ts --pool=threads --maxWorkers=1, npm --prefix backend run type-check e npm run type-check:app.

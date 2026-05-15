@@ -1,6 +1,8 @@
-﻿import request from 'supertest';
+import fs from 'fs';
+import path from 'path';
+import request from 'supertest';
 import type { Express } from 'express';
-import { beforeAll, vi } from 'vitest';
+import { beforeAll, beforeEach, vi } from 'vitest';
 import { resetSaasStoreForTests } from '../../src/utils/saasStore';
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
 
@@ -60,6 +62,8 @@ vi.mock('../../src/services/openFinance/providerMode', () => ({
 }));
 
 let app: Express;
+const workspaceStoreFile = path.resolve(process.cwd(), '.tmp', 'saas-integration-workspace-store.json');
+const saasStoreFile = path.resolve(process.cwd(), '.tmp', 'saas-integration-saas-store.json');
 
 describe('SaaS API workspace scope', () => {
   beforeAll(async () => {
@@ -68,6 +72,11 @@ describe('SaaS API workspace scope', () => {
     process.env.OPEN_FINANCE_STORE_DRIVER = 'memory';
     process.env.DISABLE_LEGACY_STATE_BLOBS = 'true';
     process.env.FEATURE_OPEN_FINANCE = 'true';
+    process.env.WORKSPACE_STORE_FILE = workspaceStoreFile;
+    process.env.SAAS_STORE_FILE = saasStoreFile;
+    fs.mkdirSync(path.dirname(workspaceStoreFile), { recursive: true });
+    fs.rmSync(workspaceStoreFile, { force: true });
+    fs.rmSync(saasStoreFile, { force: true });
     ({ default: app } = await import('../../src/index'));
   });
 
@@ -77,6 +86,8 @@ describe('SaaS API workspace scope', () => {
     process.env.OPEN_FINANCE_STORE_DRIVER = 'memory';
     process.env.DISABLE_LEGACY_STATE_BLOBS = 'true';
     process.env.FEATURE_OPEN_FINANCE = 'true';
+    process.env.WORKSPACE_STORE_FILE = workspaceStoreFile;
+    process.env.SAAS_STORE_FILE = saasStoreFile;
     resetSaasStoreForTests();
     resetWorkspaceStoreForTests();
   });
@@ -174,8 +185,3 @@ describe('SaaS API workspace scope', () => {
     expect(Array.isArray(res.body.events)).toBe(true);
   }, 15000);
 });
-
-
-
-
-

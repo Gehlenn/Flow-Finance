@@ -55,28 +55,7 @@ function renderSettings(
   role: 'owner' | 'viewer',
   options?: { integrationKeysConfigured?: boolean; generateError?: boolean; revokeError?: boolean },
 ) {
-  settingsMocks.apiRequest.mockImplementation(async (endpoint: string) => {
-    if (String(endpoint) === '/integration-keys' && !String(endpoint).includes('/generate')) {
-      return options?.integrationKeysConfigured
-        ? { configured: true, keyPrefix: 'flw_test_', createdAt: '2026-04-02T00:00:00.000Z' }
-        : { configured: false };
-    }
-    if (String(endpoint).includes('/integration-keys/generate')) {
-      if (options?.generateError) {
-        throw new Error('generate failed');
-      }
-      return {
-        configured: true,
-        key: 'flw_test_secret',
-        keyPrefix: 'flw_test_',
-        createdAt: '2026-04-02T00:00:00.000Z',
-        warning: '',
-      };
-    }
-    if (String(endpoint) === '/integration-keys') {
-      if (options?.revokeError) {
-        throw new Error('revoke failed');
-      }
+  settingsMocks.apiRequest.mockImplementation(async (endpoint: string, init?: { method?: string }) => {
       return { configured: false };
     }
     if (String(endpoint).includes('/ai/cfo')) {
@@ -190,10 +169,10 @@ describe('Settings workspace admin entry', () => {
     renderSettings('owner');
 
     await waitFor(() => {
-      expect(screen.getByText(/Conectar Google/i)).toBeTruthy();
+      expect(screen.getByText(/Vincular Google/i)).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Conectar Google/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Vincular Google/i }));
 
     expect(await screen.findByRole('status')).toBeTruthy();
     expect(screen.getByText(/Credencial ja vinculada/i)).toBeTruthy();
@@ -211,7 +190,7 @@ describe('Settings workspace admin entry', () => {
     renderSettings('owner', { generateError: true });
 
     await waitFor(() => {
-      expect(screen.getByText(/Chave de API/i)).toBeTruthy();
+      expect(screen.getByText(/Chave de integração/i)).toBeTruthy();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Gerar chave/i }));
@@ -233,7 +212,7 @@ describe('Settings workspace admin entry', () => {
       expect(screen.getByText(/Rotacionar/i)).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Revogar/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Revogar chave/i }));
 
     expect(await screen.findByRole('status')).toBeTruthy();
     expect(screen.getByText(/Nao foi possivel revogar a chave/i)).toBeTruthy();
@@ -246,3 +225,4 @@ describe('Settings workspace admin entry', () => {
   });
 
 });
+

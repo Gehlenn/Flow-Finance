@@ -113,4 +113,31 @@ describe('eventStore observability', () => {
       'Failed to persist domain event store',
     );
   });
+
+  it('persiste o event store local sem emitir warn quando o arquivo grava normalmente', async () => {
+    fsMocks.existsSync.mockReturnValue(true);
+    fsMocks.readFileSync.mockReturnValueOnce(JSON.stringify({ events: [] }));
+    fsMocks.writeFileSync.mockImplementation(() => undefined);
+
+    const { appendDomainEvent, getDomainEvents } = await import('../../src/services/finance/eventStore');
+
+    const persisted = await appendDomainEvent({
+      workspaceId: 'workspace-1',
+      type: 'test.event',
+      occurredAt: '2026-05-10T00:00:00.000Z',
+    });
+
+    expect(persisted.id).toBeDefined();
+    expect(serviceMocks.loggerWarn).not.toHaveBeenCalled();
+    expect(serviceMocks.loggerError).not.toHaveBeenCalled();
+    expect(fsMocks.writeFileSync).toHaveBeenCalledTimes(1);
+    await expect(getDomainEvents({
+      workspaceId: 'workspace-1',
+    })).resolves.toEqual([
+      expect.objectContaining({
+        workspaceId: 'workspace-1',
+        type: 'test.event',
+      }),
+    ]);
+  });
 });

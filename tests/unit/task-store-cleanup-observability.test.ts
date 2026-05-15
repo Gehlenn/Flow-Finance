@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ACTIVE_WORKSPACE_STORAGE_KEY } from '../../src/config/api.config';
 
 const logInfoMock = vi.fn();
@@ -24,7 +24,7 @@ describe('taskStore cleanup observability', () => {
         id: 'task_old',
         userId: 'user-1',
         type: 'INSIGHT_GENERATION',
-        status: 'COMPLETED',
+        status: 'completed',
         priority: 1,
         createdAt: Date.now() - (25 * 60 * 60 * 1000),
         payload: { prompt: 'old task' },
@@ -46,3 +46,4 @@ describe('taskStore cleanup observability', () => {
     );
   });
 });
+
