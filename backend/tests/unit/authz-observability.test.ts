@@ -35,6 +35,10 @@ function makeRes() {
   } as unknown as Response;
 }
 
+async function flushAsyncMiddleware(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 describe('authz observability', () => {
   it('registra contexto quando ocorre erro inesperado em authz', async () => {
     mocks.getUserRoleInWorkspaceAsync.mockRejectedValueOnce(new Error('workspace lookup failed'));
@@ -47,7 +51,8 @@ describe('authz observability', () => {
     const res = makeRes();
     const next = vi.fn() as unknown as NextFunction;
 
-    await middleware(req, res, next);
+    middleware(req, res, next);
+    await flushAsyncMiddleware();
 
     expect(res.status).toHaveBeenCalledWith(403);
     expect(res.json).toHaveBeenCalledWith({ error: 'Acesso negado', statusCode: 403 });
@@ -72,7 +77,8 @@ describe('authz observability', () => {
     const res = makeRes();
     const next = vi.fn() as unknown as NextFunction;
 
-    await middleware(req, res, next);
+    middleware(req, res, next);
+    await flushAsyncMiddleware();
 
     expect(res.status).toHaveBeenCalledWith(403);
     expect(res.json).toHaveBeenCalledWith({ error: 'Feature indisponivel', statusCode: 403 });

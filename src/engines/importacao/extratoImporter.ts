@@ -1,5 +1,5 @@
-// Módulo de Importação de Extratos Bancários (OFX/CSV/PDF)
-// v0.8.x – Flow Finance
+﻿// MÃ³dulo de ImportaÃ§Ã£o de Extratos BancÃ¡rios (OFX/CSV/PDF)
+// v0.8.x â€“ Flow Finance
 
 import { Transaction, TransactionType, Category } from '../../../types';
 import { logWarn } from '../../utils/logger';
@@ -14,21 +14,44 @@ export interface ImportacaoExtratoResultado {
 
 export interface ImportacaoExtratoOptions {
   arquivo: Buffer | string;
-  formato?: ExtratoFormato; // Se não informado, tentar auto-detectar
+  formato?: ExtratoFormato; // Se nÃ£o informado, tentar auto-detectar
 }
 
 /**
- * Importa extrato bancário em formato OFX, CSV ou PDF.
- * @param options Opções de importação
- * @returns Resultado da importação (transações extraídas, erros, formato detectado)
+ * Importa extrato bancÃ¡rio em formato OFX, CSV ou PDF.
+ * @param options OpÃ§Ãµes de importaÃ§Ã£o
+ * @returns Resultado da importaÃ§Ã£o (transaÃ§Ãµes extraÃ­das, erros, formato detectado)
  */
 export async function importarExtrato(options: ImportacaoExtratoOptions): Promise<ImportacaoExtratoResultado> {
   let formato: ExtratoFormato | undefined = options.formato;
   let erros: string[] = [];
   let transacoes: Transaction[] = [];
-  let conteudo = typeof options.arquivo === 'string' ? options.arquivo : options.arquivo.toString('utf-8');
+  let conteudo = '';
 
-  // Auto-detecção simples
+  try {
+    conteudo = typeof options.arquivo === 'string' ? options.arquivo : options.arquivo.toString('utf-8');
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Erro ao ler arquivo de extrato.';
+    const format = formato || 'CSV';
+    if (format === 'CSV') {
+      logWarn('[ExtratoImporter] CSV processing failed', { format, error });
+      erros.push('Erro ao processar CSV: ' + message);
+    } else if (format === 'OFX') {
+      logWarn('[ExtratoImporter] OFX processing failed', { format, error });
+      erros.push('Erro ao processar OFX: ' + message);
+    } else {
+      logWarn('[ExtratoImporter] File reading failed', { format, error });
+      erros.push('Erro ao ler arquivo de extrato: ' + message);
+    }
+
+    return {
+      transacoes,
+      erros,
+      formatoDetectado: (format as ExtratoFormato),
+    };
+  }
+
+  // Auto-detecÃ§Ã£o simples
   if (!formato) {
     if (conteudo.trim().startsWith('<OFX')) formato = 'OFX';
     else if (conteudo.includes(',')) formato = 'CSV';
@@ -37,14 +60,14 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
 
   if (formato === 'CSV') {
     try {
-      // Espera cabeçalho: Data,Descricao,Valor
+      // Espera cabeÃ§alho: Data,Descricao,Valor
       const linhas = conteudo.split(/\r?\n/).filter(Boolean);
       const cabecalho = linhas[0].split(',').map(h => h.trim().toLowerCase());
       const idxData = cabecalho.indexOf('data');
       const idxDesc = cabecalho.indexOf('descricao');
       const idxValor = cabecalho.indexOf('valor');
       if (idxData === -1 || idxDesc === -1 || idxValor === -1) {
-        erros.push('Cabeçalho CSV inválido. Esperado: Data,Descricao,Valor');
+        erros.push('CabeÃ§alho CSV invÃ¡lido. Esperado: Data,Descricao,Valor');
       } else {
         for (let i = 1; i < linhas.length; i++) {
           const cols = linhas[i].split(',');
@@ -53,7 +76,7 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
           const descricao = cols[idxDesc].trim();
           const valor = parseFloat(cols[idxValor].replace(',', '.'));
           if (!data || !descricao || isNaN(valor)) {
-            erros.push(`Linha ${i + 1} inválida: ${linhas[i]}`);
+            erros.push(`Linha ${i + 1} invÃ¡lida: ${linhas[i]}`);
             continue;
           }
           transacoes.push({
@@ -69,7 +92,7 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao processar CSV.';
-      logWarn('[ExtratoImporter] CSV processing failed', { formato, error: message });
+      logWarn('[ExtratoImporter] CSV processing failed', { format: formato || 'CSV', error });
       erros.push('Erro ao processar CSV: ' + message);
     }
 
@@ -84,9 +107,9 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
         };
         const data = getTag('DTPOSTED').slice(0,8); // AAAAMMDD
         const valor = parseFloat(getTag('TRNAMT').replace(',', '.'));
-        const descricao = getTag('MEMO') || getTag('NAME') || 'Sem descrição';
+        const descricao = getTag('MEMO') || getTag('NAME') || 'Sem descriÃ§Ã£o';
         if (!data || isNaN(valor)) {
-          erros.push('Transação OFX inválida: ' + bloco);
+          erros.push('TransaÃ§Ã£o OFX invÃ¡lida: ' + bloco);
           continue;
         }
         // Converte data AAAAMMDD para AAAA-MM-DD
@@ -102,15 +125,15 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
         });
       }
       if (transacoesOFX.length === 0) {
-        erros.push('Nenhuma transação encontrada no OFX.');
+        erros.push('Nenhuma transaÃ§Ã£o encontrada no OFX.');
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao processar OFX.';
-      logWarn('[ExtratoImporter] OFX processing failed', { formato, error: message });
+      logWarn('[ExtratoImporter] OFX processing failed', { format: formato || 'OFX', error });
       erros.push('Erro ao processar OFX: ' + message);
     }
   } else {
-    erros.push('Formato não suportado nesta versão: ' + formato);
+    erros.push('Formato nÃ£o suportado nesta versÃ£o: ' + formato);
   }
 
   return {
@@ -119,3 +142,4 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
     formatoDetectado: formato,
   };
 }
+

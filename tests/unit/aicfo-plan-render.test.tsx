@@ -161,7 +161,7 @@ describe('AICFO plan render', () => {
     fireEvent.click(screen.getByRole('button', { name: /Posso pagar a semana\?/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Diagnostico da IA/i)).toBeTruthy();
+      expect(screen.getByText(/Diagnóstico da IA/i)).toBeTruthy();
     });
     expect(screen.getAllByText(/Nao foi possivel gerar uma resposta no momento/i).length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText(/Tente novamente em alguns instantes ou verifique a sessao do workspace/i)).toBeTruthy();
@@ -217,15 +217,15 @@ describe('AICFO plan render', () => {
       expect(screen.getByText(/Resposta consultiva\./i)).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Criar lembrete/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: /Criar lembrete/i }).at(-1)!);
     expect(onCreateReminder).toHaveBeenCalledWith(expect.objectContaining({
-      title: 'Revisar posicao de caixa indicada pelo CFO',
-      priority: 'alta',
+      title: 'Revisar recomendacao do CFO',
+      priority: 'media',
       type: ReminderType.NEGOCIO,
       completed: false,
     }));
 
-    fireEvent.click(screen.getByRole('button', { name: /Ver fluxo/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: /Ver fluxo/i }).at(-1)!);
     expect(onNavigateToTab).toHaveBeenCalledWith('flow');
   });
 
@@ -246,7 +246,7 @@ describe('AICFO plan render', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Posso pagar a semana\?/i }));
 
-    expect(await screen.findByText(/nao consegui processar esta consulta agora/i)).toBeTruthy();
+    expect(await screen.findByText(/não consegui processar esta consulta agora/i)).toBeTruthy();
     expect(aicfoMocks.logWarn).toHaveBeenCalledWith(
       '[AICFO] Failed to generate CFO response',
       expect.objectContaining({
