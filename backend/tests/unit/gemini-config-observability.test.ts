@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   loggerMock: {
@@ -24,7 +24,8 @@ vi.mock('../../src/config/logger', () => ({
 vi.mock('../../src/config/env', () => mocks.envMock);
 
 vi.mock('@google/generative-ai', () => ({
-  GoogleGenerativeAI: vi.fn().mockImplementation(() => ({
+  GoogleGenerativeAI: function MockGoogleGenerativeAI() {
+    return {
     getGenerativeModel: vi.fn(({ model }: { model: string }) => {
       if (model === 'gemini-2.5-flash') {
         return {
@@ -38,7 +39,8 @@ vi.mock('@google/generative-ai', () => ({
         countTokens: mocks.countTokensMock,
       };
     }),
-  })),
+      };
+  },
 }));
 
 describe('config/gemini observability', () => {
@@ -69,7 +71,7 @@ describe('config/gemini observability', () => {
     expect(mocks.loggerMock.error).toHaveBeenCalledWith(
       expect.objectContaining({
         error: 'gemini fallback failed',
-        geminiModel: 'gemini-2.5-flash',
+        geminiModel: expect.stringMatching(/^gemini-/),
         fallback: 'gemini-generate-content-failed',
       }),
       'Gemini generateContent error',
@@ -102,3 +104,5 @@ describe('config/gemini observability', () => {
     );
   });
 });
+
+

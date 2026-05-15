@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
@@ -9,9 +9,11 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@aws-sdk/client-s3', () => ({
-  S3Client: vi.fn().mockImplementation(() => ({
+  S3Client: function MockS3Client() {
+    return {
     send: mocks.send,
-  })),
+      };
+  },
   PutObjectCommand: vi.fn(),
   GetObjectCommand: vi.fn(),
   DeleteObjectCommand: vi.fn(),
@@ -117,3 +119,4 @@ describe('storage config observability', () => {
     );
   });
 });
+

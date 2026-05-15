@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   poolConnect: vi.fn(),
@@ -12,12 +12,14 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('pg', () => ({
-  Pool: vi.fn().mockImplementation(() => ({
+  Pool: function MockPool() {
+    return {
     connect: mocks.poolConnect,
     query: mocks.poolQuery,
     end: mocks.poolEnd,
     on: mocks.poolOn,
-  })),
+      };
+  },
 }));
 
 vi.mock('../../src/config/logger', () => ({
@@ -96,3 +98,4 @@ describe('database config observability', () => {
     );
   });
 });
+
