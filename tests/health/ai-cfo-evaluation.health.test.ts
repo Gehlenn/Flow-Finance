@@ -1,11 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const generateCfoMock = vi.fn();
+const { generateCfoMock } = vi.hoisted(() => ({
+  generateCfoMock: vi.fn(),
+}));
 
 vi.mock('../../services/geminiService', () => ({
-  GeminiService: vi.fn().mockImplementation(() => ({
-    generateCFO: generateCfoMock,
-  })),
+  GeminiService: vi.fn().mockImplementation(function GeminiServiceMock() {
+    return {
+      generateCFO: generateCfoMock,
+    };
+  }),
 }));
 
 import { generateCFOResponse } from '../../src/ai/aiCFO';
@@ -54,3 +58,4 @@ describe('AI health - CFO evaluation harness', () => {
     expect(results.some((result) => result.matchedTraits.includes('uses_standard_depth_when_strong'))).toBe(true);
   });
 });
+
