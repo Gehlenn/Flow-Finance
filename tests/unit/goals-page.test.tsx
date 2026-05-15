@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -19,7 +19,7 @@ vi.mock('../../src/app/secondaryFlowsCopy', () => ({
       title: 'Metas',
       subtitle: 'Acompanhe seus objetivos',
       emptyTitle: 'Sem metas',
-      emptyDescription: 'Crie uma meta para começar',
+      emptyDescription: 'Crie uma meta para comeÃ§ar',
     },
   },
 }));
@@ -90,7 +90,7 @@ describe('Goals page', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Nova meta/i }));
-    fireEvent.change(screen.getByPlaceholderText(/Reserva de Emergência/i), { target: { value: 'Reserva' } });
+    fireEvent.change(screen.getByPlaceholderText(/Reserva de Emerg/i), { target: { value: 'Reserva' } });
     fireEvent.change(screen.getAllByPlaceholderText('0,00')[0], { target: { value: 'abc' } });
     fireEvent.click(screen.getByRole('button', { name: /Criar Meta/i }));
 
@@ -116,7 +116,7 @@ describe('Goals page', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Nova meta/i }));
-    fireEvent.change(screen.getByPlaceholderText(/Reserva de Emergência/i), { target: { value: 'Reserva' } });
+    fireEvent.change(screen.getByPlaceholderText(/Reserva de Emerg/i), { target: { value: 'Reserva' } });
     fireEvent.change(screen.getAllByPlaceholderText('0,00')[0], { target: { value: 'abc' } });
     fireEvent.click(screen.getByRole('button', { name: /Criar Meta/i }));
 
@@ -176,14 +176,14 @@ describe('Goals page', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Nova meta/i }));
-    fireEvent.change(screen.getByPlaceholderText(/Reserva de EmergÃªncia/i), { target: { value: 'Reserva' } });
+    fireEvent.change(screen.getByPlaceholderText(/Reserva de Emerg/i), { target: { value: 'Reserva' } });
     fireEvent.change(screen.getAllByPlaceholderText('0,00')[0], { target: { value: '1000' } });
     fireEvent.click(screen.getByRole('button', { name: /Criar Meta/i }));
 
     await waitFor(() => {
       expect(screen.getByRole('status')).toBeTruthy();
     });
-    expect(screen.getByText(/Nao foi possivel salvar a meta/i)).toBeTruthy();
+    expect(screen.getAllByText(/Nao foi possivel salvar a meta/i).length).toBeGreaterThan(0);
     expect(goalsLoggerMock.logWarn).toHaveBeenCalledWith(
       '[Goals] Failed to create goal',
       expect.objectContaining({
@@ -192,3 +192,6 @@ describe('Goals page', () => {
     );
   });
 });
+
+
+

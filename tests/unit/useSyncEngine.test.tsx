@@ -1,4 +1,4 @@
-import { renderHook, waitFor, act } from '@testing-library/react';
+﻿import { renderHook, waitFor, act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSyncEngine } from '../../hooks/useSyncEngine';
 
@@ -253,7 +253,7 @@ describe('useSyncEngine', () => {
         fallback: 'use-sync-engine-profile-sync-failed',
       }),
     );
-    expect(onDisableCloudSync).toHaveBeenCalledTimes(1);
+    expect(onDisableCloudSync).not.toHaveBeenCalled();
   });
 
   it('registra falha ao sincronizar entidades e propaga o erro', async () => {

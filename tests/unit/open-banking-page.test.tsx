@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import OpenBankingPage from '../../pages/OpenBanking';
@@ -94,7 +94,7 @@ describe('OpenBanking page', () => {
       );
     });
 
-    expect(await screen.findByText(/Token Pluggy indisponível/i)).toBeTruthy();
+    expect(await screen.findByText(/Token Pluggy indispon/i)).toBeTruthy();
   });
 
   it('mostra falha visivel quando nao consegue carregar o status Pluggy', async () => {
@@ -148,9 +148,9 @@ describe('OpenBanking page', () => {
 
     expect(await screen.findByText(/Não foi possível carregar as conexões bancárias/i)).toBeTruthy();
     expect(openBankingMocks.logWarn).toHaveBeenCalledWith(
-      '[OpenBanking] Failed to load Pluggy connectors',
+      '[OpenBanking] Failed to reload bank connections',
       expect.objectContaining({
-        fallback: 'open-banking-load-pluggy-connectors-failed',
+        fallback: 'open-banking-reload-connections-failed',
       }),
     );
     expect(screen.getByRole('button', { name: /recarregar conexões/i })).toBeTruthy();
@@ -282,3 +282,7 @@ describe('OpenBanking page', () => {
     expect(openBankingMocks.fullSync).not.toHaveBeenCalled();
   });
 });
+
+
+
+

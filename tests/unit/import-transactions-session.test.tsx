@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -224,7 +224,7 @@ describe('ImportTransactions session state', () => {
       expect(screen.getByRole('button', { name: /ocultar duplicatas/i })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /importar .* transa/i }));
+    fireEvent.click(screen.getByRole('button', { name: /importar .* movimento/i }));
 
     await waitFor(() => {
       expect(onAddTransactions).toHaveBeenCalledTimes(1);
@@ -261,7 +261,7 @@ describe('ImportTransactions session state', () => {
       expect(screen.getByRole('button', { name: /ocultar duplicatas/i })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /importar .* transa/i }));
+    fireEvent.click(screen.getByRole('button', { name: /importar .* movimento/i }));
 
     await waitFor(() => {
       expect(onAddTransactions).toHaveBeenCalledTimes(1);
@@ -312,7 +312,7 @@ describe('ImportTransactions session state', () => {
     fireEvent.change(input, { target: { files: [file] } });
 
     await waitFor(() => {
-      expect(screen.getByText(/Data inválida/i)).toBeTruthy();
+      expect(screen.getByText(/Data inv/i)).toBeTruthy();
     });
   });
 
@@ -342,7 +342,7 @@ describe('ImportTransactions session state', () => {
 
     expect(await screen.findByRole('status')).toBeTruthy();
     expect(screen.getByText(/Nenhuma transacao foi identificada/i)).toBeTruthy();
-    expect(screen.getByText(/Pr[oó]ximo passo:/i)).toBeTruthy();
+    expect(screen.getByText(/Pr.*ximo passo:/i)).toBeTruthy();
   });
 
   it('ignora uma importacao atrasada depois que a tela desmonta', async () => {
@@ -413,7 +413,7 @@ describe('ImportTransactions session state', () => {
       expect(screen.getByRole('button', { name: /ocultar duplicatas/i })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /importar .* transa/i }));
+    fireEvent.click(screen.getByRole('button', { name: /importar .* movimento/i }));
     await waitFor(() => {
       expect(saveMerchantCategoryLearningMock).toHaveBeenCalled();
     });
@@ -445,13 +445,16 @@ describe('ImportTransactions session state', () => {
 
     fireEvent.change(input, { target: { files: [file] } });
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /importar .* transa/i })).toBeTruthy();
+      expect(screen.getByRole('button', { name: /importar .* movimento/i })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /importar .* transa/i }));
+    fireEvent.click(screen.getByRole('button', { name: /importar .* movimento/i }));
 
     expect(await screen.findByRole('status')).toBeTruthy();
     expect(screen.getByText(/aprendizado pendente/i)).toBeTruthy();
     expect(screen.getByText(/nao foi salvo para todos os itens/i)).toBeTruthy();
   });
 });
+
+
+

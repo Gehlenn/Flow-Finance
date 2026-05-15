@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import AIInput from '../../components/AIInput';
@@ -224,3 +224,4 @@ describe('AIInput', () => {
     );
   });
 });
+
