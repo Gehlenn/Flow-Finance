@@ -120,12 +120,18 @@ Responda em JSON estruturado conforme o schema.`;
 
     const parsed = safeJsonParse(result, 'interpret');
     validateAIResponse(parsed, ['intent'], 'interpret');
+    const parsedRecord = parsed as {
+      intent?: unknown;
+      transactions?: TransactionData[];
+      reminders?: ReminderData[];
+    };
+    const intent = parsedRecord.intent === 'reminder' ? 'reminder' : 'transaction';
     
     const response: InterpretResponse = {
-      intent: parsed.intent,
-      data: parsed.intent === 'transaction'
-        ? (parsed.transactions || [] as TransactionData[])
-        : (parsed.reminders || [] as ReminderData[])
+      intent,
+      data: intent === 'transaction'
+        ? (parsedRecord.transactions || [] as TransactionData[])
+        : (parsedRecord.reminders || [] as ReminderData[])
     };
 
     res.json(response);
@@ -375,17 +381,18 @@ Responda de forma consultiva, personalizada e baseada exclusivamente nos dados a
     const answer = await generateContent(prompt);
     logger.info({ answerLength: answer?.length || 0 }, 'CFO response generated successfully');
     res.json({ answer });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const normalizedError = error instanceof Error ? error : new Error(String(error ?? 'Unknown error'));
     logger.error({ 
-      error: error?.message || String(error),
-      errorType: error?.constructor?.name,
-      status: error?.status,
+      error: normalizedError.message,
+      errorType: normalizedError.constructor.name,
+      status: (error as { status?: number } | null | undefined)?.status,
       userId: req.userId,
       questionLength: sanitizedQuestion.length,
       intent,
       fallback: 'cfo-failed',
     }, 'CFO generation error');
-    throw new AppError(500, `Failed to generate CFO response: ${error?.message || 'Unknown error'}`);
+    throw new AppError(500, `Failed to generate CFO response: ${normalizedError.message || 'Unknown error'}`);
   }
 });
 

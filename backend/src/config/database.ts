@@ -132,7 +132,7 @@ export const closePool = async (): Promise<void> => {
 };
 
 // Query helper with error handling
-export const query = async (text: string, params?: any[]) => {
+export const query = async (text: string, params?: unknown[]) => {
   const start = Date.now();
   try {
     const res = await pool.query(text, params);

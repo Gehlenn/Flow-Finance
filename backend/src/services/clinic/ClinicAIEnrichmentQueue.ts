@@ -204,9 +204,9 @@ export class ClinicAIEnrichmentQueue {
   }
 
   /**
-   * Placeholder: Enrich event with AI.
-   * TODO(#ai-enrichment): Integrate with real IA service (Gemini/OpenAI)
-   * Current: deterministic local heuristic fallback with observability.
+   * Enrich event with a deterministic local heuristic.
+   * The queue remains observable and non-blocking while the real IA integration
+   * is kept outside the critical path.
    */
   private async enrichWithAI(task: ClinicAIEnrichmentTask): Promise<void> {
     const normalizedDescription = task.description.toLowerCase().trim();

@@ -79,7 +79,7 @@ export const initSentry = () => {
 /**
  * Report an error manually to Sentry
  */
-export const reportError = (error: Error, context?: Record<string, any>) => {
+export const reportError = (error: Error, context?: Record<string, string | number | boolean | null | undefined>) => {
   Sentry.withScope((scope) => {
     if (context) {
       Object.keys(context).forEach(key => {
@@ -93,7 +93,7 @@ export const reportError = (error: Error, context?: Record<string, any>) => {
 /**
  * Report a message to Sentry
  */
-export const reportMessage = (message: string, level: Sentry.SeverityLevel = 'info', context?: Record<string, any>) => {
+export const reportMessage = (message: string, level: Sentry.SeverityLevel = 'info', context?: Record<string, string | number | boolean | null | undefined>) => {
   Sentry.withScope((scope) => {
     if (context) {
       Object.keys(context).forEach(key => {

@@ -116,15 +116,25 @@ export function clinicAuditMiddleware(req: Request, res: Response, next: NextFun
 
   // Interceptar response para capturar status code e dados
   const originalJson = res.json.bind(res);
-  res.json = function (body: any) {
+  res.json = function (body: unknown) {
     const durationMs = Date.now() - startTime;
     const statusCode = res.statusCode;
+    const responseBody = typeof body === 'object' && body !== null ? body as Record<string, unknown> : undefined;
+    const requestBody = typeof req.body === 'object' && req.body !== null ? req.body as Record<string, unknown> : undefined;
 
     // Extrair dados da resposta para auditoria
-    const externalEventId = body?.externalEventId || 'unknown';
-    const eventType = body?.eventType || req.body?.type || 'unknown';
-    const workspaceId = body?.workspaceId || req.body?.externalFacilityId || 'unknown';
-    const message = body?.message || '';
+    const externalEventId = typeof responseBody?.externalEventId === 'string' ? responseBody.externalEventId : 'unknown';
+    const eventType = typeof responseBody?.eventType === 'string'
+      ? responseBody.eventType
+      : typeof requestBody?.type === 'string'
+        ? requestBody.type
+        : 'unknown';
+    const workspaceId = typeof responseBody?.workspaceId === 'string'
+      ? responseBody.workspaceId
+      : typeof requestBody?.externalFacilityId === 'string'
+        ? requestBody.externalFacilityId
+        : 'unknown';
+    const message = typeof responseBody?.message === 'string' ? responseBody.message : '';
 
     // Classificar resultado
     let resultType: ClinicAuditEvent['resultType'] = 'error';
@@ -155,7 +165,13 @@ export function clinicAuditMiddleware(req: Request, res: Response, next: NextFun
       statusCode,
       resultType,
       durationMs,
-      reason: statusCode >= 400 ? body?.error || body?.message : undefined,
+      reason: statusCode >= 400
+        ? (typeof responseBody?.error === 'string'
+          ? responseBody.error
+          : typeof responseBody?.message === 'string'
+            ? responseBody.message
+            : undefined)
+        : undefined,
     });
 
     return originalJson(body);
