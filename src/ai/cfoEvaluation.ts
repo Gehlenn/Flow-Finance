@@ -4,7 +4,16 @@ export interface CFOEvaluationCase {
   name: string;
   intent: CFOIntent;
   response: AICFOResponse;
-  expectedTraits: Array<'mentions_confirmed_cash' | 'mentions_forecast' | 'mentions_risk' | 'avoids_absolute_promises' | 'has_explainability' | 'has_low_confidence_fallback'>;
+  expectedTraits: Array<
+    | 'mentions_confirmed_cash'
+    | 'mentions_forecast'
+    | 'mentions_risk'
+    | 'avoids_absolute_promises'
+    | 'has_explainability'
+    | 'has_low_confidence_fallback'
+    | 'uses_reduced_depth_when_limited'
+    | 'uses_standard_depth_when_strong'
+  >;
 }
 
 export interface CFOEvaluationResult {
@@ -76,6 +85,14 @@ function evaluateTraits(response: AICFOResponse, traits: CFOEvaluationCase['expe
           || Boolean(response.diagnostic)
           || answer.includes('nao consegui')
           || answer.includes('não consegui');
+        break;
+      case 'uses_reduced_depth_when_limited':
+        ok = response.response_depth === 'reduced'
+          || explainability?.evidence.base_sufficiency === 'limited';
+        break;
+      case 'uses_standard_depth_when_strong':
+        ok = response.response_depth === 'standard'
+          || explainability?.evidence.base_sufficiency === 'strong';
         break;
     }
 

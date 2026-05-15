@@ -84,8 +84,8 @@ class AIMemoryEngine {
     key: string,
     confidence: number,
     now: number,
-    current?: Record<string, any>,
-  ): Record<string, any> | undefined {
+    current?: Record<string, unknown>,
+  ): Record<string, unknown> | undefined {
     const shouldTrackDistributionSignal =
       type === AIMemoryType.SPENDING_PATTERN &&
       (key === 'category_dominance' || key === 'money_map_distribution');
@@ -119,7 +119,7 @@ class AIMemoryEngine {
       metadata: {
         ...(memory.metadata || {}),
         confidenceBand: this.getConfidenceBand(nextConfidence),
-        feedbackCount: Number((memory.metadata?.feedbackCount || 0) + 1),
+        feedbackCount: Number(memory.metadata?.feedbackCount ?? 0) + 1,
         lastFeedback: feedback,
         lastFeedbackContext: context || 'general',
         lastFeedbackAt: Date.now(),
@@ -283,7 +283,7 @@ class AIMemoryEngine {
     userId: string,
     type: AIMemoryType,
     key: string,
-    value: any,
+    value: unknown,
     confidence: number
   ): void {
     // Check if memory already exists

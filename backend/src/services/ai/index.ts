@@ -22,7 +22,7 @@ export function initializeAIService(): AIOrchestrator {
     return orchestratorInstance;
   } catch (error) {
     logger.error('Failed to initialize AI Service', {
-      error: (error as any)?.message,
+      error: error instanceof Error ? error.message : String(error),
       errorType: error instanceof Error ? error.constructor.name : typeof error,
       fallback: 'ai-service-unavailable',
     });

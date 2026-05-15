@@ -142,16 +142,16 @@ export async function interpretText(
     });
 
     return output;
-  } catch (err: any) {
+  } catch (error: unknown) {
     const processing_ms = Date.now() - start;
     logWarn('[AI Interpreter] Text interpretation failed; returning unknown intent', {
       userId,
       inputLength: input.length,
-      error: err,
+      error: error instanceof Error ? error.message : error,
     });
     logAIDebug({
       input,
-      error: err?.message || 'Erro desconhecido no interpretador',
+      error: error instanceof Error ? error.message : 'Erro desconhecido no interpretador',
       processing_ms,
     });
     return {
@@ -179,7 +179,7 @@ export async function interpretImage(
   mimeType: string,
   hint: string,
   userId: string,
-  geminiImageFn: (b: string, m: string, t?: string) => Promise<any[]>
+  geminiImageFn: (b: string, m: string, t?: string) => Promise<TransactionData[]>
 ): Promise<InterpreterOutput> {
   const start = Date.now();
   const { memories, contextBlock } = await buildMemoryContext(userId);
@@ -210,14 +210,18 @@ export async function interpretImage(
       processing_ms,
       enriched,
     };
-  } catch (err: any) {
+  } catch (error: unknown) {
     logWarn('[AI Interpreter] Image interpretation failed; returning unknown intent', {
       userId,
       mimeType,
       hintLength: hint?.length ?? 0,
-      error: err,
+      error: error instanceof Error ? error.message : error,
     });
-    logAIDebug({ input: '[imagem]', error: err?.message, processing_ms: Date.now() - start });
+    logAIDebug({
+      input: '[imagem]',
+      error: error instanceof Error ? error.message : String(error ?? 'unknown-error'),
+      processing_ms: Date.now() - start,
+    });
     return {
       intent: 'unknown', modality: 'image', data: [], confidence: 0,
       memory_context_used: [], raw_input: '[image]', processing_ms: Date.now() - start, enriched: false,

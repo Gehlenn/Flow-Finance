@@ -178,12 +178,12 @@ export async function runAIPipeline(
         transactionCount: transactions.length,
         error,
       })),
-      learnMemory(userId, 'financial_profile', profile.profile, 0.8).catch((error) => logWarn('[AI Orchestrator] profile memory write failed', {
+      learnMemory(userId, 'financial_profile', profile.profile, 0.8, { source: 'inferência recorrente' }).catch((error) => logWarn('[AI Orchestrator] profile memory write failed', {
         userId,
         transactionCount: transactions.length,
         error,
       })),
-      learnMemory(userId, 'balance_trend', financial_state.summary_current_month.balance >= 0 ? 'positivo' : 'negativo', 0.7).catch((error) => logWarn('[AI Orchestrator] balance trend memory write failed', {
+      learnMemory(userId, 'balance_trend', financial_state.summary_current_month.balance >= 0 ? 'positivo' : 'negativo', 0.7, { source: 'inferência recorrente' }).catch((error) => logWarn('[AI Orchestrator] balance trend memory write failed', {
         userId,
         transactionCount: transactions.length,
         error,

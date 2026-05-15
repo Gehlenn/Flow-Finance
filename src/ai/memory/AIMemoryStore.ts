@@ -150,7 +150,7 @@ class AIMemoryStore {
     this.saveToStorage();
   }
 
-  save(memory: Partial<AIMemoryEntry> & { type: AIMemoryType; value: any; key?: string; userId?: string }): void {
+  save(memory: Partial<AIMemoryEntry> & { type: AIMemoryType; value: unknown; key?: string; userId?: string }): void {
     const now = Date.now();
     const entry: AIMemoryEntry = {
       id: memory.id || `mem_${now}_${Math.random().toString(36).slice(2, 11)}`,
@@ -260,10 +260,7 @@ class AIMemoryStore {
     this.ensureWorkspaceScope();
     const userMemories = this.getMemoriesByUser(userId);
 
-    const byType: Record<AIMemoryType, number> = {} as any;
-    for (const type of Object.values(AIMemoryType)) {
-      byType[type] = 0;
-    }
+    const byType = Object.fromEntries(Object.values(AIMemoryType).map((type) => [type, 0])) as Record<AIMemoryType, number>;
 
     let totalConfidence = 0;
     let totalStrength = 0;

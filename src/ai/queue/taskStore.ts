@@ -10,6 +10,18 @@ import { logInfo, logWarn } from '../../utils/logger';
 const STORAGE_KEY = 'flow_ai_task_queue';
 const MAX_STORED_TASKS = 100;
 const TASK_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const QUEUE_EVENT_NAMES = {
+  UPDATED: 'ai-task-updated',
+  CLEARED: 'ai-task-queue-cleared',
+} as const;
+
+const emitQueueEvent = (eventName: string, detail: Record<string, unknown>): void => {
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function' || typeof CustomEvent === 'undefined') {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(eventName, { detail }));
+};
 
 class TaskStore {
   private tasks: Map<string, AITask> = new Map();
@@ -107,6 +119,13 @@ class TaskStore {
     }
 
     this.saveToStorage();
+    emitQueueEvent('ai-task-enqueued', {
+      taskId: task.id,
+      taskType: task.type,
+      status: task.status,
+      priority: task.priority,
+      userId: task.userId,
+    });
   }
 
   getTask(id: string): AITask | undefined {
@@ -145,6 +164,11 @@ class TaskStore {
 
       this.tasks.set(id, task);
       this.saveToStorage();
+      emitQueueEvent(QUEUE_EVENT_NAMES.UPDATED, {
+        taskId: id,
+        status,
+        userId: task.userId,
+      });
     }
   }
 
@@ -216,6 +240,10 @@ class TaskStore {
       }
     }
     this.saveToStorage();
+    emitQueueEvent(QUEUE_EVENT_NAMES.CLEARED, {
+      userId: userId ?? null,
+      scope: userId ? 'user' : 'all',
+    });
   }
 
   getAllTasks(): AITask[] {
@@ -227,6 +255,10 @@ class TaskStore {
     this.ensureWorkspaceScope();
     this.tasks.clear();
     this.saveToStorage();
+    emitQueueEvent(QUEUE_EVENT_NAMES.CLEARED, {
+      userId: null,
+      scope: 'all',
+    });
   }
 }
 

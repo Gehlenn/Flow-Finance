@@ -114,14 +114,14 @@ interface AIMemoryEntry {
   userId: string;
   type: AIMemoryType;
   key: string; // Identifier único
-  value: any; // Dado estruturado
+  value: unknown; // Dado estruturado
   confidence: number; // 0-1 confiança
   strength: number; // 0-100 força do padrão
   occurrences: number; // Quantas vezes observado
   createdAt: number;
   updatedAt: number;
   lastObservedAt: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 ```
 

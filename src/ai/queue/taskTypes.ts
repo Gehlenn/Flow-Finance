@@ -33,7 +33,7 @@ export enum AITaskPriority {
   URGENT = 3,
 }
 
-export interface AITask<T = any> {
+export interface AITask<T = unknown> {
   id: string;
   type: AITaskType;
   payload: T;
@@ -61,7 +61,7 @@ export interface AITaskProgress {
   timestamp: number;
 }
 
-export interface AITaskResult<T = any> {
+export interface AITaskResult<T = unknown> {
   taskId: string;
   success: boolean;
   data?: T;

@@ -62,12 +62,19 @@ export interface AICFOResponse {
   answer: string;
   context_summary?: string;
   intent?: CFOIntent;
+  response_depth?: 'standard' | 'reduced';
   timestamp: string;
   diagnostic?: {
     kind: 'ai_unavailable';
     message: string;
     suggestion?: string;
   };
+}
+
+export function buildCFOResponseDepth(explainability: AICFOExplainability): 'standard' | 'reduced' {
+  return explainability.evidence.base_sufficiency === 'strong' && explainability.confidence_band !== 'low'
+    ? 'standard'
+    : 'reduced';
 }
 
 // ��������� PART 4 ��� Intent Types ������������������������������������������������������������������������������������������������������������������������������������������������������������
@@ -406,6 +413,7 @@ Responda de forma consultiva, curta e baseada exclusivamente nos dados acima.
       suggestion: 'Tente novamente em alguns instantes ou verifique a sessao do workspace.',
     };
     const explainability = buildCFOExplainability(context, intent);
+    const responseDepth = buildCFOResponseDepth(explainability);
     logAIDebug({
       input: question,
       intent,
@@ -423,6 +431,7 @@ Responda de forma consultiva, curta e baseada exclusivamente nos dados acima.
       answer: answer && answer.length > 0 ? answer : fallbackDiagnostic.message,
       context_summary: 'Resposta ancorada em dados reais do workspace quando dispon+�veis.',
       intent,
+      response_depth: responseDepth,
       timestamp: new Date().toISOString(),
       diagnostic: answer && answer.length > 0 ? undefined : fallbackDiagnostic,
       explainability:
@@ -430,21 +439,23 @@ Responda de forma consultiva, curta e baseada exclusivamente nos dados acima.
           ? explainability
           : buildCFOExplainability(context, intent, { forceLowConfidence: true }),
     };
-  } catch (err: any) {
+  } catch (error: unknown) {
+    const fallbackError = error instanceof Error ? error : new Error(String(error ?? 'CFO response failed'));
     logWarn('[AI CFO] Failed to generate CFO response; returning fallback diagnostic', {
       intent,
-      error: err,
+      error: fallbackError,
       fallback: 'ai-cfo-response-failed',
     });
     logAIDebug({
       input: question,
       intent,
-      error: String(err?.message || err || 'CFO response failed'),
+      error: fallbackError.message,
     });
     return {
       question,
       answer: 'Com base nos seus dados, nao consegui processar a consulta agora. Verifique sua conexao e tente novamente.',
       intent,
+      response_depth: 'reduced',
       timestamp: new Date().toISOString(),
       diagnostic: {
         kind: 'ai_unavailable',
@@ -466,17 +477,17 @@ export async function learnFromConversation(
   const lower = question.toLowerCase();
 
   if (intent === 'savings_question') {
-    await learnMemory(userId, 'user_budget_goal', 'save_money', 0.7);
+    await learnMemory(userId, 'user_budget_goal', 'save_money', 0.7, { source: 'conversa' });
   }
   if (lower.includes('sal+�rio') || lower.includes('salario')) {
     const match = lower.match(/(\d+)/);
-    if (match) await learnMemory(userId, 'mentioned_salary', match[1], 0.6);
+    if (match) await learnMemory(userId, 'mentioned_salary', match[1], 0.6, { source: 'conversa' });
   }
   if (lower.includes('mercado') || lower.includes('supermercado')) {
-    await learnMemory(userId, 'frequent_merchant', 'mercado', 0.65);
+    await learnMemory(userId, 'frequent_merchant', 'mercado', 0.65, { source: 'conversa' });
   }
   if (intent === 'spending_advice') {
-    await learnMemory(userId, 'asks_before_spending', 'true', 0.8);
+    await learnMemory(userId, 'asks_before_spending', 'true', 0.8, { source: 'conversa' });
   }
 }
 

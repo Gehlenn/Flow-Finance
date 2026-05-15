@@ -33,7 +33,7 @@ export function getOpenAI(): OpenAI {
 
 export async function generateContent(
   prompt: string,
-  options?: { responseMimeType?: string; responseSchema?: any }
+  options?: { responseMimeType?: string; responseSchema?: unknown }
 ): Promise<string> {
   try {
     logger.debug({ model: env.OPENAI_MODEL, promptLength: prompt.length }, 'Initializing OpenAI client');
@@ -53,14 +53,14 @@ export async function generateContent(
     const content = resp.choices[0]?.message?.content || '';
     logger.info({ resultLength: content.length, model: env.OPENAI_MODEL }, 'OpenAI response received successfully');
     return content;
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ 
-      error: error?.message || String(error),
-      status: error?.status,
-      code: error?.code,
-      type: error?.type,
-      errorType: error?.constructor?.name,
-      stack: error?.stack,
+      error: error instanceof Error ? error.message : String(error),
+      status: error && typeof error === 'object' && 'status' in error ? (error as { status?: unknown }).status : undefined,
+      code: error && typeof error === 'object' && 'code' in error ? (error as { code?: unknown }).code : undefined,
+      type: error && typeof error === 'object' && 'type' in error ? (error as { type?: unknown }).type : undefined,
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      stack: error instanceof Error ? error.stack : undefined,
       model: env.OPENAI_MODEL,
       promptLength: prompt.length,
       maxTokens: parseInt(env.OPENAI_MAX_TOKENS || '4096', 10),

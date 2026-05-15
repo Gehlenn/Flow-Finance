@@ -36,9 +36,15 @@ function getCandidateModels(): string[] {
   return Array.from(new Set(models.filter(Boolean)));
 }
 
-function isModelNotFoundError(error: any): boolean {
-  const status = error?.status;
-  const message = String(error?.message || '').toLowerCase();
+function isModelNotFoundError(error: unknown): boolean {
+  const status = error && typeof error === 'object' && 'status' in error
+    ? (error as { status?: unknown }).status
+    : undefined;
+  const message = String(
+    error && typeof error === 'object' && 'message' in error
+      ? (error as { message?: unknown }).message
+      : '',
+  ).toLowerCase();
   return status === 404 || message.includes('not found') || message.includes('is not found');
 }
 
@@ -51,7 +57,7 @@ export async function generateContent(
 ): Promise<string> {
   const client = getGemini();
   const candidates = getCandidateModels();
-  let lastError: any;
+  let lastError: unknown;
 
   for (const modelName of candidates) {
     try {
@@ -74,13 +80,13 @@ export async function generateContent(
       const result = response.response.text();
       logger.info({ resultLength: result?.length || 0, model: modelName }, 'Gemini response received successfully');
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       lastError = error;
 
       if (isModelNotFoundError(error)) {
         logger.warn({
           model: modelName,
-          error: error?.message || String(error),
+          error: error instanceof Error ? error.message : String(error),
           triedModels: candidates,
           fallback: 'gemini-model-unavailable',
         }, 'Gemini model unavailable, trying next candidate');
@@ -88,9 +94,9 @@ export async function generateContent(
       }
 
       logger.error({
-        error: error?.message || String(error),
-        errorType: error?.constructor?.name,
-        stack: error?.stack,
+        error: error instanceof Error ? error.message : String(error),
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
+        stack: error instanceof Error ? error.stack : undefined,
         geminiModel: modelName,
         triedModels: candidates,
         fallback: 'gemini-generate-content-failed',
@@ -100,7 +106,7 @@ export async function generateContent(
   }
 
   logger.error({
-    error: lastError?.message || String(lastError),
+    error: lastError instanceof Error ? lastError.message : String(lastError),
     triedModels: candidates,
     fallback: 'gemini-all-candidate-models-failed',
   }, 'Gemini generateContent failed for all candidate models');
@@ -110,14 +116,14 @@ export async function generateContent(
 export async function countTokens(text: string): Promise<number> {
   const client = getGemini();
   const candidates = getCandidateModels();
-  let lastError: any;
+  let lastError: unknown;
 
   for (const modelName of candidates) {
     try {
       const model = client.getGenerativeModel({ model: modelName });
       const result = await model.countTokens(text);
       return result.totalTokens;
-    } catch (error: any) {
+    } catch (error: unknown) {
       lastError = error;
       if (isModelNotFoundError(error)) {
         logger.warn({
@@ -138,7 +144,7 @@ export async function countTokens(text: string): Promise<number> {
   }
 
   logger.error({
-    error: lastError,
+    error: lastError instanceof Error ? lastError.message : String(lastError),
     triedModels: candidates,
     fallback: 'gemini-token-count-all-models-failed',
   }, 'Token count failed for all Gemini models');

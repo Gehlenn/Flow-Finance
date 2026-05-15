@@ -5,6 +5,8 @@
 
 import { AITask, AITaskType, AITaskStatus } from './taskTypes';
 import { taskStore } from './taskStore';
+import { Transaction, Goal } from '../../../types';
+import { Account } from '../../../models/Account';
 
 // Import AI services
 import { generateFinancialInsights } from '../insightGenerator';
@@ -17,6 +19,13 @@ import { detectSubscriptions } from '../subscriptionDetector';
 import { detectSalary } from '../salaryDetector';
 import { detectFixedExpenses } from '../fixedExpenseDetector';
 import { logError, logInfo, logWarn } from '../../utils/logger';
+
+type AIWorkerPayload = {
+  transactions?: Transaction[];
+  accounts?: Account[];
+  goals?: Goal[];
+  [key: string]: unknown;
+};
 
 class AIWorker {
   private isRunning = false;
@@ -122,9 +131,9 @@ class AIWorker {
 
       this.emitProgress(task.id, AITaskStatus.COMPLETED, 100, 'Task completed');
       this.emitResult(task.id, true, result, executionTime);
-    } catch (error: any) {
+    } catch (error: unknown) {
       const executionTime = Date.now() - startTime;
-      const errorMessage = error?.message || 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
       logError('[AI Worker] Task execution failed', error, {
         taskId: task.id,
@@ -160,8 +169,9 @@ class AIWorker {
     }
   }
 
-  private async executeTask(task: AITask): Promise<any> {
-    const { type, payload, userId } = task;
+  private async executeTask(task: AITask): Promise<unknown> {
+    const { type, userId } = task;
+    const payload = task.payload as AIWorkerPayload;
 
     switch (type) {
       case AITaskType.INSIGHT_GENERATION:
@@ -226,7 +236,7 @@ class AIWorker {
   private emitResult(
     taskId: string,
     success: boolean,
-    data: any,
+    data: unknown,
     executionTime: number,
     error?: string
   ): void {

@@ -13,6 +13,7 @@ export interface AIMemory {
   value: string;
   confidence: number;
   updated_at: string;
+  metadata?: Record<string, unknown>;
 }
 
 // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -53,6 +54,36 @@ function parseMemoryDate(value: string): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+type MemorySource = 'conversa' | 'transação' | 'inferência recorrente' | 'categorização' | 'manual';
+
+function inferMemorySource(key: string): MemorySource {
+  if (key.includes('merchant') || key.includes('category')) {
+    return 'categorização';
+  }
+
+  if (
+    key.includes('weekend') ||
+    key.includes('recurring') ||
+    key.includes('salary') ||
+    key.includes('balance') ||
+    key.includes('pattern') ||
+    key.includes('profile')
+  ) {
+    return 'inferência recorrente';
+  }
+
+  if (
+    key.includes('budget') ||
+    key.includes('asks_') ||
+    key.includes('conversa') ||
+    key.includes('user_')
+  ) {
+    return 'conversa';
+  }
+
+  return 'transação';
+}
+
 export function getAIMemorySnapshot(userId: string): AIMemory[] {
   return readAll().filter((memory) => memory.user_id === userId);
 }
@@ -84,10 +115,20 @@ export async function learnMemory(
   userId: string,
   key: string,
   value: string,
-  confidence: number
+  confidence: number,
+  options?: {
+    source?: MemorySource;
+    metadata?: Record<string, unknown>;
+  }
 ): Promise<void> {
   const all = readAll();
   const existing = all.find(m => m.user_id === userId && m.key === key);
+  const source = options?.source ?? existing?.metadata?.source ?? inferMemorySource(key);
+  const metadata = {
+    ...(existing?.metadata ?? {}),
+    ...(options?.metadata ?? {}),
+    source,
+  };
 
   if (existing) {
     const updated: AIMemory = {
@@ -95,6 +136,7 @@ export async function learnMemory(
       value,
       confidence,
       updated_at: new Date().toISOString(),
+      metadata,
     };
     writeAll(all.map(m => m.id === existing.id ? updated : m));
   } else {
@@ -105,6 +147,7 @@ export async function learnMemory(
       value,
       confidence,
       updated_at: new Date().toISOString(),
+      metadata,
     };
     all.push(newEntry);
     writeAll(all);

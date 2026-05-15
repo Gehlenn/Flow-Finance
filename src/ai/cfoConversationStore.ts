@@ -18,6 +18,7 @@ export interface CFOConversationMessage {
   role: 'user' | 'assistant';
   text: string;
   intent?: string;
+  responseDepth?: 'standard' | 'reduced';
   timestamp: string;
   diagnostic?: {
     kind: 'ai_unavailable';
@@ -51,6 +52,7 @@ function normalizeMessages(messages: CFOConversationMessage[]): CFOConversationM
       role: message.role === 'user' ? 'user' : 'assistant',
       text: String(message.text),
       intent: message.intent,
+      responseDepth: message.responseDepth,
       timestamp: message.timestamp,
       diagnostic: message.diagnostic,
       explainability: message.explainability,

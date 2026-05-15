@@ -176,14 +176,14 @@ aiTaskQueue.enqueueTask(type, payload, userId, options?): string
 // Consultar
 aiTaskQueue.getTask(taskId): AITask | undefined
 aiTaskQueue.getTaskStatus(taskId): AITaskStatus | null
-aiTaskQueue.getTaskResult(taskId): any | null
+aiTaskQueue.getTaskResult(taskId): unknown | null
 
 // Gerenciar
 aiTaskQueue.cancelTask(taskId): boolean
 aiTaskQueue.clearCompletedTasks(userId?): void
 
 // Estatísticas
-aiTaskQueue.getQueueStats(): { pending, processing, completed, failed }
+aiTaskQueue.getQueueStats(): { pending, processing, completed, failed, cancelled }
 aiTaskQueue.getUserTasks(userId): AITask[]
 
 // Métodos de conveniência
@@ -199,7 +199,13 @@ aiTaskQueue.enqueueRiskAnalysis(userId, accounts, transactions): string
 
 ```typescript
 // Tarefa enfileirada
-'ai-task-enqueued': { taskId, type, priority }
+'ai-task-enqueued': { taskId, type, status, priority, userId }
+
+// Tarefa atualizada
+'ai-task-updated': { taskId, status, userId }
+
+// Fila limpa
+'ai-task-queue-cleared': { userId, scope }
 
 // Progresso da tarefa
 'ai-task-progress': { taskId, status, progress, message, timestamp }

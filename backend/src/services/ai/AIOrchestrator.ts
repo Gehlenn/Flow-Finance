@@ -68,9 +68,10 @@ export class AIOrchestrator {
       this.recordMetric(this.config.primaryProvider, response, 'success');
       return response;
     } catch (primaryError) {
+      const primaryErrorMessage = primaryError instanceof Error ? primaryError.message : String(primaryError);
       logger.warn('Primary provider failed, attempting fallback', {
         provider: this.config.primaryProvider,
-        primaryError: (primaryError as any)?.message,
+        primaryError: primaryErrorMessage,
       });
 
       // Try fallback provider if configured
@@ -93,11 +94,12 @@ export class AIOrchestrator {
             this.recordMetric(this.config.fallbackProvider, response, 'fallback');
             return response;
           } catch (fallbackError) {
+            const fallbackErrorMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
             logger.error('Both providers failed', {
               primaryProvider: this.config.primaryProvider,
               fallbackProvider: this.config.fallbackProvider,
-              primaryError: (primaryError as any)?.message,
-              fallbackError: (fallbackError as any)?.message,
+              primaryError: primaryErrorMessage,
+              fallbackError: fallbackErrorMessage,
             });
 
             throw new AppError(
@@ -122,7 +124,7 @@ export class AIOrchestrator {
     fn: () => Promise<T>,
     retries: number
   ): Promise<T> {
-    let lastError: any;
+    let lastError: unknown;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
@@ -134,7 +136,7 @@ export class AIOrchestrator {
           const delayMs = this.config.retryDelayMs * Math.pow(2, attempt);
           logger.warn(`Retrying AI request (attempt ${attempt + 1}/${retries})`, {
             delayMs,
-            error: (error as any)?.message,
+            error: error instanceof Error ? error.message : String(error),
           });
 
           await this.sleep(delayMs);

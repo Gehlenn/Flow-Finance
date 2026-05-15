@@ -3,7 +3,18 @@
  * Main queue engine for managing AI tasks
  */
 
-import { AITask, AITaskType, AITaskStatus, AITaskPriority } from './taskTypes';
+import {
+  AITask,
+  AITaskType,
+  AITaskStatus,
+  AITaskPriority,
+  InsightGenerationPayload,
+  CashflowSimulationPayload,
+  FinancialReportPayload,
+  LeakDetectionPayload,
+  AutopilotAnalysisPayload,
+  RiskAnalysisPayload,
+} from './taskTypes';
 import { taskStore } from './taskStore';
 import { aiWorker } from './AIWorker';
 import { makeId } from '../../utils/helpers';
@@ -41,7 +52,7 @@ class AITaskQueue {
     });
   }
 
-  enqueueTask<T = any>(
+  enqueueTask<T = unknown>(
     type: AITaskType,
     payload: T,
     userId = 'system',
@@ -76,13 +87,6 @@ class AITaskQueue {
       fallback: 'ai-task-queue-task-enqueued',
     });
 
-    // Emit event
-    window.dispatchEvent(
-      new CustomEvent('ai-task-enqueued', {
-        detail: { taskId, type, priority: task.priority },
-      })
-    );
-
     return taskId;
   }
 
@@ -95,7 +99,7 @@ class AITaskQueue {
     return task ? task.status : null;
   }
 
-  getTaskResult(taskId: string): any | null {
+  getTaskResult(taskId: string): unknown | null {
     const task = taskStore.getTask(taskId);
     return task?.result || null;
   }
@@ -135,6 +139,7 @@ class AITaskQueue {
     processing: number;
     completed: number;
     failed: number;
+    cancelled: number;
   } {
     const allTasks = taskStore.getAllTasks();
     return {
@@ -142,6 +147,7 @@ class AITaskQueue {
       processing: allTasks.filter((t) => t.status === AITaskStatus.PROCESSING).length,
       completed: allTasks.filter((t) => t.status === AITaskStatus.COMPLETED).length,
       failed: allTasks.filter((t) => t.status === AITaskStatus.FAILED).length,
+      cancelled: allTasks.filter((t) => t.status === AITaskStatus.CANCELLED).length,
     };
   }
 
@@ -151,7 +157,7 @@ class AITaskQueue {
 
   // Convenience methods for common tasks
 
-  enqueueInsightGeneration(userId: string, accounts: any[], transactions: any[]): string {
+  enqueueInsightGeneration(userId: string, accounts: InsightGenerationPayload['accounts'], transactions: InsightGenerationPayload['transactions']): string {
     return this.enqueueTask(
       AITaskType.INSIGHT_GENERATION,
       { accounts, transactions },
@@ -160,7 +166,7 @@ class AITaskQueue {
     );
   }
 
-  enqueueCashflowSimulation(userId: string, transactions: any[], horizon: number = 30): string {
+  enqueueCashflowSimulation(userId: string, transactions: CashflowSimulationPayload['transactions'], horizon: number = 30): string {
     return this.enqueueTask(
       AITaskType.CASHFLOW_SIMULATION,
       { transactions, horizon },
@@ -169,7 +175,7 @@ class AITaskQueue {
     );
   }
 
-  enqueueFinancialReport(userId: string, transactions: any[], month: number, year: number): string {
+  enqueueFinancialReport(userId: string, transactions: FinancialReportPayload['transactions'], month: number, year: number): string {
     return this.enqueueTask(
       AITaskType.FINANCIAL_REPORT,
       { transactions, month, year },
@@ -178,7 +184,7 @@ class AITaskQueue {
     );
   }
 
-  enqueueLeakDetection(userId: string, transactions: any[]): string {
+  enqueueLeakDetection(userId: string, transactions: LeakDetectionPayload['transactions']): string {
     return this.enqueueTask(
       AITaskType.LEAK_DETECTION,
       { transactions },
@@ -189,9 +195,9 @@ class AITaskQueue {
 
   enqueueAutopilotAnalysis(
     userId: string,
-    accounts: any[],
-    transactions: any[],
-    goals?: any[]
+    accounts: AutopilotAnalysisPayload['accounts'],
+    transactions: AutopilotAnalysisPayload['transactions'],
+    goals?: AutopilotAnalysisPayload['goals']
   ): string {
     return this.enqueueTask(
       AITaskType.AUTOPILOT_ANALYSIS,
@@ -201,7 +207,7 @@ class AITaskQueue {
     );
   }
 
-  enqueueRiskAnalysis(userId: string, accounts: any[], transactions: any[]): string {
+  enqueueRiskAnalysis(userId: string, accounts: RiskAnalysisPayload['accounts'], transactions: RiskAnalysisPayload['transactions']): string {
     return this.enqueueTask(
       AITaskType.RISK_ANALYSIS,
       { accounts, transactions },
@@ -215,14 +221,14 @@ class AITaskQueue {
 export const aiTaskQueue = new AITaskQueue();
 
 // Sprint 3 simple function API.
-export function enqueueTask<T = any>(type: AITaskType, payload: T): string {
+export function enqueueTask<T = unknown>(type: AITaskType, payload: T): string {
   if (!aiTaskQueue.isInitialized()) {
     aiTaskQueue.initialize();
   }
   return aiTaskQueue.enqueueTask(type, payload, 'system');
 }
 
-export function enqueueTaskForUser<T = any>(
+export function enqueueTaskForUser<T = unknown>(
   userId: string,
   type: AITaskType,
   payload: T,

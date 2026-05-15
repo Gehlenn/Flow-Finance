@@ -169,11 +169,12 @@ export function detectFinancialPatterns(transactions: Transaction[]): FinancialP
     const dayFreq: Record<number, number> = {};
     for (const d of incomes) dayFreq[d] = (dayFreq[d] ?? 0) + 1;
     const topDay = Object.entries(dayFreq).sort((a, b) => b[1] - a[1])[0];
-    if (topDay && parseInt(topDay[1] as any) >= 2) {
+    const topDayCount = topDay ? Number(topDay[1]) : 0;
+    if (topDay && topDayCount >= 2) {
       patterns.push({
         id: makeId(), type: 'salary_day',
         value: topDay[0],
-        confidence: Math.min(0.95, 0.5 + parseInt(topDay[1] as any) * 0.1),
+        confidence: Math.min(0.95, 0.5 + topDayCount * 0.1),
         updated_at: new Date().toISOString(),
       });
     }

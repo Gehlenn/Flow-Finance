@@ -68,9 +68,9 @@ export class OpenAIProvider extends IAIProvider {
         latencyMs,
         wasFallback: false,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       const latencyMs = Date.now() - startTime;
-      const errorMsg = error?.message || 'Unknown OpenAI error';
+      const errorMsg = error instanceof Error ? error.message : String(error || 'Unknown OpenAI error');
       
       logger.error('OpenAI request failed', {
         provider: 'openai',
