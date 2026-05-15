@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const logInfoMock = vi.fn();
 
@@ -33,7 +33,7 @@ describe('AIMemoryStore observability', () => {
       metadata: { contextDecayMultiplier: 2 },
     });
 
-    aiMemoryStore.setDecayConfig({ enabled: true, timeWindow: 1, decayRate: 0.01, minConfidence: 0 });
+    aiMemoryStore.setDecayConfig({ enabled: true, timeWindow: 1, decayRate: 0.01, minConfidence: 0.9 });
     aiMemoryStore.runDecayCycle();
 
     expect(logInfoMock).toHaveBeenCalledWith(
@@ -45,3 +45,4 @@ describe('AIMemoryStore observability', () => {
     );
   });
 });
+

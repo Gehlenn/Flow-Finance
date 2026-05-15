@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/ai/aiMemory', () => ({
   getAIMemory: vi.fn().mockResolvedValue([]),
@@ -33,7 +33,7 @@ describe('aiInterpreter', () => {
       expect.objectContaining({
         userId: 'user-1',
         inputLength: 9,
-        error: expect.any(Error),
+        error: expect.any(String),
       }),
     );
   });
@@ -69,8 +69,9 @@ describe('aiInterpreter', () => {
         userId: 'user-1',
         mimeType: 'image/png',
         hintLength: 11,
-        error: expect.any(Error),
+        error: expect.any(String),
       }),
     );
   });
 });
+

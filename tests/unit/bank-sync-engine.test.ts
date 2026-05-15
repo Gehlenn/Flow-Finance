@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockLogWarn = vi.fn();
+const loggerMocks = vi.hoisted(() => ({ logWarn: vi.fn() }));
 
 vi.mock('../../services/integrations/openBankingService', () => ({
   getConnections: vi.fn(),
@@ -36,7 +36,7 @@ vi.mock('../../src/ai/fixedExpenseDetector', () => ({
 }));
 
 vi.mock('../../src/utils/logger', () => ({
-  logWarn: mockLogWarn,
+  logWarn: loggerMocks.logWarn,
 }));
 
 import { getSyncStatusSummary, runBankSync, syncSingleBank } from '../../src/finance/bankSyncEngine';
@@ -47,10 +47,11 @@ import { detectFixedExpenses } from '../../src/ai/fixedExpenseDetector';
 describe('bankSyncEngine', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockLogWarn.mockClear();
+    loggerMocks.logWarn.mockClear();
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
@@ -74,7 +75,7 @@ describe('bankSyncEngine', () => {
     );
 
     expect(result.status).toBe('error');
-    expect(mockLogWarn).toHaveBeenCalledWith(
+    expect(loggerMocks.logWarn).toHaveBeenCalledWith(
       '[BankSyncEngine] Single bank sync failed',
       expect.objectContaining({
         connectionId: 'conn-1',
@@ -90,16 +91,29 @@ describe('bankSyncEngine', () => {
       throw new Error('storage blocked');
     });
     const { getConnections } = await import('../../services/integrations/openBankingService');
-    vi.mocked(getConnections).mockReturnValue([] as never);
+    vi.mocked(getConnections).mockReturnValue([
+      {
+        id: 'conn-1',
+        user_id: 'user-1',
+        bank_name: 'Banco Teste',
+        connection_status: 'connected',
+        last_sync: null,
+      },
+    ] as never);
+    vi.mocked(fullSync).mockResolvedValue({
+      transactions_imported: 0,
+      balance_updated: false,
+      new_balance: 0,
+    } as never);
 
-    const result = await runBankSync([], [], 'user-1');
+    const result = await runBankSync([], [], vi.fn(), vi.fn(), { userId: 'user-1' });
 
-    expect(result.connections_synced).toBe(0);
-    expect(mockLogWarn).toHaveBeenCalledWith(
+    expect(result.connections_synced).toBe(1);
+    expect(loggerMocks.logWarn).toHaveBeenCalledWith(
       '[BankSyncEngine] Failed to persist sync report:',
       expect.objectContaining({
         error: expect.any(Error),
-        fallback: 'bank-sync-persist-report-failed',
+        storageKey: 'flow_bank_sync_reports',
       }),
     );
 
@@ -108,16 +122,29 @@ describe('bankSyncEngine', () => {
 
   it('registra aviso quando a analise de salario falha e segue o sync', async () => {
     const { getConnections } = await import('../../services/integrations/openBankingService');
-    vi.mocked(getConnections).mockReturnValue([] as never);
+    vi.mocked(getConnections).mockReturnValue([
+      {
+        id: 'conn-1',
+        user_id: 'user-1',
+        bank_name: 'Banco Teste',
+        connection_status: 'connected',
+        last_sync: null,
+      },
+    ] as never);
+    vi.mocked(fullSync).mockResolvedValue({
+      transactions_imported: 0,
+      balance_updated: false,
+      new_balance: 0,
+    } as never);
     vi.mocked(detectSalary).mockImplementation(() => {
       throw new Error('salary analysis failed');
     });
     vi.mocked(detectFixedExpenses).mockReturnValue({ total_monthly: 0, items: [] } as never);
 
-    const result = await runBankSync([], [], 'user-1');
+    const result = await runBankSync([], [], vi.fn(), vi.fn(), { userId: 'user-1' });
 
-    expect(result.connections_synced).toBe(0);
-    expect(mockLogWarn).toHaveBeenCalledWith(
+    expect(result.connections_synced).toBe(1);
+    expect(loggerMocks.logWarn).toHaveBeenCalledWith(
       '[BankSyncEngine] Salary analysis failed; continuing without insights',
       expect.objectContaining({
         error: expect.any(Error),
@@ -128,16 +155,29 @@ describe('bankSyncEngine', () => {
 
   it('registra aviso quando a analise de despesas fixas falha e segue o sync', async () => {
     const { getConnections } = await import('../../services/integrations/openBankingService');
-    vi.mocked(getConnections).mockReturnValue([] as never);
+    vi.mocked(getConnections).mockReturnValue([
+      {
+        id: 'conn-1',
+        user_id: 'user-1',
+        bank_name: 'Banco Teste',
+        connection_status: 'connected',
+        last_sync: null,
+      },
+    ] as never);
+    vi.mocked(fullSync).mockResolvedValue({
+      transactions_imported: 0,
+      balance_updated: false,
+      new_balance: 0,
+    } as never);
     vi.mocked(detectSalary).mockReturnValue({ detected: false } as never);
     vi.mocked(detectFixedExpenses).mockImplementation(() => {
       throw new Error('fixed expense analysis failed');
     });
 
-    const result = await runBankSync([], [], 'user-1');
+    const result = await runBankSync([], [], vi.fn(), vi.fn(), { userId: 'user-1' });
 
-    expect(result.connections_synced).toBe(0);
-    expect(mockLogWarn).toHaveBeenCalledWith(
+    expect(result.connections_synced).toBe(1);
+    expect(loggerMocks.logWarn).toHaveBeenCalledWith(
       '[BankSyncEngine] Fixed expense analysis failed; continuing without insights',
       expect.objectContaining({
         error: expect.any(Error),
@@ -166,3 +206,12 @@ describe('bankSyncEngine', () => {
     expect(summary.needs_sync).toBe(false);
   });
 });
+
+
+
+
+
+
+
+
+

@@ -1,10 +1,14 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-const mockWarn = vi.fn();
+const loggerMocks = vi.hoisted(() => ({
+  warn: vi.fn(),
+  info: vi.fn(),
+}));
 
 vi.mock('./logger', () => ({
   default: {
-    warn: mockWarn,
+    warn: loggerMocks.warn,
+    info: loggerMocks.info,
   },
 }));
 
@@ -12,7 +16,8 @@ import { createCorsOptions, isOriginAllowed, resolveAllowedOrigins } from './cor
 
 describe('cors config', () => {
   beforeEach(() => {
-    mockWarn.mockClear();
+    loggerMocks.warn.mockClear();
+    loggerMocks.info.mockClear();
   });
 
   it('allows loopback origins automatically in development', () => {
@@ -62,7 +67,7 @@ describe('cors config', () => {
     });
 
     expect(isOriginAllowed('not-a-valid-origin', allowedOrigins, 'development')).toBe(false);
-    expect(mockWarn).toHaveBeenCalledWith(
+    expect(loggerMocks.warn).toHaveBeenCalledWith(
       expect.objectContaining({
         origin: 'not-a-valid-origin',
         error: expect.any(Error),

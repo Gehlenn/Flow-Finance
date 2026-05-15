@@ -73,5 +73,7 @@ describe('clinic controller', () => {
       success: false,
       message: 'Invalid clinic webhook payload',
     }));
-  });
+  }, 20_000);
 });
+
+

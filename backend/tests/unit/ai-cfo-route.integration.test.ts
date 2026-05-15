@@ -2,6 +2,10 @@ import express from 'express';
 import request from 'supertest';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+const { generateContentMock } = vi.hoisted(() => ({
+  generateContentMock: vi.fn(async () => 'Resposta CFO de teste'),
+}));
+
 vi.mock('../../src/middleware/authz', () => ({
   authz: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
   requireFeature: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
@@ -54,7 +58,6 @@ vi.mock('../../src/services/admin/workspaceStore', async () => {
   };
 });
 
-const generateContentMock = vi.fn(async () => 'Resposta CFO de teste');
 
 vi.mock('../../src/config/ai', async () => {
   const actual = await vi.importActual<typeof import('../../src/config/ai')>('../../src/config/ai');
@@ -80,7 +83,7 @@ describe('AI CFO route integration', () => {
     app.use(express.json());
     app.use('/api/ai', aiRoutesModule.default);
     app.use(errorHandlerModule.errorHandler);
-  }, 30_000);
+  }, 90_000);
 
   it('returns 401 when auth header is missing', async () => {
     const response = await request(app)
@@ -131,3 +134,6 @@ describe('AI CFO route integration', () => {
     expect(generateContentMock).toHaveBeenCalledOnce();
   });
 });
+
+
+

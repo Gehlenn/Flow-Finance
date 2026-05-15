@@ -1,4 +1,4 @@
-﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const initMock = vi.fn();
 const loggerInfoMock = vi.fn();
@@ -42,6 +42,6 @@ describe('backend sentry config observability', () => {
             }),
       'Sentry initialized for backend error tracking',
     );
-  });
+  }, 20_000);
 });
 

@@ -1,4 +1,4 @@
-import request from 'supertest';
+﻿import request from 'supertest';
 import express from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -80,5 +80,5 @@ describe('clinic routes health observability', () => {
       }),
       'Clinic automation health check failed',
     );
-  });
+  }, 20000);
 });

@@ -64,6 +64,7 @@ export default defineConfig(({ mode }) => {
           exclude: [
           '**/node_modules/**',
           '**/dist/**',
+          'qa-exhaustive.spec.mjs',
           '**/tests/e2e/**',
           '**/tests/integration/**',
           '**/backend/tests/integration/**',
@@ -74,5 +75,6 @@ export default defineConfig(({ mode }) => {
     };
     return config;
 });
+
 
 

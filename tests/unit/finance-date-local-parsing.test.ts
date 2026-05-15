@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+﻿import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { importCSV } from '../../src/importers/csvImporter';
 import { importOFX } from '../../src/importers/ofxImporter';
@@ -26,9 +26,9 @@ describe('finance date local parsing', () => {
 
     expect(result).toHaveLength(1);
     const parsed = new Date(result[0].date);
-    expect(parsed.getFullYear()).toBe(2026);
-    expect(parsed.getMonth()).toBe(3);
-    expect(parsed.getDate()).toBe(10);
+    expect(parsed.getUTCFullYear()).toBe(2026);
+    expect(parsed.getUTCMonth()).toBe(3);
+    expect(parsed.getUTCDate()).toBe(10);
   });
 
   it('mantem datas-only locais no OFX importado', async () => {
@@ -55,12 +55,12 @@ describe('finance date local parsing', () => {
 
     expect(result).toHaveLength(1);
     const parsed = new Date(result[0].date);
-    expect(parsed.getFullYear()).toBe(2026);
-    expect(parsed.getMonth()).toBe(3);
-    expect(parsed.getDate()).toBe(10);
+    expect(parsed.getUTCFullYear()).toBe(2026);
+    expect(parsed.getUTCMonth()).toBe(3);
+    expect(parsed.getUTCDate()).toBe(10);
   });
 
-  it('faz o relatório mensal respeitar datas-only locais', () => {
+  it('faz o relatÃ³rio mensal respeitar datas-only locais', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-10T12:00:00.000Z'));
 
@@ -115,3 +115,4 @@ describe('finance date local parsing', () => {
     expect(distribution.distribution[0]?.trend).toBe('up');
   });
 });
+

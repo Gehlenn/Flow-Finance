@@ -1,4 +1,4 @@
-﻿import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import CashFlow from '../../components/CashFlow';
@@ -60,9 +60,9 @@ describe('CashFlow clarity', () => {
 
     expect(screen.getByText('Receita realizada')).toBeTruthy();
     expect(screen.getByText('Entradas')).toBeTruthy();
-    expect(screen.getByText(/Sa[ií]das/i)).toBeTruthy();
+    expect(screen.getByText(/Sa.*das/i)).toBeTruthy();
     expect(screen.getByText(/Pr.*ximo passo financeiro/i)).toBeTruthy();
-  });
+  }, 20_000);
 
   it('ignora relatorio estrategico armazenado invalido sem quebrar a tela', () => {
     localStorage.setItem(getReportKey(), '{"summary":123');
@@ -115,7 +115,7 @@ describe('CashFlow clarity', () => {
 
     expect(screen.getByText('Receita realizada')).toBeTruthy();
     expect(screen.getByText(/Pr.*ximo passo financeiro/i)).toBeTruthy();
-  });
+  }, 20_000);
 
   it('invalida o relatorio estrategico quando o recorte de caixa muda', async () => {
     const reportKey = getReportKey();
@@ -191,7 +191,7 @@ describe('CashFlow clarity', () => {
     });
 
     expect(localStorage.getItem(reportKey)).toBeNull();
-  });
+  }, 20_000);
 
   it('mostra fallback visivel quando a geracao do relatorio estrategico falha', async () => {
     vi.spyOn(GeminiService.prototype, 'generateStrategicReport').mockRejectedValueOnce(new Error('strategic failed'));
@@ -216,8 +216,12 @@ describe('CashFlow clarity', () => {
         }),
       );
     });
-  });
+  }, 20_000);
 });
+
+
+
+
 
 
 

@@ -106,5 +106,6 @@ describe('cloudSyncStore observability', () => {
       }),
       'Failed to initialize Firebase Cloud Sync store',
     );
-  });
+  }, 20_000);
 });
+

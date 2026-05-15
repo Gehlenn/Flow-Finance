@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockWarn = vi.fn();
+const loggerMocks = vi.hoisted(() => ({ warn: vi.fn() }));
 
 vi.mock('../../src/utils/logger', () => ({
-  logWarn: mockWarn,
+  logWarn: loggerMocks.warn,
 }));
 
 import { calculateGoalProgress, getGoals } from '../../src/finance/goalService';
@@ -24,7 +24,7 @@ function makeGoal(overrides: Partial<FinancialGoal> = {}): FinancialGoal {
 
 describe('goalService', () => {
   beforeEach(() => {
-    mockWarn.mockClear();
+    loggerMocks.warn.mockClear();
   });
 
   afterEach(() => {
@@ -49,20 +49,21 @@ describe('goalService', () => {
     expect(progress.status).toBe('on_track');
   });
 
-  it('registra aviso quando o storage de metas vem corrompido', () => {
+  it('logs warning when goals storage is corrupted', () => {
     const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('storage corrupted');
     });
 
     expect(getGoals('user-1')).toEqual([]);
-    expect(mockWarn).toHaveBeenCalledWith(
+    expect(loggerMocks.warn).toHaveBeenCalledWith(
+      '[GoalService] Failed to read goals storage; returning empty set',
       expect.objectContaining({
         error: expect.any(Error),
         storageKey: 'flow_financial_goals',
       }),
-      '[GoalService] Failed to read goals storage; returning empty set'
     );
 
     getItemSpy.mockRestore();
   });
 });
+
