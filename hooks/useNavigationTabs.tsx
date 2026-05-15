@@ -9,23 +9,30 @@ import { canAccessFeature } from '../src/app/monetizationPlan';
 import UpgradePromptCard from '../components/UpgradePromptCard';
 import { logWarn } from '../src/utils/logger';
 
-const lazyWithRetry = (importFn: () => Promise<any>) => {
-  return lazy(() =>
-    importFn().catch((error) => {
+type LazyModule<TProps extends object> = { default: React.ComponentType<TProps> };
+
+const lazyWithRetry = <TProps extends object>(importFn: () => Promise<LazyModule<TProps>>) => {
+  return lazy(async () => {
+    try {
+      return await importFn();
+    } catch (error: unknown) {
       logWarn('[Navigation] Failed to load module, retrying', {
         error,
         fallback: 'navigation-module-load-retry',
       });
-      return new Promise((resolve) => setTimeout(resolve, 1000))
-        .then(() => importFn())
-        .catch((retryError) => {
-          logWarn('[Navigation] Module load failed after retry', {
-            error: retryError,
-            fallback: 'navigation-module-load-failed',
-          });
+
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return await importFn();
+      } catch (retryError: unknown) {
+        logWarn('[Navigation] Module load failed after retry', {
+          error: retryError,
+          fallback: 'navigation-module-load-failed',
         });
-    }),
-  );
+        throw retryError;
+      }
+    }
+  });
 };
 
 const Dashboard = lazyWithRetry(() => import('../components/Dashboard'));
@@ -303,12 +310,15 @@ export function useNavigationTabs() {
         return context.userId ? (
           <Suspense fallback={<LoadingFallback />}>
             <AccountsPage
+              userId={context.userId}
               hideValues={context.hideValues}
               activeWorkspaceName={context.activeWorkspaceName}
               activeWorkspaceRole={context.activeWorkspaceRole}
               activeTenantName={context.activeTenantName}
               accounts={context.accounts}
-              onCreateAccount={context.onCreateAccount}
+              onCreateAccount={async (account) => {
+                await context.onCreateAccount(account);
+              }}
               onDeleteAccount={context.onDeleteAccount}
             />
           </Suspense>
@@ -334,6 +344,7 @@ export function useNavigationTabs() {
         return (
           <Suspense fallback={<LoadingFallback />}>
             <WorkspaceAdminPage
+              userId={context.userId ?? 'local'}
               activeWorkspaceId={context.activeWorkspaceId}
               activeWorkspaceName={context.activeWorkspaceName}
               activeTenantName={context.activeTenantName}
@@ -346,6 +357,7 @@ export function useNavigationTabs() {
         return (
           <Suspense fallback={<LoadingFallback />}>
             <WorkspaceAuditPage
+              userId={context.userId ?? 'local'}
               activeWorkspaceId={context.activeWorkspaceId}
               activeWorkspaceName={context.activeWorkspaceName}
               activeTenantName={context.activeTenantName}

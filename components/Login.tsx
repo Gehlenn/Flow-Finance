@@ -72,6 +72,16 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
     }
   };
 
+  const getErrorCode = (error: unknown, fallback: string): string => {
+    if (error && typeof error === 'object' && 'code' in error) {
+      const code = (error as { code?: unknown }).code;
+      if (typeof code === 'string' && code) {
+        return code;
+      }
+    }
+    return fallback;
+  };
+
   const handleSocialLogin = async (provider: AuthProvider) => {
     if (!isFirebaseConfigured) {
       setError({ code: 'auth/configuration-not-found', message: getFirebaseErrorMessage('auth/configuration-not-found') });
@@ -84,15 +94,16 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
       if (result.user.email) {
         onLogin(result.user.email);
       }
-    } catch (err: any) {
+    } catch (error: unknown) {
       setIsLoading(false);
-      if (err.code === 'auth/unauthorized-domain' || !window.location.hostname) {
+      const code = getErrorCode(error, 'auth/social-login-failed');
+      if (code === 'auth/unauthorized-domain' || !window.location.hostname) {
         setError({
           code: 'auth/unauthorized-domain',
           message: `Dominio nao autorizado no Firebase: ${window.location.hostname}. Adicione em Authentication > Settings > Authorized domains.`,
         });
       } else {
-        setError({ code: err.code, message: getFirebaseErrorMessage(err.code) });
+        setError({ code, message: getFirebaseErrorMessage(code) });
       }
     }
   };
@@ -108,11 +119,16 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
           await onDevelopmentLogin({ email, password });
           onLogin(email);
           return;
-        } catch (err: any) {
+        } catch (error: unknown) {
           setIsLoading(false);
+          const code = getErrorCode(error, 'auth/local-login-failed');
           setError({
-            code: err?.code || 'auth/local-login-failed',
-            message: String(err?.message || 'Falha ao autenticar no backend local.'),
+            code,
+            message: String(
+              error && typeof error === 'object' && 'message' in error
+                ? (error as { message?: unknown }).message
+                : 'Falha ao autenticar no backend local.'
+            ),
           });
           return;
         }
@@ -126,9 +142,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       onLogin(email);
-    } catch (err: any) {
+    } catch (error: unknown) {
       setIsLoading(false);
-      setError({ code: err.code, message: getFirebaseErrorMessage(err.code) });
+      const code = getErrorCode(error, 'auth/sign-in-failed');
+      setError({ code, message: getFirebaseErrorMessage(code) });
     }
   };
 
@@ -148,9 +165,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
     try {
       await createUserWithEmailAndPassword(auth, email, password);
       onLogin(email);
-    } catch (err: any) {
+    } catch (error: unknown) {
       setIsLoading(false);
-      setError({ code: err.code, message: getFirebaseErrorMessage(err.code) });
+      const code = getErrorCode(error, 'auth/signup-failed');
+      setError({ code, message: getFirebaseErrorMessage(code) });
     }
   };
 
@@ -167,9 +185,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
       await sendPasswordResetEmail(auth, email);
       setSuccessMessage("Link enviado com sucesso!");
       setView('success');
-    } catch (err: any) {
+    } catch (error: unknown) {
       setIsLoading(false);
-      setError({ code: err.code, message: getFirebaseErrorMessage(err.code) });
+      const code = getErrorCode(error, 'auth/reset-failed');
+      setError({ code, message: getFirebaseErrorMessage(code) });
     }
   };
 

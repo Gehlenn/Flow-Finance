@@ -20,11 +20,12 @@ interface TaskQueueStats {
   processing: number;
   completed: number;
   failed: number;
+  cancelled: number;
 }
 
 const AITaskQueueMonitor: React.FC = () => {
   const [tasks, setTasks] = useState<AITask[]>([]);
-  const [stats, setStats] = useState<TaskQueueStats>({ pending: 0, processing: 0, completed: 0, failed: 0 });
+  const [stats, setStats] = useState<TaskQueueStats>({ pending: 0, processing: 0, completed: 0, failed: 0, cancelled: 0 });
   const [isExpanded, setIsExpanded] = useState(false);
   const [lastProgress, setLastProgress] = useState<AITaskProgress | null>(null);
   const [lastResult, setLastResult] = useState<AITaskResult | null>(null);
@@ -50,19 +51,23 @@ const AITaskQueueMonitor: React.FC = () => {
       updateTasks();
     };
 
-    const handleEnqueued = () => {
+    const handleQueueMutation = () => {
       updateTasks();
     };
 
     window.addEventListener('ai-task-progress', handleProgress);
     window.addEventListener('ai-task-result', handleResult);
-    window.addEventListener('ai-task-enqueued', handleEnqueued);
+    window.addEventListener('ai-task-enqueued', handleQueueMutation);
+    window.addEventListener('ai-task-updated', handleQueueMutation);
+    window.addEventListener('ai-task-queue-cleared', handleQueueMutation);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('ai-task-progress', handleProgress);
       window.removeEventListener('ai-task-result', handleResult);
-      window.removeEventListener('ai-task-enqueued', handleEnqueued);
+      window.removeEventListener('ai-task-enqueued', handleQueueMutation);
+      window.removeEventListener('ai-task-updated', handleQueueMutation);
+      window.removeEventListener('ai-task-queue-cleared', handleQueueMutation);
     };
   }, []);
 
@@ -136,7 +141,7 @@ const AITaskQueueMonitor: React.FC = () => {
           <div className="text-left">
             <div className="text-xs font-semibold">AI Task Queue</div>
             <div className="text-xs opacity-90">
-              {stats.pending}⏳ {stats.processing}⚙️ {stats.completed}✅ {stats.failed}❌
+              {stats.pending}⏳ {stats.processing}⚙️ {stats.completed}✅ {stats.failed}❌ {stats.cancelled}🚫
             </div>
           </div>
         </button>
@@ -163,7 +168,7 @@ const AITaskQueueMonitor: React.FC = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-2 p-3 bg-gray-800 text-center text-xs">
+      <div className="grid grid-cols-5 gap-2 p-3 bg-gray-800 text-center text-xs">
         <div>
           <div className="text-yellow-400 font-medium">{stats.pending}</div>
           <div className="text-gray-400">Pendentes</div>
@@ -177,10 +182,14 @@ const AITaskQueueMonitor: React.FC = () => {
           <div className="text-gray-400">Concluídas</div>
         </div>
         <div>
-          <div className="text-red-400 font-medium">{stats.failed}</div>
-          <div className="text-gray-400">Falhas</div>
+            <div className="text-red-400 font-medium">{stats.failed}</div>
+            <div className="text-gray-400">Falhas</div>
+          </div>
+        <div>
+          <div className="text-gray-300 font-medium">{stats.cancelled}</div>
+          <div className="text-gray-400">Canceladas</div>
         </div>
-      </div>
+        </div>
 
       {/* Progress indicator */}
       {lastProgress && lastProgress.status === AITaskStatus.PROCESSING && (

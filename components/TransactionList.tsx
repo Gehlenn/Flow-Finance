@@ -110,6 +110,8 @@ const TRANSACTION_LIST_CLASSES = {
   shareTypeInactive: 'bg-slate-50 dark:bg-slate-900 text-slate-400 border-transparent'
 };
 
+const TRANSACTION_CATEGORY_FILTERS: Array<Category | 'Todas'> = ['Todas', ...Object.values(Category)];
+
 // Cache global para persistir entre remontagens
 const listCache = {
   paramsKey: '',
@@ -562,8 +564,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-400 uppercase tracking-[0.16em] ml-1">Categoria</label>
                 <div className="flex flex-wrap gap-1">
-                    {['Todas', ...Object.values(Category)].map((cat) => (
-                      <button key={cat} onClick={() => setCategoryFilter(cat as any)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-[0.16em] transition-all ${categoryFilter === cat ? TRANSACTION_LIST_CLASSES.categoryFilterActive : TRANSACTION_LIST_CLASSES.categoryFilterInactive}`}>{cat}</button>
+                    {TRANSACTION_CATEGORY_FILTERS.map((cat) => (
+                      <button key={cat} onClick={() => setCategoryFilter(cat)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-[0.16em] transition-all ${categoryFilter === cat ? TRANSACTION_LIST_CLASSES.categoryFilterActive : TRANSACTION_LIST_CLASSES.categoryFilterInactive}`}>{cat}</button>
                     ))}
                   </div>
                </div>

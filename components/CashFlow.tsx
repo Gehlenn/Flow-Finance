@@ -145,8 +145,12 @@ const StateMetricCard: React.FC<{ label: string; value: string; tone: 'confirmed
     <p className="mt-1 text-xl font-medium tracking-tight">{value}</p>
   </div>
 );
+
+const CASHFLOW_TIMEFRAMES = ['7d', '30d', '12m', 'custom'] as const;
+type CashflowTimeframe = typeof CASHFLOW_TIMEFRAMES[number];
+
 const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceName, transactions, hideValues, theme }) => {
-  const [timeframe, setTimeframe] = useState<'7d' | '30d' | '12m' | 'custom'>('30d');
+  const [timeframe, setTimeframe] = useState<CashflowTimeframe>('30d');
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
   const [isConsultancyOpen, setIsConsultancyOpen] = useState(false);
@@ -318,8 +322,8 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3 px-1">
           <div className="flex flex-1 bg-white dark:bg-slate-800 p-1 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm overflow-x-auto no-scrollbar">
-            {['7d', '30d', '12m', 'custom'].map(t => (
-              <button key={t} onClick={() => setTimeframe(t as any)} className={`px-4 py-1.5 rounded-full text-sm font-semibold uppercase tracking-[0.16em] transition-all whitespace-nowrap flex-1 ${timeframe === t ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-500'}`}>
+            {CASHFLOW_TIMEFRAMES.map(t => (
+              <button key={t} onClick={() => setTimeframe(t)} className={`px-4 py-1.5 rounded-full text-sm font-semibold uppercase tracking-[0.16em] transition-all whitespace-nowrap flex-1 ${timeframe === t ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-500'}`}>
                 {t === 'custom' ? 'Calendário' : t}
               </button>
             ))}

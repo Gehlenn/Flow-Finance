@@ -1,5 +1,5 @@
 ﻿import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Transaction } from '../types';
+import { ReminderType, type Reminder, Transaction } from '../types';
 import { Account } from '../models/Account';
 import { makeId } from '../src/utils/helpers';
 import {
@@ -20,6 +20,7 @@ import {
 import { buildProductFinancialIntelligence } from '../src/app/productFinancialIntelligence';
 import { AI_CFO_COPY } from '../src/app/assistantCopy';
 import { canAccessFeature } from '../src/app/monetizationPlan';
+import type { Tab } from '../hooks/useNavigationTabs';
 import { clearCFOConversation, loadCFOConversation, saveCFOConversation, type CFOConversationMessage } from '../src/ai/cfoConversationStore';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -30,6 +31,8 @@ interface AICFOProps {
   userId?: string;
   workspacePlan?: 'free' | 'pro';
   hideValues: boolean;
+  onNavigateToTab?: (tab: Tab) => void;
+  onCreateReminder?: (reminder: Partial<Reminder>) => void;
 }
 
 // ─── Quick prompts ────────────────────────────────────────────────────────────
@@ -60,6 +63,11 @@ const CONFIDENCE_BAND_LABEL: Record<AICFOExplainability['confidence_band'], stri
   high: 'Alta',
 };
 
+const RESPONSE_DEPTH_LABEL: Record<'standard' | 'reduced', string> = {
+  standard: 'Profundidade normal',
+  reduced: 'Profundidade reduzida',
+};
+
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
 type Message = Omit<CFOConversationMessage, 'intent'> & {
@@ -71,6 +79,22 @@ const buildConversationLearningDiagnostic = (): { title: string; message: string
   message: 'Nao foi possivel atualizar o aprendizado do CFO em segundo plano agora.',
   suggestion: 'Envie uma nova pergunta ou tente novamente quando a conexao do workspace estiver estável.',
 });
+
+function buildResponseReminder(message: Message): Partial<Reminder> {
+  const highPriority = message.intent === 'risk_question' || message.intent === 'cash_position';
+  return {
+    title: message.intent === 'risk_question'
+      ? 'Acompanhar risco do CFO'
+      : message.intent === 'cash_position'
+        ? 'Revisar posicao de caixa indicada pelo CFO'
+        : 'Revisar recomendacao do CFO',
+    date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    type: ReminderType.NEGOCIO,
+    priority: highPriority ? 'alta' : 'media',
+    completed: false,
+  };
+}
+
 
 const UserBubble: React.FC<{ msg: Message }> = ({ msg }) => (
   <div className="flex justify-end gap-3 animate-in slide-in-from-right-4 duration-300">
@@ -88,7 +112,7 @@ const UserBubble: React.FC<{ msg: Message }> = ({ msg }) => (
   </div>
 );
 
-const AssistantBubble: React.FC<{ msg: Message }> = ({ msg }) => {
+const AssistantBubble: React.FC<{ msg: Message; onCreateReminder?: (reminder: Partial<Reminder>) => void; onNavigateToTab?: (tab: Tab) => void; }> = ({ msg, onCreateReminder, onNavigateToTab }) => {
   const intentStyle = msg.intent ? INTENT_LABEL[msg.intent] : null;
   return (
     <div className="flex gap-3 animate-in slide-in-from-left-4 duration-300">
@@ -137,6 +161,39 @@ const AssistantBubble: React.FC<{ msg: Message }> = ({ msg }) => {
             </div>
           )}
           <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line">{msg.text}</p>
+          {msg.responseDepth && (
+            <p className={`mt-2 text-xs font-semibold uppercase tracking-[0.08em] ${
+              msg.responseDepth === 'reduced'
+                ? 'text-amber-600 dark:text-amber-300'
+                : 'text-emerald-600 dark:text-emerald-300'
+            }`}>
+              {RESPONSE_DEPTH_LABEL[msg.responseDepth]}
+            </p>
+          )}
+          {msg.role === 'assistant' && (onCreateReminder || onNavigateToTab) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {onCreateReminder && (
+                <button
+                  type="button"
+                  onClick={() => onCreateReminder(buildResponseReminder(msg))}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <Sparkles size={14} />
+                  Criar lembrete
+                </button>
+              )}
+              {onNavigateToTab && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateToTab('flow')}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-indigo-700"
+                >
+                  <Wallet size={14} />
+                  Ver fluxo
+                </button>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 mt-1 ml-1">
           <ShieldCheck size={9} className="text-emerald-500" />
@@ -219,6 +276,8 @@ const AICFO: React.FC<AICFOProps> = ({
   userId = 'local',
   workspacePlan = 'free',
   hideValues,
+  onNavigateToTab,
+  onCreateReminder,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -303,15 +362,16 @@ const AICFO: React.FC<AICFOProps> = ({
 
     try {
       const response = await generateCFOResponse(question, financialContext, intent);
-      const cfoMsg: Message = {
-        id: makeId(),
-        role: 'assistant',
-        text: response.answer,
-        intent,
-        timestamp: response.timestamp,
-        diagnostic: response.diagnostic,
-        explainability: response.explainability,
-      };
+        const cfoMsg: Message = {
+          id: makeId(),
+          role: 'assistant',
+          text: response.answer,
+          intent,
+          responseDepth: response.response_depth,
+          timestamp: response.timestamp,
+          diagnostic: response.diagnostic,
+          explainability: response.explainability,
+        };
       setMessages(prev => [...prev, cfoMsg]);
     } catch (error) {
       logWarn('[AICFO] Failed to generate CFO response', {
@@ -425,7 +485,7 @@ const AICFO: React.FC<AICFOProps> = ({
           : messages.map(msg =>
               msg.role === 'user'
                 ? <UserBubble key={msg.id} msg={msg} />
-                : <AssistantBubble key={msg.id} msg={msg} />
+                : <AssistantBubble key={msg.id} msg={msg} onCreateReminder={onCreateReminder} onNavigateToTab={onNavigateToTab} />
             )
         }
         {isLoading && <TypingBubble />}

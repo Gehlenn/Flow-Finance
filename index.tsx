@@ -34,7 +34,14 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   }
 }
 
-(window as any).process = (window as any).process || { env: {} };
+type WindowWithProcess = Window & {
+  process?: {
+    env: Record<string, string>;
+  };
+};
+
+const windowWithProcess = window as WindowWithProcess;
+windowWithProcess.process = windowWithProcess.process || { env: {} };
 
 // Runtime guard initialization
 

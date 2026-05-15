@@ -1,4 +1,4 @@
-﻿/**
+/**
  * AI CONTROL PANEL â€” src/pages/AIControlPanel.tsx
  *
  * PART 6 â€” Painel de controle para o sistema de IA do Flow Finance.
@@ -14,7 +14,7 @@ import { Account } from '../models/Account';
 import { logWarn } from '../src/utils/logger';
 
 // Services
-import { getAIMemory, deleteMemory, AIMemory }              from '../src/ai/aiMemory';
+import { getAIMemory, deleteMemory, updateMemory, AIMemory } from '../src/ai/aiMemory';
 import { getAIDebugLogs, clearAIDebugLogs, AIDebugEntry } from '../src/ai/aiDebugService';
 import { generateFinancialInsights, AIInsight } from '../src/ai/insightGenerator';
 import { buildCashflowPrediction }             from '../src/ai/riskAnalyzer';
@@ -37,6 +37,9 @@ import { calculateFinancialHealth } from '../src/engines/finance/financialHealth
 import { calculateGoalPlan } from '../src/engines/finance/smartGoals/smartGoalsEngine';
 import { recommendGoalAdjustment } from '../src/engines/finance/smartGoals/goalRecommendationEngine';
 import { buildFinancialTimeline as buildTimelineAI } from '../src/engines/finance/timeline/financialTimelineEngine';
+import { aiTaskQueue } from '../src/ai/queue/AITaskQueue';
+import { taskStore } from '../src/ai/queue/taskStore';
+import { AITask, AITaskStatus } from '../src/ai/queue/taskTypes';
 
 // Icons
 import {
@@ -73,8 +76,8 @@ const ConfBar: React.FC<{ value: number }> = ({ value }) => {
   );
 };
 
-const SectionHeader: React.FC<{ icon: React.ReactNode; title: string; count?: number; onRefresh?: () => void; onClear?: () => void }> = ({
-  icon, title, count, onRefresh, onClear
+const SectionHeader: React.FC<{ icon: React.ReactNode; title: string; count?: number; onRefresh?: () => void; onClear?: () => void; refreshLabel?: string; clearLabel?: string }> = ({
+  icon, title, count, onRefresh, onClear, refreshLabel = 'Atualizar', clearLabel = 'Limpar'
 }) => (
   <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-700/60 bg-slate-900/50">
     <div className="flex items-center gap-2">
@@ -86,12 +89,12 @@ const SectionHeader: React.FC<{ icon: React.ReactNode; title: string; count?: nu
     </div>
     <div className="flex gap-1">
       {onRefresh && (
-        <button onClick={onRefresh} className="p-1.5 text-slate-500 hover:text-emerald-400 transition-colors">
+        <button onClick={onRefresh} aria-label={refreshLabel} title={refreshLabel} className="p-1.5 text-slate-500 hover:text-emerald-400 transition-colors">
           <RefreshCw size={11} />
         </button>
       )}
       {onClear && (
-        <button onClick={onClear} className="p-1.5 text-slate-500 hover:text-rose-400 transition-colors">
+        <button onClick={onClear} aria-label={clearLabel} title={clearLabel} className="p-1.5 text-slate-500 hover:text-rose-400 transition-colors">
           <Trash2 size={11} />
         </button>
       )}
@@ -105,6 +108,276 @@ const EmptyState: React.FC<{ icon: React.ReactNode; message: string }> = ({ icon
     <p className="font-mono text-xs uppercase tracking-[0.08em]">{message}</p>
   </div>
 );
+
+const clampConfidence = (value: number): number => Math.min(1, Math.max(0.1, value));
+
+const inferMemoryOrigin = (entry: AIMemory): string => {
+  const explicitOrigin = String(entry.metadata?.source ?? entry.metadata?.origin ?? '').trim();
+  if (explicitOrigin) {
+    return explicitOrigin;
+  }
+
+  if (
+    entry.key.includes('merchant') ||
+    entry.key.includes('category') ||
+    entry.key.includes('recurring')
+  ) {
+    return 'categorização';
+  }
+
+  if (
+    entry.key.includes('weekend') ||
+    entry.key.includes('salary') ||
+    entry.key.includes('balance') ||
+    entry.key.includes('profile')
+  ) {
+    return 'inferência recorrente';
+  }
+
+  return 'inferência';
+};
+
+const getReviewLabel = (entry: AIMemory): string | null => {
+  const reviewState = String(entry.metadata?.reviewState ?? '').trim();
+  if (reviewState === 'confirmed') return 'confirmada';
+  if (reviewState === 'invalidated') return 'invalidada';
+  return null;
+};
+
+const STATUS_LABEL: Record<AITaskStatus, string> = {
+  [AITaskStatus.PENDING]: 'Pendente',
+  [AITaskStatus.PROCESSING]: 'Processando',
+  [AITaskStatus.COMPLETED]: 'Concluida',
+  [AITaskStatus.FAILED]: 'Falhou',
+  [AITaskStatus.CANCELLED]: 'Cancelada',
+};
+
+const TASK_TYPE_LABEL: Record<string, string> = {
+  INSIGHT_GENERATION: 'Insight',
+  CASHFLOW_SIMULATION: 'Simulacao',
+  FINANCIAL_REPORT: 'Relatorio',
+  LEAK_DETECTION: 'Leak',
+  AUTOPILOT_ANALYSIS: 'Autopilot',
+  RISK_ANALYSIS: 'Risco',
+  SUBSCRIPTION_DETECTION: 'Assinaturas',
+  SALARY_DETECTION: 'Salario',
+  FIXED_EXPENSE_DETECTION: 'Despesa fixa',
+};
+
+const QueueTab: React.FC = () => {
+  const [tasks, setTasks] = useState<AITask[]>([]);
+  const [isMutating, setIsMutating] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setTasks(taskStore.getAllTasks());
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    const handleQueueMutation = () => {
+      load();
+    };
+
+    window.addEventListener('ai-task-enqueued', handleQueueMutation);
+    window.addEventListener('ai-task-updated', handleQueueMutation);
+    window.addEventListener('ai-task-queue-cleared', handleQueueMutation);
+
+    return () => {
+      window.removeEventListener('ai-task-enqueued', handleQueueMutation);
+      window.removeEventListener('ai-task-updated', handleQueueMutation);
+      window.removeEventListener('ai-task-queue-cleared', handleQueueMutation);
+    };
+  }, [load]);
+
+  const selectedTask = useMemo(
+    () => tasks.find((task) => task.id === selectedTaskId) ?? null,
+    [selectedTaskId, tasks],
+  );
+
+  useEffect(() => {
+    if (selectedTaskId && !selectedTask) {
+      setSelectedTaskId(null);
+    }
+  }, [selectedTask, selectedTaskId]);
+
+  const stats = useMemo(() => tasks.reduce((acc, task) => {
+    acc[task.status] += 1;
+    return acc;
+  }, {
+    [AITaskStatus.PENDING]: 0,
+    [AITaskStatus.PROCESSING]: 0,
+    [AITaskStatus.COMPLETED]: 0,
+    [AITaskStatus.FAILED]: 0,
+    [AITaskStatus.CANCELLED]: 0,
+  } as Record<AITaskStatus, number>), [tasks]);
+
+  const handleCancelTask = useCallback((taskId: string) => {
+    setIsMutating(true);
+    try {
+      if (aiTaskQueue.cancelTask(taskId)) {
+        load();
+      }
+    } finally {
+      setIsMutating(false);
+    }
+  }, [load]);
+
+  const handleClearCompleted = useCallback(() => {
+    if (!tasks.some((task) => task.status === AITaskStatus.COMPLETED || task.status === AITaskStatus.FAILED)) {
+      return;
+    }
+
+    if (!window.confirm('Limpar tarefas concluídas e falhas da fila?')) {
+      return;
+    }
+
+    setIsMutating(true);
+    try {
+      aiTaskQueue.clearCompletedTasks();
+      load();
+    } finally {
+      setIsMutating(false);
+    }
+  }, [load, tasks]);
+
+  return (
+    <div className="flex flex-col h-full">
+      <SectionHeader
+        icon={<Activity size={11} />}
+        title="AI Task Queue"
+        count={tasks.length}
+        onRefresh={load}
+        onClear={handleClearCompleted}
+        refreshLabel="Atualizar fila"
+        clearLabel="Limpar tarefas concluídas e falhas da fila"
+      />
+      <div className="px-4 pt-3 grid grid-cols-2 gap-2 md:grid-cols-5">
+        {Object.entries(stats).map(([status, count]) => (
+          <div key={status} className="rounded-lg border border-slate-700/60 bg-slate-900/60 px-3 py-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-slate-500">{STATUS_LABEL[status as AITaskStatus]}</p>
+            <p className="font-mono text-sm text-slate-100">{count}</p>
+          </div>
+        ))}
+      </div>
+      <div className="px-4 pt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
+        <div className="rounded-lg border border-slate-700/60 bg-black/30 px-3 py-2">
+          <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-slate-500">Fila ativa</p>
+          <p className="font-mono text-sm text-sky-300">{stats.pending + stats.processing}</p>
+        </div>
+        <div className="rounded-lg border border-slate-700/60 bg-black/30 px-3 py-2">
+          <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-slate-500">Concluídas</p>
+          <p className="font-mono text-sm text-emerald-300">{stats.completed}</p>
+        </div>
+        <div className="rounded-lg border border-slate-700/60 bg-black/30 px-3 py-2">
+          <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-slate-500">Falhas</p>
+          <p className="font-mono text-sm text-rose-300">{stats.failed}</p>
+        </div>
+        <div className="rounded-lg border border-slate-700/60 bg-black/30 px-3 py-2">
+          <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-slate-500">Canceladas</p>
+          <p className="font-mono text-sm text-slate-200">{stats.cancelled}</p>
+        </div>
+      </div>
+      {selectedTask && (
+        <div className="mx-4 mt-3 rounded-xl border border-sky-500/20 bg-slate-900/70 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-sky-300">Detalhes da tarefa</p>
+              <p className="font-mono text-xs text-slate-300 truncate">{TASK_TYPE_LABEL[selectedTask.type] ?? selectedTask.type}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedTaskId(null)}
+              className="font-mono text-[10px] uppercase tracking-[0.08em] text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              Fechar
+            </button>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2 text-[10px] font-mono uppercase tracking-[0.08em] text-slate-500">
+            <span>Status: {STATUS_LABEL[selectedTask.status]}</span>
+            <span>Prioridade: {selectedTask.priority}</span>
+            <span>Retries: {selectedTask.retryCount}/{selectedTask.maxRetries}</span>
+            <span>Usuário: {selectedTask.userId}</span>
+          </div>
+          <pre className="mt-2 max-h-36 overflow-auto rounded-lg border border-slate-800 bg-black/40 p-2 font-mono text-[10px] text-slate-300 whitespace-pre-wrap">
+            {JSON.stringify(selectedTask.payload, null, 2)}
+          </pre>
+          {selectedTask.error && (
+            <p className="mt-2 font-mono text-[10px] text-rose-300">
+              Erro: {selectedTask.error.message}
+            </p>
+          )}
+        </div>
+      )}
+      <div className="flex-1 overflow-y-auto divide-y divide-slate-800/60 mt-3">
+        {tasks.length === 0 ? (
+          <EmptyState icon={<Activity size={32} />} message="Fila vazia" />
+        ) : (
+          tasks.slice(0, 12).map((task) => (
+            <div key={task.id} className={`px-4 py-3 ${selectedTaskId === task.id ? 'bg-slate-800/20' : ''}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-mono text-xs text-emerald-300 truncate">{TASK_TYPE_LABEL[task.type] ?? task.type}</p>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-slate-500">
+                    {STATUS_LABEL[task.status]} · prioridade {task.priority}
+                  </p>
+                </div>
+                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-slate-400">
+                  {new Date(task.createdAt).toLocaleString('pt-BR')}
+                </span>
+              </div>
+              <p className="mt-1 font-mono text-[10px] text-slate-500 truncate">
+                {task.userId} · {task.id}
+              </p>
+              <div className="mt-2 flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTaskId(selectedTaskId === task.id ? null : task.id)}
+                  aria-label={`Ver detalhes da tarefa ${task.id}`}
+                  title={`Ver detalhes da tarefa ${task.id}`}
+                  className="inline-flex items-center gap-1 rounded border border-sky-500/30 bg-sky-500/10 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-sky-300 transition-colors hover:border-sky-400/50 hover:text-sky-200"
+                >
+                  <Info size={9} />
+                  Detalhes
+                </button>
+                {task.status === AITaskStatus.PENDING && (
+                  <button
+                    type="button"
+                    disabled={isMutating}
+                    onClick={() => handleCancelTask(task.id)}
+                    aria-label={`Cancelar tarefa ${task.id}`}
+                    title={`Cancelar tarefa ${task.id}`}
+                    className="inline-flex items-center gap-1 rounded border border-slate-700/60 bg-slate-900/70 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-slate-400 transition-colors hover:border-rose-500/40 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <X size={9} />
+                    Cancelar
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+const buildReviewedMemory = (entry: AIMemory, reviewState: 'confirmed' | 'invalidated'): AIMemory => {
+  const confidenceDelta = reviewState === 'confirmed' ? 0.08 : -0.18;
+  return {
+    ...entry,
+    confidence: clampConfidence(entry.confidence + confidenceDelta),
+    metadata: {
+      ...(entry.metadata ?? {}),
+      source: entry.metadata?.source ?? inferMemoryOrigin(entry),
+      reviewState,
+      reviewedAt: new Date().toISOString(),
+    },
+  };
+};
 
 // â”€â”€â”€ TAB: Memory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -166,6 +439,36 @@ const MemoryTab: React.FC<{ userId: string }> = ({ userId }) => {
       setIsMutating(false);
     }
   }, [load, userId]);
+
+  const handleReviewMemory = useCallback(async (entry: AIMemory, reviewState: 'confirmed' | 'invalidated') => {
+    setIsMutating(true);
+    setLoadError(null);
+    setLoadDiagnostic(null);
+    const reviewedEntry = buildReviewedMemory(entry, reviewState);
+
+    try {
+      await updateMemory(reviewedEntry);
+      setEntries((current) => current.map((memory) => (
+        memory.id === entry.id ? reviewedEntry : memory
+      )));
+    } catch (error) {
+      logWarn('[AIControlPanel] Failed to review AI memory', {
+        userId,
+        memoryId: entry.id,
+        reviewState,
+        error,
+        fallback: 'ai-control-panel-memory-review-failed',
+      });
+      setLoadError('Nao foi possivel revisar a memoria agora.');
+      setLoadDiagnostic({
+        title: 'Falha ao revisar memoria',
+        message: 'A confirmacao ou invalidacao da memoria nao concluiu agora.',
+        suggestion: 'Recarregue a tela e tente novamente com a mesma sessao.',
+      });
+    } finally {
+      setIsMutating(false);
+    }
+  }, [userId]);
 
   const handleClearMemories = useCallback(async () => {
     if (entries.length === 0) {
@@ -425,21 +728,53 @@ const MemoryTab: React.FC<{ userId: string }> = ({ userId }) => {
                       <Hash size={9} className="text-emerald-500 shrink-0" />
                       <span className="font-mono text-xs text-emerald-300 truncate">{entry.key}</span>
                     </div>
-                    <p className="font-mono text-xs text-slate-400 ml-3.5 truncate">â†’ {entry.value}</p>
+                    <p className="font-mono text-xs text-slate-400 ml-3.5 truncate">? {entry.value}</p>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-slate-500 ml-3.5 mt-1">
+                      Origem: {inferMemoryOrigin(entry)}
+                    </p>
+                    {getReviewLabel(entry) && (
+                      <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-emerald-400 ml-3.5 mt-0.5">
+                        Revis?o: {getReviewLabel(entry)}
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">
                     <ConfBar value={entry.confidence} />
-                    <button
-                      type="button"
-                      onClick={() => void handleDeleteMemory(entry)}
-                      disabled={isMutating}
-                      aria-label={`Excluir memoria ${entry.key}`}
-                      title={`Excluir memoria ${entry.key}`}
-                      className="inline-flex items-center gap-1 rounded border border-slate-700/60 bg-slate-900/70 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-slate-400 transition-colors hover:border-rose-500/40 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <Trash2 size={9} />
-                      Excluir
-                    </button>
+                    <div className="flex flex-wrap justify-end gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => void handleReviewMemory(entry, 'confirmed')}
+                        disabled={isMutating}
+                        aria-label={`Confirmar memoria ${entry.key}`}
+                        title={`Confirmar memoria ${entry.key}`}
+                        className="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-emerald-300 transition-colors hover:border-emerald-400/50 hover:text-emerald-200 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <CheckCircle2 size={9} />
+                        Confirmar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleReviewMemory(entry, 'invalidated')}
+                        disabled={isMutating}
+                        aria-label={`Invalidar memoria ${entry.key}`}
+                        title={`Invalidar memoria ${entry.key}`}
+                        className="inline-flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-amber-300 transition-colors hover:border-amber-400/50 hover:text-amber-200 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <X size={9} />
+                        Invalidar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteMemory(entry)}
+                        disabled={isMutating}
+                        aria-label={`Excluir memoria ${entry.key}`}
+                        title={`Excluir memoria ${entry.key}`}
+                        className="inline-flex items-center gap-1 rounded border border-slate-700/60 bg-slate-900/70 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-slate-400 transition-colors hover:border-rose-500/40 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Trash2 size={9} />
+                        Excluir
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <p className="font-mono text-xs text-slate-600 mt-1.5 ml-3.5 flex items-center gap-1">
@@ -933,6 +1268,29 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
   const [result, setResult] = useState<FinancialSimulationResult | null>(null);
   const hasRunRef = useRef(false);
 
+  const setSimulationType = useCallback((nextType: SimulationScenario['type']) => {
+    if (nextType === 'months') {
+      setScenario((current) => ({
+        type: 'months',
+        months: current.type === 'months' ? current.months : 3,
+        description: current.description,
+      }));
+      return;
+    }
+
+    setScenario((current) => ({
+      type: nextType,
+      amount: nextType === 'extra_spending'
+        ? (current.type === 'extra_spending' ? current.amount : 500)
+        : (current.type === 'monthly_savings' ? current.amount : 500),
+      description: current.description,
+    }));
+
+    if (nextType === 'extra_spending') {
+      setAmountRaw((current) => current || '500');
+    }
+  }, []);
+
   const buildScenarioWithParsedAmount = (): SimulationScenario => {
     if (scenario.type === 'months') return scenario;
     const parsed = parseFloat(String(amountRaw).replace(',', '.'));
@@ -943,7 +1301,7 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
   const runSimulation = () => {
     const finalScenario = buildScenarioWithParsedAmount();
     const monthsScenario = finalScenario.type === 'months'
-      ? { ...finalScenario, months: (finalScenario as any).months || 1 }
+      ? { ...finalScenario, months: Math.max(1, finalScenario.months) }
       : finalScenario;
     const res = simulateFinancialScenario(accounts, transactions, monthsScenario as SimulationScenario);
     setResult(res);
@@ -971,7 +1329,7 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
           <div className="space-y-3">
             <select
               value={scenario.type}
-              onChange={e => setScenario({ ...scenario, type: e.target.value as any })}
+              onChange={e => setSimulationType(e.target.value as SimulationScenario['type'])}
               className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-xs text-slate-300"
             >
               <option value="extra_spending">Gasto Extra</option>
@@ -1021,11 +1379,11 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
             {scenario.type === 'months' && (
               <>
                 <label htmlFor="sim-months" className="font-mono text-xs text-slate-400">Meses da projeÃ§Ã£o</label>
-                <input
+              <input
                   id="sim-months"
                   type="number"
-                  value={(scenario as any).months ?? 3}
-                  onChange={e => setScenario({ ...scenario, months: Number(e.target.value) || 0 } as any)}
+                  value={scenario.type === 'months' ? scenario.months : 3}
+                  onChange={e => setScenario({ type: 'months', months: Number(e.target.value) || 0, description: scenario.description })}
                   placeholder="Meses"
                   className="w-full bg-black/40 border border-slate-700 rounded px-3 py-2 font-mono text-xs text-slate-300"
                 />
@@ -1132,7 +1490,7 @@ const AuditTab: React.FC = () => {
 const ParserLabTab: React.FC = () => {
   const [input, setInput] = useState('');
   const [format, setFormat] = useState<'ofx' | 'csv'>('ofx');
-  const [result, setResult] = useState<any[] | null>(null);
+  const [result, setResult] = useState<Transaction[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [diagnostic, setDiagnostic] = useState<{ title: string; message: string; suggestion: string } | null>(null);
 
@@ -1163,14 +1521,15 @@ const ParserLabTab: React.FC = () => {
         setDiagnostic(buildDiagnostic(format, input, txs.length));
       }
       setResult(txs);
-    } catch (e: any) {
+    } catch (error: unknown) {
+      const parserError = error instanceof Error ? error : new Error('Nao foi possivel processar o arquivo.');
       logWarn('[AIControlPanel] Parser Lab failed to process input', {
         format,
         inputLength: input.length,
-        error: e,
+        error: parserError,
         fallback: 'ai-control-panel-parser-lab-failed',
       });
-      setError(e?.message ?? 'Nao foi possivel processar o arquivo.');
+      setError(parserError.message);
       setDiagnostic({
         title: 'Falha ao processar o arquivo',
         message: `O parser interrompeu a leitura do arquivo ${format.toUpperCase()}.`,
@@ -1526,6 +1885,24 @@ const SystemStats: React.FC<{ transactions: Transaction[]; accounts: Account[]; 
 }) => {
   const stats = useMemo(() => getAdaptiveLearningStats(userId), [userId]);
   const events = useMemo(() => getFinancialEvents(), []);
+  const [queueStats, setQueueStats] = useState(() => aiTaskQueue.getQueueStats());
+
+  useEffect(() => {
+    const syncQueueStats = () => {
+      setQueueStats(aiTaskQueue.getQueueStats());
+    };
+
+    syncQueueStats();
+    window.addEventListener('ai-task-enqueued', syncQueueStats);
+    window.addEventListener('ai-task-updated', syncQueueStats);
+    window.addEventListener('ai-task-queue-cleared', syncQueueStats);
+
+    return () => {
+      window.removeEventListener('ai-task-enqueued', syncQueueStats);
+      window.removeEventListener('ai-task-updated', syncQueueStats);
+      window.removeEventListener('ai-task-queue-cleared', syncQueueStats);
+    };
+  }, []);
 
   return (
     <div className="grid grid-cols-2 gap-2 px-3 pb-3">
@@ -1535,9 +1912,11 @@ const SystemStats: React.FC<{ transactions: Transaction[]; accounts: Account[]; 
         { label: 'MemÃ³rias',       value: stats.memory_count,        icon: <Brain size={9} />,      color: 'text-violet-400' },
         { label: 'PadrÃµes',        value: stats.pattern_count,       icon: <GitBranch size={9} />,  color: 'text-amber-400' },
         { label: 'Eventos',        value: events.length,             icon: <Activity size={9} />,   color: 'text-emerald-400' },
+        { label: 'Fila AI',        value: queueStats.pending + queueStats.processing, icon: <Activity size={9} />, color: 'text-sky-300' },
+        { label: 'Canceladas',     value: queueStats.cancelled,      icon: <X size={9} />,          color: 'text-slate-300' },
         { label: 'Insights+',      value: stats.is_learning ? stats.pattern_count : 0, icon: <Sparkles size={9} />,   color: 'text-rose-400' },
       ].map(({ label, value, icon, color }) => (
-        <div key={label} className="flex items-center gap-2 px-3 py-2 bg-black/30 border border-slate-700/40 rounded-lg">
+        <div key={label} aria-label={`${label}: ${value}`} className="flex items-center gap-2 px-3 py-2 bg-black/30 border border-slate-700/40 rounded-lg">
           <span className={color}>{icon}</span>
           <div>
             <p className={`font-mono text-sm font-medium leading-none ${color}`}>{value}</p>
@@ -1694,11 +2073,12 @@ interface AIControlPanelProps {
   report?: FinancialReport | null;
 }
 
-type PanelTab = 'stats' | 'memory' | 'insights' | 'autopilot' | 'events' | 'logs' | 'subscriptions' | 'moneymap' | 'leaks' | 'report' | 'simulation' | 'audit' | 'parser' | 'graph' | 'metrics' | 'health' | 'goals' | 'timeline';
+type PanelTab = 'stats' | 'memory' | 'queue' | 'insights' | 'autopilot' | 'events' | 'logs' | 'subscriptions' | 'moneymap' | 'leaks' | 'report' | 'simulation' | 'audit' | 'parser' | 'graph' | 'metrics' | 'health' | 'goals' | 'timeline';
 
 const TAB_CONFIG: Array<{ id: PanelTab; label: string; icon: React.ReactNode }> = [
   { id: 'stats',         label: 'Stats',         icon: <Layers size={11} />       },
   { id: 'memory',        label: 'Memory',        icon: <Database size={11} />     },
+  { id: 'queue',         label: 'Queue',         icon: <Activity size={11} />     },
   { id: 'insights',      label: 'Insights',      icon: <Sparkles size={11} />     },
   { id: 'autopilot',     label: 'Autopilot',     icon: <Bot size={11} />          },
   { id: 'events',        label: 'Events',        icon: <Activity size={11} />     },
@@ -1734,6 +2114,7 @@ const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts,
     switch (activeTab) {
       case 'stats':         return <div className="py-3"><SystemStats transactions={transactions} accounts={accounts} userId={userId} /></div>;
       case 'memory':        return <MemoryTab userId={userId} />;
+      case 'queue':         return <QueueTab />;
       case 'insights':      return <InsightsTab transactions={transactions} userId={userId} />;
       case 'autopilot':     return <AutopilotTab transactions={transactions} accounts={accounts} />;
       case 'events':        return <EventsTab />;

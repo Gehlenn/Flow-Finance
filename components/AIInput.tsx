@@ -661,7 +661,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                       <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">FrequÃªncia</label>
                       <select
                         value={manualData.recurrence_type}
-                        onChange={e => setManualData({ ...manualData, recurrence_type: e.target.value as any })}
+                        onChange={e => setManualData({ ...manualData, recurrence_type: e.target.value as 'daily' | 'weekly' | 'monthly' })}
                         className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-medium text-sm text-slate-800 dark:text-white border-none appearance-none"
                       >
                         <option value="daily">DiÃ¡rio</option>

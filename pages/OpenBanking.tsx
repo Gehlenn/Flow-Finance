@@ -268,8 +268,8 @@ const BankPicker: React.FC<{
             connectToken={pluggyConnectToken}
             includeSandbox
             allowFullscreen={false}
-            onSuccess={onPluggySuccess as any}
-            onError={onPluggyError as any}
+            onSuccess={onPluggySuccess}
+            onError={onPluggyError}
             connectorIds={pluggyConnectors.slice(0, 30).map((c) => c.id)}
           />
         </div>
@@ -555,10 +555,10 @@ const OpenBankingPage: React.FC<OpenBankingProps> = ({
       await connectBank(bank.id, userId);
       await reload();
       setView('list');
-    } catch (err: any) {
+    } catch (error: unknown) {
       setActionError('NÃ£o foi possÃ­vel conectar no banco real. Verifique login/token e tente novamente.');
       logWarn('[OpenBanking] Connect failed', {
-        error: err,
+        error,
         fallback: 'open-banking-connect-failed',
       });
     } finally {

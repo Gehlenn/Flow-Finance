@@ -92,8 +92,8 @@ const ReceiptScannerPage: React.FC<ReceiptScannerPageProps> = ({
       setScanData(result.data);
       setEditData({ ...result.data });
       setPhase('review');
-    } catch (err: any) {
-      const message = err.message ?? 'Erro ao escanear recibo.';
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao escanear recibo.';
       setErrorMsg(message);
       setErrorDiagnostic({
         title: 'Falha na leitura',

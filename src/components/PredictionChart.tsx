@@ -86,7 +86,7 @@ export function formatPredictionXAxisTick(value: string): string {
 
 const CustomTooltip: React.FC<{
   active?: boolean;
-  payload?: any[];
+  payload?: Array<{ payload: ChartDataPoint }>;
 }> = ({ active, payload }) => {
   if (!active || !payload || payload.length === 0) return null;
 

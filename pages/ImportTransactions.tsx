@@ -256,8 +256,8 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
             : 'Tente outro arquivo ou ajuste a exportacao do extrato para um formato suportado.',
         });
       }
-    } catch (err: any) {
-      const message = err?.message ?? 'Erro inesperado.';
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro inesperado.';
       setErrorMsg(message);
       setErrorDiagnostic({
         title: 'Falha ao importar arquivo',
