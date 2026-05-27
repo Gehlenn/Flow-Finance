@@ -15,6 +15,20 @@ export function buildWhereClause(
   return [baseClause, ...clauses].join(' AND ');
 }
 
+export function addQueryFilter(
+  params: unknown[],
+  clauses: string[],
+  value: unknown,
+  buildClause: (index: number) => string,
+): void {
+  if (value === undefined || value === null || value === '') {
+    return;
+  }
+
+  params.push(value);
+  clauses.push(buildClause(params.length));
+}
+
 export function mapAuditEventRow(row: Record<string, unknown>): PersistedAuditEventRow {
   return {
     id: String(row.id),

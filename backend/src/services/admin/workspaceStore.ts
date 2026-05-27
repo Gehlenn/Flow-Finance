@@ -14,6 +14,8 @@ import { recordAuditEvent } from './auditLog';
 import logger from '../../config/logger';
 import {
   buildEntitlements,
+  buildWorkspaceAuditEvent,
+  buildWorkspaceStoreState,
   cloneState,
   getActiveTenantIdsForUser,
   getActiveWorkspaceIdsForUser,
@@ -176,23 +178,24 @@ export function createTenant(name: string, ownerUserId: string): { tenant: Tenan
   };
 
   persistState({
-    tenants: [...state.tenants, tenant],
-    workspaces: [...state.workspaces, workspace],
-    workspaceUsers: [...state.workspaceUsers, ownerMembership],
-    userPreferences: replaceUserPreference(state.userPreferences, ownerUserId, workspaceId, createdAt),
+    ...buildWorkspaceStoreState(state, {
+      tenants: [...state.tenants, tenant],
+      workspaces: [...state.workspaces, workspace],
+      workspaceUsers: [...state.workspaceUsers, ownerMembership],
+      userPreferences: replaceUserPreference(state.userPreferences, ownerUserId, workspaceId, createdAt),
+    }),
   });
 
-  recordAuditEvent({
+  recordAuditEvent(buildWorkspaceAuditEvent({
     tenantId,
     workspaceId,
     userId: ownerUserId,
     action: 'workspace.addUser',
     status: 'success',
-    resource: workspaceId,
     resourceType: 'workspace',
     resourceId: workspaceId,
     metadata: { created: true, isDefault: true, tenantName: normalizedName },
-  });
+  }));
 
   return { tenant, workspace };
 }
@@ -231,23 +234,24 @@ export function createWorkspace(name: string, ownerUserId: string, tenantId?: st
   };
 
   persistState({
-    tenants: state.tenants.map((item) => item.tenantId === tenantId ? { ...item, updatedAt: createdAt } : item),
-    workspaces: [...state.workspaces, workspace],
-    workspaceUsers: [...state.workspaceUsers, ownerMembership],
-    userPreferences: replaceUserPreference(state.userPreferences, ownerUserId, workspaceId, createdAt),
+    ...buildWorkspaceStoreState(state, {
+      tenants: state.tenants.map((item) => item.tenantId === tenantId ? { ...item, updatedAt: createdAt } : item),
+      workspaces: [...state.workspaces, workspace],
+      workspaceUsers: [...state.workspaceUsers, ownerMembership],
+      userPreferences: replaceUserPreference(state.userPreferences, ownerUserId, workspaceId, createdAt),
+    }),
   });
 
-  recordAuditEvent({
+  recordAuditEvent(buildWorkspaceAuditEvent({
     tenantId,
     workspaceId,
     userId: ownerUserId,
     action: 'workspace.addUser',
     status: 'success',
-    resource: workspaceId,
     resourceType: 'workspace',
     resourceId: workspaceId,
     metadata: { created: true, isDefault: false, workspaceName: workspace.name },
-  });
+  }));
 
   return workspace;
 }
@@ -374,23 +378,21 @@ export function addUserToWorkspace(
   };
 
   persistState({
-    tenants: state.tenants,
-    workspaces: state.workspaces,
-    workspaceUsers: [...state.workspaceUsers, workspaceUser],
-    userPreferences: state.userPreferences,
+    ...buildWorkspaceStoreState(state, {
+      workspaceUsers: [...state.workspaceUsers, workspaceUser],
+    }),
   });
 
-  recordAuditEvent({
+  recordAuditEvent(buildWorkspaceAuditEvent({
     tenantId: workspace.tenantId,
     workspaceId,
     userId: invitedBy,
     action: 'workspace.addUser',
     status: 'success',
-    resource: workspaceId,
     resourceType: 'workspace_member',
     resourceId: userId,
     metadata: { addedUserId: userId, role },
-  });
+  }));
 
   return workspaceUser;
 }
@@ -448,24 +450,20 @@ export function removeUserFromWorkspace(userId: string, workspaceId: string): bo
   }
 
   persistState({
-    tenants: state.tenants,
-    workspaces: state.workspaces,
-    workspaceUsers,
-    userPreferences: state.userPreferences,
+    ...buildWorkspaceStoreState(state, { workspaceUsers }),
   });
 
   if (workspace) {
-    recordAuditEvent({
+    recordAuditEvent(buildWorkspaceAuditEvent({
       tenantId: workspace.tenantId,
       workspaceId,
       userId,
       action: 'workspace.removeUser',
       status: 'success',
-      resource: workspaceId,
       resourceType: 'workspace_member',
       resourceId: userId,
       metadata: { removedUserId: userId },
-    });
+    }));
   }
 
   return true;
@@ -506,22 +504,21 @@ export function updateWorkspaceBilling(
   }
 
   persistState({
-    tenants: state.tenants.map((tenant) => tenant.tenantId === updatedWorkspace?.tenantId ? {
-      ...tenant,
-      plan: updatedWorkspace?.plan || tenant.plan,
-      updatedAt: new Date().toISOString(),
-    } : tenant),
-    workspaces,
-    workspaceUsers: state.workspaceUsers,
-    userPreferences: state.userPreferences,
+    ...buildWorkspaceStoreState(state, {
+      tenants: state.tenants.map((tenant) => tenant.tenantId === updatedWorkspace?.tenantId ? {
+        ...tenant,
+        plan: updatedWorkspace?.plan || tenant.plan,
+        updatedAt: new Date().toISOString(),
+      } : tenant),
+      workspaces,
+    }),
   });
 
-  recordAuditEvent({
+  recordAuditEvent(buildWorkspaceAuditEvent({
     tenantId: updatedWorkspace.tenantId,
     workspaceId,
     action: 'billing.plan_changed',
     status: 'success',
-    resource: workspaceId,
     resourceType: 'workspace',
     resourceId: workspaceId,
     metadata: {
@@ -529,7 +526,7 @@ export function updateWorkspaceBilling(
       billingEmail: updatedWorkspace.billingEmail,
       subscriptionId: updatedWorkspace.subscription?.subscriptionId,
     },
-  });
+  }));
 
   return updatedWorkspace;
 }
@@ -581,10 +578,9 @@ export function setLastWorkspaceForUser(userId: string, workspaceId: string): vo
   const updatedAt = new Date().toISOString();
 
   persistState({
-    tenants: state.tenants,
-    workspaces: state.workspaces,
-    workspaceUsers: state.workspaceUsers,
-    userPreferences: replaceUserPreference(state.userPreferences, userId, workspaceId, updatedAt),
+    ...buildWorkspaceStoreState(state, {
+      userPreferences: replaceUserPreference(state.userPreferences, userId, workspaceId, updatedAt),
+    }),
   });
 }
 

@@ -103,6 +103,12 @@ class AIMemoryStore {
     }
   }
 
+  private getActiveMemoryValues(): AIMemoryEntry[] {
+    this.ensureWorkspaceScope();
+    this.pruneExpiredMemories();
+    return Array.from(this.memories.values());
+  }
+
   saveMemory(memory: AIMemoryEntry): void {
     this.ensureWorkspaceScope();
     const userMemories = this.getMemoriesByUser(memory.userId);
@@ -127,17 +133,13 @@ class AIMemoryStore {
   }
 
   getMemoriesByUser(userId: string): AIMemoryEntry[] {
-    this.ensureWorkspaceScope();
-    this.pruneExpiredMemories();
-    return Array.from(this.memories.values())
+    return this.getActiveMemoryValues()
       .filter((m) => m.userId === userId)
       .sort((a, b) => b.updatedAt - a.updatedAt);
   }
 
   getMemoriesByType(userId: string, type: AIMemoryType): AIMemoryEntry[] {
-    this.ensureWorkspaceScope();
-    this.pruneExpiredMemories();
-    return Array.from(this.memories.values())
+    return this.getActiveMemoryValues()
       .filter((m) => m.userId === userId && m.type === type)
       .sort((a, b) => b.strength - a.strength);
   }
@@ -147,9 +149,7 @@ class AIMemoryStore {
   }
 
   queryMemories(filter: MemoryQueryFilter): AIMemoryEntry[] {
-    this.ensureWorkspaceScope();
-    this.pruneExpiredMemories();
-    let results = Array.from(this.memories.values()).filter((m) => m.userId === filter.userId);
+    let results = this.getActiveMemoryValues().filter((m) => m.userId === filter.userId);
 
     if (filter.type) {
       results = results.filter((m) => m.type === filter.type);
@@ -235,8 +235,7 @@ class AIMemoryStore {
   }
 
   getAllMemories(): AIMemoryEntry[] {
-    this.ensureWorkspaceScope();
-    return Array.from(this.memories.values());
+    return this.getActiveMemoryValues();
   }
 
   getAll(): AIMemoryEntry[] {

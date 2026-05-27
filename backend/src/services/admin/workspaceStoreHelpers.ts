@@ -8,6 +8,7 @@ import {
   WorkspaceUser,
   WorkspaceUserPreference,
 } from '../../types';
+import type { AuditAction, AuditEvent, AuditStatus } from './auditLog';
 
 export interface WorkspaceStoreState {
   tenants: Tenant[];
@@ -158,4 +159,39 @@ export function getActiveTenantIdsForUser(state: WorkspaceStoreState, userId: st
       .filter((workspaceUser) => workspaceUser.userId === userId && workspaceUser.status === 'active')
       .map((workspaceUser) => workspaceUser.tenantId),
   );
+}
+
+export function buildWorkspaceStoreState(
+  state: WorkspaceStoreState,
+  updates: Partial<WorkspaceStoreState>,
+): WorkspaceStoreState {
+  return {
+    tenants: updates.tenants ?? state.tenants,
+    workspaces: updates.workspaces ?? state.workspaces,
+    workspaceUsers: updates.workspaceUsers ?? state.workspaceUsers,
+    userPreferences: updates.userPreferences ?? state.userPreferences,
+  };
+}
+
+export function buildWorkspaceAuditEvent(input: {
+  tenantId?: string;
+  workspaceId: string;
+  userId?: string;
+  action: AuditAction;
+  status: AuditStatus;
+  resourceType: string;
+  resourceId: string;
+  metadata?: Record<string, unknown>;
+}): Omit<AuditEvent, 'id' | 'at'> {
+  return {
+    tenantId: input.tenantId,
+    workspaceId: input.workspaceId,
+    userId: input.userId,
+    action: input.action,
+    status: input.status,
+    resource: input.workspaceId,
+    resourceType: input.resourceType,
+    resourceId: input.resourceId,
+    metadata: input.metadata,
+  };
 }

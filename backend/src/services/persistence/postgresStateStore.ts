@@ -2,6 +2,7 @@ import { query, testConnection } from '../../config/database';
 import logger from '../../config/logger';
 import { Tenant, Workspace, WorkspaceUser, WorkspaceUserPreference } from '../../types';
 import {
+  addQueryFilter,
   buildWhereClause,
   buildWorkspaceSaasStateFromRows,
   mapAuditEventRow,
@@ -500,46 +501,16 @@ export async function queryAuditEvents(filters: {
   const clauses: string[] = [];
   const params: unknown[] = [];
 
-  if (filters.tenantId) {
-    params.push(filters.tenantId);
-    clauses.push(`tenant_id = $${params.length}`);
-  }
-  if (filters.workspaceId) {
-    params.push(filters.workspaceId);
-    clauses.push(`workspace_id = $${params.length}`);
-  }
-  if (filters.userId) {
-    params.push(filters.userId);
-    clauses.push(`user_id = $${params.length}`);
-  }
-  if (filters.action) {
-    params.push(filters.action);
-    clauses.push(`action = $${params.length}`);
-  }
-  if (filters.status) {
-    params.push(filters.status);
-    clauses.push(`status = $${params.length}`);
-  }
-  if (filters.resourceType) {
-    params.push(filters.resourceType);
-    clauses.push(`resource_type = $${params.length}`);
-  }
-  if (filters.resourceId) {
-    params.push(filters.resourceId);
-    clauses.push(`resource_id = $${params.length}`);
-  }
-  if (filters.resource) {
-    params.push(filters.resource);
-    clauses.push(`resource = $${params.length}`);
-  }
-  if (filters.since) {
-    params.push(filters.since);
-    clauses.push(`at >= $${params.length}`);
-  }
-  if (filters.until) {
-    params.push(filters.until);
-    clauses.push(`at <= $${params.length}`);
-  }
+  addQueryFilter(params, clauses, filters.tenantId, (index) => `tenant_id = $${index}`);
+  addQueryFilter(params, clauses, filters.workspaceId, (index) => `workspace_id = $${index}`);
+  addQueryFilter(params, clauses, filters.userId, (index) => `user_id = $${index}`);
+  addQueryFilter(params, clauses, filters.action, (index) => `action = $${index}`);
+  addQueryFilter(params, clauses, filters.status, (index) => `status = $${index}`);
+  addQueryFilter(params, clauses, filters.resourceType, (index) => `resource_type = $${index}`);
+  addQueryFilter(params, clauses, filters.resourceId, (index) => `resource_id = $${index}`);
+  addQueryFilter(params, clauses, filters.resource, (index) => `resource = $${index}`);
+  addQueryFilter(params, clauses, filters.since, (index) => `at >= $${index}`);
+  addQueryFilter(params, clauses, filters.until, (index) => `at <= $${index}`);
 
   const limit = Number.isFinite(filters.limit) && (filters.limit as number) > 0
     ? Math.min(Number(filters.limit), 5000)
@@ -577,14 +548,18 @@ export async function queryWorkspaceMeteringSummary(
   const params: unknown[] = [workspaceId];
   const clauses = ['workspace_id = $1'];
 
-  if (filters.from) {
-    params.push(filters.from);
-    clauses.push(`to_date(month_key || '-01', 'YYYY-MM-DD') >= date_trunc('month', $${params.length}::timestamptz)::date`);
-  }
-  if (filters.to) {
-    params.push(filters.to);
-    clauses.push(`to_date(month_key || '-01', 'YYYY-MM-DD') <= date_trunc('month', $${params.length}::timestamptz)::date`);
-  }
+  addQueryFilter(
+    params,
+    clauses,
+    filters.from,
+    (index) => `to_date(month_key || '-01', 'YYYY-MM-DD') >= date_trunc('month', $${index}::timestamptz)::date`,
+  );
+  addQueryFilter(
+    params,
+    clauses,
+    filters.to,
+    (index) => `to_date(month_key || '-01', 'YYYY-MM-DD') <= date_trunc('month', $${index}::timestamptz)::date`,
+  );
 
   const whereClause = buildWhereClause('WHERE 1=1', clauses);
   const result = await query(`
@@ -630,18 +605,9 @@ export async function queryWorkspaceUsageEvents(
   const params: unknown[] = [workspaceId];
   const clauses = ['workspace_id = $1'];
 
-  if (filters.resource) {
-    params.push(filters.resource);
-    clauses.push(`resource = $${params.length}`);
-  }
-  if (filters.from) {
-    params.push(filters.from);
-    clauses.push(`at >= $${params.length}`);
-  }
-  if (filters.to) {
-    params.push(filters.to);
-    clauses.push(`at <= $${params.length}`);
-  }
+  addQueryFilter(params, clauses, filters.resource, (index) => `resource = $${index}`);
+  addQueryFilter(params, clauses, filters.from, (index) => `at >= $${index}`);
+  addQueryFilter(params, clauses, filters.to, (index) => `at <= $${index}`);
 
   const limit = Number.isFinite(filters.limit) && (filters.limit as number) > 0
     ? Math.min(Number(filters.limit), 5000)
@@ -795,30 +761,12 @@ export async function queryDomainEvents(filters: {
   const params: unknown[] = [filters.workspaceId];
   const clauses = ['workspace_id = $1'];
 
-  if (filters.aggregateId) {
-    params.push(filters.aggregateId);
-    clauses.push(`aggregate_id = $${params.length}`);
-  }
-  if (filters.aggregateType) {
-    params.push(filters.aggregateType);
-    clauses.push(`aggregate_type = $${params.length}`);
-  }
-  if (filters.type) {
-    params.push(filters.type);
-    clauses.push(`type = $${params.length}`);
-  }
-  if (filters.userId) {
-    params.push(filters.userId);
-    clauses.push(`user_id = $${params.length}`);
-  }
-  if (filters.since) {
-    params.push(filters.since);
-    clauses.push(`occurred_at >= $${params.length}`);
-  }
-  if (filters.until) {
-    params.push(filters.until);
-    clauses.push(`occurred_at <= $${params.length}`);
-  }
+  addQueryFilter(params, clauses, filters.aggregateId, (index) => `aggregate_id = $${index}`);
+  addQueryFilter(params, clauses, filters.aggregateType, (index) => `aggregate_type = $${index}`);
+  addQueryFilter(params, clauses, filters.type, (index) => `type = $${index}`);
+  addQueryFilter(params, clauses, filters.userId, (index) => `user_id = $${index}`);
+  addQueryFilter(params, clauses, filters.since, (index) => `occurred_at >= $${index}`);
+  addQueryFilter(params, clauses, filters.until, (index) => `occurred_at <= $${index}`);
 
   const limit = Number.isFinite(filters.limit) && (filters.limit as number) > 0
     ? Math.min(Number(filters.limit), 1000)
