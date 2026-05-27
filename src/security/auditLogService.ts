@@ -5,6 +5,7 @@
  */
 
 import { logInfo } from '../utils/logger';
+import { hasAuditLogPersistenceContext, persistAuditEvent } from './auditLogPersistence';
 
 export interface AuditLogEntry {
   id: string;
@@ -15,7 +16,23 @@ export interface AuditLogEntry {
   timestamp: string;
 }
 
+export interface AuditLogPersistenceContext {
+  tenantId: string;
+  workspaceId: string;
+  userId: string;
+}
+
+const MAX_AUDIT_LOG_CACHE = 200;
 const auditLogs: AuditLogEntry[] = [];
+
+// Cache local curto para diagnóstico; a fonte de verdade é o Firestore.
+function pushAuditLogCache(entry: AuditLogEntry): void {
+  auditLogs.push(entry);
+
+  if (auditLogs.length > MAX_AUDIT_LOG_CACHE) {
+    auditLogs.splice(0, auditLogs.length - MAX_AUDIT_LOG_CACHE);
+  }
+}
 
 /**
  * Registra um evento de auditoria.
@@ -24,10 +41,11 @@ export function logAuditEvent(
   eventType: string,
   entity: string,
   entityId: string,
-  metadata: Record<string, unknown> = {}
+  metadata: Record<string, unknown> = {},
+  context?: AuditLogPersistenceContext,
 ): void {
   const entry: AuditLogEntry = {
-    id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: `audit_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
     event_type: eventType,
     entity,
     entity_id: entityId,
@@ -35,14 +53,32 @@ export function logAuditEvent(
     timestamp: new Date().toISOString(),
   };
 
-  auditLogs.push(entry);
+  pushAuditLogCache(entry);
   logInfo('[Audit] recorded event', {
     eventType,
     entity,
     entityId,
     metadata,
+    persistence: hasAuditLogPersistenceContext(context) ? 'firestore' : 'local-cache-only',
     fallback: 'audit-log-event-recorded',
   });
+
+  if (!hasAuditLogPersistenceContext(context)) {
+    return;
+  }
+
+  logInfo('[Audit] dispatching persistence', {
+    eventId: entry.id,
+    eventType,
+    entity,
+    entityId,
+    tenantId: context.tenantId,
+    workspaceId: context.workspaceId,
+    userId: context.userId,
+    fallback: 'audit-log-persistence-dispatched',
+  });
+
+  void persistAuditEvent(context.tenantId, context.workspaceId, context.userId, entry);
 }
 
 /**
@@ -51,16 +87,16 @@ export function logAuditEvent(
 export function getAuditLogs(
   entity?: string,
   eventType?: string,
-  limit = 100
+  limit = 100,
 ): AuditLogEntry[] {
   let filtered = auditLogs;
 
   if (entity) {
-    filtered = filtered.filter(log => log.entity === entity);
+    filtered = filtered.filter((log) => log.entity === entity);
   }
 
   if (eventType) {
-    filtered = filtered.filter(log => log.event_type === eventType);
+    filtered = filtered.filter((log) => log.event_type === eventType);
   }
 
   return filtered.slice(-limit);

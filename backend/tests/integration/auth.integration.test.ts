@@ -2,6 +2,14 @@ import request from 'supertest';
 import app from '../../src/index';
 
 describe('Auth API', () => {
+  beforeEach(() => {
+    process.env.AUTH_ALLOW_INSECURE_LOCAL_LOGIN = 'true';
+  });
+
+  afterEach(() => {
+    delete process.env.AUTH_ALLOW_INSECURE_LOCAL_LOGIN;
+  });
+
   it('POST /api/auth/login deve responder 200', async () => {
     const res = await request(app).post('/api/auth/login').send({ email: 'test@flow.com', password: '123456' });
     expect(res.status).toBe(200);

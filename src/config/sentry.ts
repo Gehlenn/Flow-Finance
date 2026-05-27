@@ -6,6 +6,10 @@ type SentryScopeLike = {
   setTag: (key: string, value: unknown) => void;
 };
 type SentryLike = {
+  browserTracingIntegration?: (options?: {
+    instrumentNavigation?: boolean;
+    instrumentPageLoad?: boolean;
+  }) => unknown;
   withScope?: (callback: (scope: SentryScopeLike) => void) => void;
   captureException?: (error: Error) => void;
   captureMessage?: (message: string, level?: SeverityLevel) => void;
@@ -14,6 +18,9 @@ type SentryLike = {
 };
 type SentryEnv = {
   VITE_SENTRY_DSN?: string;
+  VITE_SENTRY_ENVIRONMENT?: string;
+  VITE_API_DEV_URL?: string;
+  VITE_API_PROD_URL?: string;
   SENTRY_DSN?: string;
 };
 
@@ -29,8 +36,27 @@ export const resolveSentryDsn = (env: SentryEnv): string => {
 };
 
 const getDsn = (): string => resolveSentryDsn(import.meta.env as unknown as SentryEnv);
+const getEnvironment = (): string => String(
+  import.meta.env.VITE_SENTRY_ENVIRONMENT ||
+  import.meta.env.MODE ||
+  'development',
+).trim() || 'development';
 const isSentryDevEnabled = (): boolean => String(import.meta.env.VITE_SENTRY_DEV_ENABLED || '').trim().toLowerCase() === 'true';
 export const isSentryConfigured = (): boolean => Boolean(getDsn().trim());
+
+const getTracePropagationTargets = (): (string | RegExp)[] => {
+  const env = import.meta.env as unknown as SentryEnv;
+  const explicitTargets = [
+    String(env.VITE_API_DEV_URL || '').trim(),
+    String(env.VITE_API_PROD_URL || '').trim(),
+  ].filter(Boolean);
+
+  return [
+    'localhost',
+    /^\//,
+    ...explicitTargets,
+  ];
+};
 
 async function loadSentry(): Promise<SentryModule | null> {
   if (sentryModule) return sentryModule;
@@ -61,19 +87,38 @@ async function loadSentry(): Promise<SentryModule | null> {
 export const initSentry = () => {
   // Only initialize if DSN is provided (production/staging)
   const dsn = getDsn();
+  const hasFrontendDsn = Boolean(String(import.meta.env.VITE_SENTRY_DSN || '').trim());
 
-  if (!dsn) {
+  if (import.meta.env.PROD && !hasFrontendDsn) {
+    logWarn('[Sentry] DSN ausente em producao', {
+      fallback: 'sentry-dsn-missing-production',
+      hasLegacyFallbackDsn: Boolean(String(import.meta.env.SENTRY_DSN || '').trim()),
+    });
+  }
+
+  if (!dsn || sentryInitialized) {
     return;
   }
 
   void loadSentry().then((Sentry) => {
     if (!Sentry || sentryInitialized) return;
+    const sentry = Sentry as SentryLike;
+    const browserTracingIntegration = 'browserTracingIntegration' in Sentry &&
+      typeof sentry.browserTracingIntegration === 'function'
+      ? sentry.browserTracingIntegration({
+        instrumentNavigation: true,
+        instrumentPageLoad: true,
+      })
+      : undefined;
+    const integrations = browserTracingIntegration ? [browserTracingIntegration] : [];
 
     Sentry.init({
       dsn,
-      environment: import.meta.env.MODE || 'development',
+      environment: getEnvironment(),
       release: import.meta.env.VITE_APP_VERSION || '0.9.7',
+      integrations: integrations as Parameters<SentryModule['init']>[0]['integrations'],
       tracesSampleRate: import.meta.env.DEV ? 1.0 : 0.1,
+      tracePropagationTargets: getTracePropagationTargets(),
       sampleRate: 1.0,
       beforeSend: (event) => {
         if (import.meta.env.DEV && !isSentryDevEnabled()) {

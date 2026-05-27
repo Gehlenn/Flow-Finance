@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -83,12 +83,12 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, className = '
 
       {showText && (
         <div className="flex flex-col">
-          <span className={`${s.text} font-semibold text-slate-900 dark:text-white tracking-tighter leading-none transition-all duration-500 group-hover:tracking-normal`}>
+          <span className={`${s.text} font-black text-slate-900 dark:text-white tracking-tighter leading-none transition-all duration-500 group-hover:tracking-normal`}>
             Flow
           </span>
           <div className="flex items-center gap-2 mt-1 opacity-50 group-hover:opacity-100 transition-opacity">
             <div className="h-px w-4 bg-indigo-500"></div>
-            <span className="text-[9px] font-semibold text-indigo-500 dark:text-indigo-400 uppercase tracking-[0.2em]">
+            <span className="text-[9px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-[0.4em]">
               Finance AI
             </span>
           </div>
@@ -124,4 +124,3 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, className = '
 };
 
 export default Logo;
-

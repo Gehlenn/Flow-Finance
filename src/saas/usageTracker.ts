@@ -35,6 +35,10 @@ class MemoryUsageAdapter implements UsageStoreAdapter {
 let usageAdapter: UsageStoreAdapter = new MemoryUsageAdapter();
 let usageLoaded = false;
 
+function createMemoryUsageAdapter(): UsageStoreAdapter {
+  return new MemoryUsageAdapter();
+}
+
 function toRecord(): Record<string, UsageSnapshot> {
   const out: Record<string, UsageSnapshot> = {};
   usageStore.forEach((value, key) => {
@@ -87,6 +91,12 @@ function getOrCreateUsage(userId: string, monthKey: string): UsageSnapshot {
 
 export async function configureUsageStoreAdapter(adapter: UsageStoreAdapter): Promise<void> {
   usageAdapter = adapter;
+  usageLoaded = false;
+  await ensureLoaded();
+}
+
+export async function resetUsageStoreAdapter(): Promise<void> {
+  usageAdapter = createMemoryUsageAdapter();
   usageLoaded = false;
   await ensureLoaded();
 }

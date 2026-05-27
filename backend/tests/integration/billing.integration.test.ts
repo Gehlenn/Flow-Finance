@@ -1,5 +1,6 @@
 ﻿import request from 'supertest';
 import app from '../../src/index';
+import { createTestAuthorizationHeader } from '../helpers/auth';
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
 
 describe('Billing API', () => {
@@ -11,12 +12,12 @@ describe('Billing API', () => {
     const ownerUserId = 'owner-billing';
     const created = await request(app)
       .post('/api/tenant')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .send({ name: 'Workspace Billing' });
 
     const res = await request(app)
       .post('/api/billing/subscription')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', created.body.workspaceId)
       .send({ plan: 'pro', billingEmail: 'billing@flow.test' });
 
@@ -30,12 +31,12 @@ describe('Billing API', () => {
     const ownerUserId = 'owner-export';
     const created = await request(app)
       .post('/api/tenant')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .send({ name: 'Workspace Export' });
 
     const res = await request(app)
       .get('/api/billing/export')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', created.body.workspaceId);
 
     expect(res.status).toBe(200);

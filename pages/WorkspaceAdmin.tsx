@@ -32,7 +32,7 @@ import {
   canViewWorkspaceAudit,
 } from '../src/security/workspacePermissions';
 import { logWarn } from '../src/utils/logger';
-import type { Tab } from '../hooks/useNavigationTabs';
+import type { Tab } from '../hooks/navigationTypes';
 
 interface WorkspaceAdminPageProps {
   userId: string | null;
@@ -362,9 +362,9 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
   if (loading) {
     return (
       <div className="space-y-4 animate-in fade-in duration-500 pb-24">
-        <div className="bg-gradient-to-r from-emerald-700 to-emerald-600 p-6 rounded-[2rem] text-white shadow-lg shadow-emerald-900/10">
-          <h2 className="text-2xl font-semibold tracking-tight">Operacao do workspace</h2>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-white/70 mt-2">Carregando estado do workspace</p>
+        <div className="rounded-[2rem] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Operacao do workspace</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400 mt-2">Carregando estado do workspace</p>
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 flex items-center gap-3">
           <Loader2 className="animate-spin text-emerald-600" size={18} />
@@ -377,9 +377,9 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
   if (!canManageMembers && !canManageBilling && !canSeeAudit) {
     return (
       <div className="space-y-4 animate-in fade-in duration-500 pb-24">
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-6 rounded-[2rem] text-white shadow-lg shadow-slate-900/20">
-          <h2 className="text-2xl font-semibold tracking-tight">Operacao do workspace</h2>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-white/70 mt-2">Funcao apenas leitura</p>
+        <div className="rounded-[2rem] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Operacao do workspace</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400 mt-2">Funcao apenas leitura</p>
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 space-y-4">
           <p className="text-sm text-slate-700 dark:text-slate-100">
@@ -403,14 +403,14 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-24">
-      <div className="bg-gradient-to-r from-emerald-700 to-emerald-600 p-6 rounded-[2rem] flex items-center justify-between shadow-lg shadow-emerald-900/10">
+      <div className="rounded-[2rem] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 flex items-center justify-between gap-4 shadow-sm">
         <div>
-          <h2 className="text-2xl font-semibold text-white tracking-tight">Operacao do workspace</h2>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-white/70 mt-2">{tenantLabel} · {workspaceLabel}</p>
+          <h2 className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight">Operacao do workspace</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400 mt-2">{tenantLabel} · {workspaceLabel}</p>
         </div>
         <button
           onClick={() => onNavigateToTab('settings')}
-          className="px-4 py-3 rounded-2xl bg-white/10 text-white text-xs font-semibold uppercase tracking-[0.08em] border border-white/20"
+          className="px-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-100 text-xs font-semibold uppercase tracking-[0.08em] border border-slate-200 dark:border-slate-600"
         >
           Configurações
         </button>

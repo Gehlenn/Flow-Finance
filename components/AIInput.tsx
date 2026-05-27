@@ -69,6 +69,13 @@ const TIPS = [
   { text: "Almoço com cliente deu 120", icon: <Briefcase size={12}/> }
 ];
 
+const AI_INPUT_CLASSES = {
+  primaryAction: 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900',
+  neutralInput: 'bg-slate-50 dark:bg-slate-800 rounded-2xl',
+  neutralSelectable: 'bg-slate-50 dark:bg-slate-800 text-slate-400',
+  selectedSelectable: 'bg-slate-900 text-white shadow-md dark:bg-slate-100 dark:text-slate-900',
+} as const;
+
 const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddReminders, accounts = [], userId = 'local' }) => {
   const [mode, setMode] = useState<'ai' | 'manual'>('ai');
   const [inputText, setInputText] = useState('');
@@ -392,7 +399,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                   key={t}
                   type="button"
                   onClick={() => setPendingDraft(d => d ? { ...d, type: t } : null)}
-                  className={`flex-1 py-2 rounded-2xl text-[9px] font-semibold uppercase tracking-[0.08em] transition-all ${pendingDraft.type === t ? 'bg-indigo-600 text-white' : 'bg-slate-50 dark:bg-slate-800 text-slate-400'}`}
+                  className={`flex-1 py-2 rounded-2xl text-[9px] font-semibold uppercase tracking-[0.08em] transition-all ${pendingDraft.type === t ? AI_INPUT_CLASSES.primaryAction : AI_INPUT_CLASSES.neutralSelectable}`}
                 >
                   {t}
                 </button>
@@ -417,14 +424,14 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
               <button
                 type="button"
                 onClick={() => setPendingDraft(null)}
-                className="flex-1 py-3 rounded-2xl text-[10px] font-semibold uppercase tracking-[0.08em] bg-slate-50 dark:bg-slate-800 text-slate-400 transition-all"
+                className={`flex-1 py-3 rounded-2xl text-[10px] font-semibold uppercase tracking-[0.08em] ${AI_INPUT_CLASSES.neutralSelectable} transition-all`}
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={() => commitDraft(pendingDraft)}
-                className="flex-1 py-3 rounded-2xl text-[10px] font-semibold uppercase tracking-[0.08em] bg-indigo-600 text-white shadow-md transition-all"
+                className={`flex-1 py-3 rounded-2xl text-[10px] font-semibold uppercase tracking-[0.08em] ${AI_INPUT_CLASSES.primaryAction} shadow-md transition-all`}
               >
                 Confirmar e Salvar
               </button>
@@ -444,13 +451,13 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
           <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl">
             <button 
               onClick={() => setMode('ai')} 
-              className={`px-6 py-2 rounded-xl text-[9px] font-semibold uppercase tracking-[0.08em] transition-all ${mode === 'ai' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+              className={`px-6 py-2 rounded-xl text-[9px] font-semibold uppercase tracking-[0.08em] transition-all ${mode === 'ai' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}
             >
               Inteligência Artificial
             </button>
             <button 
               onClick={() => setMode('manual')} 
-              className={`px-6 py-2 rounded-xl text-[9px] font-semibold uppercase tracking-[0.08em] transition-all ${mode === 'manual' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+              className={`px-6 py-2 rounded-xl text-[9px] font-semibold uppercase tracking-[0.08em] transition-all ${mode === 'manual' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}
             >
               Lançamento Manual
             </button>
@@ -491,7 +498,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                     key={acc.id}
                     type="button"
                     onClick={() => setSelectedAccountId(acc.id)}
-                    className={`px-4 py-2 rounded-2xl text-[9px] font-semibold uppercase tracking-[0.08em] transition-all flex items-center gap-1.5 ${selectedAccountId === acc.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 border border-slate-100 dark:border-slate-700'}`}
+                    className={`px-4 py-2 rounded-2xl text-[9px] font-semibold uppercase tracking-[0.08em] transition-all flex items-center gap-1.5 ${selectedAccountId === acc.id ? AI_INPUT_CLASSES.selectedSelectable : 'bg-slate-50 dark:bg-slate-800 text-slate-400 border border-slate-100 dark:border-slate-700'}`}
                   >
                     <Wallet size={12} />
                     {acc.name}
@@ -511,21 +518,21 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
           {mode === 'ai' ? (
             <div className="space-y-6">
               {/* Dicas Animadas */}
-              <div className="bg-indigo-50/50 dark:bg-indigo-500/10 p-4 rounded-2xl border border-indigo-100/50 dark:border-indigo-500/20">
+              <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
                 <div className="flex items-center justify-between gap-4">
-                  <button onClick={() => setTipIndex(prev => (prev - 1 + TIPS.length) % TIPS.length)} className="text-indigo-300 hover:text-indigo-500 transition-colors"><ChevronLeft size={16}/></button>
+                  <button onClick={() => setTipIndex(prev => (prev - 1 + TIPS.length) % TIPS.length)} className="text-slate-300 hover:text-slate-500 transition-colors"><ChevronLeft size={16}/></button>
                   <button 
                     onClick={() => {
                       setInputText(TIPS[tipIndex].text);
                       setClickedTipIndex(tipIndex);
                       setTimeout(() => setClickedTipIndex(null), 500);
                     }}
-                    className={`flex items-center gap-2 flex-1 justify-center transition-all duration-300 rounded-xl py-1 ${clickedTipIndex === tipIndex ? 'bg-indigo-100 dark:bg-indigo-500/30 scale-105 shadow-sm' : 'hover:bg-indigo-50 dark:hover:bg-indigo-500/10'}`}
+                    className={`flex items-center gap-2 flex-1 justify-center transition-all duration-300 rounded-xl py-1 ${clickedTipIndex === tipIndex ? 'bg-slate-100 dark:bg-slate-800 scale-105 shadow-sm' : 'hover:bg-slate-100 dark:hover:bg-slate-800/70'}`}
                   >
-                    <div className={`transition-colors ${clickedTipIndex === tipIndex ? 'text-indigo-600 dark:text-indigo-300' : 'text-indigo-400'}`}>{TIPS[tipIndex]?.icon}</div>
-                    <p className={`text-[10px] font-medium italic transition-colors ${clickedTipIndex === tipIndex ? 'text-indigo-700 dark:text-indigo-200' : 'text-slate-500'}`}>"{TIPS[tipIndex]?.text}"</p>
+                    <div className={`transition-colors ${clickedTipIndex === tipIndex ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400'}`}>{TIPS[tipIndex]?.icon}</div>
+                    <p className={`text-[10px] font-medium italic transition-colors ${clickedTipIndex === tipIndex ? 'text-slate-700 dark:text-slate-200' : 'text-slate-500'}`}>"{TIPS[tipIndex]?.text}"</p>
                   </button>
-                  <button onClick={() => setTipIndex(prev => (prev + 1) % TIPS.length)} className="text-indigo-300 hover:text-indigo-500 transition-colors"><ChevronRight size={16}/></button>
+                  <button onClick={() => setTipIndex(prev => (prev + 1) % TIPS.length)} className="text-slate-300 hover:text-slate-500 transition-colors"><ChevronRight size={16}/></button>
                 </div>
               </div>
 
@@ -535,20 +542,20 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder="Diga ou escreva o que aconteceu..."
-                  className="w-full h-40 p-6 bg-slate-50 dark:bg-slate-800 rounded-[2rem] border-2 border-transparent focus:border-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 text-slate-700 dark:text-white font-medium outline-none resize-none transition-all shadow-inner"
+                  className={`w-full h-40 p-6 ${AI_INPUT_CLASSES.neutralInput} rounded-[2rem] border-2 border-transparent focus:border-slate-300 focus:bg-white dark:focus:bg-slate-800 text-slate-700 dark:text-white font-medium outline-none resize-none transition-all shadow-inner`}
                 />
                 
                 {isLoading && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm rounded-[2rem]">
-                    <Loader2 className="animate-spin text-indigo-600" size={32} />
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-indigo-600">Processando...</p>
+                    <Loader2 className="animate-spin text-slate-600" size={32} />
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">Processando...</p>
                   </div>
                 )}
 
                 <div className="absolute bottom-4 right-4 flex gap-2">
                    <button 
                      onClick={() => fileInputRef.current?.click()} 
-                     className="p-3 bg-white dark:bg-slate-700 text-slate-400 rounded-2xl shadow-sm hover:text-indigo-500"
+                     className="p-3 bg-white dark:bg-slate-700 text-slate-400 rounded-2xl shadow-sm hover:text-slate-700"
                      title="Subir Comprovante"
                    >
                      <ImageIcon size={20} />
@@ -568,7 +575,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
               <button 
                 onClick={handleAIProcess}
                 disabled={isLoading || !inputText.trim() || isSuccess}
-                className={`w-full py-5 rounded-2xl font-semibold text-xs uppercase tracking-[0.08em] shadow-xl flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 transition-all duration-500 ${isSuccess ? 'bg-emerald-500 text-white scale-105' : 'bg-indigo-600 text-white'}`}
+                className={`w-full py-5 rounded-2xl font-semibold text-xs uppercase tracking-[0.08em] shadow-xl flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 transition-all duration-500 ${isSuccess ? 'bg-emerald-500 text-white scale-105' : AI_INPUT_CLASSES.primaryAction}`}
               >
                 {isSuccess ? (
                   <>
@@ -589,7 +596,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                   type="text" required
                   value={manualData.description}
                   onChange={e => setManualData({...manualData, description: e.target.value})}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-medium text-sm text-slate-800 dark:text-white"
+                  className={`w-full p-4 ${AI_INPUT_CLASSES.neutralInput} outline-none font-medium text-sm text-slate-800 dark:text-white`}
                   placeholder="Ex: Mercado Mensal"
                 />
               </div>
@@ -601,7 +608,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                     type="number" step="0.01" required
                     value={manualData.amount}
                     onChange={e => setManualData({...manualData, amount: e.target.value})}
-                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-semibold text-lg text-slate-800 dark:text-white"
+                    className={`w-full p-4 ${AI_INPUT_CLASSES.neutralInput} outline-none font-semibold text-lg text-slate-800 dark:text-white`}
                     placeholder="0,00"
                   />
                 </div>
@@ -610,7 +617,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                   <select 
                     value={manualData.type}
                     onChange={e => setManualData({...manualData, type: e.target.value as TransactionType})}
-                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-medium text-sm text-slate-800 dark:text-white border-none appearance-none"
+                    className={`w-full p-4 ${AI_INPUT_CLASSES.neutralInput} outline-none font-medium text-sm text-slate-800 dark:text-white border-none appearance-none`}
                   >
                     <option value={TransactionType.DESPESA}>Despesa (Saída)</option>
                     <option value={TransactionType.RECEITA}>Receita (Entrada)</option>
@@ -625,7 +632,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                      <button
                        key={cat} type="button"
                        onClick={() => setManualData({...manualData, category: cat})}
-                       className={`p-3 rounded-2xl border flex items-center gap-3 transition-all ${manualData.category === cat ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg' : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-400'}`}
+                       className={`p-3 rounded-2xl border flex items-center gap-3 transition-all ${manualData.category === cat ? 'bg-slate-900 text-white border-slate-900 shadow-lg dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100' : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-400'}`}
                      >
                        <div className="shrink-0">
                          {cat === Category.PESSOAL && <ShoppingBag size={14}/>}
@@ -649,7 +656,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                   <button
                     type="button"
                     onClick={() => setManualData({ ...manualData, recurring: !manualData.recurring })}
-                    className={`w-12 h-6 rounded-full transition-all duration-300 relative ${manualData.recurring ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-600'}`}
+                    className={`w-12 h-6 rounded-full transition-all duration-300 relative ${manualData.recurring ? 'bg-slate-900 dark:bg-slate-100' : 'bg-slate-200 dark:bg-slate-600'}`}
                   >
                     <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-300 ${manualData.recurring ? 'left-7' : 'left-1'}`} />
                   </button>
@@ -662,7 +669,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                       <select
                         value={manualData.recurrence_type}
                         onChange={e => setManualData({ ...manualData, recurrence_type: e.target.value as 'daily' | 'weekly' | 'monthly' })}
-                        className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-medium text-sm text-slate-800 dark:text-white border-none appearance-none"
+                        className={`w-full p-3 ${AI_INPUT_CLASSES.neutralInput} outline-none font-medium text-sm text-slate-800 dark:text-white border-none appearance-none`}
                       >
                         <option value="daily">Diário</option>
                         <option value="weekly">Semanal</option>
@@ -677,7 +684,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                         max={365}
                         value={manualData.recurrence_interval}
                         onChange={e => setManualData({ ...manualData, recurrence_interval: Math.max(1, parseInt(e.target.value) || 1) })}
-                        className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none font-semibold text-lg text-slate-800 dark:text-white text-center"
+                        className={`w-full p-3 ${AI_INPUT_CLASSES.neutralInput} outline-none font-semibold text-lg text-slate-800 dark:text-white text-center`}
                       />
                     </div>
                   </div>
@@ -687,7 +694,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
               <button 
                 type="submit"
                 disabled={isSuccess}
-                className={`w-full py-5 rounded-[1.8rem] font-semibold text-[10px] uppercase tracking-[0.08em] shadow-xl active:scale-95 transition-all mt-4 flex items-center justify-center gap-2 ${isSuccess ? 'bg-emerald-500 text-white scale-105' : 'bg-slate-900 dark:bg-indigo-600 text-white'}`}
+                className={`w-full py-5 rounded-[1.8rem] font-semibold text-[10px] uppercase tracking-[0.08em] shadow-xl active:scale-95 transition-all mt-4 flex items-center justify-center gap-2 ${isSuccess ? 'bg-emerald-500 text-white scale-105' : AI_INPUT_CLASSES.primaryAction}`}
               >
                 {isSuccess ? <Check size={16} className="animate-bounce" /> : 'Salvar Lançamento'}
               </button>

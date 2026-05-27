@@ -1,6 +1,7 @@
 ﻿import request from 'supertest';
 import type { Express } from 'express';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createTestAuthorizationHeader } from '../helpers/auth';
 
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
 import { resetCloudSyncStoreForTests } from '../../src/services/sync/cloudSyncStore';
@@ -74,12 +75,12 @@ describe('sync conflict policy', () => {
 
     const workspace = await request(app)
       .post('/api/tenant')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .send({ name: 'Conflict Workspace' });
 
     await request(app)
       .post('/api/sync/push')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', workspace.body.workspaceId)
       .send({
         entity: 'transactions',
@@ -89,7 +90,7 @@ describe('sync conflict policy', () => {
 
     const stalePush = await request(app)
       .post('/api/sync/push')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', workspace.body.workspaceId)
       .send({
         entity: 'transactions',
@@ -98,7 +99,7 @@ describe('sync conflict policy', () => {
 
     const pull = await request(app)
       .get('/api/sync/pull')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', workspace.body.workspaceId);
 
     expect(stalePush.status).toBe(200);

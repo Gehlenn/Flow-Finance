@@ -64,6 +64,7 @@ export const env = {
   JWT_SECRET,
   JWT_ACCESS_EXPIRES_IN: readEnv('JWT_ACCESS_EXPIRES_IN', '15m'),
   JWT_REFRESH_EXPIRES_IN: readEnv('JWT_REFRESH_EXPIRES_IN', '30d'),
+  AUTH_DEV_BYPASS_TOKEN: readEnv('AUTH_DEV_BYPASS_TOKEN'),
   GOOGLE_OAUTH_CLIENT_ID: readEnv('GOOGLE_OAUTH_CLIENT_ID'),
   GOOGLE_OAUTH_CLIENT_SECRET: readEnv('GOOGLE_OAUTH_CLIENT_SECRET'),
   GOOGLE_OAUTH_REDIRECT_URI: readEnv('GOOGLE_OAUTH_REDIRECT_URI', 'http://localhost:3001/api/auth/oauth/google/callback'),
@@ -119,6 +120,10 @@ if (!env.OPENAI_API_KEY && !env.GEMINI_API_KEY && env.NODE_ENV === 'production')
 
 if (env.OAUTH_MOCK_MODE && env.NODE_ENV === 'production') {
   throw new Error('OAUTH_MOCK_MODE must be disabled in production');
+}
+
+if (env.AUTH_DEV_BYPASS_TOKEN && env.NODE_ENV === 'production') {
+  throw new Error('AUTH_DEV_BYPASS_TOKEN must be unset in production');
 }
 
 export default env;

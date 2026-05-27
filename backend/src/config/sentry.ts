@@ -13,7 +13,13 @@ export const isSentryConfigured = (): boolean => Boolean(String(process.env.SENT
  */
 export const initSentry = () => {
   // Only initialize if DSN is provided (production/staging)
-  const dsn = process.env.SENTRY_DSN;
+  const dsn = String(process.env.SENTRY_DSN || '').trim();
+
+  if (!dsn && process.env.NODE_ENV === 'production') {
+    logger.warn({
+      fallback: 'backend-sentry-dsn-missing-production',
+    }, '[Sentry] SENTRY_DSN ausente em producao');
+  }
 
   if (!dsn) {
     return;
@@ -21,7 +27,7 @@ export const initSentry = () => {
 
   Sentry.init({
     dsn,
-    environment: process.env.NODE_ENV || 'development',
+    environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development',
     release: process.env.APP_VERSION || '0.6.1',
 
     // Performance monitoring
@@ -32,6 +38,8 @@ export const initSentry = () => {
 
     // Performance traces sample rate (0.0 to 1.0)
     tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    profileSessionSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    profileLifecycle: 'trace',
 
     // Error sample rate (0.0 to 1.0)
     sampleRate: 1.0,

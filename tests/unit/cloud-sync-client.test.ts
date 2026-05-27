@@ -35,6 +35,7 @@ describe('cloudSyncClient', () => {
       transactions: [],
       goals: [],
       reminders: [],
+      receivables: [],
     });
     expect(syncMocks.loadWorkspaceEntitiesMock).not.toHaveBeenCalled();
   });
@@ -55,6 +56,7 @@ describe('cloudSyncClient', () => {
       transactions: [],
       goals: [],
       reminders: [],
+      receivables: [],
     });
 
     await pullSyncEntities({ workspaceId: 'ws-1' });

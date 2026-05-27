@@ -1,42 +1,46 @@
-# Flow Finance - Roadmap em Português (PT-BR)
+# Flow Finance - Roadmap em Portugues (PT-BR)
 
 ## Status do documento
 
-- Última atualização: `2026-05-08` (revalidação do estado de deploy + alinhamento com a versão atual)
-- Versão de acompanhamento: `0.9.7`
-- Papel deste arquivo: visão estratégica e operacional consolidada (produto + operação)
+- Ultima atualizacao: `2026-05-26` (revalidacao do estado de deploy, registro do polimento visual concluido e fechamento do acabamento final)
+- Versao de acompanhamento: `0.9.7`
+- Papel deste arquivo: visao estrategica e operacional consolidada (produto + operacao)
 
 ## Resumo executivo
 
-O Flow Finance está em fase de endurecimento operacional para sustentar um produto SaaS financeiro confiável em web e mobile. O eixo principal não é ampliar superfície, e sim consolidar:
+O Flow Finance esta em fase de endurecimento operacional para sustentar um produto SaaS financeiro confiavel em web e mobile. O eixo principal nao e ampliar superficie, e sim consolidar:
 
-- núcleo financeiro simples
+- nucleo financeiro simples
 - camada consultiva de IA
-- sessão e workspace confiáveis
+- sessao e workspace confiaveis
 - billing real bem delimitado
-- observabilidade e readiness de produção
+- observabilidade e readiness de producao
 
 No checkpoint atual:
 
-- a suíte global foi recuperada
-- o billing Stripe sandbox foi provado localmente (evidência operacional)
-- o contrato mínimo de observabilidade existe em código
-- o backend alvo do Vercel está desalinhado: o domínio responde na raiz, mas `/health`, `/api/health` e `/api/version` voltaram `404` na revalidação de `2026-05-08`
+- a suite global foi recuperada
+- o billing Stripe sandbox foi provado localmente
+- o contrato minimo de observabilidade existe em codigo e os envs criticos de producao ja estao provisionados no Vercel
+- o backend oficial voltou a responder `/health`, `/api/health` e `/api/version` na revalidacao de `2026-05-25`
+- o backend oficial foi redeployado e agora expoe `0.9.7` em `/api/version`
+- as telas legadas de Autopilot, Open Banking e Scanner sairam do bundle ativo para concentrar o produto no nucleo de caixa e no Consultor IA
+- o polimento visual principal das superfices ativas foi fechado sem alterar contratos funcionais
+- a ultima passada de acabamento confirmou a entrada do app em desktop e mobile, com acentos intencionais preservados apenas em acoes primarias e estados semanticos
 
 ## Estado atual por eixo
 
-### 1. Núcleo de produto
+### 1. Nucleo de produto
 
-Estado: `ativo e prioritário`
+Estado: `ativo e prioritario`
 
 Escopo que define o produto:
 
 - fluxo de caixa
-- transações
+- transacoes
 - receitas previstas
 - receitas realizadas
-- sinais acionáveis por IA
-- operação para empresas de serviço
+- sinais acionaveis por IA
+- operacao para empresas de servico
 
 ### 2. Web e mobile
 
@@ -44,84 +48,89 @@ Estado: `primeira classe`
 
 Diretriz permanente:
 
-- não otimizar web degradando mobile
-- não otimizar mobile degradando web
-- toda decisão de navegação, sessão e fluxo principal precisa preservar ambos
+- nao otimizar web degradando mobile
+- nao otimizar mobile degradando web
+- toda decisao de navegacao, sessao e fluxo principal precisa preservar ambos
 
 ### 3. Billing
 
 Estado: `backend validado localmente`
 
-Já comprovado:
+Ja comprovado:
 
-- criação de Checkout Session
-- execução de Checkout Stripe sandbox
+- criacao de Checkout Session
+- execucao de Checkout Stripe sandbox
 - webhook processado com `200`
 - upgrade de plano para `pro`
-- persistência de `billingCustomerId`
+- persistencia de `billingCustomerId`
 - abertura de portal do Stripe
 
-Ainda pendente para fechamento no ambiente-alvo:
+Pendencia operacional atual para o ambiente-alvo:
 
-- configuração consistente no Vercel
-- validação do contrato no deploy acessível
+- configuracao consistente no Vercel
+- validacao do contrato no deploy acessivel
 
 ### 4. Observabilidade
 
-Estado: `fechada em código, desalinhada no ambiente-alvo`
+Estado: `fechada em codigo e validada no contrato minimo em producao`
 
-Já implementado:
+Ja implementado:
 
-- bootstrap silencioso de Sentry sem DSN (não quebra runtime)
-- endpoints de saúde e versão com `requestId` e `routeScope`
-- verificação automatizável via `npm run health:vercel` (com `VERCEL_TARGET_URL`)
+- bootstrap silencioso de Sentry sem DSN
+- endpoints de saude e versao com `requestId` e `routeScope`
+- verificacao automatizavel via `npm run health:vercel`
 
-Ainda pendente:
+Pendencia operacional atual:
 
-- variáveis no destino: `VITE_SENTRY_DSN`, `SENTRY_DSN`, `VITE_APP_VERSION`, `APP_VERSION`
-- acesso liberado ao preview (sem Vercel Authentication bloqueando o verificador)
-- restaurar o contrato real do backend no domínio alvo para que `/health`, `/api/health` e `/api/version` voltem a responder
+- acesso liberado ao preview quando necessario
+- consolidar evidencia operacional final de observabilidade e readiness
 
-Revalidação atual:
+Revalidacao atual:
 
 - `https://flow-finance-frontend-nine.vercel.app/` responde `200`
-- `https://flow-finance-backend.vercel.app/` responde `200` na raiz, mas `404` em `/health`, `/api/health` e `/api/version`
+- `https://flow-finance-backend.vercel.app/` responde `404` na raiz (esperado para API-only)
+- `https://flow-finance-backend.vercel.app/health` responde `200`
+- `https://flow-finance-backend.vercel.app/api/health` responde `200`
+- `https://flow-finance-backend.vercel.app/api/version` responde `200` com `version = 0.9.7`
+- os envs criticos de frontend e backend ja aparecem provisionados no Vercel em producao
 
 ## Foco imediato
 
-### Prioridade 1 - Fechamento de ambiente Vercel
+### Prioridade 1 - Fechamento de evidencias Vercel
 
 Entregas:
 
-- preencher variáveis de ambiente de observabilidade e versão
-- liberar ou compartilhar preview protegido
-- executar `npm run health:vercel` apontando para um destino acessível
-- validar resposta real de:
-  - `/health`
-  - `/api/health`
-  - `/api/version`
+- manter `npm run health:vercel` como validacao apos cada novo deploy publicado
+- manter `GET /api/version` alinhado com a versao esperada do repo
+- preservar a trilha de evidencia operacional do ambiente alvo
 
 ### Prioridade 2 - Fechamento operacional do deploy
 
 Entregas:
 
-- confirmar resposta real do frontend e do backend no ambiente acessível
-- reconfirmar readiness mínima de billing e observabilidade no destino
-- atualizar evidências se houver diferença entre local e deploy
+- confirmar resposta real do frontend e do backend no ambiente acessivel
+- reconfirmar readiness minima de billing e observabilidade no destino
+- atualizar evidencias se houver diferenca entre local e deploy
 
-## Critérios para marcar o ciclo como aprovado
+### Prioridade 3 - Acabamento fino residual
 
-1. suíte global sem regressão - `aprovado`
-2. gates críticos aprovados novamente - `aprovado (cobertura crítica 99.72%)`
-3. deploy-alvo validado com endpoints de saúde acessíveis - `pendente (backend atual responde HTML na raiz e 404 em /health e /api/*)`
-4. observabilidade configurada no ambiente-alvo - `pendente (depende de variáveis, acesso ao destino e contrato do backend)`
-5. documentação principal e vault atualizados - `em andamento (PT-BR + links relativos no repo; espelho no vault canônico deve acompanhar)`
+Entregas:
 
-## Referências obrigatórias
+- revisar apenas detalhes cosmeticos restantes, sem mexer em estados semanticos ou fluxos
+- manter a estrutura funcional estavel enquanto a interface termina de convergir visualmente
+
+## Criterios para marcar o ciclo como aprovado
+
+1. suite global sem regressao - `aprovado`
+2. gates criticos aprovados novamente - `aprovado`
+3. deploy-alvo validado com endpoints de saude acessiveis - `aprovado no contrato minimo em 2026-05-25`
+4. observabilidade configurada no ambiente-alvo - `em fechamento operacional`
+5. documentacao principal e vault atualizados - `em andamento`
+
+## Referencias obrigatorias
 
 - [README.md](../README.md)
 - [CHANGELOG.md](./CHANGELOG.md)
 - [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md)
 - [VERCEL_CONFIG.md](./VERCEL_CONFIG.md)
 - [EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](./EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)
-

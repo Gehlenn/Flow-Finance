@@ -3,10 +3,10 @@ import { Goal, Transaction } from '../../../types';
 import {
   loadWorkspaceEntities,
   replaceWorkspaceEntityCollection,
-  type SyncEntityIdMap,
 } from '../firestoreWorkspaceStore';
+import type { SyncEntityIdMap } from '../firestoreWorkspaceTypes';
 
-export type SyncEntity = 'accounts' | 'transactions' | 'goals' | 'reminders';
+export type SyncEntity = 'accounts' | 'transactions' | 'goals' | 'reminders' | 'receivables';
 
 type SyncPayload = object;
 
@@ -42,8 +42,8 @@ function hasWorkspaceContext(workspaceId?: string): boolean {
   return Boolean(workspaceId?.trim());
 }
 
-function buildPullItems<TPayload extends SyncPayload>(items: Array<TPayload & { id: string }>): Array<SyncItem<TPayload>> {
-  return items.map((item) => {
+function buildPullItems<TPayload extends SyncPayload>(items?: Array<TPayload & { id: string }>): Array<SyncItem<TPayload>> {
+  return (items || []).map((item) => {
     const record = item as { updated_at?: string; created_at?: string; date?: string; id: string };
     return {
       id: String(item.id),
@@ -61,7 +61,7 @@ export async function pullSyncEntities<TPayload extends SyncPayload>(
     return {
       since: since || null,
       serverTime: new Date().toISOString(),
-      entities: { accounts: [], transactions: [], goals: [], reminders: [] },
+      entities: { accounts: [], transactions: [], goals: [], reminders: [], receivables: [] },
     };
   }
 
@@ -75,6 +75,7 @@ export async function pullSyncEntities<TPayload extends SyncPayload>(
       transactions: buildPullItems(entities.transactions as unknown as Array<TPayload & { id: string }>),
       goals: buildPullItems(entities.goals as unknown as Array<TPayload & { id: string }>),
       reminders: buildPullItems(entities.reminders as unknown as Array<TPayload & { id: string }>),
+      receivables: buildPullItems(entities.receivables as unknown as Array<TPayload & { id: string }>),
     },
   };
 }

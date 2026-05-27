@@ -12,6 +12,15 @@
 
 import { Transaction, TransactionType } from '../../types';
 import { makeId } from '../../utils/helpers';
+import {
+  avgDayOfMonth,
+  isRegularInterval,
+  matchesKeywords,
+  median,
+  nextExpectedDate,
+  parseLocalDate,
+} from './salaryDetectorHelpers';
+import { SALARY_KEYWORDS } from './salaryDetectorCatalog';
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -49,91 +58,6 @@ export interface SalaryDetectionResult {
   has_multiple_sources: boolean;
 }
 
-// ─── Salary keyword catalog ───────────────────────────────────────────────────
-
-const SALARY_KEYWORDS: Array<{ keywords: string[]; type: IncomeType; weight: number }> = [
-  // CLT / formal
-  { keywords: ['salário', 'salario', 'folha pagamento', 'folha de pagamento', 'holerite', 'remuneração', 'remuneracao', 'vencimento'], type: 'salary', weight: 1.0 },
-  // Pró-labore / autônomo
-  { keywords: ['pro labore', 'pró labore', 'pro-labore', 'pró-labore', 'honorários', 'honorarios', 'prolabore'], type: 'pro_labore', weight: 0.9 },
-  // Freelance / autônomo
-  { keywords: ['freelance', 'free lance', 'autônomo', 'autonomo', 'pagamento serviços', 'pagamento de serviços', 'prestação serviços'], type: 'freelance', weight: 0.85 },
-  // Pensão / aposentadoria
-  { keywords: ['aposentadoria', 'pensão', 'pensao', 'benefício inss', 'beneficio inss', 'inss', 'previdência', 'previdencia'], type: 'pension', weight: 0.95 },
-  // Aluguel recebido
-  { keywords: ['aluguel recebido', 'locação recebida', 'locacao recebida', 'aluguel', 'renda aluguel'], type: 'rent_income', weight: 0.8 },
-  // Investimentos
-  { keywords: ['rendimento', 'dividendo', 'jcp', 'juros sobre capital', 'renda fixa', 'cdb', 'lci', 'lca', 'tesouro', 'resgat'], type: 'investment', weight: 0.7 },
-  // Genérico
-  { keywords: ['pagamento recebido', 'pix recebido', 'transferência recebida', 'ted recebida', 'doc recebido', 'crédito em conta'], type: 'other_recurring', weight: 0.5 },
-];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-
-function normalize(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function matchesKeywords(tx: Transaction, keywords: string[]): boolean {
-  const text = normalize(`${tx.description ?? ''} ${tx.merchant ?? ''}`);
-  return keywords.some(kw => text.includes(normalize(kw)));
-}
-
-function median(values: number[]): number {
-  if (!values.length) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-
-function parseLocalDate(value: string): Date | null {
-  const dateOnly = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (dateOnly) {
-    const year = Number(dateOnly[1]);
-    const month = Number(dateOnly[2]) - 1;
-    const day = Number(dateOnly[3]);
-    const localDate = new Date(year, month, day);
-    return Number.isNaN(localDate.getTime()) ? null : localDate;
-  }
-
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function formatLocalDateOnly(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function avgDayOfMonth(dates: string[]): number | null {
-  if (dates.length < 2) return null;
-  const parsedDates = dates.map(parseLocalDate).filter((date): date is Date => Boolean(date));
-  if (parsedDates.length < 2) return null;
-  const days = parsedDates.map(d => d.getDate());
-  const avg = days.reduce((s, d) => s + d, 0) / days.length;
-  const variance = days.reduce((s, d) => s + Math.abs(d - avg), 0) / days.length;
-  // Only report a stable day if variance < 5 days
-  return variance < 5 ? Math.round(avg) : null;
-}
-
-function nextExpectedDate(lastDate: string, dayOfMonth: number | null): string | null {
-  const d = parseLocalDate(lastDate);
-  if (!d) return null;
-  const next = new Date(d);
-  next.setMonth(next.getMonth() + 1);
-  if (dayOfMonth) next.setDate(dayOfMonth);
-  return formatLocalDateOnly(next);
-}
-
 function detectIncomeType(txs: Transaction[]): { type: IncomeType; employer?: string; weight: number } {
   for (const { keywords, type, weight } of SALARY_KEYWORDS) {
     if (txs.some(tx => matchesKeywords(tx, keywords))) {
@@ -145,22 +69,6 @@ function detectIncomeType(txs: Transaction[]): { type: IncomeType; employer?: st
     }
   }
   return { type: 'other_recurring', weight: 0.5 };
-}
-
-function isRegularInterval(dates: string[], targetDays: number, toleranceDays: number): boolean {
-  if (dates.length < 2) return false;
-  const sorted = [...dates].sort();
-  const gaps: number[] = [];
-  for (let i = 1; i < sorted.length; i++) {
-    const currentDate = parseLocalDate(sorted[i]);
-    const previousDate = parseLocalDate(sorted[i - 1]);
-    if (!currentDate || !previousDate) continue;
-    const diff = (currentDate.getTime() - previousDate.getTime()) / 86400000;
-    gaps.push(diff);
-  }
-  if (gaps.length === 0) return false;
-  const avg = gaps.reduce((s, g) => s + g, 0) / gaps.length;
-  return Math.abs(avg - targetDays) <= toleranceDays;
 }
 
 // ─── PART 4 — detectSalary ────────────────────────────────────────────────────

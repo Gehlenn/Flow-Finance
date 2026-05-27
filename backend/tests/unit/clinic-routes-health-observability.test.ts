@@ -49,6 +49,7 @@ vi.mock('../../src/config/redis', () => ({
 
 describe('clinic routes health observability', () => {
   beforeEach(() => {
+    vi.resetModules();
     vi.clearAllMocks();
   });
 

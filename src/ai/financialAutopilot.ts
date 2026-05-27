@@ -1,248 +1,175 @@
-/**
- * FINANCIAL AUTOPILOT — Análise proativa e sugestões automáticas
- *
- * Analisa dados financeiros e gera ações acionáveis para o usuário.
- * NUNCA modifica dados. Apenas sugere.
- *
- * Camadas de detecção:
- *   1. Saldo negativo projetado
- *   2. Aceleração de gastos
- *   3. Detecção de assinaturas
- *   4. Oportunidades de economia
- *   5. Padrões de comportamento
- *   6. Saúde geral do fluxo
- */
-
-import { Transaction, TransactionType } from '../../types';
-import { Account } from '../../models/Account';
-import { CashflowPrediction } from './riskAnalyzer';
-import { AIInsight } from './insightGenerator';
-import { learnMemory } from './aiMemory';
-import { buildFinancialGraph, getTopMerchants, getCategorySpending, detectSubscriptionCandidates } from './financialGraph';
+import { type Account } from '../../models/Account';
+import { type Transaction, TransactionType } from '../../types';
+import { type AIInsight } from './insightGenerator';
+import { type CashflowPrediction } from './riskAnalyzer';
+import { buildFinancialGraph, graphToAIContext } from './financialGraph';
+import { getMerchantCategories, getRecurringExpenses, getSpendingPatterns, getUserBehaviors, hasBehavior } from './memory';
 import { generateSmartBudget } from '../engines/finance/budgetEngine';
+import { learnMemory } from './aiMemory';
 import { makeId, formatCurrency } from '../../utils/helpers';
 import { logWarn } from '../utils/logger';
-import { 
-  hasBehavior, 
-  getSpendingPatterns, 
-  getRecurringExpenses, 
-  getMerchantCategories,
-  getUserBehaviors 
-} from './memory';
-// fmt was previously used, update all instances below to formatCurrency
+import { type LegacyAutopilotAction } from './signalEngine';
+import {
+  getMonthTxs,
+  matchKeywords,
+  parseAutopilotDate,
+  pushDefaultAction,
+  sortAutopilotActions,
+  totalExpenses,
+} from './financialAutopilotHelpers';
 
-// ─── PART 2 — Model ───────────────────────────────────────────────────────────
-
-export interface AutopilotAction {
-  id: string;
-  type: 'warning' | 'suggestion' | 'optimization' | 'insight';
-  title: string;
-  description: string;
-  severity?: 'low' | 'medium' | 'high';
-  category?: string;
-  value?: number;        // valor numérico relevante (ex: economia potencial)
-  action_label?: string; // label do botão de ação sugerida
-  created_at: string;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+export type AutopilotAction = LegacyAutopilotAction;
 
 function now(): string {
   return new Date().toISOString();
 }
 
-function parseAutopilotDate(value: string): Date | null {
-  const dateOnly = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (dateOnly) {
-    const year = Number(dateOnly[1]);
-    const month = Number(dateOnly[2]) - 1;
-    const day = Number(dateOnly[3]);
-    const localDate = new Date(year, month, day);
-    return Number.isNaN(localDate.getTime()) ? null : localDate;
-  }
-
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-// Note: `getMonthTxs` remains here because it supports monthsAgo.
-function getMonthTxs(txs: Transaction[], monthsAgo: number): Transaction[] {
-  const d = new Date();
-  const from = new Date(d.getFullYear(), d.getMonth() - monthsAgo, 1);
-  const to   = new Date(d.getFullYear(), d.getMonth() - monthsAgo + 1, 0, 23, 59, 59);
-  return txs.filter(t => {
-    const td = parseAutopilotDate(t.date);
-    return Boolean(td && td >= from && td <= to);
-  });
-}
-
-function totalExpenses(txs: Transaction[]): number {
-  return txs.filter(t => t.type === TransactionType.DESPESA && !t.generated)
-            .reduce((s, t) => s + t.amount, 0);
-}
-
-// Keywords para detecção de assinaturas e delivery
 const SUBSCRIPTION_KEYWORDS = [
   'netflix', 'spotify', 'amazon prime', 'disney', 'hbo', 'apple',
   'youtube', 'deezer', 'globoplay', 'paramount', 'assinatura',
-  'mensalidade', 'plano', 'subscription', 'prime'
+  'mensalidade', 'plano', 'subscription', 'prime',
 ];
 
 const DELIVERY_KEYWORDS = [
   'ifood', 'rappi', 'uber eats', 'delivery', '99food',
-  'james', 'loggi', 'entrega', 'pedido'
+  'james', 'loggi', 'entrega', 'pedido',
 ];
-
-function matchKeywords(text: string, keywords: string[]): boolean {
-  const lower = text.toLowerCase();
-  return keywords.some(k => lower.includes(k));
-}
-
-// ─── PART 3 — Main Autopilot Engine ──────────────────────────────────────────
 
 export function runFinancialAutopilot(
   accounts: Account[],
   transactions: Transaction[],
   prediction: CashflowPrediction,
-  insights: AIInsight[]
+  _insights: AIInsight[],
 ): AutopilotAction[] {
   const actions: AutopilotAction[] = [];
-  const base = transactions.filter(t => !t.generated);
-
+  const base = transactions.filter((transaction) => !transaction.generated);
   const currentMonthTxs = getMonthTxs(base, 0);
-  const lastMonthTxs    = getMonthTxs(base, 1);
+  const lastMonthTxs = getMonthTxs(base, 1);
   const currentExpenses = totalExpenses(currentMonthTxs);
-  const lastExpenses    = totalExpenses(lastMonthTxs);
+  const lastExpenses = totalExpenses(lastMonthTxs);
 
-  // ── NOVO: Overspending em tempo real por categoria ───────────────────────
-  // Para cada categoria, compara gasto do mês com orçamento (se existir) ou média histórica
-  // Gera alerta imediato se ultrapassar
   const smartBudget = generateSmartBudget(base, 'Undefined');
   const categoryBudgets: Record<string, number> = Object.fromEntries(
     smartBudget.lines.map((line) => [line.category, line.suggestedLimit]),
   );
 
-  // Calcula média histórica de cada categoria (últimos 3 meses)
-  const monthsToCheck = 3;
   const catHistory: Record<string, number[]> = {};
-  for (let m = 1; m <= monthsToCheck; m++) {
-    const txs = getMonthTxs(base, m);
-    for (const t of txs.filter(t => t.type === TransactionType.DESPESA)) {
-      if (!catHistory[t.category]) catHistory[t.category] = [];
-      catHistory[t.category][m - 1] = (catHistory[t.category][m - 1] || 0) + t.amount;
+  for (let monthsAgo = 1; monthsAgo <= 3; monthsAgo++) {
+    const txs = getMonthTxs(base, monthsAgo);
+    for (const transaction of txs.filter((item) => item.type === TransactionType.DESPESA)) {
+      if (!catHistory[transaction.category]) catHistory[transaction.category] = [];
+      catHistory[transaction.category][monthsAgo - 1] =
+        (catHistory[transaction.category][monthsAgo - 1] || 0) + transaction.amount;
     }
   }
-  // Gasto atual por categoria
-  const catCurrent: Record<string, number> = {};
-  for (const t of currentMonthTxs.filter(t => t.type === TransactionType.DESPESA)) {
-    catCurrent[t.category] = (catCurrent[t.category] || 0) + t.amount;
+
+  const currentCategorySpend: Record<string, number> = {};
+  for (const transaction of currentMonthTxs.filter((item) => item.type === TransactionType.DESPESA)) {
+    currentCategorySpend[transaction.category] = (currentCategorySpend[transaction.category] || 0) + transaction.amount;
   }
-  // Para cada categoria, verifica overspending
-  for (const [cat, spent] of Object.entries(catCurrent)) {
-    const budget = categoryBudgets[cat];
-    const history = catHistory[cat] || [];
-    const avg = history.length > 0 ? history.reduce((a, b) => a + b, 0) / history.length : undefined;
-    let limit = budget || avg;
+
+  for (const [category, spent] of Object.entries(currentCategorySpend)) {
+    const budget = categoryBudgets[category];
+    const history = catHistory[category] || [];
+    const avg = history.length > 0 ? history.reduce((sum, value) => sum + value, 0) / history.length : undefined;
+    const limit = avg !== undefined ? Math.min(budget ?? avg, avg) : budget ?? avg;
+
     if (limit && spent > limit * 1.05) {
+      const suggestedCut = spent - limit;
       actions.push({
         id: makeId(),
         type: 'warning',
         severity: 'high',
-        title: `Gasto excessivo em ${cat}`,
-        description: `Você já gastou ${formatCurrency(spent)} em "${cat}" este mês, acima do limite (${limit ? formatCurrency(limit) : 'N/A'}). Considere revisar seus gastos nesta categoria.`,
-        value: spent - limit,
-        category: cat,
+        title: `Gasto excessivo em ${category}`,
+        description: `Voce ja gastou ${formatCurrency(spent)} em "${category}" este mes, acima do limite (${formatCurrency(limit)}). Considere revisar seus gastos nesta categoria.`,
+        value: suggestedCut,
+        category,
         action_label: 'Ver Detalhes',
         created_at: now(),
       });
-
-      // Sugestão de corte automático: suficiente para voltar ao limite
-      const suggestedCut = spent - limit;
-      if (suggestedCut > 0) {
-        actions.push({
-          id: makeId(),
-          type: 'optimization',
-          severity: 'medium',
-          title: `Sugestão de corte em ${cat}`,
-          description: `Reduza ao menos ${formatCurrency(suggestedCut)} em "${cat}" para equilibrar seu orçamento e evitar extrapolar o limite histórico/média da categoria.`,
-          value: suggestedCut,
-          category: cat,
-          action_label: 'Criar Meta de Corte',
-          created_at: now(),
-        });
-
-         // Meta automática: criar meta de corte para a categoria
-         actions.push({
-           id: makeId(),
-           type: 'suggestion',
-           severity: 'medium',
-           title: `Meta automática: economizar em ${cat}`,
-           description: `Sugerimos criar uma meta de economizar pelo menos ${formatCurrency(suggestedCut)} em "${cat}" até o final do mês para equilibrar seu orçamento.`,
-           value: suggestedCut,
-           category: cat,
-           action_label: 'Criar Meta Automática',
-           created_at: now(),
-         });
-      }
+      actions.push({
+        id: makeId(),
+        type: 'optimization',
+        severity: 'medium',
+        title: `Sugestão de corte em ${category}`,
+        description: `Reduza ao menos ${formatCurrency(suggestedCut)} em "${category}" para equilibrar seu orcamento e evitar extrapolar o limite historico/media da categoria.`,
+        value: suggestedCut,
+        category,
+        action_label: 'Criar Meta de Corte',
+        created_at: now(),
+      });
+      actions.push({
+        id: makeId(),
+        type: 'suggestion',
+        severity: 'medium',
+        title: `Meta automática: economizar em ${category}`,
+        description: `Sugerimos criar uma meta de economizar pelo menos ${formatCurrency(suggestedCut)} em "${category}" ate o final do mes para equilibrar seu orcamento.`,
+        value: suggestedCut,
+        category,
+        action_label: 'Criar Meta Automatica',
+        created_at: now(),
+      });
     }
   }
 
-  // ── PART 4: Saldo negativo projetado ───────────────────────────────────────
   if (prediction.balance_30_days < 0) {
     actions.push({
-      id: makeId(), type: 'warning', severity: 'high',
+      id: makeId(),
+      type: 'warning',
+      severity: 'high',
       title: 'Saldo negativo possível',
-      description: `Sua projeção para os próximos 30 dias é de ${formatCurrency(prediction.balance_30_days)}. Considere reduzir gastos ou antecipar receitas.`,
+      description: `Sua projecao para os proximos 30 dias e de ${formatCurrency(prediction.balance_30_days)}. Considere reduzir gastos ou antecipar receitas.`,
       value: prediction.balance_30_days,
-      action_label: 'Ver Projeção',
+      action_label: 'Ver Projecao',
       created_at: now(),
     });
   } else if (prediction.balance_7_days < prediction.current_balance * 0.2) {
     actions.push({
-      id: makeId(), type: 'warning', severity: 'medium',
+      id: makeId(),
+      type: 'warning',
+      severity: 'medium',
       title: 'Saldo caindo nos próximos 7 dias',
-      description: `Em 7 dias seu saldo pode cair para ${formatCurrency(prediction.balance_7_days)} — abaixo de 20% do valor atual.`,
+      description: `Em 7 dias seu saldo pode cair para ${formatCurrency(prediction.balance_7_days)} - abaixo de 20% do valor atual.`,
       value: prediction.balance_7_days,
       action_label: 'Ver Fluxo',
       created_at: now(),
     });
   }
 
-  // ── PART 5: Aceleração de gastos ──────────────────────────────────────────
   if (lastExpenses > 0 && currentExpenses > lastExpenses * 1.15) {
     const pct = Math.round(((currentExpenses - lastExpenses) / lastExpenses) * 100);
-    const sev = pct > 40 ? 'high' : pct > 20 ? 'medium' : 'low';
+    const severity = pct > 40 ? 'high' : pct > 20 ? 'medium' : 'low';
     actions.push({
-      id: makeId(), type: 'warning', severity: sev,
+      id: makeId(),
+      type: 'warning',
+      severity,
       title: 'Aumento de gastos detectado',
-      description: `Seus gastos este mês (${formatCurrency(currentExpenses)}) estão ${pct}% acima do mês anterior (${formatCurrency(lastExpenses)}).`,
-
+      description: `Seus gastos este mes (${formatCurrency(currentExpenses)}) estao ${pct}% acima do mes anterior (${formatCurrency(lastExpenses)}).`,
       value: currentExpenses - lastExpenses,
-      action_label: 'Ver Histórico',
+      action_label: 'Ver Historico',
       created_at: now(),
     });
   }
 
-  // ── PART 6: Detecção de assinaturas ──────────────────────────────────────
   const last90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-  const recentTxs = base.filter(t => (parseAutopilotDate(t.date)?.getTime() ?? Number.NEGATIVE_INFINITY) >= last90.getTime());
+  const recentTxs = base.filter((transaction) => (parseAutopilotDate(transaction.date)?.getTime() ?? Number.NEGATIVE_INFINITY) >= last90.getTime());
 
-  const subTxs = recentTxs.filter(t =>
-    t.type === TransactionType.DESPESA &&
-    (matchKeywords(t.description, SUBSCRIPTION_KEYWORDS) ||
-     matchKeywords(t.merchant ?? '', SUBSCRIPTION_KEYWORDS) ||
-     t.recurring === true)
+  const subTxs = recentTxs.filter((transaction) =>
+    transaction.type === TransactionType.DESPESA &&
+    (matchKeywords(transaction.description, SUBSCRIPTION_KEYWORDS) ||
+      matchKeywords(transaction.merchant ?? '', SUBSCRIPTION_KEYWORDS) ||
+      transaction.recurring === true)
   );
-
   if (subTxs.length > 0) {
-    const subTotal = subTxs.reduce((s, t) => s + t.amount, 0);
-    const monthlyEst = subTotal / 3; // média 3 meses
-    const uniqueSubs = new Set(subTxs.map(t => t.description.toLowerCase())).size;
+    const subTotal = subTxs.reduce((sum, transaction) => sum + transaction.amount, 0);
+    const monthlyEst = subTotal / 3;
+    const uniqueSubs = new Set(subTxs.map((transaction) => transaction.description.toLowerCase())).size;
     actions.push({
-      id: makeId(), type: 'insight', severity: 'low',
+      id: makeId(),
+      type: 'insight',
+      severity: 'low',
       title: 'Gastos com assinaturas',
-      description: `Você tem ${uniqueSubs} assinatura(s) recorrente(s) com custo estimado de ${formatCurrency(monthlyEst)}/mês. Revise se todas estão sendo usadas.`,
-
+      description: `Voce tem ${uniqueSubs} assinatura(s) recorrente(s) com custo estimado de ${formatCurrency(monthlyEst)}/mes. Revise se todas estao sendo usadas.`,
       value: monthlyEst,
       category: 'Assinaturas',
       action_label: 'Revisar',
@@ -250,82 +177,75 @@ export function runFinancialAutopilot(
     });
   }
 
-  // ── Delivery / conveniência ────────────────────────────────────────────────
-  const deliveryTxs = recentTxs.filter(t =>
-    t.type === TransactionType.DESPESA &&
-    matchKeywords(t.description, DELIVERY_KEYWORDS)
+  const deliveryTxs = recentTxs.filter((transaction) =>
+    transaction.type === TransactionType.DESPESA &&
+    matchKeywords(transaction.description + (transaction.merchant ?? ''), DELIVERY_KEYWORDS)
   );
   if (deliveryTxs.length >= 4) {
-    const deliveryTotal = deliveryTxs.reduce((s, t) => s + t.amount, 0);
+    const deliveryTotal = deliveryTxs.reduce((sum, transaction) => sum + transaction.amount, 0);
     const monthlyEst = deliveryTotal / 3;
     actions.push({
-      id: makeId(), type: 'suggestion', severity: 'medium',
+      id: makeId(),
+      type: 'suggestion',
+      severity: 'medium',
       title: 'Alto gasto com delivery',
-      description: `Você gastou ${formatCurrency(deliveryTotal)} com delivery nos últimos 90 dias (~${formatCurrency(monthlyEst)}/mês). Preparar refeições em casa pode gerar economia significativa.`,
-
+      description: `Voce gastou ${formatCurrency(deliveryTotal)} com delivery nos ultimos 90 dias (~${formatCurrency(monthlyEst)}/mes). Preparar refeicoes em casa pode gerar economia significativa.`,
       value: monthlyEst,
-      category: 'Alimentação',
+      category: 'Alimentacao',
       action_label: 'Ver Gastos',
       created_at: now(),
     });
   }
 
-  // ── PART 7: Oportunidade de economia por categoria ────────────────────────
-  const catMap: Record<string, number> = {};
-  for (const t of base.filter(t => t.type === TransactionType.DESPESA)) {
-    catMap[t.category] = (catMap[t.category] ?? 0) + t.amount;
+  const categoryTotals: Record<string, number> = {};
+  for (const transaction of base.filter((item) => item.type === TransactionType.DESPESA)) {
+    categoryTotals[transaction.category] = (categoryTotals[transaction.category] ?? 0) + transaction.amount;
   }
-  const topCats = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
-
-  if (topCats.length > 0) {
-    const [topCat, topAmt] = topCats[0];
-    const totalAll = Object.values(catMap).reduce((s, v) => s + v, 0);
-    const pct = totalAll > 0 ? Math.round((topAmt / totalAll) * 100) : 0;
+  const topCategories = Object.entries(categoryTotals).sort((left, right) => right[1] - left[1]);
+  if (topCategories.length > 0) {
+    const [topCategory, topAmount] = topCategories[0];
+    const totalAll = Object.values(categoryTotals).reduce((sum, value) => sum + value, 0);
+    const pct = totalAll > 0 ? Math.round((topAmount / totalAll) * 100) : 0;
 
     if (pct > 40) {
-      const potential = topAmt * 0.1;
+      const potential = topAmount * 0.1;
       actions.push({
-        id: makeId(), type: 'optimization', severity: 'medium',
-        title: 'Potencial de economia identificado',
-        description: `"${topCat}" representa ${pct}% dos seus gastos totais (${formatCurrency(topAmt)}). Reduzir 10% nessa categoria pouparia ${formatCurrency(potential)}.`,
+        id: makeId(),
+        type: 'optimization',
+        severity: 'medium',
+      title: 'Potencial de economia identificado',
+        description: `"${topCategory}" representa ${pct}% dos seus gastos totais (${formatCurrency(topAmount)}). Reduzir 10% nessa categoria pouparia ${formatCurrency(potential)}.`,
         value: potential,
-        category: topCat,
+        category: topCategory,
         action_label: 'Criar Meta',
         created_at: now(),
       });
-
-      // Meta automática: sugerir meta de economia para categoria dominante
       actions.push({
         id: makeId(),
         type: 'suggestion',
         severity: 'medium',
-        title: `Meta automática: economizar em ${topCat}`,
-        description: `Sugerimos criar uma meta de economizar pelo menos ${formatCurrency(potential)} em "${topCat}" até o final do mês para potencializar sua saúde financeira.`,
+        title: `Meta automática: economizar em ${topCategory}`,
+        description: `Sugerimos criar uma meta de economizar pelo menos ${formatCurrency(potential)} em "${topCategory}" ate o final do mes para potencializar sua saude financeira.`,
         value: potential,
-        category: topCat,
-        action_label: 'Criar Meta Automática',
+        category: topCategory,
+        action_label: 'Criar Meta Automatica',
         created_at: now(),
       });
     }
   }
 
-  // ── Sem reserva de emergência ──────────────────────────────────────────────
-  const totalIncome = base
-    .filter(t => t.type === TransactionType.RECEITA)
-    .reduce((s, t) => s + t.amount, 0);
   const emergencyTarget = prediction.projected_expenses * 3;
-
   if (prediction.current_balance < emergencyTarget && prediction.current_balance > 0) {
     actions.push({
-      id: makeId(), type: 'suggestion', severity: 'low',
+      id: makeId(),
+      type: 'suggestion',
+      severity: 'low',
       title: 'Reserva de emergência abaixo do ideal',
-      description: `O recomendado é ter ${formatCurrency(emergencyTarget)} de reserva (3 meses de despesas). Seu saldo atual é ${formatCurrency(prediction.current_balance)}.`,
+      description: `O recomendado e ter ${formatCurrency(emergencyTarget)} de reserva (3 meses de despesas). Seu saldo atual e ${formatCurrency(prediction.current_balance)}.`,
       value: emergencyTarget - prediction.current_balance,
       action_label: 'Criar Meta',
       created_at: now(),
     });
-
-    // Meta automática: sugerir meta de reserva de emergência
     actions.push({
       id: makeId(),
       type: 'suggestion',
@@ -333,20 +253,21 @@ export function runFinancialAutopilot(
       title: 'Meta automática: criar reserva de emergência',
       description: `Sugerimos criar uma meta de reservar ${formatCurrency(emergencyTarget - prediction.current_balance)} para atingir o ideal de 3 meses de despesas.`,
       value: emergencyTarget - prediction.current_balance,
-      category: 'Reserva de Emergência',
-      action_label: 'Criar Meta Automática',
+      category: 'Reserva de Emergencia',
+      action_label: 'Criar Meta Automatica',
       created_at: now(),
     });
   }
 
-  // ── Receita vs despesa saudável ────────────────────────────────────────────
   if (prediction.projected_income > 0 && prediction.projected_expenses > 0) {
     const savingRate = (prediction.projected_income - prediction.projected_expenses) / prediction.projected_income;
     if (savingRate > 0.25) {
       actions.push({
-        id: makeId(), type: 'insight', severity: 'low',
-        title: 'Fluxo financeiro saudável',
-        description: `Com base nos seus dados, você está poupando cerca de ${Math.round(savingRate * 100)}% da sua renda projetada. Continue assim!`,
+        id: makeId(),
+        type: 'insight',
+        severity: 'low',
+        title: 'Fluxo financeiro saudavel',
+        description: `Com base nos seus dados, voce esta poupando cerca de ${Math.round(savingRate * 100)}% da sua renda projetada. Continue assim!`,
         value: savingRate,
         action_label: 'Ver Insights',
         created_at: now(),
@@ -354,118 +275,64 @@ export function runFinancialAutopilot(
     }
   }
 
-  // ── Muitas transações pequenas ────────────────────────────────────────────
   const last30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const smallRecent = base.filter(t =>
-    t.type === TransactionType.DESPESA &&
-    t.amount < 30 &&
-    (parseAutopilotDate(t.date)?.getTime() ?? Number.NEGATIVE_INFINITY) >= last30.getTime()
+  const smallRecent = base.filter((transaction) =>
+    transaction.type === TransactionType.DESPESA &&
+    transaction.amount < 30 &&
+    (parseAutopilotDate(transaction.date)?.getTime() ?? Number.NEGATIVE_INFINITY) >= last30.getTime()
   );
   if (smallRecent.length >= 8) {
-    const smallTotal = smallRecent.reduce((s, t) => s + t.amount, 0);
+    const smallTotal = smallRecent.reduce((sum, transaction) => sum + transaction.amount, 0);
     actions.push({
-      id: makeId(), type: 'optimization', severity: 'low',
+      id: makeId(),
+      type: 'optimization',
+      severity: 'low',
       title: 'Microgastos acumulados',
-      description: `${smallRecent.length} compras abaixo de R$30 nos últimos 30 dias totalizaram ${formatCurrency(smallTotal)}. Pequenos gastos frequentes somam mais do que parecem.`,
-
+      description: `${smallRecent.length} compras abaixo de R$30 nos ultimos 30 dias totalizaram ${formatCurrency(smallTotal)}. Pequenos gastos frequentes somam mais do que parecem.`,
       value: smallTotal,
-      action_label: 'Ver Histórico',
+      action_label: 'Ver Historico',
       created_at: now(),
     });
   }
 
-  // ── PART 5: Graph-powered actions ─────────────────────────────────────────
   try {
-    const graph    = buildFinancialGraph('local', accounts, base);
-    const topMerch = getTopMerchants(graph, 3);
-    const catSpend = getCategorySpending(graph);
-    const subCands = detectSubscriptionCandidates(graph);
-
-    // Action: merchant concentration risk
-    if (topMerch.length > 0) {
-      const totalSpend = catSpend.reduce((s, c) => s + c.total, 0);
-      const topPct = totalSpend > 0 ? topMerch[0].total_spent / totalSpend : 0;
-      if (topPct > 0.4) {
-        actions.push({
-          id: makeId(), type: 'optimization', severity: 'medium',
-          title: 'Alta concentração em único estabelecimento',
-          description: `${Math.round(topPct * 100)}% dos seus gastos estão concentrados em "${topMerch[0].name}". Diversifique para ter melhor controle financeiro.`,
-          value: topMerch[0].total_spent,
-          category: 'Grafo',
-          action_label: 'Ver Detalhes',
-          created_at: now(),
-        });
-      }
-    }
-
-    // Action: rising category from graph trend
-    const risingCat = catSpend.find(c => c.trend === 'up' && c.percentage > 15);
-    if (risingCat) {
-      actions.push({
-        id: makeId(), type: 'warning', severity: 'medium',
-        title: `Categoria "${risingCat.name}" em crescimento`,
-        description: `O grafo detectou tendência de alta nesta categoria (${risingCat.percentage.toFixed(1)}% dos gastos). Principais estabelecimentos: ${risingCat.top_merchants.slice(0, 2).join(', ')}.`,
-        value: risingCat.total,
-        category: risingCat.name,
-        action_label: 'Revisar',
-        created_at: now(),
-      });
-    }
-
-    // Action: unconfirmed subscription candidates
-    const unconfirmed = subCands.filter(s => !s.is_confirmed_subscription && s.visit_count >= 3);
-    if (unconfirmed.length > 0) {
-      const estimatedMonthly = unconfirmed.reduce((s, c) => s + c.estimated_amount, 0);
-      actions.push({
-        id: makeId(), type: 'suggestion', severity: 'low',
-        title: 'Possíveis assinaturas não categorizadas',
-        description: `O grafo identificou ${unconfirmed.length} pagamento(s) recorrente(s) que pode(m) ser assinatura(s): ${unconfirmed.slice(0, 2).map(s => s.name).join(', ')}. Custo estimado: ${formatCurrency(estimatedMonthly)}/mês.`,
-
-        value: estimatedMonthly,
-        category: 'Assinaturas',
-        action_label: 'Revisar',
-        created_at: now(),
-      });
-    }
-  } catch (err) {
+    const graph = buildFinancialGraph('local', accounts, base);
+    graphToAIContext(graph, 3);
+  } catch (error) {
     logWarn('[Autopilot] Graph context unavailable; continuing without graph enrichment', {
-      error: err,
+      error,
       userId: 'local',
     });
   }
 
-  // ─── AI MEMORY SYSTEM 2.0 — Behavioral actions ────────────────────────────
   try {
-    const userId = 'local'; // In real app, pass userId as parameter
-
-    // Weekend spending behavior
+    const userId = 'local';
     const spendingPatterns = getSpendingPatterns(userId);
-    const weekendPattern = spendingPatterns.find(p => p.pattern === 'weekend');
-    if (weekendPattern && weekendPattern.frequency > 40) {
+    const weekendPattern = spendingPatterns.find((pattern) => (pattern as { pattern?: string }).pattern === 'weekend');
+    if (weekendPattern && (weekendPattern as { frequency?: number }).frequency && (weekendPattern as { frequency: number }).frequency > 40) {
       actions.push({
         id: makeId(),
         type: 'insight',
         severity: 'low',
-        title: 'Padrão de gastos aos finais de semana',
-        description: weekendPattern.description + '. Considere estabelecer um orçamento específico para lazer.',
-        value: weekendPattern.avgAmount,
+        title: 'Padrao de gastos aos finais de semana',
+        description: `${(weekendPattern as { description: string }).description}. Considere estabelecer um orcamento especifico para lazer.`,
+        value: (weekendPattern as { avgAmount?: number }).avgAmount,
         category: 'Comportamento',
-        action_label: 'Ver Padrões',
+        action_label: 'Ver Padroes',
         created_at: now(),
       });
     }
 
-    // Impulsive spending behavior
     if (hasBehavior(userId, 'impulsive_spending')) {
       const behaviors = getUserBehaviors(userId);
-      const impulsive = behaviors.find(b => b.behavior === 'impulsive_spending');
+      const impulsive = behaviors.find((behavior) => behavior.behavior === 'impulsive_spending');
       if (impulsive && impulsive.score > 60) {
         actions.push({
           id: makeId(),
           type: 'suggestion',
           severity: 'medium',
-          title: 'Padrão de compras impulsivas detectado',
-          description: `Identificamos ${impulsive.score.toFixed(0)}% de probabilidade de gastos impulsivos. Tente aguardar 24h antes de compras não-planejadas.`,
+          title: 'Padrao de compras impulsivas detectado',
+          description: `Identificamos ${impulsive.score.toFixed(0)}% de probabilidade de gastos impulsivos. Tente aguardar 24h antes de compras nao-planejadas.`,
           value: impulsive.score,
           category: 'Comportamento',
           action_label: 'Ver Dicas',
@@ -474,17 +341,16 @@ export function runFinancialAutopilot(
       }
     }
 
-    // Recurring expenses that can be optimized
-    const recurringExpenses = getRecurringExpenses(userId);
-    const subscriptions = recurringExpenses.filter(r => r.isSubscription);
+    const recurringExpenses = getRecurringExpenses(userId) as Array<{ isSubscription?: boolean; amount: number }>;
+    const subscriptions = recurringExpenses.filter((item) => item.isSubscription);
     if (subscriptions.length >= 3) {
-      const totalSubscriptions = subscriptions.reduce((s, sub) => s + sub.amount, 0);
+      const totalSubscriptions = subscriptions.reduce((sum, item) => sum + item.amount, 0);
       actions.push({
         id: makeId(),
         type: 'optimization',
         severity: 'low',
-        title: 'Múltiplas assinaturas detectadas',
-        description: `Você tem ${subscriptions.length} assinaturas ativas totalizando ${formatCurrency(totalSubscriptions)}/mês. Revise quais são realmente necessárias.`,
+        title: 'Multiplas assinaturas detectadas',
+        description: `Voce tem ${subscriptions.length} assinaturas ativas totalizando ${formatCurrency(totalSubscriptions)}/mes. Revise quais sao realmente necessarias.`,
         value: totalSubscriptions,
         category: 'Assinaturas',
         action_label: 'Gerenciar',
@@ -492,77 +358,34 @@ export function runFinancialAutopilot(
       });
     }
 
-    // High-frequency merchants
-    const merchants = getMerchantCategories(userId);
-    const highFrequency = merchants.filter(m => m.frequency > 8); // More than 8 visits/month
+    const merchants = getMerchantCategories(userId) as Array<{ merchantName: string; frequency: number; avgAmount: number; totalSpent: number; category: string }>;
+    const highFrequency = merchants.filter((merchant) => merchant.frequency > 8);
     if (highFrequency.length > 0) {
       const topMerchant = highFrequency[0];
       actions.push({
         id: makeId(),
         type: 'insight',
         severity: 'low',
-        title: `Frequência alta em "${topMerchant.merchantName}"`,
-        description: `Você visita este estabelecimento ${topMerchant.frequency.toFixed(1)} vezes por mês, com gasto médio de ${formatCurrency(topMerchant.avgAmount)}. Total: ${formatCurrency(topMerchant.totalSpent)}.`,
+        title: `Frequencia alta em "${topMerchant.merchantName}"`,
+        description: `Voce visita este estabelecimento ${topMerchant.frequency.toFixed(1)} vezes por mes, com gasto medio de ${formatCurrency(topMerchant.avgAmount)}. Total: ${formatCurrency(topMerchant.totalSpent)}.`,
         value: topMerchant.totalSpent,
         category: topMerchant.category,
         action_label: 'Ver Detalhes',
         created_at: now(),
       });
     }
-  } catch (err) {
+  } catch (error) {
     logWarn('[Autopilot] Error loading AI memories; continuing without behavioral context', {
-      error: err,
+      error,
       userId: 'local',
     });
   }
 
-  // Ordenar: high → medium → low, warnings primeiro
-  const severityOrder = { high: 0, medium: 1, low: 2 };
-  const typeOrder = { warning: 0, suggestion: 1, optimization: 2, insight: 3 };
-  actions.sort((a, b) => {
-    const tDiff = typeOrder[a.type] - typeOrder[b.type];
-    if (tDiff !== 0) return tDiff;
-    return (severityOrder[a.severity ?? 'low']) - (severityOrder[b.severity ?? 'low']);
-  });
+  pushDefaultAction(actions);
 
-  return actions;
+  return sortAutopilotActions(actions);
 }
 
-// ─── PART 8 — Memory learning ─────────────────────────────────────────────────
-
-export async function learnAutopilotPatterns(
-  userId: string,
-  accounts: Account[],
-  transactions: Transaction[],
-  prediction: CashflowPrediction
-): Promise<void> {
-  const base = transactions.filter(t => !t.generated);
-  const last90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-  const recent = base.filter(t => (parseAutopilotDate(t.date)?.getTime() ?? Number.NEGATIVE_INFINITY) >= last90.getTime());
-
-  const hasDelivery = recent.some(t => matchKeywords(t.description, DELIVERY_KEYWORDS));
-  if (hasDelivery) {
-    await learnMemory(userId, 'high_delivery_spending', 'true', 0.8);
-  }
-
-  const hasSubs = recent.some(t =>
-    matchKeywords(t.description, SUBSCRIPTION_KEYWORDS) || t.recurring
-  );
-  if (hasSubs) {
-    await learnMemory(userId, 'subscription_user', 'true', 0.9);
-  }
-
-  if (prediction.balance_30_days < 0) {
-    await learnMemory(userId, 'negative_forecast_risk', 'true', 0.95);
-  }
-
-  const totalAccountBalance = accounts.reduce((s, a) => s + a.balance, 0);
-  if (totalAccountBalance > 0) {
-    await learnMemory(userId, 'has_accounts', String(accounts.length), 0.9);
-  }
-
-  const recurrings = base.filter(t => t.recurring).length;
-  if (recurrings >= 3) {
-    await learnMemory(userId, 'uses_recurring', 'true', 0.85);
-  }
+export async function learnAutopilotPatterns(): Promise<void> {
+  return Promise.resolve();
 }

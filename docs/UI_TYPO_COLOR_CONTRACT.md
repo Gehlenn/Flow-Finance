@@ -22,6 +22,7 @@ Regras:
 - Titulos de secao: `text-lg` ou `text-xl`.
 - Labels auxiliares e badges: `text-xs`.
 - Conteudo de leitura principal: `text-sm` ou `text-base`.
+- Texto operacional nao deve usar tamanhos menores que `text-xs` (12px).
 
 Pesos permitidos:
 - `font-medium`
@@ -49,6 +50,12 @@ Regras:
 - Header/hero padronizado com classes Tailwind sem hex inline.
 - Estados (sucesso, alerta, erro) devem usar semantica consistente em todas as telas.
 - Evitar combinacoes de gradientes ad-hoc fora do padrao do app.
+- Graficos devem consumir tokens/consts centrais em vez de hex repetido por componente.
+
+## 2.1) Contraste minimo
+
+- Texto auxiliar deve manter contraste AA contra o fundo da superficie.
+- `text-slate-400` em blocos operacionais so fica permitido quando o fundo garantir leitura; preferir `text-slate-500` ou mais forte em light mode.
 
 ## 3) Estados UX
 
@@ -61,6 +68,8 @@ Todo fluxo deve cobrir, com consistencia:
 Regras:
 - Mensagem curta e objetiva.
 - Sempre incluir proximo passo quando houver erro.
+- Dialogos e modais devem expor `role="dialog"` e `aria-modal="true"`.
+- Controles segmentados/tabulados devem expor `role="tablist"`, `role="tab"` e `aria-selected`.
 
 ## 4) Navegacao e semantica de produto
 

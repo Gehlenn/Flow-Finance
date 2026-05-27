@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Request, Response } from 'express';
 
 vi.mock('../../src/config/logger', () => ({
@@ -46,6 +46,10 @@ vi.mock('../../src/config/redis', () => ({
 }));
 
 describe('clinic controller', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
   it('rejects invalid clinic payloads before reaching the service layer', async () => {
     const { receiveClinicFinancialEvent } = await import('../../src/controllers/clinicController');
 

@@ -10,7 +10,6 @@ describe('main navigation focus', () => {
       'history',
       'flow',
       'cfo',
-      'settings',
     ]);
 
     expect(items.some((item) => item.tab === 'openbanking')).toBe(false);

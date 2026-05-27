@@ -84,7 +84,7 @@ describe('assistant reminder states', () => {
     render(
       <Assistant
         reminders={[
-          makeReminder({ id: 'active-fin', title: 'Receber consulta', amount: 300 }),
+          makeReminder({ id: 'active-fin', title: 'Receber consulta', amount: 300, date: '2026-06-12T10:00:00.000Z' }),
           makeReminder({ id: 'overdue-op', title: 'Agendar retorno', date: '2020-01-01T10:00:00.000Z', amount: undefined }),
           makeReminder({ id: 'done-1', title: 'Boleto pago', completed: true }),
         ]}
@@ -104,8 +104,12 @@ describe('assistant reminder states', () => {
       />,
     );
 
-    expect(screen.getByText(/financeiro 1/i)).toBeTruthy();
-    expect(screen.getByText(/operacional 1/i)).toBeTruthy();
+    expect(screen.getByText(/lembretes operacionais/i)).toBeTruthy();
+    expect(screen.getByText(/ativos 1/i)).toBeTruthy();
+    expect(screen.getByText(/vencidos 1/i)).toBeTruthy();
+    expect(screen.getByText(/encerrados 1/i)).toBeTruthy();
+    expect(screen.getByText(/financeiros 1/i)).toBeTruthy();
+    expect(screen.getByText(/operacionais 2/i)).toBeTruthy();
     expect(screen.getByText(/agendar retorno/i)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: /concluidos e cancelados/i }));

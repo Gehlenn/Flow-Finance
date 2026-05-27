@@ -26,10 +26,10 @@ const ACCOUNT_ICONS: Record<AccountType, React.ReactNode> = {
 };
 
 const ACCOUNT_COLORS: Record<AccountType, string> = {
-  bank: 'from-blue-500 to-blue-700',
-  cash: 'from-emerald-500 to-emerald-700',
-  credit_card: 'from-violet-500 to-violet-700',
-  investment: 'from-amber-500 to-amber-600',
+  bank: 'bg-blue-600 dark:bg-blue-500',
+  cash: 'bg-emerald-600 dark:bg-emerald-500',
+  credit_card: 'bg-violet-600 dark:bg-violet-500',
+  investment: 'bg-amber-600 dark:bg-amber-500',
 };
 
 function buildBalanceErrorDiagnostic(): { title: string; message: string; suggestion: string } {
@@ -133,20 +133,20 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
 
   return (
     <div className="flex flex-col gap-4 animate-in fade-in duration-700 pb-24">
-      <div className="bg-gradient-to-r from-indigo-600 to-violet-500 p-6 rounded-[2rem] flex justify-between items-center shadow-lg shadow-indigo-500/20 shrink-0 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 blur-3xl -mr-16 -mt-16 pointer-events-none" />
-        <div className="relative z-10">
-          <h2 className="text-2xl font-semibold text-white tracking-tight leading-none">Caixa e contas</h2>
-          <p className="text-xs font-semibold text-white/70 uppercase tracking-[0.08em] mt-1.5">Carteiras, bancos e saldo consolidado</p>
-          <p className="text-xs font-semibold text-white/80 uppercase tracking-[0.08em] mt-2">
+      <div className="flex items-center justify-between gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm shrink-0 dark:border-slate-700 dark:bg-slate-800 relative overflow-hidden">
+        <div className="absolute inset-y-0 right-0 w-24 bg-slate-50/70 pointer-events-none dark:bg-slate-700/10" />
+        <div className="min-w-0 relative z-10">
+          <h2 className="text-2xl font-semibold tracking-tight leading-none text-slate-900 dark:text-white">Caixa e contas</h2>
+          <p className="mt-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Carteiras, bancos e saldo consolidado</p>
+          <p className="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
             Workspace: {activeWorkspaceName || 'Carregando workspace'}
           </p>
-          <p className="text-xs font-semibold text-white/70 uppercase tracking-[0.08em] mt-1">
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
             Tenant: {activeTenantName || 'Tenant ativo'} · Role: {activeWorkspaceRole || 'member'}
           </p>
         </div>
-        <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center text-white relative z-10">
-          <Landmark size={22} />
+        <div className="relative z-10 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          <Landmark size={20} />
         </div>
       </div>
 
@@ -161,7 +161,7 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
       <div className="flex flex-col gap-3">
         {accounts.map(account => (
           <div key={account.id} className="bg-white dark:bg-slate-800 rounded-[1.8rem] overflow-hidden border border-slate-100 dark:border-slate-700 shadow-sm flex items-stretch">
-            <div className={`bg-gradient-to-b ${ACCOUNT_COLORS[account.type]} w-14 flex items-center justify-center text-white shrink-0`}>
+            <div className={`w-14 flex items-center justify-center shrink-0 text-white ${ACCOUNT_COLORS[account.type]}`}>
               {ACCOUNT_ICONS[account.type]}
             </div>
             <div className="flex-1 px-5 py-4 flex items-center justify-between">
@@ -189,7 +189,7 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
 
       {!showForm && canEdit ? (
       <button type="button" onClick={openForm}
-          className="w-full py-4 rounded-[1.8rem] border-2 border-dashed border-indigo-200 dark:border-indigo-500/30 text-indigo-500 text-xs font-semibold uppercase tracking-[0.08em] flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
+          className="w-full py-4 rounded-[1.8rem] border-2 border-dashed border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold uppercase tracking-[0.08em] flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
         >
           <Plus size={16} /> Nova conta de caixa
         </button>
@@ -221,7 +221,7 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
                 <button
                   key={type} type="button"
                   onClick={() => setForm({ ...form, type })}
-                  className={`p-3 rounded-2xl border flex items-center gap-2 transition-all text-xs font-semibold uppercase tracking-tight ${form.type === type ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 dark:bg-slate-700 border-transparent text-slate-400'}`}
+                  className={`p-3 rounded-2xl border flex items-center gap-2 transition-all text-xs font-semibold uppercase tracking-tight ${form.type === type ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100' : 'bg-slate-50 dark:bg-slate-700 border-transparent text-slate-400'}`}
                 >
                   {ACCOUNT_ICONS[type]}
                   {ACCOUNT_TYPE_LABELS[type]}
@@ -260,7 +260,7 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
           <button
             type="submit"
             disabled={isSaving}
-            className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-semibold text-xs uppercase tracking-[0.08em] flex items-center justify-center gap-2 active:scale-95 transition-all"
+            className="w-full py-4 bg-slate-800 text-white rounded-2xl font-semibold text-xs uppercase tracking-[0.08em] flex items-center justify-center gap-2 active:scale-95 transition-all dark:bg-slate-100 dark:text-slate-900"
           >
             {isSaving ? <Loader2 size={16} className="animate-spin" /> : <><Check size={16} /> Salvar Conta</>}
           </button>

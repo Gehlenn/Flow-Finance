@@ -6,6 +6,16 @@ import type { InlineConfig } from 'vitest';
 import { resolveManualChunk } from './build/manualChunks';
 
 type VitestConfigExport = UserConfig & { test: NonNullable<InlineConfig['test']> };
+const HTML_MODULE_PRELOAD_ALLOWLIST = [
+  /^assets\/rolldown-runtime-/,
+  /^assets\/vendor-react-/,
+  /^assets\/vendor-react-dom-/,
+  /^assets\/vendor-firebase-/,
+  /^assets\/vendor-icons-/,
+  /^assets\/firebase-/,
+  /^assets\/api\.config-/,
+  /^assets\/types-/,
+];
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
@@ -20,6 +30,15 @@ export default defineConfig(({ mode }) => {
         outDir: 'dist',
         emptyOutDir: true,
         sourcemap: mode === 'development',
+        modulePreload: {
+          resolveDependencies: (_url, deps, context) => {
+            if (context.hostType !== 'html') {
+              return deps;
+            }
+
+            return deps.filter((dep) => HTML_MODULE_PRELOAD_ALLOWLIST.some((pattern) => pattern.test(dep)));
+          },
+        },
         // Chunking para melhor performance mobile
         rollupOptions: {
           output: {

@@ -154,7 +154,7 @@ const GoalCard: React.FC<{
 
           <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden mt-2">
             <div
-              className="h-full rounded-full transition-all duration-700 bg-gradient-to-r from-emerald-500 to-teal-500"
+              className="h-full rounded-full transition-all duration-700 bg-emerald-500"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -308,8 +308,8 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
     <div className="flex flex-col gap-4 pb-8">
       <div className="flex items-center justify-between pt-2">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
-            <Target size={20} className="text-white" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-emerald-600 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-emerald-300">
+            <Target size={20} />
           </div>
           <div>
             <h1 className="text-lg font-semibold text-slate-900 dark:text-white leading-none">{SECONDARY_FLOWS_COPY.goals.title}</h1>
@@ -327,7 +327,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
             setContributeDiagnostic(null);
           }}
           disabled={!canEditGoals}
-          className="flex items-center gap-1.5 bg-emerald-500 text-white px-4 py-2.5 rounded-2xl text-[10px] font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 active:scale-95 transition-all"
+          className="flex items-center gap-1.5 bg-slate-800 text-white px-4 py-2.5 rounded-2xl text-[10px] font-semibold shadow-sm hover:bg-slate-700 active:scale-95 transition-all dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
         >
           <Plus size={14} /> Nova meta
         </button>
@@ -335,7 +335,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
 
       {goals.length === 0 && !showForm && (
         <div className="flex flex-col items-center justify-center gap-4 py-14 bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700">
-          <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex items-center justify-center">
+          <div className="w-14 h-14 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-200 dark:border-slate-700">
             <Target size={24} className="text-emerald-500" />
           </div>
           <div className="text-center">
@@ -350,7 +350,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
               setContributeError(null);
               setContributeDiagnostic(null);
             }}
-            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white rounded-2xl text-sm font-semibold"
+            className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-2xl text-sm font-semibold shadow-sm dark:bg-slate-100 dark:text-slate-900"
           >
             <Plus size={14} /> Criar meta
           </button>
@@ -468,7 +468,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
             <button
               onClick={handleCreate}
               disabled={!formData.title || !formData.targetAmount}
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl py-3.5 font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
+              className="w-full bg-slate-800 text-white rounded-2xl py-3.5 font-semibold text-sm flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all dark:bg-slate-100 dark:text-slate-900"
             >
               <Check size={16} /> Criar Meta
             </button>
@@ -553,7 +553,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
             <button
               onClick={handleContribute}
               disabled={!contributeAmount || Number(contributeAmount) <= 0}
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl py-3.5 font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 disabled:opacity-50"
+              className="w-full bg-slate-800 text-white rounded-2xl py-3.5 font-semibold text-sm flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
             >
               <Check size={16} /> Confirmar Aporte
             </button>

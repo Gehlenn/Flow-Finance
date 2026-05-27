@@ -1,22 +1,22 @@
-/**
- * ADAPTIVE AI ENGINE — Inteligência Financeira Adaptativa
+﻿/**
+ * ADAPTIVE AI ENGINE â€” InteligÃªncia Financeira Adaptativa
  *
- * Aprende padrões do histórico do usuário para melhorar:
- *   - Predições de fluxo de caixa
- *   - Geração de insights personalizados
- *   - Categorização automática
+ * Aprende padrÃµes do histÃ³rico do usuÃ¡rio para melhorar:
+ *   - PrediÃ§Ãµes de fluxo de caixa
+ *   - GeraÃ§Ã£o de insights personalizados
+ *   - CategorizaÃ§Ã£o automÃ¡tica
  *   - Alertas contextualizados
  *
- * REGRA: Nunca modifica transações existentes. Apenas aprende e melhora previsões.
+ * REGRA: Nunca modifica transaÃ§Ãµes existentes. Apenas aprende e melhora previsÃµes.
  *
  * Fluxo:
- *   Transactions → detectFinancialPatterns
- *       ↓
- *   Patterns → learnMemory (AI Memory)
- *       ↓
- *   Memory → adjustCashflowWithPatterns (predição adaptativa)
- *       ↓
- *   Memory → generateAdaptiveInsights (insights personalizados)
+ *   Transactions â†’ detectFinancialPatterns
+ *       â†“
+ *   Patterns â†’ learnMemory (AI Memory)
+ *       â†“
+ *   Memory â†’ adjustCashflowWithPatterns (prediÃ§Ã£o adaptativa)
+ *       â†“
+ *   Memory â†’ generateAdaptiveInsights (insights personalizados)
  */
 
 import { Transaction, TransactionType } from '../../types';
@@ -25,8 +25,18 @@ import { CashflowPrediction } from './riskAnalyzer';
 import { AIInsight } from './insightGenerator';
 import { makeId, formatCurrency } from '../../utils/helpers';
 import { logWarn } from '../utils/logger';
+import { getDaysUntilSalaryDay, getRecentTxs, parseAdaptiveDate } from './adaptiveAIEngineHelpers';
+import {
+  detectCategoryPreferencePattern,
+  detectDeliveryPattern,
+  detectFrequentMerchantPatterns,
+  detectSalaryPattern,
+  detectWeekendSpendingPattern,
+} from './adaptiveAIEnginePatternHelpers';
 
-// ─── PART 2 — FinancialPattern model ─────────────────────────────────────────
+export { getDaysUntilSalaryDay } from './adaptiveAIEngineHelpers';
+
+// â”€â”€â”€ PART 2 â€” FinancialPattern model â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface FinancialPattern {
   id: string;
@@ -41,7 +51,7 @@ export interface FinancialPattern {
   updated_at: string;
 }
 
-// ─── Engine state (learning metrics) ─────────────────────────────────────────
+// â”€â”€â”€ Engine state (learning metrics) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface AdaptiveLearningState {
   patterns_detected: number;
@@ -52,9 +62,9 @@ export interface AdaptiveLearningState {
   top_patterns: FinancialPattern[];
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function parseAdaptiveDate(value: string): Date | null {
+function parseAdaptiveDateLegacy(value: string): Date | null {
   const dateOnly = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (dateOnly) {
     const year = Number(dateOnly[1]);
@@ -68,7 +78,7 @@ function parseAdaptiveDate(value: string): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-export function getDaysUntilSalaryDay(salaryDay: number, today = new Date()): number | null {
+export function getDaysUntilSalaryDayLegacy(salaryDay: number, today = new Date()): number | null {
   if (!Number.isInteger(salaryDay) || salaryDay < 1 || salaryDay > 31) {
     return null;
   }
@@ -85,7 +95,7 @@ export function getDaysUntilSalaryDay(salaryDay: number, today = new Date()): nu
   return null;
 }
 
-function getRecentTxs(txs: Transaction[], days: number): Transaction[] {
+function getRecentTxsLegacy(txs: Transaction[], days: number): Transaction[] {
   const cutoff = new Date(Date.now() - days * 86400000);
   return txs.filter(t => {
     const parsed = parseAdaptiveDate(t.date);
@@ -93,131 +103,24 @@ function getRecentTxs(txs: Transaction[], days: number): Transaction[] {
   });
 }
 
-// ─── PART 3 — Pattern Detection ──────────────────────────────────────────────
+// â”€â”€â”€ PART 3 â€” Pattern Detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function detectFinancialPatterns(transactions: Transaction[]): FinancialPattern[] {
-  const patterns: FinancialPattern[] = [];
-  const base = transactions.filter(t => !t.generated);
-  if (base.length < 3) return patterns;
-
-  const expenses = base.filter(t => t.type === TransactionType.DESPESA);
-
-  // ── 1. Weekend Spending ─────────────────────────────────────────────────────
-  const weekendExp = expenses.filter(t => {
-    const day = parseAdaptiveDate(t.date)?.getDay();
-    if (day === undefined) return false;
-    return day === 0 || day === 6;
-  });
-  const weekdayExp = expenses.filter(t => {
-    const day = parseAdaptiveDate(t.date)?.getDay();
-    if (day === undefined) return false;
-    return day >= 1 && day <= 5;
-  });
-
-  if (weekdayExp.length > 0 && weekendExp.length > 0) {
-    const avgWeekend = weekendExp.reduce((s, t) => s + t.amount, 0) / weekendExp.length;
-    const avgWeekday = weekdayExp.reduce((s, t) => s + t.amount, 0) / weekdayExp.length;
-    const ratio = avgWeekend / avgWeekday;
-
-    if (ratio > 1.3) {
-      patterns.push({
-        id: makeId(), type: 'weekend_spending',
-        value: ratio > 2 ? 'very_high' : 'high',
-        confidence: Math.min(0.95, 0.5 + weekendExp.length * 0.03),
-        updated_at: new Date().toISOString(),
-      });
-    } else if (ratio < 0.7) {
-      patterns.push({
-        id: makeId(), type: 'weekend_spending',
-        value: 'low',
-        confidence: Math.min(0.9, 0.5 + weekendExp.length * 0.03),
-        updated_at: new Date().toISOString(),
-      });
-    }
+  const base = transactions.filter((transaction) => !transaction.generated);
+  if (base.length < 3) {
+    return [];
   }
 
-  // ── 2. Frequent Merchants ───────────────────────────────────────────────────
-  const merchantFreq: Record<string, { count: number; total: number; category: string }> = {};
-  for (const t of base) {
-    const key = (t.merchant || t.description).toLowerCase().replace(/\s+/g, '_').slice(0, 30);
-    if (!merchantFreq[key]) merchantFreq[key] = { count: 0, total: 0, category: t.category };
-    merchantFreq[key].count++;
-    merchantFreq[key].total += t.amount;
-  }
-  const topMerchants = Object.entries(merchantFreq)
-    .filter(([, v]) => v.count >= 3)
-    .sort((a, b) => b[1].count - a[1].count)
-    .slice(0, 5);
-
-  for (const [name, data] of topMerchants) {
-    patterns.push({
-      id: makeId(), type: 'frequent_merchant',
-      value: name,
-      confidence: Math.min(0.95, 0.5 + data.count * 0.05),
-      updated_at: new Date().toISOString(),
-    });
-  }
-
-  // ── 3. Salary Day ───────────────────────────────────────────────────────────
-  const incomes = base
-    .filter(t => t.type === TransactionType.RECEITA)
-    .map(t => parseAdaptiveDate(t.date)?.getDate())
-    .filter((day): day is number => typeof day === 'number')
-    .sort((a, b) => a - b);
-
-  if (incomes.length >= 2) {
-    const dayFreq: Record<number, number> = {};
-    for (const d of incomes) dayFreq[d] = (dayFreq[d] ?? 0) + 1;
-    const topDay = Object.entries(dayFreq).sort((a, b) => b[1] - a[1])[0];
-    const topDayCount = topDay ? Number(topDay[1]) : 0;
-    if (topDay && topDayCount >= 2) {
-      patterns.push({
-        id: makeId(), type: 'salary_day',
-        value: topDay[0],
-        confidence: Math.min(0.95, 0.5 + topDayCount * 0.1),
-        updated_at: new Date().toISOString(),
-      });
-    }
-  }
-
-  // ── 4. Delivery Pattern ────────────────────────────────────────────────────
-  const DELIVERY_KW = ['ifood', 'rappi', 'uber eats', 'delivery', 'james', '99food', 'entrega', 'pedido'];
-  const deliveryTxs = getRecentTxs(base, 90).filter(t =>
-    t.type === TransactionType.DESPESA &&
-    DELIVERY_KW.some(kw => (t.description + (t.merchant ?? '')).toLowerCase().includes(kw))
-  );
-
-  if (deliveryTxs.length >= 3) {
-    const monthlyEst = deliveryTxs.reduce((s, t) => s + t.amount, 0) / 3;
-    patterns.push({
-      id: makeId(), type: 'delivery_pattern',
-      value: monthlyEst > 200 ? 'heavy' : monthlyEst > 80 ? 'moderate' : 'light',
-      confidence: Math.min(0.95, 0.5 + deliveryTxs.length * 0.05),
-      updated_at: new Date().toISOString(),
-    });
-  }
-
-  // ── 5. Category Preference ─────────────────────────────────────────────────
-  const catTotals: Record<string, number> = {};
-  for (const t of expenses) catTotals[t.category] = (catTotals[t.category] ?? 0) + t.amount;
-  const totalExp = Object.values(catTotals).reduce((s, v) => s + v, 0);
-
-  if (totalExp > 0) {
-    const dominantCat = Object.entries(catTotals).sort((a, b) => b[1] - a[1])[0];
-    if (dominantCat && dominantCat[1] / totalExp > 0.35) {
-      patterns.push({
-        id: makeId(), type: 'category_preference',
-        value: dominantCat[0],
-        confidence: Math.min(0.9, dominantCat[1] / totalExp),
-        updated_at: new Date().toISOString(),
-      });
-    }
-  }
-
-  return patterns;
+  const expenses = base.filter((transaction) => transaction.type === TransactionType.DESPESA);
+  return [
+    ...detectWeekendSpendingPattern(expenses),
+    ...detectFrequentMerchantPatterns(base),
+    ...detectSalaryPattern(base),
+    ...detectDeliveryPattern(base),
+    ...detectCategoryPreferencePattern(expenses),
+  ];
 }
-
-// ─── PART 4 — Memory Integration ──────────────────────────────────────────────
+// â”€â”€â”€ PART 4 â€” Memory Integration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function storePatternMemories(
   userId: string,
@@ -244,7 +147,7 @@ export async function storePatternMemories(
   }
 }
 
-// ─── PART 5 — Adaptive Cashflow Prediction ────────────────────────────────────
+// â”€â”€â”€ PART 5 â€” Adaptive Cashflow Prediction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function adjustCashflowWithPatterns(
   base: CashflowPrediction,
@@ -255,7 +158,7 @@ export function adjustCashflowWithPatterns(
 
   const get = (key: string) => memories.find(m => m.key === key);
 
-  // Weekend spending pattern → ajustar projeção de gastos
+  // Weekend spending pattern â†’ ajustar projeÃ§Ã£o de gastos
   const weekendMem = get('weekend_spending');
   if (weekendMem) {
     if (weekendMem.value === 'very_high') multiplier += 0.12 * weekendMem.confidence;
@@ -263,21 +166,21 @@ export function adjustCashflowWithPatterns(
     else if (weekendMem.value === 'low') multiplier -= 0.05 * weekendMem.confidence;
   }
 
-  // Delivery pattern → adicionar custo extra
+  // Delivery pattern â†’ adicionar custo extra
   const deliveryMem = get('delivery_pattern');
   if (deliveryMem) {
     if (deliveryMem.value === 'heavy') multiplier += 0.08 * deliveryMem.confidence;
     else if (deliveryMem.value === 'moderate') multiplier += 0.04 * deliveryMem.confidence;
   }
 
-  // Salary day → ajustar projeção de receita se dia está próximo
+  // Salary day â†’ ajustar projeÃ§Ã£o de receita se dia estÃ¡ prÃ³ximo
   const salaryMem = get('salary_day');
   let projected_income = base.projected_income;
   if (salaryMem) {
     const salaryDay = Number.parseInt(salaryMem.value, 10);
     const daysUntilSalary = getDaysUntilSalaryDay(salaryDay);
     if (daysUntilSalary !== null && daysUntilSalary <= 7) {
-      // Receita esperada em breve → boosta confiança da projeção
+      // Receita esperada em breve â†’ boosta confianÃ§a da projeÃ§Ã£o
       projected_income *= (1 + 0.02 * salaryMem.confidence);
     }
   }
@@ -294,7 +197,7 @@ export function adjustCashflowWithPatterns(
   };
 }
 
-// ─── PART 6 — Category Learning (merchant → category mapping) ─────────────────
+// â”€â”€â”€ PART 6 â€” Category Learning (merchant â†’ category mapping) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function learnMerchantCategories(
   userId: string,
@@ -318,7 +221,7 @@ export async function learnMerchantCategories(
   }
 }
 
-// ─── PART 7 — Adaptive Insights ───────────────────────────────────────────────
+// â”€â”€â”€ PART 7 â€” Adaptive Insights â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function generateAdaptiveInsights(
   transactions: Transaction[],
@@ -337,7 +240,7 @@ export function generateAdaptiveInsights(
     created_at: new Date().toISOString(),
   });
 
-  // ── Weekend spending ─────────────────────────────────────────────────────────
+  // â”€â”€ Weekend spending â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const weekendMem = get('weekend_spending');
   if (weekendMem?.value === 'high' || weekendMem?.value === 'very_high') {
     const weekendTxs = transactions.filter(t => {
@@ -349,23 +252,23 @@ export function generateAdaptiveInsights(
     if (total > 0) {
       insights.push(makeInsight(
         'warning',
-        `Você costuma gastar mais nos fins de semana. Nos últimos registros, ${formatCurrency(total)} foram gastos em fins de semana.`,
+        `VocÃª costuma gastar mais nos fins de semana. Nos Ãºltimos registros, ${formatCurrency(total)} foram gastos em fins de semana.`,
         weekendMem.value === 'very_high' ? 'medium' : 'low'
       ));
     }
   }
 
-  // ── Delivery pattern ──────────────────────────────────────────────────────────
+  // â”€â”€ Delivery pattern â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const deliveryMem = get('delivery_pattern');
   if (deliveryMem?.value === 'heavy' || deliveryMem?.value === 'moderate') {
     insights.push(makeInsight(
       'warning',
-      `Você tem um padrão ${deliveryMem.value === 'heavy' ? 'intenso' : 'regular'} de gastos com delivery. Preparar refeições em casa pode gerar economia significativa.`,
+      `VocÃª tem um padrÃ£o ${deliveryMem.value === 'heavy' ? 'intenso' : 'regular'} de gastos com delivery. Preparar refeiÃ§Ãµes em casa pode gerar economia significativa.`,
       deliveryMem.value === 'heavy' ? 'medium' : 'low'
     ));
   }
 
-  // ── Salary day awareness ───────────────────────────────────────────────────────
+  // â”€â”€ Salary day awareness â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const salaryMem = get('salary_day');
   if (salaryMem) {
     const salaryDay = Number.parseInt(salaryMem.value, 10);
@@ -373,13 +276,13 @@ export function generateAdaptiveInsights(
     if (daysUntil !== null && daysUntil <= 5) {
       insights.push(makeInsight(
         'saving',
-        `Com base no seu histórico, sua receita costuma entrar por volta do dia ${salaryDay}. Faltam aproximadamente ${daysUntil} dia(s).`,
+        `Com base no seu histÃ³rico, sua receita costuma entrar por volta do dia ${salaryDay}. Faltam aproximadamente ${daysUntil} dia(s).`,
         'low'
       ));
     }
   }
 
-  // ── Dominant category ──────────────────────────────────────────────────────────
+  // â”€â”€ Dominant category â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const domCatMem = get('dominant_category');
   if (domCatMem) {
     const catTxs = transactions.filter(t =>
@@ -389,18 +292,18 @@ export function generateAdaptiveInsights(
     if (catTotal > 0) {
       insights.push(makeInsight(
         'spending',
-        `"${domCatMem.value}" é sua categoria dominante com ${formatCurrency(catTotal)} no histórico. Você tem preferência consistente por esta área.`,
+        `"${domCatMem.value}" Ã© sua categoria dominante com ${formatCurrency(catTotal)} no histÃ³rico. VocÃª tem preferÃªncia consistente por esta Ã¡rea.`,
         'low'
       ));
     }
   }
 
-  // ── Merchant loyalty ───────────────────────────────────────────────────────────
+  // â”€â”€ Merchant loyalty â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const merchantMemories = memories.filter(m => m.key.startsWith('merchant_') && m.value === 'frequent');
   if (merchantMemories.length >= 3) {
     insights.push(makeInsight(
       'spending',
-      `Você tem ${merchantMemories.length} estabelecimento(s) favorito(s) recorrentes. Fidelidade a poucos lugares pode facilitar o controle de gastos.`,
+      `VocÃª tem ${merchantMemories.length} estabelecimento(s) favorito(s) recorrentes. Fidelidade a poucos lugares pode facilitar o controle de gastos.`,
       'low'
     ));
   }
@@ -408,7 +311,7 @@ export function generateAdaptiveInsights(
   return insights;
 }
 
-// ─── PART 8 — Run Adaptive Learning (função principal) ───────────────────────
+// â”€â”€â”€ PART 8 â€” Run Adaptive Learning (funÃ§Ã£o principal) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface AdaptiveLearningResult {
   patterns: FinancialPattern[];
@@ -434,20 +337,20 @@ export async function runAdaptiveLearning(
     };
   }
 
-  // 1. Detectar padrões
+  // 1. Detectar padrÃµes
   const patterns = detectFinancialPatterns(base);
 
-  // 2. Salvar padrões na memória
+  // 2. Salvar padrÃµes na memÃ³ria
   await storePatternMemories(userId, patterns);
 
   // 3. Aprender categorias de merchants
   await learnMerchantCategories(userId, base);
 
-  // 4. Ler memória atualizada para gerar insights adaptativos
+  // 4. Ler memÃ³ria atualizada para gerar insights adaptativos
   const memories = await getAIMemory(userId);
   const adaptiveInsights = generateAdaptiveInsights(base, memories, userId);
 
-  // 5. Registrar métricas de aprendizado
+  // 5. Registrar mÃ©tricas de aprendizado
   await learnMemory(userId, 'last_learning_run', new Date().toISOString(), 1.0);
   await learnMemory(userId, 'patterns_detected_count', String(patterns.length), 1.0);
   await learnMemory(userId, 'total_transactions_learned', String(base.length), 1.0);
@@ -465,7 +368,7 @@ export async function runAdaptiveLearning(
   };
 }
 
-// ─── Sync version (sem async — para uso em renders) ───────────────────────────
+// â”€â”€â”€ Sync version (sem async â€” para uso em renders) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function getAdaptiveLearningStats(userId: string): {
   is_learning: boolean;

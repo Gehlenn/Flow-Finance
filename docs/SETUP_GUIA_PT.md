@@ -1,22 +1,28 @@
-# Guia Rápido de Setup em PT-BR
+﻿# Guia RÃ¡pido de Setup em PT-BR
 
 ## Papel deste documento
 
-Este arquivo é um atalho curto. O documento canônico de setup é [SETUP_GUIDE.md](./SETUP_GUIDE.md).
+Este arquivo Ã© um atalho curto. O documento canÃ´nico de setup Ã© [SETUP_GUIDE.md](./SETUP_GUIDE.md).
 
-Use este guia quando você só precisa lembrar a sequência prática.
+Use este guia quando vocÃª sÃ³ precisa lembrar a sequÃªncia prÃ¡tica.
+
+## Estado vivo em 2026-05-25
+
+- o deploy oficial atual ja esta fechado em `0.9.7`
+- este atalho existe para setup e regressao, nao para diagnosticar o estado vivo do projeto
+
 
 ## Ordem recomendada
 
-1. instalar dependências
-2. preencher variáveis locais mínimas
+1. instalar dependÃªncias
+2. preencher variÃ¡veis locais mÃ­nimas
 3. subir frontend e backend
-4. rodar checks críticos
-5. só depois pensar em Vercel
+4. rodar checks crÃ­ticos
+5. sÃ³ depois pensar em Vercel
 
 ## Comandos base
 
-Instalação:
+InstalaÃ§Ã£o:
 
 ```bash
 npm ci

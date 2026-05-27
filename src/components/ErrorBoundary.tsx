@@ -18,28 +18,28 @@ function DefaultErrorFallback({ error, onReset }: { error: Error | null; onReset
   const errorId = Date.now();
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-b from-slate-900 to-slate-950 flex items-center justify-center p-4 z-50">
-      <div className="bg-slate-800 border border-red-500/30 rounded-2xl p-8 max-w-md w-full shadow-2xl">
+    <div className="fixed inset-0 flex items-center justify-center p-4 z-50 bg-slate-50 dark:bg-slate-950">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-8 max-w-md w-full shadow-xl">
         <div className="flex justify-center mb-4">
-          <div className="p-3 bg-red-500/20 rounded-full">
-            <AlertTriangle size={32} className="text-red-500" />
+          <div className="p-3 bg-rose-50 dark:bg-rose-500/10 rounded-full border border-rose-100 dark:border-rose-500/20">
+            <AlertTriangle size={32} className="text-rose-500" />
           </div>
         </div>
 
-        <h1 className="text-xl font-medium text-white text-center mb-2">Algo deu errado</h1>
-        <p className="text-slate-300 text-center mb-4">
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-white text-center mb-2">Algo deu errado</h1>
+        <p className="text-slate-600 dark:text-slate-300 text-center mb-4">
           {isDynamicImportError
             ? 'Houve um problema ao carregar esta página. Por favor, recarregue o aplicativo.'
             : 'Desculpe, encontramos um erro inesperado na aplicação. Tente recarregar ou entre em contato com o suporte.'}
         </p>
 
         {import.meta.env.MODE === 'development' && error && (
-          <div className="mb-4 p-3 bg-slate-900 rounded border border-slate-700">
+          <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700">
             <p className="text-xs text-red-400 font-mono break-words">{error.message || 'Erro desconhecido'}</p>
           </div>
         )}
 
-        <p className="text-xs text-slate-500 text-center mb-4">
+        <p className="text-xs text-slate-500 dark:text-slate-400 text-center mb-4">
           Erro ID: {errorId}
         </p>
 
@@ -61,7 +61,7 @@ function DefaultErrorFallback({ error, onReset }: { error: Error | null; onReset
                   window.location.reload();
                 }
               }}
-              className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium"
+              className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors font-medium dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
             >
               Recarregar Aplicação
             </button>
@@ -69,13 +69,13 @@ function DefaultErrorFallback({ error, onReset }: { error: Error | null; onReset
             <>
               <button
                 onClick={() => location.reload()}
-                className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium"
+                className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-slate-300"
               >
                 Recarregar
               </button>
               <button
                 onClick={onReset}
-                className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors font-medium flex items-center justify-center gap-2 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
               >
                 <RefreshCw size={16} />
                 Tentar Novamente

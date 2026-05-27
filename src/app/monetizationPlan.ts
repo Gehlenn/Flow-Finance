@@ -1,8 +1,20 @@
 export type WorkspacePlan = 'free' | 'pro';
 
-export type MonetizationTier = 'core' | 'free' | 'pro' | 'future';
+export type MonetizationTier = 'core' | 'pro' | 'future';
 
-export type FlowMonetizationFeature =
+export const FREE_LIMITS = {
+  workspaces: 1,
+  consultorIaQueriesPerMonth: 20,
+  reportExportPerMonth: 0,
+} as const;
+
+export const PRO_FEATURES = {
+  unlimitedConsultorIa: true,
+  multipleWorkspaces: true,
+  reportExport: true,
+} as const;
+
+type LegacyMonetizationFeature =
   | 'manualTransactions'
   | 'dashboardCore'
   | 'transactionsView'
@@ -12,6 +24,8 @@ export type FlowMonetizationFeature =
   | 'aiRichConsultant'
   | 'historicalComparisons'
   | 'smartAlertSuggestions';
+
+export type FlowMonetizationFeature = LegacyMonetizationFeature | keyof typeof PRO_FEATURES;
 
 type FeatureDefinition = {
   id: FlowMonetizationFeature;
@@ -46,34 +60,52 @@ export const MONETIZATION_FEATURES: FeatureDefinition[] = [
     valueMessage: 'Controle operacional e financeiro recorrente.',
   },
   {
+    id: 'unlimitedConsultorIa',
+    tier: 'pro',
+    title: 'Consultor IA ilimitado',
+    valueMessage: 'Sem travar na consulta 21 do mes.',
+  },
+  {
+    id: 'multipleWorkspaces',
+    tier: 'pro',
+    title: 'Multiplos workspaces',
+    valueMessage: 'Separar operacoes, unidades e contextos sem misturar dados.',
+  },
+  {
+    id: 'reportExport',
+    tier: 'pro',
+    title: 'Exportacao de relatorios',
+    valueMessage: 'Levar PDF operacional para alinhamento, repasse ou auditoria.',
+  },
+  {
     id: 'advancedReports',
     tier: 'pro',
     title: 'Relatorios completos',
-    valueMessage: 'Mais profundidade para decisoes de rotina.',
+    valueMessage: 'Camada analitica mais profunda para operacao financeira.',
   },
   {
     id: 'advancedCashflowAnalysis',
     tier: 'pro',
     title: 'Analises profundas de caixa',
-    valueMessage: 'Visao mais detalhada de tendencia e risco.',
+    valueMessage: 'Leitura mais detalhada de tendencia, risco e sazonalidade.',
   },
   {
     id: 'aiRichConsultant',
     tier: 'pro',
-    title: 'IA com contexto ampliado',
-    valueMessage: 'Respostas mais ricas para planejamento financeiro.',
+    title: 'Contexto estendido do consultor IA',
+    valueMessage: 'Compatibilidade com gates antigos enquanto o app converge para o novo plano.',
   },
   {
     id: 'historicalComparisons',
     tier: 'pro',
     title: 'Comparativos historicos completos',
-    valueMessage: 'Leitura de evolucao com mais contexto temporal.',
+    valueMessage: 'Comparar periodos com mais contexto temporal.',
   },
   {
     id: 'smartAlertSuggestions',
     tier: 'pro',
     title: 'Sugestoes inteligentes de alertas',
-    valueMessage: 'Conveniencia para configurar limites com menos friccao.',
+    valueMessage: 'Configurar limites e alertas com menos trabalho manual.',
   },
 ];
 
@@ -89,7 +121,10 @@ export function isProPlan(plan: WorkspacePlan | null | undefined): boolean {
   return plan === 'pro';
 }
 
-export function canAccessFeature(plan: WorkspacePlan | null | undefined, feature: FlowMonetizationFeature): boolean {
+export function canAccessFeature(
+  plan: WorkspacePlan | null | undefined,
+  feature: FlowMonetizationFeature,
+): boolean {
   const tier = FEATURE_TIER_BY_ID[feature];
 
   if (!tier) return false;
@@ -99,11 +134,23 @@ export function canAccessFeature(plan: WorkspacePlan | null | undefined, feature
   return true;
 }
 
+export function withinFreeLimit(
+  plan: WorkspacePlan | null | undefined,
+  key: keyof typeof FREE_LIMITS,
+  currentUsage: number,
+): boolean {
+  if (isProPlan(plan)) {
+    return true;
+  }
+
+  return currentUsage < FREE_LIMITS[key];
+}
+
 export function getFeaturesByTier(tier: MonetizationTier): FeatureDefinition[] {
   return MONETIZATION_FEATURES.filter((feature) => feature.tier === tier);
 }
 
 export const MONETIZATION_PRICING = {
-  proMonthlyBRL: 29.9,
-  annualDiscountPercent: 20,
+  proMonthlyBRL: 49,
+  proAnnualBRL: 490,
 };

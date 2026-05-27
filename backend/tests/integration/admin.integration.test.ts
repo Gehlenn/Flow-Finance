@@ -1,6 +1,7 @@
 ﻿import request from 'supertest';
 import type { Express } from 'express';
 import { beforeAll, vi } from 'vitest';
+import { createTestAuthorizationHeader } from '../helpers/auth';
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
 import { resetSaasStoreForTests } from '../../src/utils/saasStore';
 
@@ -84,12 +85,12 @@ describe('Admin API', () => {
   async function createProWorkspace(ownerUserId: string) {
     const created = await request(app)
       .post('/api/tenant')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .send({ name: 'Workspace Admin' });
 
     await request(app)
       .post('/api/billing/subscription')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', created.body.workspaceId)
       .send({ plan: 'pro' });
 
@@ -102,7 +103,7 @@ describe('Admin API', () => {
 
     const res = await request(app)
       .get('/api/admin/users')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', workspaceId);
 
     expect(res.status).toBe(200);
@@ -116,7 +117,7 @@ describe('Admin API', () => {
 
     const res = await request(app)
       .get('/api/admin/audit-logs')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', workspaceId);
 
     expect(res.status).toBe(200);
@@ -132,7 +133,7 @@ describe('Admin API', () => {
 
     const res = await request(app)
       .get('/api/admin/usage-metering?from=2026-01-01T00:00:00.000Z&to=2026-12-31T23:59:59.999Z')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', workspaceId);
 
     expect(res.status).toBe(200);
@@ -150,12 +151,12 @@ describe('Admin API', () => {
 
     const auditExport = await request(app)
       .get('/api/admin/audit-logs/export?format=csv')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', workspaceId);
 
     const usageExport = await request(app)
       .get('/api/admin/usage-metering/export?format=csv')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', workspaceId);
 
     expect(auditExport.status).toBe(200);
@@ -175,7 +176,7 @@ describe('Admin API', () => {
 
     const firstPage = await request(app)
       .get('/api/admin/audit-logs?limit=1')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', workspaceId);
 
     expect(firstPage.status).toBe(200);
@@ -185,7 +186,7 @@ describe('Admin API', () => {
 
     const secondPage = await request(app)
       .get(`/api/admin/audit-logs?limit=10&cursor=${encodeURIComponent(firstPage.body.nextCursor)}`)
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', workspaceId);
 
     expect(secondPage.status).toBe(200);
@@ -199,13 +200,13 @@ describe('Admin API', () => {
 
     await request(app)
       .post(`/api/workspace/${workspaceId}/users`)
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', workspaceId)
       .send({ userId: viewerUserId, role: 'viewer' });
 
     const res = await request(app)
       .post(`/api/workspace/${workspaceId}/users`)
-      .set('Authorization', `Bearer mock-token-for-${viewerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(viewerUserId))
       .set('x-workspace-id', workspaceId)
       .send({ userId: 'another-user', role: 'member' });
 

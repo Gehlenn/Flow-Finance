@@ -1,15 +1,21 @@
-# Mapa Histórico e de Auditoria
+﻿# Mapa HistÃ³rico e de Auditoria
 
-Este arquivo agrupa materiais úteis como evidência, contexto ou memória técnica, mas que não devem ser tratados como fonte de verdade operacional atual.
+Este arquivo agrupa materiais Ãºteis como evidÃªncia, contexto ou memÃ³ria tÃ©cnica, mas que nÃ£o devem ser tratados como fonte de verdade operacional atual.
 
 ## Ler apenas quando o objetivo for
 
-- investigar decisão passada
+- investigar decisÃ£o passada
 - recuperar contexto de versao antiga
-- consultar evidência histórica
-- entender diagnóstico ou bug antigo
+- consultar evidÃªncia histÃ³rica
+- entender diagnÃ³stico ou bug antigo
 
-## Auditorias e avaliações
+## Estado vivo atual
+
+- o baseline operacional atual do projeto esta em `0.9.7` e deve ser lido nos documentos vivos: `README.md`, `docs/README.md`, `docs/OPERATIONS_README.md`, `docs/ROADMAP.md` e `docs/DEPLOYMENT_STATUS.md`
+- esta trilha existe para memoria, auditoria e rastreabilidade
+- se um achado aqui ainda for operacionalmente relevante, ele precisa ser promovido explicitamente para a trilha viva
+
+## Auditorias e avaliaÃ§Ãµes
 
 - [archive/AUDITORIA_THOROUGH_2026-03-11.md](./archive/AUDITORIA_THOROUGH_2026-03-11.md)
 - [archive/ASSESSMENT_PHASES_1_TO_6_2026-04-11.md](./archive/ASSESSMENT_PHASES_1_TO_6_2026-04-11.md)
@@ -18,7 +24,7 @@ Este arquivo agrupa materiais úteis como evidência, contexto ou memória técn
 - [archive/SECURITY_REVIEW_CLINIC_v0.9.2.md](./archive/SECURITY_REVIEW_CLINIC_v0.9.2.md)
 - [archive/PRODUCTION_RISK_REVIEW_2026-04-11.md](./archive/PRODUCTION_RISK_REVIEW_2026-04-11.md)
 
-## Evidências e sumários
+## EvidÃªncias e sumÃ¡rios
 
 - [AUDIT_AND_EVIDENCE_INDEX.md](./AUDIT_AND_EVIDENCE_INDEX.md)
 - [archive/RELEASE_SUMMARY_v0.5.2v.md](./archive/RELEASE_SUMMARY_v0.5.2v.md)
@@ -42,5 +48,5 @@ Este arquivo agrupa materiais úteis como evidência, contexto ou memória técn
 
 ## Regra de leitura
 
-- documentos desta trilha não substituem o estado atual descrito em `README.md`, `docs/README.md`, `docs/OPERATIONS_README.md`, `docs/ROADMAP.md` e `docs/DEPLOYMENT_STATUS.md`
-- se uma informação histórica ainda for importante operacionalmente, ela deve ser promovida explicitamente para a trilha viva
+- documentos desta trilha nÃ£o substituem o estado atual descrito em `README.md`, `docs/README.md`, `docs/OPERATIONS_README.md`, `docs/ROADMAP.md` e `docs/DEPLOYMENT_STATUS.md`
+- se uma informaÃ§Ã£o histÃ³rica ainda for importante operacionalmente, ela deve ser promovida explicitamente para a trilha viva

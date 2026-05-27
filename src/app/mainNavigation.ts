@@ -1,4 +1,4 @@
-﻿import type { Tab } from '../../hooks/useNavigationTabs';
+import type { Tab } from '../../hooks/navigationTypes';
 
 export interface MainNavigationItem {
   tab: Tab;
@@ -11,11 +11,9 @@ const MAIN_NAV_ITEMS: MainNavigationItem[] = [
   { tab: 'history', label: 'Transações' },
   { tab: 'flow', label: 'Receitas' },
   { tab: 'cfo', label: 'Consultor IA' },
-  { tab: 'settings', label: 'Ajustes' },
   { tab: 'aicontrol', label: 'Lab IA', requiresDevMode: true },
 ];
 
 export function getMainNavigationItems(isDevMode: boolean): MainNavigationItem[] {
   return MAIN_NAV_ITEMS.filter((item) => !item.requiresDevMode || isDevMode);
 }
-

@@ -10,6 +10,7 @@ const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL ||
   import.meta.env.VITE_API_PROD_URL ||
   '';
+const IS_DEV = import.meta.env.DEV;
 const IS_AUTOMATED_BROWSER = typeof navigator !== 'undefined' && navigator.webdriver === true;
 
 function isLocalNetworkTarget(url: string): boolean {
@@ -28,7 +29,7 @@ function isLocalNetworkTarget(url: string): boolean {
   }
 }
 
-const SHOULD_SKIP_NETWORK_PROBES = IS_AUTOMATED_BROWSER && isLocalNetworkTarget(API_BASE_URL);
+const SHOULD_SKIP_NETWORK_PROBES = isLocalNetworkTarget(API_BASE_URL) && (IS_AUTOMATED_BROWSER || IS_DEV);
 
 let apiOfflineMode = false;
 let lastHealthCheck = 0;

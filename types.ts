@@ -102,6 +102,27 @@ export interface Reminder {
   isRecurring?: boolean; // Se repete mensalmente
 }
 
+export type ReceivableStatus = 'open' | 'realized' | 'overdue' | 'cancelled';
+export type ReceivableSource = 'manual' | 'reminder_migration' | 'transaction_link' | 'integration';
+
+export interface Receivable {
+  id: string;
+  user_id?: string;
+  tenant_id?: string;
+  workspace_id?: string;
+  description: string;
+  expected_amount: number;
+  realized_amount: number;
+  due_date: string;
+  realized_at: string | null;
+  status: ReceivableStatus;
+  source: ReceivableSource;
+  source_ref?: string;
+  customer_label?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── AI Types ──────────────────────────────────────────────────────────────────
 
 export interface TransactionData {

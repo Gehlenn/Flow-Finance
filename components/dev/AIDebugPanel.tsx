@@ -12,12 +12,12 @@ import {
 const IS_DEV = import.meta.env.DEV;
 
 const EVENT_META: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
-  transaction_created: { icon: <ArrowRightLeft size={12} />, color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10', label: 'Transação' },
-  recurring_generated: { icon: <RefreshCw size={12} />, color: 'text-violet-500 bg-violet-50 dark:bg-violet-500/10', label: 'Recorrente' },
+  transaction_created: { icon: <ArrowRightLeft size={12} />, color: 'text-slate-500 bg-slate-50 dark:bg-slate-800', label: 'Transação' },
+  recurring_generated: { icon: <RefreshCw size={12} />, color: 'text-slate-500 bg-slate-50 dark:bg-slate-800', label: 'Recorrente' },
   insight_generated: { icon: <Sparkles size={12} />, color: 'text-amber-500 bg-amber-50 dark:bg-amber-500/10', label: 'Insight' },
   risk_detected: { icon: <ShieldAlert size={12} />, color: 'text-rose-500 bg-rose-50 dark:bg-rose-500/10', label: 'Risco' },
   autopilot_action: { icon: <Bot size={12} />, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10', label: 'Autopilot' },
-  goal_created: { icon: <Target size={12} />, color: 'text-sky-500 bg-sky-50 dark:bg-sky-500/10', label: 'Meta' },
+  goal_created: { icon: <Target size={12} />, color: 'text-slate-500 bg-slate-50 dark:bg-slate-800', label: 'Meta' },
 };
 
 const formatTime = (iso: string) =>
@@ -50,7 +50,7 @@ const AILogsTab: React.FC = () => {
       <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-slate-800 shrink-0">
         <span className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">{logs.length} entrada{logs.length !== 1 ? 's' : ''}</span>
         <div className="flex gap-1">
-          <button onClick={refresh} className="p-1.5 text-slate-400 hover:text-indigo-500 rounded-lg transition-colors"><RefreshCw size={13} /></button>
+        <button onClick={refresh} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg transition-colors"><RefreshCw size={13} /></button>
           <button onClick={() => { clearAIDebugLogs(); setLogs([]); }} className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg transition-colors"><Trash2 size={13} /></button>
         </div>
       </div>
@@ -70,7 +70,7 @@ const AILogsTab: React.FC = () => {
                 <p className="text-[11px] font-medium text-slate-800 dark:text-white truncate">"{entry.input}"</p>
                 <div className="flex items-center gap-3 mt-1">
                   {entry.predicted_category && (
-                    <span className="flex items-center gap-1 text-xs font-semibold text-indigo-500 uppercase tracking-[0.08em]"><Tag size={8} />{entry.predicted_category}</span>
+                    <span className="flex items-center gap-1 text-xs font-semibold text-slate-500 uppercase tracking-[0.08em]"><Tag size={8} />{entry.predicted_category}</span>
                   )}
                   <span className="flex items-center gap-1 text-xs text-slate-400"><Clock size={8} />{formatTime(entry.timestamp)}</span>
                   {entry.processing_ms && <span className="flex items-center gap-1 text-xs text-slate-400"><Zap size={8} />{entry.processing_ms}ms</span>}
@@ -97,7 +97,7 @@ const AILogsTab: React.FC = () => {
                 {entry.intent && (
                   <div className="flex items-center gap-2">
                     <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">Intent:</p>
-                    <span className="px-2 py-0.5 bg-violet-50 dark:bg-violet-500/10 text-violet-600 rounded-full text-xs font-semibold">{entry.intent}</span>
+                    <span className="px-2 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full text-xs font-semibold">{entry.intent}</span>
                   </div>
                 )}
                 {entry.error && (
@@ -141,7 +141,7 @@ const FinancialEventsTab: React.FC = () => {
       <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-slate-800 shrink-0">
         <span className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">{events.length} evento{events.length !== 1 ? 's' : ''}</span>
         <div className="flex gap-1">
-          <button onClick={refresh} className="p-1.5 text-slate-400 hover:text-indigo-500 rounded-lg transition-colors"><RefreshCw size={13} /></button>
+        <button onClick={refresh} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg transition-colors"><RefreshCw size={13} /></button>
           <button onClick={() => { clearFinancialEvents(); setEvents([]); }} className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg transition-colors"><Trash2 size={13} /></button>
         </div>
       </div>
@@ -228,10 +228,10 @@ const AIDebugPanel: React.FC = () => {
         onClick={() => { setIsOpen(true); refreshCounts(); }}
         className="fixed bottom-24 left-4 z-[200] flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-white/10 hover:bg-slate-800 active:scale-95 transition-all"
       >
-        <Bug size={14} className="text-indigo-400" />
+        <Bug size={14} className="text-slate-400" />
         <span className="text-xs font-semibold uppercase tracking-[0.08em]">Dev Panel</span>
         {logCount + eventCount > 0 && (
-          <span className="bg-indigo-600 text-white text-xs font-semibold rounded-full w-4 h-4 flex items-center justify-center">
+          <span className="bg-slate-700 text-white text-xs font-semibold rounded-full w-4 h-4 flex items-center justify-center">
             {logCount + eventCount > 99 ? '99+' : logCount + eventCount}
           </span>
         )}
@@ -242,7 +242,7 @@ const AIDebugPanel: React.FC = () => {
           <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl flex flex-col max-h-[88vh] animate-in slide-in-from-bottom-4 duration-300 border border-slate-100 dark:border-slate-800 overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center"><Bug size={16} className="text-white" /></div>
+                <div className="w-9 h-9 bg-slate-900 dark:bg-slate-100 rounded-xl flex items-center justify-center"><Bug size={16} className="text-white dark:text-slate-900" /></div>
                 <div>
                   <p className="font-semibold text-slate-900 dark:text-white text-sm">Dev Panel</p>
                   <p className="text-xs font-medium text-slate-400 uppercase tracking-[0.08em]">somente DEV</p>
@@ -259,7 +259,7 @@ const AIDebugPanel: React.FC = () => {
                 <button key={tab.id} onClick={() => { setActiveTab(tab.id); refreshCounts(); }}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-t-xl text-xs font-semibold uppercase tracking-[0.08em] transition-colors border-b-2 ${
                     activeTab === tab.id
-                      ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10'
+                      ? 'border-slate-500 text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800'
                       : 'border-transparent text-slate-400 hover:text-slate-600'
                   }`}
                 >
@@ -278,7 +278,7 @@ const AIDebugPanel: React.FC = () => {
 
             <div className="px-6 py-3 border-t border-slate-100 dark:border-slate-800 shrink-0 flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-300 dark:text-slate-600 uppercase tracking-[0.08em] flex items-center gap-1.5"><Bug size={10} /> NODE_ENV=development</span>
-              <span className="text-xs font-semibold text-indigo-400">Flow Finance v0.4.0</span>
+              <span className="text-xs font-semibold text-slate-400">Flow Finance v0.4.0</span>
             </div>
           </div>
         </div>

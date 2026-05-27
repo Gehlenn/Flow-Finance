@@ -15,6 +15,7 @@ import { TransactionData, ReminderData } from '../../types';
 import { getAIMemory, AIMemory } from './aiMemory';
 import { logAIDebug } from './aiDebugService';
 import { logWarn } from '../utils/logger';
+import { buildMemoryContextBlock, estimateInterpreterConfidence } from './aiInterpreterHelpers';
 
 // ─── Output Types ─────────────────────────────────────────────────────────────
 
@@ -43,33 +44,13 @@ export async function buildMemoryContext(userId: string): Promise<{
   contextBlock: string;
 }> {
   const memories = await getAIMemory(userId);
-  if (memories.length === 0) return { memories: [], contextBlock: '' };
-
-  const lines = memories.map(m =>
-    `- ${m.key}: ${m.value} (confiança: ${Math.round(m.confidence * 100)}%)`
-  );
-
-  const contextBlock = `
-CONTEXTO DO USUÁRIO (memória aprendida):
-${lines.join('\n')}
-Use essas informações para melhorar a precisão da classificação.
-  `.trim();
-
-  return { memories, contextBlock };
+  return { memories, contextBlock: buildMemoryContextBlock(memories) };
 }
 
 // ─── Confidence estimator ─────────────────────────────────────────────────────
 
 export function estimateConfidence(data: TransactionData[] | ReminderData[], intent: string): number {
-  if (!data || data.length === 0) return 0.1;
-  const item = data[0];
-  let score = 0.5;
-  if ('amount' in item && item.amount && item.amount > 0) score += 0.15;
-  if ('description' in item && item.description && item.description.length > 3) score += 0.1;
-  if ('category' in item && item.category) score += 0.1;
-  if (item.type) score += 0.1;
-  if (intent !== 'unknown') score += 0.05;
-  return Math.min(parseFloat(score.toFixed(2)), 1.0);
+  return estimateInterpreterConfidence(data, intent);
 }
 
 // ─── Interpret Text ───────────────────────────────────────────────────────────

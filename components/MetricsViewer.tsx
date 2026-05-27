@@ -47,7 +47,7 @@ const MetricsViewer: React.FC = () => {
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800">
         <div className="flex items-center gap-2">
-          <BarChart2 size={11} className="text-violet-400" />
+          <BarChart2 size={11} className="text-slate-400" />
           <span className="font-mono text-xs text-slate-300 uppercase tracking-[0.08em]">AI Metrics</span>
           <span className="font-mono text-xs text-slate-600">auto-refresh 3s</span>
         </div>
@@ -91,7 +91,7 @@ const MetricsViewer: React.FC = () => {
 
         <div className="mt-3 bg-slate-800/50 rounded p-3">
           <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em] mb-1">Events Processed</p>
-          <p className="font-mono text-[13px] font-medium text-sky-400">{summary.events_processed}</p>
+          <p className="font-mono text-[13px] font-medium text-slate-400">{summary.events_processed}</p>
         </div>
 
         <p className="font-mono text-xs text-slate-600 text-right mt-3">

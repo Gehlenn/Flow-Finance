@@ -6,7 +6,19 @@
 
 import Decimal from 'decimal.js';
 
-Decimal.set({ precision: 10, rounding: 4 });
+Decimal.set({ precision: 28, rounding: 4 });
+
+export function roundMoney(n: number, decimals = 2): number {
+  return new Decimal(n).toDecimalPlaces(decimals).toNumber();
+}
+
+export function toCents(n: number): number {
+  return new Decimal(n).mul(100).toDecimalPlaces(0).toNumber();
+}
+
+export function fromCents(cents: number): number {
+  return new Decimal(cents).div(100).toNumber();
+}
 
 export function addMoney(a: number, b: number): number {
   return new Decimal(a).add(new Decimal(b)).toNumber();

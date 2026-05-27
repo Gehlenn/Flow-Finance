@@ -1,205 +1,47 @@
-/**
- * FIXED EXPENSE DETECTOR — src/services/ai/fixedExpenseDetector.ts
+﻿/**
+ * FIXED EXPENSE DETECTOR â€” src/services/ai/fixedExpenseDetector.ts
  *
- * PART 5 — Detecta despesas fixas recorrentes:
- *   • Aluguel / moradia
- *   • Assinaturas de serviços
- *   • Contas de utilidades (luz, água, gás, internet)
- *   • Seguros
- *   • Mensalidades (escola, academia, etc.)
- *   • Financiamentos / crédito
+ * PART 5 â€” Detecta despesas fixas recorrentes:
+ *   â€¢ Aluguel / moradia
+ *   â€¢ Assinaturas de serviÃ§os
+ *   â€¢ Contas de utilidades (luz, Ã¡gua, gÃ¡s, internet)
+ *   â€¢ Seguros
+ *   â€¢ Mensalidades (escola, academia, etc.)
+ *   â€¢ Financiamentos / crÃ©dito
  *
- * Complementa o subscriptionDetector.ts (que foca em serviços digitais)
- * com uma visão mais ampla de todas as despesas fixas do usuário.
+ * Complementa o subscriptionDetector.ts (que foca em serviÃ§os digitais)
+ * com uma visÃ£o mais ampla de todas as despesas fixas do usuÃ¡rio.
  */
 
 import { Transaction, TransactionType } from '../../types';
 import { makeId } from '../../utils/helpers';
+import {
+  avgDayOfMonth,
+  detectAmountTrend,
+  matchesPattern,
+  median,
+  nextExpectedDate,
+  normalize,
+  parseLocalDate,
+} from './fixedExpenseDetectorHelpers';
+import { FIXED_PATTERNS } from './fixedExpenseDetectorCatalog';
+import { type ExpensePattern, type FixedExpense, type FixedExpenseCategory, type FixedExpenseReport } from './fixedExpenseDetectorTypes';
+
+export type {
+  ExpensePattern,
+  FixedExpense,
+  FixedExpenseCategory,
+  FixedExpenseReport,
+} from './fixedExpenseDetectorTypes';
 
 
-// ─── Models ───────────────────────────────────────────────────────────────────
 
-export type FixedExpenseCategory =
-  | 'housing'        // aluguel, condomínio, IPTU
-  | 'utilities'      // luz, água, gás, internet, telefone
-  | 'subscription'   // streaming, SaaS, serviços digitais
-  | 'insurance'      // seguros (saúde, auto, vida, residencial)
-  | 'education'      // escola, faculdade, curso
-  | 'fitness'        // academia, pilates, esportes
-  | 'transport'      // transporte fixo (combustível, estacionamento mensal)
-  | 'financing'      // financiamento, crédito, consórcio
-  | 'other_fixed'    // outros fixos identificados por padrão
-
-export interface FixedExpense {
-  id:            string;
-  name:          string;
-  category:      FixedExpenseCategory;
-  amount:        number;          // Valor típico
-  amount_min:    number;
-  amount_max:    number;
-  amount_trend:  'increasing' | 'stable' | 'decreasing';
-  day_of_month:  number | null;   // Dia típico de vencimento
-  occurrences:   number;
-  last_date:     string;
-  next_expected: string | null;
-  confidence:    number;
-  logo:          string;
-  transactions:  Transaction[];
-}
-
-export interface FixedExpenseReport {
-  expenses:          FixedExpense[];
-  total_monthly:     number;         // Total fixo mensal estimado
-  total_annual:      number;
-  by_category:       Record<FixedExpenseCategory, number>; // mensal por categoria
-  commitment_ratio?: number;         // % da renda comprometida (se renda conhecida)
-  highest_expense:   FixedExpense | null;
-  count:             number;
-  has_housing:       boolean;        // Flag: tem aluguel/financiamento imóvel?
-  has_insurance:     boolean;        // Flag: tem plano de saúde?
-}
-
-// ─── Fixed expense catalog ────────────────────────────────────────────────────
-
-interface ExpensePattern {
-  name:       string;
-  keywords:   string[];
-  category:   FixedExpenseCategory;
-  logo:       string;
-  min_amount?: number;   // filtro mínimo de valor (evitar falsos positivos)
-}
-
-const FIXED_PATTERNS: ExpensePattern[] = [
-  // ── Moradia ──────────────────────────────────────────────────────────────
-  { name: 'Aluguel',       keywords: ['aluguel', 'locação', 'locacao', 'arrendamento'], category: 'housing', logo: '🏠', min_amount: 200 },
-  { name: 'Condomínio',    keywords: ['condomínio', 'condominio', 'taxa cond'], category: 'housing', logo: '🏢', min_amount: 50 },
-  { name: 'IPTU',          keywords: ['iptu', 'imposto predial'], category: 'housing', logo: '🏛️', min_amount: 30 },
-  { name: 'Financiamento Imóvel', keywords: ['financiamento imóvel', 'financiamento imovel', 'prestação imóvel', 'prestacao imovel', 'caixa habitação', 'habitacao', 'caixa hab'], category: 'housing', logo: '🔑', min_amount: 200 },
-
-  // ── Utilidades ────────────────────────────────────────────────────────────
-  { name: 'Energia Elétrica', keywords: ['cemig', 'copel', 'light', 'enel', 'elektro', 'coelba', 'celpe', 'ampla', 'energia', 'conta de luz', 'eletricidade'], category: 'utilities', logo: '⚡', min_amount: 30 },
-  { name: 'Água / Saneamento', keywords: ['sabesp', 'saneamento', 'copasa', 'embasa', 'caesb', 'cagece', 'água', 'agua', 'sanepar'], category: 'utilities', logo: '💧', min_amount: 20 },
-  { name: 'Gás',            keywords: ['comgás', 'comgas', 'copergás', 'copergas', 'gas natural', 'gas encanado', 'gás'], category: 'utilities', logo: '🔥', min_amount: 20 },
-  { name: 'Internet',       keywords: ['claro net', 'vivo fibra', 'oi fibra', 'tim fibra', 'net virtua', 'internet', 'banda larga', 'wifi'], category: 'utilities', logo: '🌐', min_amount: 50 },
-  { name: 'Telefone Fixo',  keywords: ['telefone fixo', 'conta telefone', 'oi telefone'], category: 'utilities', logo: '📞', min_amount: 20 },
-
-  // ── Seguros ───────────────────────────────────────────────────────────────
-  { name: 'Plano de Saúde', keywords: ['amil', 'unimed', 'hapvida', 'notre dame', 'sulamerica saude', 'bradesco saude', 'plano saúde', 'plano saude', 'plano de saúde'], category: 'insurance', logo: '🏥', min_amount: 80 },
-  { name: 'Seguro Auto',    keywords: ['porto seguro', 'bradesco auto', 'itaú seguro', 'seguro veículo', 'seguro veiculo', 'seguro auto'], category: 'insurance', logo: '🚗', min_amount: 50 },
-  { name: 'Seguro Vida',    keywords: ['seguro de vida', 'vida metlife', 'tokio marine vida'], category: 'insurance', logo: '🛡️', min_amount: 30 },
-  { name: 'Seguro Residencial', keywords: ['seguro residencial', 'seguro lar', 'seguro casa'], category: 'insurance', logo: '🏡', min_amount: 20 },
-
-  // ── Educação ─────────────────────────────────────────────────────────────
-  { name: 'Escola / Colégio', keywords: ['mensalidade escolar', 'mensalidade colegio', 'colégio', 'colegio', 'escola'], category: 'education', logo: '🏫', min_amount: 100 },
-  { name: 'Faculdade / Universidade', keywords: ['mensalidade faculdade', 'universidade', 'anhanguera', 'kroton', 'estácio', 'estacio', 'unopar', 'unip', 'usp', 'unicamp', 'ufrj'], category: 'education', logo: '🎓', min_amount: 100 },
-  { name: 'Curso Online',   keywords: ['coursera', 'udemy', 'alura', 'hotmart', 'kiwify', 'edx'], category: 'education', logo: '💻', min_amount: 20 },
-
-  // ── Fitness ───────────────────────────────────────────────────────────────
-  { name: 'Academia',       keywords: ['smart fit', 'academia', 'bluefit', 'bodytech', 'crossfit', 'gympass', 'wellhub'], category: 'fitness', logo: '💪', min_amount: 40 },
-  { name: 'Pilates / Yoga', keywords: ['pilates', 'yoga', 'estúdio'], category: 'fitness', logo: '🧘', min_amount: 80 },
-
-  // ── Transporte fixo ───────────────────────────────────────────────────────
-  { name: 'Estacionamento Mensal', keywords: ['estacionamento mensal', 'mensalista', 'vaga garagem'], category: 'transport', logo: '🅿️', min_amount: 80 },
-  { name: 'Transporte Público', keywords: ['bilhete único', 'cartão transporte', 'vale transporte', 'metrô', 'metro', 'ônibus', 'onibus'], category: 'transport', logo: '🚌', min_amount: 50 },
-
-  // ── Financiamentos ────────────────────────────────────────────────────────
-  { name: 'Financiamento Veículo', keywords: ['financiamento veículo', 'financiamento veiculo', 'parcela carro', 'consórcio auto', 'consorcio auto'], category: 'financing', logo: '🚙', min_amount: 200 },
-  { name: 'Crédito Pessoal', keywords: ['empréstimo', 'emprestimo', 'crédito pessoal', 'credito pessoal', 'parcela empréstimo'], category: 'financing', logo: '💳', min_amount: 100 },
-  { name: 'Consórcio',      keywords: ['consórcio', 'consorcio'], category: 'financing', logo: '🤝', min_amount: 100 },
-
-  // ── Streaming (complementar ao subscriptionDetector) ────────────────────
-  { name: 'Netflix',        keywords: ['netflix'], category: 'subscription', logo: '🎬', min_amount: 15 },
-  { name: 'Spotify',        keywords: ['spotify'], category: 'subscription', logo: '🎵', min_amount: 10 },
-  { name: 'Disney+',        keywords: ['disney'], category: 'subscription', logo: '🏰', min_amount: 15 },
-];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-
-function normalize(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function matchesPattern(tx: Transaction, pattern: ExpensePattern): boolean {
-  if (pattern.min_amount && tx.amount < pattern.min_amount) return false;
-  const text = normalize(`${tx.description ?? ''} ${tx.merchant ?? ''}`);
-  return pattern.keywords.some(kw => text.includes(normalize(kw)));
-}
-
-function median(values: number[]): number {
-  if (!values.length) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-
-function parseLocalDate(value: string): Date | null {
-  const dateOnly = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (dateOnly) {
-    const year = Number(dateOnly[1]);
-    const month = Number(dateOnly[2]) - 1;
-    const day = Number(dateOnly[3]);
-    const localDate = new Date(year, month, day);
-    return Number.isNaN(localDate.getTime()) ? null : localDate;
-  }
-
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function formatLocalDateOnly(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function avgDayOfMonth(dates: string[]): number | null {
-  if (dates.length < 2) return null;
-  const parsedDates = dates.map(parseLocalDate).filter((date): date is Date => Boolean(date));
-  if (parsedDates.length < 2) return null;
-  const days = parsedDates.map(d => d.getDate());
-  const avg = days.reduce((s, d) => s + d, 0) / days.length;
-  const variance = days.reduce((s, d) => s + Math.abs(d - avg), 0) / days.length;
-  return variance < 5 ? Math.round(avg) : null;
-}
-
-function nextExpectedDate(lastDate: string, dayOfMonth: number | null): string | null {
-  const d = parseLocalDate(lastDate);
-  if (!d) return null;
-  const next = new Date(d);
-  next.setMonth(next.getMonth() + 1);
-  if (dayOfMonth) next.setDate(Math.min(dayOfMonth, 28)); // clamp to 28 to avoid month overflow
-  return formatLocalDateOnly(next);
-}
-
-function detectAmountTrend(amounts: number[]): FixedExpense['amount_trend'] {
-  if (amounts.length < 3) return 'stable';
-  // Compute slope via linear regression
-  const n = amounts.length;
-  const sumX = amounts.reduce((_, __, i) => _ + i, 0);
-  const sumY = amounts.reduce((s, a) => s + a, 0);
-  const sumXY = amounts.reduce((s, a, i) => s + i * a, 0);
-  const sumX2 = amounts.reduce((s, _, i) => s + i * i, 0);
-  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-  const pctChange = slope / median(amounts);
-  if (pctChange > 0.02)  return 'increasing';
-  if (pctChange < -0.02) return 'decreasing';
-  return 'stable';
-}
-
-// ─── PART 5 — detectFixedExpenses ────────────────────────────────────────────
+// â”€â”€â”€ PART 5 â€” detectFixedExpenses â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
- * Detecta despesas fixas recorrentes nas transações.
+ * Detecta despesas fixas recorrentes nas transaÃ§Ãµes.
  *
- * @param transactions - lista completa de transações do usuário
+ * @param transactions - lista completa de transaÃ§Ãµes do usuÃ¡rio
  * @param monthlyIncome - renda mensal (opcional, para calcular commitment_ratio)
  * @returns FixedExpenseReport
  */
@@ -214,7 +56,7 @@ export function detectFixedExpenses(
   const results: FixedExpense[] = [];
   const matchedIds = new Set<string>();
 
-  // ── Strategy 1: Pattern catalog matching ──────────────────────────────────
+  // â”€â”€ Strategy 1: Pattern catalog matching â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   for (const pattern of FIXED_PATTERNS) {
     const matching = expenses.filter(tx => !matchedIds.has(tx.id) && matchesPattern(tx, pattern));
     if (matching.length === 0) continue;
@@ -272,7 +114,7 @@ export function detectFixedExpenses(
     }
   }
 
-  // ── Strategy 2: Pattern-based — unmatched stable recurring expenses ───────
+  // â”€â”€ Strategy 2: Pattern-based â€” unmatched stable recurring expenses â”€â”€â”€â”€â”€â”€â”€
   const unmatched = expenses.filter(t => !matchedIds.has(t.id));
 
   // Group by description fingerprint
@@ -327,12 +169,12 @@ export function detectFixedExpenses(
       last_date:    sorted[0].date,
       next_expected: nextExpectedDate(sorted[0].date, dom),
       confidence:   0.55 + (group.length >= 3 ? 0.1 : 0),
-      logo:         '🔄',
+      logo:         'ðŸ”„',
       transactions: sorted,
     });
   }
 
-  // ── Sort and aggregate ────────────────────────────────────────────────────
+  // â”€â”€ Sort and aggregate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   results.sort((a, b) => b.amount - a.amount);
 
   const total_monthly = results.reduce((s, e) => s + e.amount, 0);
@@ -363,15 +205,15 @@ export function detectFixedExpenses(
   };
 }
 
-// ─── Utility exports ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Utility exports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CATEGORY_LABELS: Record<FixedExpenseCategory, string> = {
   housing:      'Moradia',
   utilities:    'Utilidades',
   subscription: 'Assinaturas',
   insurance:    'Seguros',
-  education:    'Educação',
-  fitness:      'Saúde / Fitness',
+  education:    'EducaÃ§Ã£o',
+  fitness:      'SaÃºde / Fitness',
   transport:    'Transporte',
   financing:    'Financiamentos',
   other_fixed:  'Outros Fixos',
@@ -382,13 +224,13 @@ export function formatExpenseCategory(category: FixedExpenseCategory): string {
 }
 
 const CATEGORY_LOGOS: Record<FixedExpenseCategory, string> = {
-  housing: '🏠', utilities: '⚡', subscription: '📱',
-  insurance: '🛡️', education: '🎓', fitness: '💪',
-  transport: '🚌', financing: '💳', other_fixed: '🔄',
+  housing: 'ðŸ ', utilities: 'âš¡', subscription: 'ðŸ“±',
+  insurance: 'ðŸ›¡ï¸', education: 'ðŸŽ“', fitness: 'ðŸ’ª',
+  transport: 'ðŸšŒ', financing: 'ðŸ’³', other_fixed: 'ðŸ”„',
 };
 
 export function getCategoryLogo(category: FixedExpenseCategory): string {
-  return CATEGORY_LOGOS[category] ?? '📌';
+  return CATEGORY_LOGOS[category] ?? 'ðŸ“Œ';
 }
 
 /** Semaphore-style commitment assessment */
@@ -397,9 +239,10 @@ export function assessCommitmentRatio(ratio: number | undefined): {
   color: string;
   warning: boolean;
 } {
-  if (!ratio) return { label: 'Não calculado', color: 'text-slate-400', warning: false };
+  if (!ratio) return { label: 'NÃ£o calculado', color: 'text-slate-400', warning: false };
   const pct = Math.round(ratio * 100);
-  if (pct <= 30) return { label: `${pct}% da renda — saudável`, color: 'text-emerald-500', warning: false };
-  if (pct <= 50) return { label: `${pct}% da renda — atenção`,  color: 'text-amber-500',  warning: false };
-  return           { label: `${pct}% da renda — crítico`,       color: 'text-rose-500',   warning: true  };
+  if (pct <= 30) return { label: `${pct}% da renda â€” saudÃ¡vel`, color: 'text-emerald-500', warning: false };
+  if (pct <= 50) return { label: `${pct}% da renda â€” atenÃ§Ã£o`,  color: 'text-amber-500',  warning: false };
+  return           { label: `${pct}% da renda â€” crÃ­tico`,       color: 'text-rose-500',   warning: true  };
 }
+

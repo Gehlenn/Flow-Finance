@@ -21,6 +21,7 @@ describe('dashboard quick actions', () => {
     const onNavigateToHistory = vi.fn();
     const onNavigateToFlow = vi.fn();
     const onNavigateToInsights = vi.fn();
+    const onNavigateToSettings = vi.fn();
 
     render(
       <Dashboard
@@ -34,6 +35,7 @@ describe('dashboard quick actions', () => {
         onNavigateToHistory={onNavigateToHistory}
         onNavigateToFlow={onNavigateToFlow}
         onNavigateToInsights={onNavigateToInsights}
+        onNavigateToSettings={onNavigateToSettings}
       />,
     );
 
@@ -41,10 +43,12 @@ describe('dashboard quick actions', () => {
     fireEvent.click(screen.getByRole('button', { name: /abrir fluxo de caixa/i }));
     fireEvent.click(screen.getByRole('button', { name: /ver insights/i }));
     fireEvent.click(screen.getByRole('button', { name: /ver receitas previstas/i }));
+    fireEvent.click(screen.getByRole('button', { name: /abrir ajustes/i }));
 
     expect(onNavigateToHistory).toHaveBeenCalledTimes(1);
     expect(onNavigateToFlow).toHaveBeenCalledTimes(2);
     expect(onNavigateToInsights).toHaveBeenCalledTimes(1);
+    expect(onNavigateToSettings).toHaveBeenCalledTimes(1);
   });
 
   it('surfaces projected revenue as a first-class dashboard metric', () => {

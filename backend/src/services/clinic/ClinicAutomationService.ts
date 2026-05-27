@@ -35,6 +35,7 @@ import { getRequestContextValue } from '../../middleware/requestContextStore';
  * - Ingestão de receitas, despesas e lembretes de cobrança
  */
 export class ClinicAutomationService {
+  private static readonly HEALTHCHECK_TIMEOUT_MS = 1000;
   private readonly monitor: IntegrationMonitor;
   private readonly eventStore: IdempotentEventStore;
   private readonly featureFlagService: EnhancedFeatureFlagService;
@@ -598,7 +599,14 @@ export class ClinicAutomationService {
     };
 
     try {
-      await this.redis.ping();
+      await Promise.race([
+        this.redis.ping(),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error(`Redis ping timeout after ${ClinicAutomationService.HEALTHCHECK_TIMEOUT_MS}ms`));
+          }, ClinicAutomationService.HEALTHCHECK_TIMEOUT_MS);
+        }),
+      ]);
       details.redis = true;
     } catch (error) {
       this.logger.warn({

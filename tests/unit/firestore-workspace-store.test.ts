@@ -212,6 +212,7 @@ describe('firestoreWorkspaceStore', () => {
       transactions: [],
       goals: [],
       reminders: [],
+      receivables: [],
     });
     await expect(listWorkspaceCollectionDocuments('', 'subscriptions')).resolves.toEqual([]);
     await expect(listWorkspaceAuditEvents({ tenantId: '', workspaceId: 'ws-1' })).resolves.toEqual([]);

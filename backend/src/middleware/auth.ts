@@ -60,13 +60,19 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
       return;
     }
 
-    // Permitir tokens mockados em ambiente de teste
-    if (process.env.NODE_ENV === 'test' && token.startsWith('mock-token-for-')) {
-      const userId = token.replace('mock-token-for-', '');
+    const devBypassToken = env.AUTH_DEV_BYPASS_TOKEN;
+    if (env.NODE_ENV === 'test' && devBypassToken && token === devBypassToken) {
+      const userId = 'test-user';
+      const userEmail = 'test-user@local.test';
       req.userId = userId;
-      req.userEmail = `${userId}@mock.local`;
-      req.userExp = Date.now() / 1000 + 3600;
-      updateRequestContext({ userId, userEmail: req.userEmail });
+      req.userEmail = userEmail;
+      req.userExp = Date.now() / 1000 + 60;
+      updateRequestContext({ userId, userEmail });
+      logger.warn({
+        requestId: requestContext.requestId,
+        routeScope: requestContext.routeScope,
+        fallback: 'auth-dev-bypass-active',
+      }, 'INSECURE DEV LOGIN bypass token used');
       next();
       return;
     }

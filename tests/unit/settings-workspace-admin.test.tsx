@@ -8,6 +8,9 @@ const settingsMocks = vi.hoisted(() => ({
   listUserWorkspaces: vi.fn(),
   setActiveWorkspaceId: vi.fn(),
   getWorkspaceBillingOverview: vi.fn(),
+  getWorkspacePlanCatalog: vi.fn(),
+  createWorkspaceCheckoutSession: vi.fn(),
+  createWorkspacePortalSession: vi.fn(),
   apiRequest: vi.fn(),
   logWarn: vi.fn(),
 }));
@@ -42,6 +45,12 @@ vi.mock('../../src/services/workspaceSession', () => ({
 
 vi.mock('../../src/services/firestoreBillingStore', () => ({
   getWorkspaceBillingOverview: settingsMocks.getWorkspaceBillingOverview,
+}));
+
+vi.mock('../../src/saas/billingClient', () => ({
+  getWorkspacePlanCatalog: settingsMocks.getWorkspacePlanCatalog,
+  createWorkspaceCheckoutSession: settingsMocks.createWorkspaceCheckoutSession,
+  createWorkspacePortalSession: settingsMocks.createWorkspacePortalSession,
 }));
 
 vi.mock('../../src/utils/logger', () => ({
@@ -93,6 +102,18 @@ function renderSettings(
     currentMonthUsage: { transactions: 0, aiQueries: 0, bankConnections: 0 },
     billingState: { workspaceId: 'ws-1', tenantId: 'tenant-1', plan: 'free', status: 'active', updatedAt: '2026-04-02T00:00:00.000Z', updatedByUserId: 'user-1' },
     billingHooks: [],
+  });
+  settingsMocks.getWorkspacePlanCatalog.mockResolvedValue({
+    scope: 'workspace',
+    workspaceId: 'ws-1',
+    currentPlan: 'free',
+    mockBillingEnabled: true,
+    stripeConfigured: false,
+    stripePortalEnabled: false,
+    hasBillingCustomer: false,
+    billingProvider: 'mock',
+    manualPlanChangeAllowed: true,
+    plans: [],
   });
 
   return render(

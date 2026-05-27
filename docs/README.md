@@ -14,7 +14,7 @@ Este arquivo organiza `docs/` por finalidade. A meta é reduzir tempo de busca e
 
 ### Fonte de verdade operacional
 
-Use primeiro estes documentos para status real, readiness e bloqueios atuais:
+Use primeiro estes documentos para status real, readiness e pendencias operacionais atuais:
 
 - [OPERATIONS_README.md](./OPERATIONS_README.md)
 - [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md)

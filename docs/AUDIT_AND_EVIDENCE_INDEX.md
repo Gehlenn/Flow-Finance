@@ -2,7 +2,7 @@
 
 Este documento centraliza auditorias, evidencias operacionais e materiais de comprovacao. A funcao dele e evitar que cada evidencia fique solta e sem contexto.
 
-Ultima revisao estrutural: 2026-05-08
+Ultima revisao estrutural: 2026-05-26
 
 ## Entrada recomendada (historico)
 
@@ -27,7 +27,9 @@ Se o objetivo for entender decisoes antigas, auditorias passadas ou diagnosticos
 - [VERCEL_CONFIG.md](./VERCEL_CONFIG.md)
 - [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md)
 - [ROADMAP.md](./ROADMAP.md)
-- Revalidacao viva de deploy em 2026-05-08: `health:vercel` aponta mismatch de shell do frontend no backend alvo.
+- Revalidacao viva de deploy em 2026-05-25: `health:vercel` passou com backend oficial em `0.9.7`.
+- Passada de polimento visual concluida em 2026-05-26: empty states e modais menores foram alinhados a mesma linguagem visual das superficies principais.
+- Fechamento de acabamento visual em 2026-05-26: `Login` e `Settings` foram conferidos em desktop e mobile, com preservacao intencional de acentos apenas em acoes primarias e estados semanticos.
 - `tests/unit/cashflow-clarity.test.tsx` continua como evidencia viva para hierarquia do painel, relatorio salvo e invalidacao do recorte.
 - [VERCEL_RECOVERY_CHECKLIST.md](./VERCEL_RECOVERY_CHECKLIST.md)
 

@@ -6,6 +6,7 @@ import { Transaction, TransactionType, Category } from '../types';
 import { formatCurrency } from '../utils/helpers';
 import { expandTransactionsWithRecurring } from '../src/finance/recurringService';
 import { calculateSignedBalance } from '../src/engines/finance/analyticsEngine';
+import { compareMoney } from '../src/security/moneyMath';
 import { getWorkspaceScopedStorageKey } from '../src/utils/workspaceStorage';
 import { logWarn } from '../src/utils/logger';
 import { 
@@ -107,7 +108,10 @@ const TRANSACTION_LIST_CLASSES = {
   statePending: 'bg-amber-50 text-amber-700 border-amber-200',
   stateOverdue: 'bg-rose-100 text-rose-700 border-rose-200',
   shareTypeActive: 'bg-indigo-600 text-white border-indigo-600 shadow-md',
-  shareTypeInactive: 'bg-slate-50 dark:bg-slate-900 text-slate-400 border-transparent'
+  shareTypeInactive: 'bg-slate-50 dark:bg-slate-900 text-slate-400 border-transparent',
+  primaryAction: 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900',
+  neutralShareTile: 'bg-slate-50 dark:bg-slate-900 rounded-2xl flex flex-col items-center gap-2 hover:scale-105 transition-all',
+  neutralInfoBadge: 'bg-slate-50 dark:bg-slate-900/30 text-slate-500 rounded-2xl',
 };
 
 const TRANSACTION_CATEGORY_FILTERS: Array<Category | 'Todas'> = ['Todas', ...Object.values(Category)];
@@ -344,7 +348,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
 
     result.sort((a, b) => {
       let comp = 0;
-      if (sortConfig.key === 'amount') comp = a.amount - b.amount;
+      if (sortConfig.key === 'amount') comp = compareMoney(a.amount, b.amount);
       else if (sortConfig.key === 'category') comp = a.category.localeCompare(b.category);
       else if (sortConfig.key === 'description') comp = a.description.localeCompare(b.description);
       else comp = new Date(a.date).getTime() - new Date(b.date).getTime();
@@ -369,6 +373,24 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
       { confirmed: 0, pending: 0, overdue: 0 } as Record<TransactionFinancialState, number>,
     );
   }, [filteredAndSorted]);
+
+  const activeFilterSummary = useMemo(() => {
+    const parts: string[] = [];
+
+    if (categoryFilter !== 'Todas') {
+      parts.push(`Categoria: ${categoryFilter}`);
+    }
+
+    if (stateFilter !== 'Todas') {
+      parts.push(`Estado: ${formatFinancialStateLabel(stateFilter)}`);
+    }
+
+    if (dateStart || dateEnd) {
+      parts.push('Periodo personalizado');
+    }
+
+    return parts.length > 0 ? parts.join(' · ') : 'Sem filtros aplicados';
+  }, [categoryFilter, dateEnd, dateStart, stateFilter]);
 
   const handleSort = (key: SortKey) => {
     setSortConfig(current => ({
@@ -514,15 +536,29 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
 
   return (
     <div className="w-full flex flex-col gap-6 animate-in fade-in duration-700 pb-20 relative">
-      <div className="bg-gradient-to-r from-indigo-600 to-violet-500 p-6 rounded-[2rem] flex justify-between items-center shadow-lg shadow-indigo-500/20 shrink-0 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-        <div className="relative z-10">
-          <p className="text-sm font-semibold text-white/80 uppercase tracking-[0.18em] mb-2">Workspace: {activeWorkspaceName || 'Carregando workspace'}</p>
-          <h2 className="text-2xl font-semibold text-white tracking-tight leading-none">Histórico</h2>
-          <p className="text-sm font-semibold text-white/70 uppercase tracking-[0.16em] mt-1.5">Rastreio de Movimentações</p>
+      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Workspace</p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">Histórico</h2>
+            <p className="mt-1 text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-300">
+              {activeWorkspaceName || 'Carregando workspace'}
+            </p>
+          </div>
+          <div className="w-11 h-11 rounded-2xl bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-200 flex items-center justify-center shrink-0">
+            <History size={22} />
+          </div>
         </div>
-        <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center text-white relative z-10">
-          <History size={22} />
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${TRANSACTION_LIST_CLASSES.stateConfirmed}`}>
+            Confirmado {transactionStateSummary.confirmed}
+          </span>
+          <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${TRANSACTION_LIST_CLASSES.statePending}`}>
+            Pendente {transactionStateSummary.pending}
+          </span>
+          <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${TRANSACTION_LIST_CLASSES.stateOverdue}`}>
+            Vencido {transactionStateSummary.overdue}
+          </span>
         </div>
       </div>
 
@@ -541,7 +577,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
           <button 
             onClick={() => setIsShareModalOpen(true)} 
             aria-label="Abrir compartilhamento do historico"
-            className="p-3.5 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-2xl border border-indigo-100 dark:border-indigo-800 transition-all hover:bg-indigo-100"
+            className="p-3.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl border border-slate-200 dark:border-slate-700 transition-all hover:bg-slate-100 dark:hover:bg-slate-700"
           >
             <Share2 size={18} />
           </button>
@@ -558,7 +594,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[2.5rem] p-5 shadow-sm space-y-5 animate-in slide-in-from-top-2">
              <div className="flex items-center justify-between border-b border-slate-50 dark:border-slate-700 pb-2">
                 <span className="text-sm font-semibold text-slate-400 uppercase tracking-[0.18em]">Filtros</span>
-                <button onClick={() => {setCategoryFilter('Todas'); setStateFilter('Todas'); setDateStart(''); setDateEnd('');}} className="text-sm font-semibold text-indigo-500 uppercase flex items-center gap-1 tracking-[0.16em]"><RotateCcw size={10} /> Reset</button>
+                <button onClick={() => {setCategoryFilter('Todas'); setStateFilter('Todas'); setDateStart(''); setDateEnd('');}} className="text-sm font-semibold text-slate-500 hover:text-slate-700 uppercase flex items-center gap-1 tracking-[0.16em]"><RotateCcw size={10} /> Reset</button>
              </div>
              <div className="space-y-4">
               <div className="space-y-2">
@@ -599,33 +635,27 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
       </div>
 
       <div className="flex flex-wrap items-center gap-2 px-1">
-        <span className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Leitura rapida:</span>
-          <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${TRANSACTION_LIST_CLASSES.stateConfirmed}`}>
-          Confirmado {transactionStateSummary.confirmed}
-        </span>
-        <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${TRANSACTION_LIST_CLASSES.statePending}`}>
-          Pendente {transactionStateSummary.pending}
-        </span>
-        <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${TRANSACTION_LIST_CLASSES.stateOverdue}`}>
-          Vencido {transactionStateSummary.overdue}
+        <span className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Filtros ativos:</span>
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          {activeFilterSummary}
         </span>
       </div>
 
       {/* Header de Ordenação e Seleção */}
       <div className="flex items-center gap-4 px-5 py-2 text-sm font-semibold text-slate-400 uppercase tracking-[0.18em]">
-        <button onClick={selectAll} className="shrink-0 hover:text-indigo-500 transition-colors">
-          {selectedIds.size === filteredAndSorted.length && filteredAndSorted.length > 0 ? <CheckSquare size={16} className="text-indigo-600" /> : <Square size={16} />}
+        <button onClick={selectAll} className="shrink-0 hover:text-slate-700 transition-colors">
+          {selectedIds.size === filteredAndSorted.length && filteredAndSorted.length > 0 ? <CheckSquare size={16} className="text-slate-700" /> : <Square size={16} />}
         </button>
-        <button onClick={() => handleSort('category')} className="w-8 shrink-0 text-center hover:text-indigo-500 transition-colors flex justify-center group">
+        <button onClick={() => handleSort('category')} className="w-8 shrink-0 text-center hover:text-slate-700 transition-colors flex justify-center group">
           <SortIcon column="category" />
         </button>
-        <button onClick={() => handleSort('description')} className="flex-1 text-left flex items-center gap-1 hover:text-indigo-500 transition-colors group">
+        <button onClick={() => handleSort('description')} className="flex-1 text-left flex items-center gap-1 hover:text-slate-700 transition-colors group">
           Descrição <SortIcon column="description" />
         </button>
-        <button onClick={() => handleSort('date')} className="flex items-center gap-1 hover:text-indigo-500 transition-colors group">
+        <button onClick={() => handleSort('date')} className="flex items-center gap-1 hover:text-slate-700 transition-colors group">
           Data <SortIcon column="date" />
         </button>
-        <button onClick={() => handleSort('amount')} className="flex items-center gap-1 hover:text-indigo-500 transition-colors group">
+        <button onClick={() => handleSort('amount')} className="flex items-center gap-1 hover:text-slate-700 transition-colors group">
           Valor <SortIcon column="amount" />
         </button>
       </div>
@@ -700,14 +730,14 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
 
       {selectedIds.size > 0 && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-slate-950 text-white p-2 pr-6 rounded-[2rem] flex items-center gap-4 shadow-2xl z-[150] transition-all animate-in slide-in-from-bottom-4 border border-slate-800">
-           <div className="bg-indigo-600 text-white px-4 py-3 rounded-[1.5rem] font-semibold text-xs uppercase tracking-[0.08em] flex items-center gap-2 shadow-lg">
+           <div className="bg-slate-800 text-white px-4 py-3 rounded-[1.5rem] font-semibold text-xs uppercase tracking-[0.08em] flex items-center gap-2 shadow-sm">
              <CheckSquare size={14} /> {selectedIds.size} Selecionados
            </div>
            
            <div className="flex items-center gap-3">
                 <button onClick={(e) => { e.stopPropagation(); setIsShareModalOpen(true); }} className="p-2 hover:bg-white/10 rounded-xl transition-colors text-emerald-400 flex flex-col items-center gap-0.5">
                 <Share2 size={18} />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.08em]">Relatório</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.08em]">Relatório</span>
               </button>
               
               {canEdit && <button 
@@ -715,7 +745,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
                 className="p-2 hover:bg-white/10 rounded-xl transition-colors text-rose-400 flex flex-col items-center gap-0.5"
               >
                 <Trash2 size={18} />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.08em]">Excluir</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.08em]">Excluir</span>
               </button>}
 
               <div className="w-px h-8 bg-white/10 mx-1"></div>
@@ -776,7 +806,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
                 </div>
                 <button 
                   onClick={() => setShowDestinations(true)}
-                  className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-semibold text-xs uppercase tracking-[0.08em] shadow-xl flex items-center justify-center gap-3 transition-all active:scale-95"
+                  className={`w-full py-5 ${TRANSACTION_LIST_CLASSES.primaryAction} rounded-2xl font-semibold text-xs uppercase tracking-[0.08em] shadow-sm flex items-center justify-center gap-3 transition-all active:scale-95`}
                 >
                   <Share2 size={18} strokeWidth={3} /> Compartilhar Agora
                 </button>
@@ -794,15 +824,15 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
                   <MessageCircle className="text-emerald-500" size={24} />
                   <span className="text-sm font-semibold text-emerald-600 uppercase tracking-[0.08em]">WhatsApp</span>
                 </button>
-                <button onClick={() => void handleShare('copy')} aria-label="Copiar texto do historico" className="p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl flex flex-col items-center gap-2 hover:scale-105 transition-all">
-                  <FileText className="text-indigo-500" size={24} />
-                  <span className="text-sm font-semibold text-indigo-600 uppercase tracking-[0.08em]">Copiar Texto</span>
+                <button onClick={() => void handleShare('copy')} aria-label="Copiar texto do historico" className={`p-4 ${TRANSACTION_LIST_CLASSES.neutralShareTile}`}>
+                  <FileText className="text-slate-500" size={24} />
+                  <span className="text-sm font-semibold text-slate-600 uppercase tracking-[0.08em]">Copiar Texto</span>
                 </button>
-                <button onClick={() => void handleShare('csv')} className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl flex flex-col items-center gap-2 hover:scale-105 transition-all">
+                <button onClick={() => void handleShare('csv')} className={`p-4 ${TRANSACTION_LIST_CLASSES.neutralShareTile}`}>
                   <Download className="text-slate-500" size={24} />
                   <span className="text-sm font-semibold text-slate-500 uppercase tracking-[0.08em]">Tabela CSV</span>
                 </button>
-                <button onClick={() => void handleShare('email')} className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl flex flex-col items-center gap-2 hover:scale-105 transition-all">
+                <button onClick={() => void handleShare('email')} className={`p-4 ${TRANSACTION_LIST_CLASSES.neutralShareTile}`}>
                   <Mail className="text-slate-500" size={24} />
                   <span className="text-sm font-semibold text-slate-500 uppercase tracking-[0.08em]">E-mail</span>
                 </button>
@@ -830,7 +860,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
                 <p className="text-sm font-semibold text-slate-400 uppercase tracking-[0.16em] mb-1">Categoria</p>
                 {suggestedCategory && (
                   <div className="mb-2 flex items-center gap-2">
-                    <span className="text-xs font-medium text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 rounded-full px-2 py-0.5">Sugestão IA: {suggestedCategory}</span>
+                    <span className="text-xs font-medium text-slate-500 bg-slate-50 dark:bg-slate-900/50 rounded-full px-2 py-0.5">Sugestão IA: {suggestedCategory}</span>
                   </div>
                 )}
                 {suggestionDiagnostic && (
@@ -847,12 +877,12 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
                       type="button"
                       ref={idx === 0 ? firstCatBtnRef : undefined}
                       onClick={() => setEditCategoryValue(cat)}
-                      className={`p-3 rounded-2xl border flex items-center gap-2 transition-all ${editCategoryValue === cat ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg' : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-400'}`}
+                      className={`p-3 rounded-2xl border flex items-center gap-2 transition-all ${editCategoryValue === cat ? 'bg-slate-800 text-white border-slate-800 shadow-sm dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100' : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-400'}`}
                       aria-label={`Selecionar categoria ${cat}`}
                     >
                       <span className="text-sm font-semibold uppercase tracking-tight truncate">{cat}</span>
                       {suggestedCategory === cat && (
-                        <span className="ml-1 text-xs font-medium text-indigo-400">(IA)</span>
+                        <span className="ml-1 text-xs font-medium text-slate-400">(IA)</span>
                       )}
                     </button>
                   ))}
@@ -862,7 +892,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
             <div className="flex gap-2 pt-2">
               <button
                 onClick={handleSaveCategory}
-                className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-semibold text-xs uppercase shadow-lg active:scale-95 transition-all disabled:opacity-60"
+                className={`flex-1 py-4 ${TRANSACTION_LIST_CLASSES.primaryAction} rounded-2xl font-semibold text-xs uppercase shadow-sm active:scale-95 transition-all disabled:opacity-60`}
                 disabled={savingCategory || !editCategoryValue || editCategoryValue === editingTransaction.category}
                 aria-label="Salvar categoria"
               >
@@ -912,7 +942,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-800 w-full max-sm:rounded-[2.5rem] p-8 shadow-2xl space-y-6 animate-in zoom-in-95">
             <div className="flex justify-between items-center">
-              <div className="p-2.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-2xl"><Info size={20} /></div>
+              <div className={`p-2.5 ${TRANSACTION_LIST_CLASSES.neutralInfoBadge}`}><Info size={20} /></div>
               <button onClick={() => setViewingTransaction(null)} className="p-2 text-slate-400"><X size={20} /></button>
             </div>
             <div>
@@ -926,7 +956,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
                <div className="flex justify-between"><span className="text-xs font-semibold text-slate-400 uppercase">Tipo</span><span className="text-xs font-medium dark:text-white">{viewingTransaction.type}</span></div>
             </div>
             <div className="flex gap-2 pt-2">
-               {canEdit && <button onClick={() => { setEditingTransaction(viewingTransaction); setViewingTransaction(null); }} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-semibold text-xs uppercase shadow-lg active:scale-95 transition-all">Editar</button>}
+               {canEdit && <button onClick={() => { setEditingTransaction(viewingTransaction); setViewingTransaction(null); }} className={`flex-1 py-4 ${TRANSACTION_LIST_CLASSES.primaryAction} rounded-2xl font-semibold text-xs uppercase shadow-sm active:scale-95 transition-all`}>Editar</button>}
                {canEdit && <button onClick={() => setTransactionToDelete(viewingTransaction)} className="flex-1 py-4 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-2xl font-semibold text-xs uppercase active:scale-95 transition-all">Excluir</button>}
             </div>
           </div>

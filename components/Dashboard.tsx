@@ -1,4 +1,4 @@
-﻿import React, { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -8,10 +8,19 @@ import {
   CircleAlert,
   CircleCheckBig,
   Clock3,
+  Settings as SettingsIcon,
   Wallet,
 } from 'lucide-react';
 import { Account } from '../models/Account';
-import { Reminder, Transaction, TransactionType } from '../types';
+import { Receivable, Reminder, Transaction, TransactionType } from '../types';
+import { isReceivablesSourceOfTruthEnabled } from '../src/finance/receivableFeatureFlag';
+import {
+  buildDashboardReceivableAggregate,
+  isReceivableOverdue,
+  isReceivablePending,
+  isReceivableRealized,
+} from '../src/finance/receivableService';
+import { addMoney, compareMoney, subtractMoney, sumTransactions } from '../src/security/moneyMath';
 
 interface DashboardProps {
   userName?: string | null;
@@ -23,10 +32,12 @@ interface DashboardProps {
   accounts?: Account[];
   alerts?: Array<{ id: string }>;
   reminders?: Reminder[];
+  receivables?: Receivable[];
   hideValues?: boolean;
   onNavigateToInsights?: () => void;
   onNavigateToHistory?: () => void;
   onNavigateToFlow?: () => void;
+  onNavigateToSettings?: () => void;
 }
 
 export interface DashboardMetrics {
@@ -54,8 +65,28 @@ export interface DashboardReminderStateSummary {
   dueThisWeekCount: number;
 }
 
+function parseDate(value: string): Date | null {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const dateOnlyMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const parsed = new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function isSameMonth(dateIso: string, referenceDate: Date): boolean {
-  const date = new Date(dateIso);
+  const date = parseDate(dateIso);
+  if (!date) {
+    return false;
+  }
+
   return (
     date.getFullYear() === referenceDate.getFullYear()
     && date.getMonth() === referenceDate.getMonth()
@@ -63,7 +94,11 @@ function isSameMonth(dateIso: string, referenceDate: Date): boolean {
 }
 
 function isSameDay(dateIso: string, referenceDate: Date): boolean {
-  const date = new Date(dateIso);
+  const date = parseDate(dateIso);
+  if (!date) {
+    return false;
+  }
+
   return (
     date.getFullYear() === referenceDate.getFullYear()
     && date.getMonth() === referenceDate.getMonth()
@@ -76,17 +111,31 @@ function startOfDay(date: Date): Date {
 }
 
 function isOverdueReminder(reminder: Reminder, referenceDate: Date): boolean {
-  return new Date(reminder.date).getTime() < startOfDay(referenceDate).getTime();
+  const reminderDate = parseDate(reminder.date);
+  if (!reminderDate) {
+    return false;
+  }
+
+  return reminderDate.getTime() < startOfDay(referenceDate).getTime();
 }
 
 function hasFinancialImpact(reminder: Reminder): boolean {
-  return !reminder.completed && Boolean(reminder.amount && reminder.amount > 0);
+  return !reminder.completed && Boolean(reminder.amount && compareMoney(reminder.amount, 0) > 0);
 }
 
 function daysBetween(dateIso: string, referenceDate: Date): number {
-  const reminderDay = startOfDay(new Date(dateIso)).getTime();
+  const parsed = parseDate(dateIso);
+  if (!parsed) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const reminderDay = startOfDay(parsed).getTime();
   const currentDay = startOfDay(referenceDate).getTime();
   return Math.round((reminderDay - currentDay) / (1000 * 60 * 60 * 24));
+}
+
+function shouldUseReceivablesAsSourceOfTruth(force?: boolean): boolean {
+  return typeof force === 'boolean' ? force : isReceivablesSourceOfTruthEnabled();
 }
 
 export function calculateDashboardMetrics(
@@ -95,25 +144,50 @@ export function calculateDashboardMetrics(
   reminders: Reminder[],
   activeAlerts: number,
   referenceDate: Date = new Date(),
+  receivables: Receivable[] = [],
+  forceReceivablesSourceOfTruth?: boolean,
 ): DashboardMetrics {
-  const currentBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
+  const currentBalance = sumTransactions(accounts.map((account) => account.balance));
 
   const monthTransactions = transactions.filter((transaction) => isSameMonth(transaction.date, referenceDate));
-  const inflowMonth = monthTransactions
-    .filter((transaction) => transaction.type === TransactionType.RECEITA)
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-  const outflowMonth = monthTransactions
-    .filter((transaction) => transaction.type === TransactionType.DESPESA)
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const inflowMonth = sumTransactions(
+    monthTransactions
+      .filter((transaction) => transaction.type === TransactionType.RECEITA)
+      .map((transaction) => transaction.amount),
+  );
+  const outflowMonth = sumTransactions(
+    monthTransactions
+      .filter((transaction) => transaction.type === TransactionType.DESPESA)
+      .map((transaction) => transaction.amount),
+  );
+
+  if (shouldUseReceivablesAsSourceOfTruth(forceReceivablesSourceOfTruth)) {
+    const aggregate = buildDashboardReceivableAggregate(receivables, referenceDate);
+
+    return {
+      currentBalance,
+      inflowMonth,
+      outflowMonth,
+      projectedRevenueMonth: aggregate.projected,
+      pendingRevenueMonth: aggregate.pending,
+      overdueRevenueAmount: aggregate.overdue,
+      confirmedRevenueMonth: inflowMonth,
+      activeAlerts,
+    };
+  }
 
   const monthFinancialReminders = reminders.filter((reminder) => hasFinancialImpact(reminder) && isSameMonth(reminder.date, referenceDate));
-  const pendingRevenueMonth = monthFinancialReminders
-    .filter((reminder) => !isOverdueReminder(reminder, referenceDate))
-    .reduce((sum, reminder) => sum + (reminder.amount || 0), 0);
-  const overdueRevenueAmount = reminders
-    .filter((reminder) => hasFinancialImpact(reminder) && isOverdueReminder(reminder, referenceDate))
-    .reduce((sum, reminder) => sum + (reminder.amount || 0), 0);
-  const projectedRevenueMonth = pendingRevenueMonth + overdueRevenueAmount;
+  const pendingRevenueMonth = sumTransactions(
+    monthFinancialReminders
+      .filter((reminder) => !isOverdueReminder(reminder, referenceDate))
+      .map((reminder) => reminder.amount || 0),
+  );
+  const overdueRevenueAmount = sumTransactions(
+    reminders
+      .filter((reminder) => hasFinancialImpact(reminder) && isOverdueReminder(reminder, referenceDate))
+      .map((reminder) => reminder.amount || 0),
+  );
+  const projectedRevenueMonth = addMoney(pendingRevenueMonth, overdueRevenueAmount);
 
   return {
     currentBalance,
@@ -172,16 +246,35 @@ export function buildDashboardFocusNote(metrics: DashboardMetrics): DashboardFoc
 export function buildDashboardReminderStateSummary(
   reminders: Reminder[],
   referenceDate: Date = new Date(),
+  receivables: Receivable[] = [],
+  forceReceivablesSourceOfTruth?: boolean,
 ): DashboardReminderStateSummary {
+  if (shouldUseReceivablesAsSourceOfTruth(forceReceivablesSourceOfTruth)) {
+    const pendingReceivables = receivables.filter((receivable) => isReceivablePending(receivable, referenceDate));
+    const overdueReceivables = receivables.filter((receivable) => isReceivableOverdue(receivable, referenceDate));
+
+    return {
+      pendingCount: pendingReceivables.length,
+      pendingAmount: sumTransactions(pendingReceivables.map((receivable) => receivable.expected_amount || 0)),
+      overdueCount: overdueReceivables.length,
+      overdueAmount: sumTransactions(overdueReceivables.map((receivable) => receivable.expected_amount || 0)),
+      dueTodayCount: pendingReceivables.filter((receivable) => isSameDay(receivable.due_date, referenceDate)).length,
+      dueThisWeekCount: pendingReceivables.filter((receivable) => {
+        const distance = daysBetween(receivable.due_date, referenceDate);
+        return distance >= 0 && distance <= 7;
+      }).length,
+    };
+  }
+
   const financialReminders = reminders.filter((reminder) => hasFinancialImpact(reminder));
   const pendingReminders = financialReminders.filter((reminder) => !isOverdueReminder(reminder, referenceDate));
   const overdueReminders = financialReminders.filter((reminder) => isOverdueReminder(reminder, referenceDate));
 
   return {
     pendingCount: pendingReminders.length,
-    pendingAmount: pendingReminders.reduce((sum, reminder) => sum + (reminder.amount || 0), 0),
+    pendingAmount: sumTransactions(pendingReminders.map((reminder) => reminder.amount || 0)),
     overdueCount: overdueReminders.length,
-    overdueAmount: overdueReminders.reduce((sum, reminder) => sum + (reminder.amount || 0), 0),
+    overdueAmount: sumTransactions(overdueReminders.map((reminder) => reminder.amount || 0)),
     dueTodayCount: pendingReminders.filter((reminder) => isSameDay(reminder.date, referenceDate)).length,
     dueThisWeekCount: pendingReminders.filter((reminder) => {
       const distance = daysBetween(reminder.date, referenceDate);
@@ -198,19 +291,21 @@ const Dashboard: React.FC<DashboardProps> = ({
   accounts = [],
   alerts = [],
   reminders = [],
+  receivables = [],
   hideValues = false,
   onNavigateToInsights,
   onNavigateToHistory,
   onNavigateToFlow,
+  onNavigateToSettings,
 }) => {
   const metrics = useMemo(
-    () => calculateDashboardMetrics(transactions, accounts, reminders, alerts.length),
-    [transactions, accounts, reminders, alerts.length],
+    () => calculateDashboardMetrics(transactions, accounts, reminders, alerts.length, new Date(), receivables),
+    [transactions, accounts, reminders, alerts.length, receivables],
   );
   const focusNote = useMemo(() => buildDashboardFocusNote(metrics), [metrics]);
   const reminderSummary = useMemo(
-    () => buildDashboardReminderStateSummary(reminders),
-    [reminders],
+    () => buildDashboardReminderStateSummary(reminders, new Date(), receivables),
+    [reminders, receivables],
   );
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', {
@@ -219,33 +314,45 @@ const Dashboard: React.FC<DashboardProps> = ({
   }).format(value);
 
   const valueOrHidden = (value: number) => (hideValues ? '••••••' : formatCurrency(value));
-  const netMonth = metrics.inflowMonth - metrics.outflowMonth;
+  const netMonth = subtractMoney(metrics.inflowMonth, metrics.outflowMonth);
   const insightsActionTitle = activeWorkspacePlan === 'pro' ? 'Ver insights completos' : 'Ver insights essenciais';
   const insightsActionDescription = activeWorkspacePlan === 'pro'
     ? 'Abra analises profundas e comparativos historicos do periodo.'
     : 'Abra sinais principais para validar sua leitura de caixa.';
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 pb-8">
       <div className="rounded-3xl border border-slate-200 bg-white px-6 py-5 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
-        <div className="flex items-center justify-between gap-4">
-          <div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Caixa</p>
             <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">Leitura rapida do caixa</h2>
             <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-300">
               {userName ? `${userName}, veja o que entrou, saiu e exige acao.` : 'Veja o que entrou, saiu e exige acao no workspace ativo.'}
             </p>
           </div>
-          <div className="rounded-2xl bg-slate-100 px-4 py-2 text-right dark:bg-slate-700">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Workspace ativo</p>
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-100">
-              {activeWorkspaceName || 'Carregando workspace'}
-            </p>
+          <div className="flex items-center justify-between gap-2 sm:justify-end">
+            <div className="min-w-0 flex-1 rounded-2xl bg-slate-100 px-4 py-2 text-left dark:bg-slate-700 sm:flex-none sm:text-right">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Workspace ativo</p>
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-100 truncate sm:whitespace-nowrap">
+                {activeWorkspaceName || 'Carregando workspace'}
+              </p>
+            </div>
+            {onNavigateToSettings && (
+              <button
+                type="button"
+                onClick={onNavigateToSettings}
+                aria-label="Abrir ajustes"
+                className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition-colors hover:border-indigo-200 hover:text-indigo-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-indigo-500/40 dark:hover:text-indigo-300"
+              >
+                <SettingsIcon size={16} />
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.95fr)]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -262,7 +369,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <ComparisonMetricCard
               label="Entrou no mes"
               value={valueOrHidden(metrics.inflowMonth)}
@@ -324,7 +431,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         </section>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,0.95fr)]">
         <section className="rounded-3xl border border-amber-200 bg-amber-50/80 p-5 shadow-sm dark:border-amber-500/20 dark:bg-amber-500/10">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -563,4 +670,3 @@ const QuickActionButton: React.FC<{ title: string; description: string; onClick?
 );
 
 export default Dashboard;
-

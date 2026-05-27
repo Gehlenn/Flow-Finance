@@ -1,6 +1,7 @@
 import express from 'express';
 import request from 'supertest';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createTestAuthorizationHeader } from '../helpers/auth';
 
 vi.mock('../../src/middleware/rateLimit', () => ({
   aiLimiterByUser: (_req: unknown, _res: unknown, next: () => void) => next(),
@@ -88,7 +89,7 @@ describe('AI routes authz gates (viewer)', () => {
   it('allows viewer to call POST /api/ai/cfo when workspace is authorized', async () => {
     const response = await request(app)
       .post('/api/ai/cfo')
-      .set('Authorization', 'Bearer mock-token-for-user-1')
+      .set('Authorization', createTestAuthorizationHeader('user-1'))
       .set('x-workspace-id', 'ws-1')
       .send({
         question: 'Posso gastar este mes?',
@@ -111,7 +112,7 @@ describe('AI routes authz gates (viewer)', () => {
 
     const response = await request(app)
       .post('/api/ai/cfo')
-      .set('Authorization', 'Bearer mock-token-for-user-1')
+      .set('Authorization', createTestAuthorizationHeader('user-1'))
       .set('x-workspace-id', 'ws-1')
       .send({ question: 'Posso gastar este mes?' });
 

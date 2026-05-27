@@ -4,8 +4,6 @@ import helmet from 'helmet';
 import 'dotenv/config';
 
 import logger from './config/logger';
-import { initGemini } from './config/gemini';
-import { initOpenAI } from './config/openai';
 import { initSentry, isSentryConfigured, sentryRequestHandler, sentryErrorHandler, addBreadcrumb } from './config/sentry';
 import { errorHandler } from './middleware/errorHandler';
 import { validateJsonMiddleware } from './middleware/jsonValidation';
@@ -33,9 +31,11 @@ import clinicIntegrationRoutes from './routes/clinicIntegration';
 import businessIntegrationRoutes from './routes/businessIntegration';
 import { featureGateOpenFinance } from './middleware/featureGate';
 import workspaceRoutes from './routes/workspace';
-import { initializeWorkspaceStorePersistence } from './services/admin/workspaceStore';
-import { initializeAuditLogPersistence } from './services/admin/auditLog';
-import { initializeSaasStorePersistence } from './utils/saasStore';
+import {
+  initializeAIProviders,
+  initializePersistenceStores,
+  initializePersistenceStoresForServerlessColdStart,
+} from './bootstrap/runtimeInitialization';
 
 // ─── INITIALIZATION ──────────────────────────────────────────────────────────
 
@@ -54,19 +54,7 @@ const shouldStartHttpServer =
 // exported as a handler. Eagerly hydrate the workspace store so the in-memory
 // cache is populated before the first request arrives on a cold start.
 if (process.env.VERCEL === '1') {
-  void Promise.all([
-    initializeWorkspaceStorePersistence(),
-    initializeAuditLogPersistence(),
-    initializeSaasStorePersistence(),
-  ]).catch((error) => {
-    logger.error({
-      error,
-      initializationTasks: ['workspaceStore', 'auditLog', 'saasStore'],
-      vercel: process.env.VERCEL,
-      nodeEnv: process.env.NODE_ENV,
-      fallback: 'serverless-cold-start-persistence-init-failed',
-    }, 'Failed to initialize persistence on serverless cold start');
-  });
+  initializePersistenceStoresForServerlessColdStart();
 }
 
 function getRequestContext(req: Request): { requestId?: string; routeScope?: string } {
@@ -85,47 +73,7 @@ app.set('trust proxy', resolveTrustProxySetting({
 }));
 
 // Initialize AI providers
-const aiHealthStatus: Record<string, 'healthy' | 'unhealthy'> = {};
-
-const aiProviders: string[] = [];
-
-if (process.env.OPENAI_API_KEY) {
-  try {
-    initOpenAI();
-    aiProviders.push('OpenAI');
-    aiHealthStatus['OpenAI'] = 'healthy';
-  } catch (error) {
-    logger.warn({
-      error,
-      provider: 'OpenAI',
-      hasApiKey: true,
-      fallback: 'openai-init-failed',
-    }, 'Failed to initialize OpenAI');
-    aiHealthStatus['OpenAI'] = 'unhealthy';
-  }
-}
-
-if (process.env.GEMINI_API_KEY) {
-  try {
-    initGemini();
-    aiProviders.push('Gemini');
-    aiHealthStatus['Gemini'] = 'healthy';
-  } catch (error) {
-    logger.warn({
-      error,
-      provider: 'Gemini',
-      hasApiKey: true,
-      fallback: 'gemini-init-failed',
-    }, 'Failed to initialize Gemini');
-    aiHealthStatus['Gemini'] = 'unhealthy';
-  }
-}
-
-if (aiProviders.length === 0) {
-  logger.error('No AI provider configured. Set OPENAI_API_KEY or GEMINI_API_KEY in .env');
-} else {
-  logger.info(`AI providers available: ${aiProviders.join(', ')}`);
-}
+const { aiHealthStatus, aiProviders } = initializeAIProviders();
 
 // ─── MIDDLEWARE ──────────────────────────────────────────────────────────────
 
@@ -398,11 +346,7 @@ app.use(errorHandler);
 // Test suites import the Express app directly through Supertest.
 if (shouldStartHttpServer) {
   void (async () => {
-    await Promise.all([
-      initializeWorkspaceStorePersistence(),
-      initializeAuditLogPersistence(),
-      initializeSaasStorePersistence(),
-    ]);
+    await initializePersistenceStores();
 
     const server = app.listen(PORT);
 

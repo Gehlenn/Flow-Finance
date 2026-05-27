@@ -1,4 +1,4 @@
-﻿import React, { Suspense, lazy, useCallback, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useState } from 'react';
 import { Loader2, Activity } from 'lucide-react';
 import { Account } from '../models/Account';
 import { Alert, Goal, Reminder, Transaction } from '../types';
@@ -47,9 +47,7 @@ const AdvancedAnalytics = lazyWithRetry(() => import('../components/AdvancedAnal
 const AccountsPage = lazyWithRetry(() => import('../pages/Accounts'));
 const InsightsPage = lazyWithRetry(() => import('../pages/Insights'));
 const AICFOPage = lazyWithRetry(() => import('../pages/AICFO'));
-const AutopilotPage = lazyWithRetry(() => import('../pages/Autopilot'));
 const GoalsPage = lazyWithRetry(() => import('../pages/Goals'));
-const ReceiptScannerPage = lazyWithRetry(() => import('../pages/ReceiptScanner'));
 const ImportTransactionsPage = lazyWithRetry(() => import('../pages/ImportTransactions'));
 const AIControlPanel = lazyWithRetry(() => import('../pages/AIControlPanel'));
 
@@ -64,9 +62,7 @@ export type Tab =
   | 'accounts'
   | 'insights'
   | 'cfo'
-  | 'autopilot'
   | 'goals'
-  | 'scanner'
   | 'import'
   | 'aicontrol'
   | 'analytics'
@@ -146,6 +142,7 @@ export function useNavigationTabs() {
               onNavigateToInsights={() => context.onNavigateToTab('insights')}
               onNavigateToHistory={() => context.onNavigateToTab('history')}
               onNavigateToFlow={() => context.onNavigateToTab('flow')}
+              onNavigateToSettings={() => context.onNavigateToTab('settings')}
             />
           </Suspense>
         );
@@ -223,18 +220,6 @@ export function useNavigationTabs() {
             />
           </Suspense>
         );
-      case 'autopilot':
-        return (
-          <Suspense fallback={<LoadingFallback />}>
-            <AutopilotPage
-              transactions={context.transactions}
-              accounts={context.accounts}
-              userId={context.userId ?? 'local'}
-              workspacePlan={context.activeWorkspacePlan}
-              hideValues={context.hideValues}
-            />
-          </Suspense>
-        );
       case 'cfo':
         return (
           <Suspense fallback={<LoadingFallback />}>
@@ -271,15 +256,6 @@ export function useNavigationTabs() {
               onCreateGoal={context.onCreateGoal}
               onDeleteGoal={context.onDeleteGoal}
               onContributeGoal={context.onContributeGoal}
-            />
-          </Suspense>
-        );
-      case 'scanner':
-        return (
-          <Suspense fallback={<LoadingFallback />}>
-            <ReceiptScannerPage
-              hideValues={context.hideValues}
-              onAddTransaction={context.onAddTransactions}
             />
           </Suspense>
         );
@@ -393,11 +369,3 @@ export function useNavigationTabs() {
     renderActiveTab,
   };
 }
-
-
-
-
-
-
-
-

@@ -282,4 +282,42 @@ describe('ClinicAutomationService contract safety', () => {
       'Redis ping failed during health check',
     );
   });
+
+  it('falha rapido quando o ping do Redis fica pendurado', async () => {
+    const logger: MockLogger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+    const redis = {
+      ...createRedisMock(),
+      ping: vi.fn(() => new Promise(() => undefined)),
+    };
+    const monitor: MockMonitor = {
+      executeClinicWebhookCall: vi.fn(async (_operation: string, callback: () => Promise<unknown>) => callback()),
+    };
+    const featureFlags: MockFeatureFlags = {
+      isEnabled: vi.fn(() => ({ enabled: true, reason: 'enabled' })),
+    };
+
+    const service = new ClinicAutomationService(
+      logger as never,
+      redis as never,
+      monitor as never,
+      featureFlags as never
+    );
+
+    const start = Date.now();
+    const result = await service.healthCheck();
+    const elapsed = Date.now() - start;
+
+    expect(result.healthy).toBe(false);
+    expect(elapsed).toBeLessThan(1500);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fallback: 'clinic-redis-healthcheck-failed',
+      }),
+      'Redis ping failed during health check',
+    );
+  });
 });

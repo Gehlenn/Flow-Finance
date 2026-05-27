@@ -375,8 +375,8 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
 
       {/* Header */}
       <div className="flex items-center gap-3 pt-2">
-        <div className="w-11 h-11 bg-gradient-to-br from-sky-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-sky-500/30">
-          <Download size={20} className="text-white" />
+        <div className="w-11 h-11 rounded-2xl flex items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+          <Download size={20} className="text-sky-500" />
         </div>
         <div>
           <h1 className="text-lg font-semibold text-slate-900 dark:text-white leading-none">
@@ -403,7 +403,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
                 : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-sky-300 hover:bg-sky-50/40 dark:hover:bg-sky-500/5'
               }`}
           >
-            <div className="w-16 h-16 bg-gradient-to-br from-sky-100 to-indigo-100 dark:from-sky-500/20 dark:to-indigo-500/20 rounded-2xl flex items-center justify-center">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
               <Upload size={28} className="text-sky-500" />
             </div>
             <div className="text-center">
@@ -437,13 +437,13 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
           </div>
 
           {/* Info */}
-          <div className="flex items-start gap-3 px-4 py-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl">
+          <div className="flex items-start gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-700">
             <Info size={14} className="text-indigo-500 shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+              <p className="text-xs font-semibold text-slate-800 dark:text-white">
                 Classificação automática por IA
               </p>
-              <p className="text-xs text-indigo-500 font-medium mt-0.5 leading-relaxed">
+              <p className="text-xs text-slate-500 dark:text-slate-300 font-medium mt-0.5 leading-relaxed">
                 Após o upload, a classificação automática organiza entradas e saídas por categoria e estabelecimento. Você revisa antes de confirmar.
               </p>
             </div>
@@ -462,7 +462,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
             {/* Progress bar */}
             <div className="mt-3 w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-sky-500 to-indigo-500 rounded-full transition-all duration-500"
+                className="h-full bg-sky-500 rounded-full transition-all duration-500"
                 style={{ width: `${progress.pct}%` }}
               />
             </div>
@@ -582,7 +582,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
             <button
               onClick={handleImport}
               disabled={selectedCount === 0}
-              className="w-full bg-gradient-to-r from-sky-500 to-indigo-600 text-white rounded-2xl p-4 flex items-center justify-center gap-3 font-semibold text-sm shadow-xl shadow-sky-500/25 hover:shadow-sky-500/40 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-sky-600 text-white rounded-2xl p-4 flex items-center justify-center gap-3 font-semibold text-sm shadow-sm hover:bg-sky-500 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download size={18} />
               Importar {selectedCount} moviment{selectedCount !== 1 ? 'os' : 'o'}
@@ -611,7 +611,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
       {/* ── PHASE: done ─────────────────────────────────────────────────────── */}
       {phase === 'done' && (
         <div className="flex flex-col items-center gap-5 py-12 bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700">
-          <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-emerald-600 shadow-sm">
             <Check size={28} className="text-white" />
           </div>
           <div className="text-center">

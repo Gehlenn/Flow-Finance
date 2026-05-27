@@ -6,9 +6,9 @@ export { AppError } from '../shared/AppError';
 
 export function asyncHandler(
   fn: (req: Request, res: Response, next: NextFunction) => Promise<void>
-): (req: Request, res: Response, next: NextFunction) => void {
+) : (req: Request, res: Response, next: NextFunction) => Promise<void> {
   return (req: Request, res: Response, next: NextFunction) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
+    return Promise.resolve(fn(req, res, next)).catch(next);
   };
 }
 

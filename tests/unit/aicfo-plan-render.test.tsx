@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AICFO from '../../pages/AICFO';
 import { Category, ReminderType, TransactionType, type Transaction } from '../../types';
@@ -11,18 +11,25 @@ Element.prototype.scrollIntoView = vi.fn();
 
 const aicfoMocks = vi.hoisted(() => ({
   logWarn: vi.fn(),
+  ensureActiveWorkspace: vi.fn(),
+  getCurrentWorkspaceIdentity: vi.fn(),
+  getWorkspaceBillingOverview: vi.fn(),
+  incrementWorkspaceUsage: vi.fn(),
 }));
 
-vi.mock('../../src/ai/aiOrchestrator', () => ({
-  runAIPipelineSync: vi.fn(() => ({
-    financial_state: {
-      cashflow_prediction: {
-        balance_7_days: 900,
-        balance_30_days: 1200,
-      },
-    },
-    insights: [],
+vi.mock('../../src/ai/riskAnalyzer', () => ({
+  buildCashflowPrediction: vi.fn(() => ({
+    current_balance: 1000,
+    balance_7_days: 900,
+    balance_30_days: 1200,
+    projected_income: 1400,
+    projected_expenses: 500,
   })),
+}));
+
+vi.mock('../../src/ai/signalEngine', () => ({
+  computeFinancialSignals: vi.fn(() => []),
+  signalsToInsights: vi.fn(() => []),
 }));
 
 vi.mock('../../src/app/productFinancialIntelligence', () => ({
@@ -58,6 +65,16 @@ vi.mock('../../src/ai/aiCFO', () => ({
 
 vi.mock('../../src/utils/logger', () => ({
   logWarn: aicfoMocks.logWarn,
+}));
+
+vi.mock('../../src/services/workspaceSession', () => ({
+  ensureActiveWorkspace: aicfoMocks.ensureActiveWorkspace,
+  getCurrentWorkspaceIdentity: aicfoMocks.getCurrentWorkspaceIdentity,
+}));
+
+vi.mock('../../src/services/firestoreBillingStore', () => ({
+  getWorkspaceBillingOverview: aicfoMocks.getWorkspaceBillingOverview,
+  incrementWorkspaceUsage: aicfoMocks.incrementWorkspaceUsage,
 }));
 
 const baseTransactions: Transaction[] = [
@@ -100,6 +117,35 @@ const baseAccounts: Account[] = [
 ];
 
 describe('AICFO plan render', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    aicfoMocks.getCurrentWorkspaceIdentity.mockReturnValue({ userId: 'u1' });
+    aicfoMocks.ensureActiveWorkspace.mockResolvedValue({
+      workspaceId: 'ws-1',
+      tenantId: 'tenant-1',
+      name: 'Workspace 1',
+      tenantName: 'Tenant 1',
+      plan: 'free',
+      role: 'owner',
+      isDefault: true,
+    });
+    aicfoMocks.getWorkspaceBillingOverview.mockResolvedValue({
+      currentPlan: 'free',
+      usage: { '2026-05': { transactions: 0, aiQueries: 0, bankConnections: 0 } },
+      currentMonthUsage: { transactions: 0, aiQueries: 0, bankConnections: 0 },
+      billingState: {
+        workspaceId: 'ws-1',
+        tenantId: 'tenant-1',
+        plan: 'free',
+        status: 'active',
+        updatedAt: '2026-05-15T00:00:00.000Z',
+        updatedByUserId: 'u1',
+      },
+      billingHooks: [],
+    });
+    aicfoMocks.incrementWorkspaceUsage.mockResolvedValue(1);
+  });
+
   it('plano free exibe banner de modo essencial e reduz atalho de prompts', () => {
     render(
       <AICFO
@@ -114,7 +160,8 @@ describe('AICFO plan render', () => {
     );
 
     expect(screen.getByText(/Modo Free/i)).toBeTruthy();
-    expect(screen.queryByText(/Resumo do caixa/i)).toBeNull();
+    expect(screen.getByText(/20 consultas por mes/i)).toBeTruthy();
+    expect(screen.getByText(/Resumo do caixa/i)).toBeTruthy();
   });
 
   it('plano pro remove banner free e libera prompt completo', () => {
@@ -133,6 +180,39 @@ describe('AICFO plan render', () => {
     expect(screen.queryByText(/Modo Free/i)).toBeNull();
     expect(screen.getAllByRole('button').length).toBeGreaterThanOrEqual(6);
     expect(screen.getByText(/Perguntas rápidas do caixa/i)).toBeTruthy();
+  });
+
+  it('bloqueia a consulta 21 do plano free com paywall visivel', async () => {
+    aicfoMocks.getWorkspaceBillingOverview.mockResolvedValueOnce({
+      currentPlan: 'free',
+      usage: { '2026-05': { transactions: 0, aiQueries: 20, bankConnections: 0 } },
+      currentMonthUsage: { transactions: 0, aiQueries: 20, bankConnections: 0 },
+      billingState: {
+        workspaceId: 'ws-1',
+        tenantId: 'tenant-1',
+        plan: 'free',
+        status: 'active',
+        updatedAt: '2026-05-15T00:00:00.000Z',
+        updatedByUserId: 'u1',
+      },
+      billingHooks: [],
+    });
+
+    render(
+      <AICFO
+        transactions={baseTransactions}
+        accounts={baseAccounts}
+        userId="u1"
+        workspacePlan="free"
+        hideValues={false}
+        onNavigateToTab={vi.fn()}
+        onCreateReminder={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText(/Consultor IA ilimitado/i)).toBeTruthy();
+    expect(screen.getByText(/limite mensal do Free/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Assinar Pro agora/i })).toBeTruthy();
   });
 
   it('mostra diagnostico explicito quando a resposta do CFO cai em fallback', async () => {

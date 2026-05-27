@@ -1,0 +1,31 @@
+﻿import { type ExpensePattern } from './fixedExpenseDetectorTypes';
+
+export const FIXED_PATTERNS: ExpensePattern[] = [
+  { name: 'Aluguel', keywords: ['aluguel', 'locaÃ§Ã£o', 'locacao', 'arrendamento'], category: 'housing', logo: 'ðŸ ', min_amount: 200 },
+  { name: 'CondomÃ­nio', keywords: ['condomÃ­nio', 'condominio', 'taxa cond'], category: 'housing', logo: 'ðŸ¢', min_amount: 50 },
+  { name: 'IPTU', keywords: ['iptu', 'imposto predial'], category: 'housing', logo: 'ðŸ›ï¸', min_amount: 30 },
+  { name: 'Financiamento ImÃ³vel', keywords: ['financiamento imÃ³vel', 'financiamento imovel', 'prestaÃ§Ã£o imÃ³vel', 'prestacao imovel', 'caixa habitaÃ§Ã£o', 'habitacao', 'caixa hab'], category: 'housing', logo: 'ðŸ”‘', min_amount: 200 },
+  { name: 'Energia ElÃ©trica', keywords: ['cemig', 'copel', 'light', 'enel', 'elektro', 'coelba', 'celpe', 'ampla', 'energia', 'conta de luz', 'eletricidade'], category: 'utilities', logo: 'âš¡', min_amount: 30 },
+  { name: 'Ãgua / Saneamento', keywords: ['sabesp', 'saneamento', 'copasa', 'embasa', 'caesb', 'cagece', 'Ã¡gua', 'agua', 'sanepar'], category: 'utilities', logo: 'ðŸ’§', min_amount: 20 },
+  { name: 'GÃ¡s', keywords: ['comgÃ¡s', 'comgas', 'copergÃ¡s', 'copergas', 'gas natural', 'gas encanado', 'gÃ¡s'], category: 'utilities', logo: 'ðŸ”¥', min_amount: 20 },
+  { name: 'Internet', keywords: ['claro net', 'vivo fibra', 'oi fibra', 'tim fibra', 'net virtua', 'internet', 'banda larga', 'wifi'], category: 'utilities', logo: 'ðŸŒ', min_amount: 50 },
+  { name: 'Telefone Fixo', keywords: ['telefone fixo', 'conta telefone', 'oi telefone'], category: 'utilities', logo: 'ðŸ“ž', min_amount: 20 },
+  { name: 'Plano de SaÃºde', keywords: ['amil', 'unimed', 'hapvida', 'notre dame', 'sulamerica saude', 'bradesco saude', 'plano saÃºde', 'plano saude', 'plano de saÃºde'], category: 'insurance', logo: 'ðŸ¥', min_amount: 80 },
+  { name: 'Seguro Auto', keywords: ['porto seguro', 'bradesco auto', 'itaÃº seguro', 'seguro veÃ­culo', 'seguro veiculo', 'seguro auto'], category: 'insurance', logo: 'ðŸš—', min_amount: 50 },
+  { name: 'Seguro Vida', keywords: ['seguro de vida', 'vida metlife', 'tokio marine vida'], category: 'insurance', logo: 'ðŸ›¡ï¸', min_amount: 30 },
+  { name: 'Seguro Residencial', keywords: ['seguro residencial', 'seguro lar', 'seguro casa'], category: 'insurance', logo: 'ðŸ¡', min_amount: 20 },
+  { name: 'Escola / ColÃ©gio', keywords: ['mensalidade escolar', 'mensalidade colegio', 'colÃ©gio', 'colegio', 'escola'], category: 'education', logo: 'ðŸ«', min_amount: 100 },
+  { name: 'Faculdade / Universidade', keywords: ['mensalidade faculdade', 'universidade', 'anhanguera', 'kroton', 'estÃ¡cio', 'estacio', 'unopar', 'unip', 'usp', 'unicamp', 'ufrj'], category: 'education', logo: 'ðŸŽ“', min_amount: 100 },
+  { name: 'Curso Online', keywords: ['coursera', 'udemy', 'alura', 'hotmart', 'kiwify', 'edx'], category: 'education', logo: 'ðŸ’»', min_amount: 20 },
+  { name: 'Academia', keywords: ['smart fit', 'academia', 'bluefit', 'bodytech', 'crossfit', 'gympass', 'wellhub'], category: 'fitness', logo: 'ðŸ’ª', min_amount: 40 },
+  { name: 'Pilates / Yoga', keywords: ['pilates', 'yoga', 'estÃºdio'], category: 'fitness', logo: 'ðŸ§˜', min_amount: 80 },
+  { name: 'Estacionamento Mensal', keywords: ['estacionamento mensal', 'mensalista', 'vaga garagem'], category: 'transport', logo: 'ðŸ…¿ï¸', min_amount: 80 },
+  { name: 'Transporte PÃºblico', keywords: ['bilhete Ãºnico', 'cartÃ£o transporte', 'vale transporte', 'metrÃ´', 'metro', 'Ã´nibus', 'onibus'], category: 'transport', logo: 'ðŸšŒ', min_amount: 50 },
+  { name: 'Financiamento VeÃ­culo', keywords: ['financiamento veÃ­culo', 'financiamento veiculo', 'parcela carro', 'consÃ³rcio auto', 'consorcio auto'], category: 'financing', logo: 'ðŸš™', min_amount: 200 },
+  { name: 'CrÃ©dito Pessoal', keywords: ['emprÃ©stimo', 'emprestimo', 'crÃ©dito pessoal', 'credito pessoal', 'parcela emprÃ©stimo'], category: 'financing', logo: 'ðŸ’³', min_amount: 100 },
+  { name: 'ConsÃ³rcio', keywords: ['consÃ³rcio', 'consorcio'], category: 'financing', logo: 'ðŸ¤', min_amount: 100 },
+  { name: 'Netflix', keywords: ['netflix'], category: 'subscription', logo: 'ðŸŽ¬', min_amount: 15 },
+  { name: 'Spotify', keywords: ['spotify'], category: 'subscription', logo: 'ðŸŽµ', min_amount: 10 },
+  { name: 'Disney+', keywords: ['disney'], category: 'subscription', logo: 'ðŸ°', min_amount: 15 },
+];
+

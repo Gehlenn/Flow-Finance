@@ -1,9 +1,12 @@
 ﻿
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Transaction, TransactionType, Category } from '../types';
+import { Receivable, Transaction, TransactionType, Category } from '../types';
 import { formatCurrency } from '../utils/helpers';
 import { GeminiService } from '../services/geminiService';
 import { getWorkspaceScopedStorageKey } from '../src/utils/workspaceStorage';
+import { addMoney } from '../src/security/moneyMath';
+import { isReceivablesSourceOfTruthEnabled } from '../src/finance/receivableFeatureFlag';
+import { buildReceivableStateSummary, filterReceivablesByTimeframe } from '../src/finance/receivableService';
 import {
   buildCashflowTimeline,
   buildExpenseCategoryData,
@@ -11,6 +14,7 @@ import {
 } from '../src/engines/finance/analyticsEngine';
 import { calculateCashflowSummary } from '../src/engines/finance/cashflowEngine';
 import { logWarn } from '../src/utils/logger';
+import { FLOW_CHART_COLORS, FLOW_CHART_UI } from '../src/styles/chartPalette';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, BarChart, Bar
@@ -24,11 +28,12 @@ interface CashFlowProps {
   activeWorkspaceId?: string | null;
   activeWorkspaceName?: string | null;
   transactions: Transaction[];
+  receivables?: Receivable[];
   hideValues: boolean;
   theme: 'light' | 'dark';
 }
 
-const COLORS = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#f43f5e', '#334155'];
+const COLORS = FLOW_CHART_COLORS.categories;
 
 interface CustomTooltipProps {
   active?: boolean;
@@ -50,7 +55,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, h
         <div className="flex items-center justify-between gap-4">
           <p className="text-base font-semibold text-slate-900 dark:text-white">{hideValues ? 'R$ ••••' : formatCurrency(value)}</p>
           {isPercentage && (
-            <span className="text-[11px] font-semibold text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-full uppercase tracking-[0.12em]">
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 px-2 py-0.5 rounded-full uppercase tracking-[0.12em]">
               {percent}%
             </span>
           )}
@@ -61,7 +66,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, h
   return null;
 };
 
-interface RevenueStateSummary {
+export interface RevenueStateSummary {
   confirmed: number;
   pending: number;
   overdue: number;
@@ -109,32 +114,43 @@ function classifyRevenueState(transaction: Transaction, referenceDate: Date = ne
   return 'confirmed';
 }
 
-function calculateRevenueStateSummary(transactions: Transaction[], referenceDate: Date = new Date()): RevenueStateSummary {
+export function calculateRevenueStateSummary(
+  transactions: Transaction[],
+  receivables: Receivable[] = [],
+  referenceDate: Date = new Date(),
+  forceReceivablesSourceOfTruth?: boolean,
+): RevenueStateSummary {
+  const shouldUseReceivables = typeof forceReceivablesSourceOfTruth === 'boolean'
+    ? forceReceivablesSourceOfTruth
+    : isReceivablesSourceOfTruthEnabled();
+
+  if (shouldUseReceivables) {
+    return buildReceivableStateSummary(receivables, referenceDate);
+  }
+
   const incomeTransactions = transactions.filter((transaction) => transaction.type === TransactionType.RECEITA);
 
   const summary = incomeTransactions.reduce((accumulator, transaction) => {
     const state = classifyRevenueState(transaction, referenceDate);
     if (state === 'pending') {
-      accumulator.pending += transaction.amount;
+      return { ...accumulator, pending: addMoney(accumulator.pending, transaction.amount) };
     } else if (state === 'overdue') {
-      accumulator.overdue += transaction.amount;
-    } else {
-      accumulator.confirmed += transaction.amount;
+      return { ...accumulator, overdue: addMoney(accumulator.overdue, transaction.amount) };
     }
-    return accumulator;
+    return { ...accumulator, confirmed: addMoney(accumulator.confirmed, transaction.amount) };
   }, { confirmed: 0, pending: 0, overdue: 0 });
 
   return {
     confirmed: summary.confirmed,
     pending: summary.pending,
     overdue: summary.overdue,
-    projected: summary.pending + summary.overdue,
+    projected: addMoney(summary.pending, summary.overdue),
   };
 }
 
 const STATE_TONE_CLASS_MAP: Record<'confirmed' | 'projected' | 'pending' | 'overdue', string> = {
   confirmed: 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-300',
-  projected: 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-500/10 dark:border-indigo-500/20 dark:text-indigo-300',
+  projected: 'bg-slate-100 border-slate-200 text-slate-700 dark:bg-slate-800/60 dark:border-slate-700 dark:text-slate-200',
   pending: 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-300',
   overdue: 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-300',
 };
@@ -149,7 +165,7 @@ const StateMetricCard: React.FC<{ label: string; value: string; tone: 'confirmed
 const CASHFLOW_TIMEFRAMES = ['7d', '30d', '12m', 'custom'] as const;
 type CashflowTimeframe = typeof CASHFLOW_TIMEFRAMES[number];
 
-const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceName, transactions, hideValues, theme }) => {
+const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceName, transactions, receivables = [], hideValues, theme }) => {
   const [timeframe, setTimeframe] = useState<CashflowTimeframe>('30d');
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
@@ -163,7 +179,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
   
   const gemini = useRef(new GeminiService());
   const isDark = theme === 'dark';
-  const gridColor = isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(148, 163, 184, 0.1)";
+  const gridColor = FLOW_CHART_UI.grid;
   const reportStorageKey = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     return getWorkspaceScopedStorageKey(`flow_report_${today}`, activeWorkspaceId);
@@ -213,6 +229,10 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
     () => filterTransactionsByTimeframe(transactions, timeframe, dateStart, dateEnd),
     [transactions, timeframe, dateStart, dateEnd]
   );
+  const filteredReceivables = useMemo(
+    () => filterReceivablesByTimeframe(receivables, timeframe, dateStart, dateEnd),
+    [receivables, timeframe, dateStart, dateEnd]
+  );
 
   const reportDiagnostic = report?.diagnostic;
   const reportDiagnosticMessage =
@@ -224,7 +244,10 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
     return { expenses: summary.expenses, income: summary.income };
   }, [filtered]);
 
-  const revenueStateSummary = useMemo(() => calculateRevenueStateSummary(filtered), [filtered]);
+  const revenueStateSummary = useMemo(
+    () => calculateRevenueStateSummary(filtered, filteredReceivables),
+    [filtered, filteredReceivables]
+  );
 
   const timelineData = useMemo(() => buildCashflowTimeline(filtered), [filtered]);
 
@@ -306,24 +329,37 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
 
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-700 pb-20 overflow-visible relative">
-      <div className="bg-gradient-to-r from-indigo-600 to-sky-500 p-6 rounded-3xl flex justify-between items-center shadow-lg shadow-indigo-500/20 shrink-0">
-        <div>
-          <h2 className="text-2xl font-semibold text-white tracking-tight leading-none">Receitas</h2>
-          <p className="text-sm font-semibold text-white/80 uppercase tracking-[0.16em] mt-2">
+      <div className="flex items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm shrink-0 dark:border-slate-700 dark:bg-slate-800">
+        <div className="min-w-0">
+          <h2 className="text-2xl font-semibold tracking-tight leading-none text-slate-900 dark:text-white">Receitas</h2>
+          <p className="mt-2 text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
             Workspace: {activeWorkspaceName || 'Carregando workspace'}
           </p>
-          <p className="text-sm font-semibold text-white/70 uppercase tracking-[0.16em] mt-1.5">Realizado, previsto e decisão</p>
+          <p className="mt-1.5 text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">Realizado, previsto e decisão</p>
         </div>
-        <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center text-white">
-          <TrendingUp size={22} />
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          <TrendingUp size={20} />
         </div>
       </div>
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3 px-1">
-          <div className="flex flex-1 bg-white dark:bg-slate-800 p-1 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm overflow-x-auto no-scrollbar">
+          <div role="tablist" aria-label="Período do fluxo de receitas" className="flex flex-1 bg-white dark:bg-slate-800 p-1 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm overflow-x-auto no-scrollbar">
             {CASHFLOW_TIMEFRAMES.map(t => (
-              <button key={t} onClick={() => setTimeframe(t)} className={`px-4 py-1.5 rounded-full text-sm font-semibold uppercase tracking-[0.16em] transition-all whitespace-nowrap flex-1 ${timeframe === t ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-500'}`}>
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={timeframe === t}
+                aria-label={
+                  t === '7d' ? 'Últimos 7 dias' :
+                  t === '30d' ? 'Últimos 30 dias' :
+                  t === '12m' ? 'Últimos 12 meses' :
+                  'Período customizado'
+                }
+                onClick={() => setTimeframe(t)}
+                className={`px-4 py-1.5 rounded-full text-sm font-semibold uppercase tracking-[0.16em] transition-all whitespace-nowrap flex-1 ${timeframe === t ? 'bg-slate-900 text-white shadow-md dark:bg-slate-100 dark:text-slate-900' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+              >
                 {t === 'custom' ? 'Calendário' : t}
               </button>
             ))}
@@ -331,7 +367,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
           <button 
             onClick={() => setIsShareModalOpen(true)}
             aria-label="Abrir compartilhamento do fluxo"
-            className="p-3 bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm hover:scale-105 active:scale-95 transition-all"
+            className="p-3 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm hover:scale-105 active:scale-95 transition-all"
           >
             <Share2 size={18} />
           </button>
@@ -358,7 +394,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
         <StateMetricCard label="Vencido" value={fmt(revenueStateSummary.overdue)} tone="overdue" />
       </div>
 
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-[0_18px_45px_-24px_rgba(15,23,42,0.3)] overflow-hidden min-h-[220px]">
+      <div role="tabpanel" aria-label="Gráficos do fluxo de receitas" className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-[0_18px_45px_-24px_rgba(15,23,42,0.3)] overflow-hidden min-h-[220px]">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-[0.16em] flex items-center gap-2"><Calendar size={14} /> Receita realizada</h3>
           <div className="flex gap-4">
@@ -373,8 +409,8 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
               <XAxis dataKey="date" hide />
               <YAxis hide />
               <Tooltip content={<CustomTooltip hideValues={hideValues} />} />
-              <Area type="monotone" name="Entradas" dataKey="incoming" stroke="#10b981" fill="#10b981" fillOpacity={0.05} strokeWidth={2.5} />
-              <Area type="monotone" name="Saídas" dataKey="outgoing" stroke="#f43f5e" fill="#f43f5e" fillOpacity={0.05} strokeWidth={2.5} />
+              <Area type="monotone" name="Entradas" dataKey="incoming" stroke={FLOW_CHART_COLORS.income} fill={FLOW_CHART_COLORS.income} fillOpacity={0.05} strokeWidth={2.5} />
+              <Area type="monotone" name="Saídas" dataKey="outgoing" stroke={FLOW_CHART_COLORS.expenses} fill={FLOW_CHART_COLORS.expenses} fillOpacity={0.05} strokeWidth={2.5} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -402,7 +438,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
               <BarChart data={categoryData} layout="vertical" margin={{ left: -30, right: 30 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={gridColor} />
                 <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 8, fontWeight: 900, fill: isDark ? '#64748b' : '#94a3b8' }} />
+                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 600, fill: FLOW_CHART_UI.axis }} />
                 <Tooltip cursor={{ fill: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(99,102,241,0.05)' }} content={<CustomTooltip hideValues={hideValues} isPercentage total={totalsByPeriod.expenses} />} />
                 <Bar dataKey="value" radius={[0, 10, 10, 0]} barSize={16}>
                   {categoryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
@@ -414,20 +450,19 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
       </div>
 
       <div className="w-full overflow-visible py-4">
-        <div className="bg-slate-900 rounded-3xl p-8 flex flex-col justify-between border border-indigo-500/10 shadow-[0_30px_60px_-15px_rgba(79,70,229,0.3)] animate-pulse-wiggle relative overflow-visible">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.1)_0%,_transparent_60%)] pointer-events-none rounded-3xl"></div>
+        <div className="relative overflow-visible rounded-3xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-start gap-5 relative z-10">
-             <div className="w-14 h-14 bg-indigo-600/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-indigo-400 shrink-0 shadow-inner border border-indigo-500/30">
+             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                <Target size={28} />
              </div>
              <div>
-               <h4 className="text-base font-semibold tracking-tight uppercase text-indigo-300">Próximo passo financeiro</h4>
-               <p className="text-sm text-slate-200 font-medium leading-relaxed mt-1.5 opacity-90">Diagnóstico curto para decidir o que fazer agora.</p>
+               <h4 className="text-base font-semibold tracking-tight uppercase text-slate-500 dark:text-slate-400">Próximo passo financeiro</h4>
+               <p className="mt-1.5 text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-300">Diagnóstico curto para decidir o que fazer agora.</p>
              </div>
           </div>
           <button 
             onClick={handleGenerateReport}
-            className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-semibold text-sm uppercase tracking-[0.16em] shadow-2xl flex items-center justify-center gap-3 mt-8 active:scale-95 transition-all relative z-10 group overflow-hidden"
+            className="relative z-10 mt-8 flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-slate-900 py-5 text-sm font-semibold uppercase tracking-[0.16em] text-white shadow-sm transition-all active:scale-95 group hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
           >
             <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <BrainCircuit size={20} className="group-hover:rotate-12 transition-transform" /> {report ? 'Abrir diagnóstico' : 'Gerar diagnóstico'}
@@ -437,14 +472,14 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
 
       {isShareModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[300] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-3xl p-8 shadow-2xl space-y-6 animate-in zoom-in-95">
+          <div role="dialog" aria-modal="true" aria-labelledby="cashflow-share-title" aria-describedby="cashflow-share-description" className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-3xl p-8 shadow-2xl space-y-6 animate-in zoom-in-95">
             <div className="flex justify-between items-center">
-              <h3 className="text-xl font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Exportar Receitas</h3>
+              <h3 id="cashflow-share-title" className="text-xl font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Exportar Receitas</h3>
               <button onClick={() => setIsShareModalOpen(false)} className="p-1 text-slate-400"><X size={20} /></button>
             </div>
             
-            <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-800">
-               <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.16em] mb-2">Resumo Incluído</p>
+            <div id="cashflow-share-description" className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+               <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-[0.16em] mb-2">Resumo Incluído</p>
                <div className="space-y-1">
                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300">• Dados de Entradas/Saídas</p>
                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300">• Divisão por Categorias</p>
@@ -465,9 +500,9 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
                 <MessageCircle className="text-emerald-500" size={24} />
                 <span className="text-sm font-semibold text-emerald-600 uppercase tracking-[0.12em]">WhatsApp</span>
               </button>
-              <button onClick={() => void handleShare('copy')} aria-label="Copiar resumo do fluxo" className="p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl flex flex-col items-center gap-2 hover:scale-105 transition-all">
-                <FileText className="text-indigo-500" size={24} />
-                <span className="text-sm font-semibold text-indigo-600 uppercase tracking-[0.12em]">Copiar Texto</span>
+              <button onClick={() => void handleShare('copy')} aria-label="Copiar resumo do fluxo" className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl flex flex-col items-center gap-2 hover:scale-105 transition-all">
+                <FileText className="text-slate-500" size={24} />
+                <span className="text-sm font-semibold text-slate-600 uppercase tracking-[0.12em]">Copiar Texto</span>
               </button>
               <button onClick={() => void handleShare('email')} className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl flex flex-col items-center gap-2 hover:scale-105 transition-all col-span-2">
                 <Mail className="text-slate-500" size={24} />
@@ -488,10 +523,10 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
 
       {isConsultancyOpen && (
         <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-xl z-[200] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-lg max-h-[85vh] rounded-3xl overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95">
+          <div role="dialog" aria-modal="true" aria-labelledby="cashflow-consultancy-title" className="bg-white dark:bg-slate-800 w-full max-w-lg max-h-[85vh] rounded-3xl overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95">
             <div className="p-8 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Estratégia Flow</h3>
+                <h3 id="cashflow-consultancy-title" className="text-xl font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Estratégia Flow</h3>
                 <p className="text-sm font-semibold text-slate-400 uppercase tracking-[0.16em] mt-1">Auditado por Inteligência Artificial</p>
               </div>
               <button onClick={() => setIsConsultancyOpen(false)} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-full text-slate-400"><X size={20} /></button>
@@ -499,7 +534,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
             
             <div className="p-8 overflow-y-auto space-y-8 no-scrollbar">
               {isGenerating ? (
-                <div className="py-24 flex flex-col items-center gap-5 text-center text-indigo-600 font-semibold uppercase tracking-[0.16em]">
+                <div className="py-24 flex flex-col items-center gap-5 text-center text-slate-600 font-semibold uppercase tracking-[0.16em]">
                   <Loader2 size={40} className="animate-spin" strokeWidth={3} />
                   <p className="text-xs">Auditando movimentações...</p>
                 </div>
@@ -522,15 +557,15 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
                     </div>
                   )}
                   <div className="p-6 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-slate-100 dark:border-slate-700">
-                    <h4 className="text-sm font-semibold text-indigo-600 mb-2 uppercase tracking-[0.16em] flex items-center gap-2"><Target size={14}/> Diagnóstico Executivo</h4>
+                    <h4 className="text-sm font-semibold text-slate-600 mb-2 uppercase tracking-[0.16em] flex items-center gap-2"><Target size={14}/> Diagnóstico Executivo</h4>
                     <p className="text-sm text-slate-600 dark:text-slate-400 font-medium leading-relaxed">{report.executiveSummary}</p>
                   </div>
-                  <div className="p-6 bg-indigo-600 text-white rounded-3xl shadow-xl">
+                  <div className="p-6 bg-slate-900 text-white rounded-3xl shadow-sm dark:bg-slate-100 dark:text-slate-900">
                     <h4 className="text-sm font-semibold uppercase mb-4 tracking-[0.16em] flex items-center gap-2"><Lightbulb size={16}/> Plano de Ação</h4>
                     <ul className="space-y-3">
                       {report.actionPlan && Array.isArray(report.actionPlan) && report.actionPlan.map((step: string, i: number) => (
                         <li key={i} className="flex gap-3 items-start">
-                          <span className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0">{i+1}</span>
+                          <span className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 dark:bg-slate-900/10">{i+1}</span>
                           <span className="text-sm font-medium leading-tight">{step}</span>
                         </li>
                       ))}
@@ -542,7 +577,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
             
             <div className="p-6 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 flex gap-3">
               <button onClick={() => setIsConsultancyOpen(false)} className="flex-1 py-4 bg-slate-900 dark:bg-slate-700 text-white rounded-2xl font-semibold text-sm uppercase tracking-[0.16em] active:scale-95">Sair</button>
-              <button onClick={() => handleShare('whatsapp')} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-semibold text-sm uppercase tracking-[0.16em] active:scale-95 flex items-center justify-center gap-2">
+              <button onClick={() => handleShare('whatsapp')} className="flex-1 py-4 bg-slate-100 dark:bg-slate-100 text-slate-900 rounded-2xl font-semibold text-sm uppercase tracking-[0.16em] active:scale-95 flex items-center justify-center gap-2">
                 <MessageCircle size={16} /> WhatsApp
               </button>
             </div>

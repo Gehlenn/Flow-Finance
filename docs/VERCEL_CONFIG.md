@@ -31,7 +31,7 @@ Garantir que:
 ```env
 VITE_API_PROD_URL=https://flow-finance-backend.vercel.app/
 VITE_APP_VERSION=
-VITE_SENTRY_DSN=  # preferencial no frontend
+VITE_SENTRY_DSN=
 VITE_FIREBASE_API_KEY=
 VITE_FIREBASE_PROJECT_ID=
 ```
@@ -48,8 +48,14 @@ FRONTEND_URL=https://flow-finance-frontend-nine.vercel.app/
 
 ## Revalidacao atual
 
-- Em `2026-05-08`, o backend oficial responde `200` na raiz, mas `/health`, `/api/health` e `/api/version` continuam em `404`.
-- O frontend principal responde `200` no mesmo checkpoint.
+- Em `2026-05-25`, o frontend principal responde `200`.
+- Em `2026-05-25`, o backend oficial responde:
+  - `GET /` -> `404` esperado para backend API-only
+  - `GET /health` -> `200`
+  - `GET /api/health` -> `200`
+  - `GET /api/version` -> `200` com `version = 0.9.7`
+- O mismatch anterior de versao publicada foi resolvido em `2026-05-25` com redeploy do backend oficial e override persistido de `APP_VERSION`.
+- Em `2026-05-25`, o Vercel listou como provisionados em producao: `VITE_APP_VERSION`, `VITE_SENTRY_DSN`, `APP_VERSION` e `SENTRY_DSN`.
 
 ## Regras praticas
 
@@ -61,11 +67,11 @@ FRONTEND_URL=https://flow-finance-frontend-nine.vercel.app/
 
 ### Versao
 
-Sem `VITE_APP_VERSION` e `APP_VERSION`, a validacao de `/api/version` fica incompleta.
+Sem `VITE_APP_VERSION` e `APP_VERSION`, a validacao de `/api/version` fica incompleta. Na revalidacao atual, ambos ja aparecem provisionados em producao.
 
 ### Observabilidade
 
-Sem DSN configurado, a trilha de observabilidade fica parcialmente aberta. No frontend, priorize `VITE_SENTRY_DSN`; `SENTRY_DSN` segue obrigatorio no backend e funciona como fallback legado do frontend no build. O bootstrap silencioso evita ruido, mas nao substitui configuracao real de ambiente.
+Sem DSN configurado, a trilha de observabilidade fica parcialmente aberta. Na revalidacao atual, `VITE_SENTRY_DSN` e `SENTRY_DSN` ja aparecem provisionados em producao; o que segue pendente e a evidencia final de uso e acesso quando necessario. No frontend, priorize `VITE_SENTRY_DSN`; `SENTRY_DSN` segue obrigatorio no backend e funciona como fallback legado do frontend no build.
 
 ### Acesso ao preview
 
@@ -81,19 +87,19 @@ Se o dominio backend responder HTML na raiz e `404` em `/health`, `/api/health` 
 
 1. Conferir se o projeto do backend no painel do Vercel aponta para o diretorio `backend/`.
 2. Conferir se o dominio `flow-finance-backend.vercel.app` nao foi movido para o projeto do frontend por engano.
-3. Se o root continuar servindo HTML, o deploy atual nao e o backend API-only esperado.
-4. Reexecutar `npm run health:vercel` depois de corrigir o alias.
+3. Se o contrato de health/version regredir, conferir `APP_VERSION` antes do proximo redeploy.
+4. Reexecutar `npm run health:vercel` depois de qualquer alteracao de deploy ou ambiente.
 
 ## Checklist operacional
 
 - [ ] `VITE_API_PROD_URL` apontando para o backend correto
 - [ ] `FRONTEND_URL` alinhado ao frontend oficial
-- [ ] `VITE_APP_VERSION` preenchido
-- [ ] `APP_VERSION` preenchido
-- [ ] `VITE_SENTRY_DSN` preenchido no frontend quando aplicavel
-- [ ] `SENTRY_DSN` preenchido no backend quando aplicavel
-- [ ] fallback legado via `SENTRY_DSN` no frontend usado apenas quando necessario
+- [x] `VITE_APP_VERSION` preenchido
+- [x] `APP_VERSION` alinhado com o backend oficial (`0.9.7` em 2026-05-25)
+- [x] `VITE_SENTRY_DSN` preenchido no frontend quando aplicavel
+- [x] `SENTRY_DSN` preenchido no backend quando aplicavel
 - [ ] preview ou URL compartilhada acessivel para verificacao
+- [ ] `GET /api/version` respondendo a versao esperada do repo atual
 
 ## Referencias relacionadas
 
@@ -101,4 +107,3 @@ Se o dominio backend responder HTML na raiz e `404` em `/health`, `/api/health` 
 - [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md)
 - [VERCEL_RECOVERY_CHECKLIST.md](./VERCEL_RECOVERY_CHECKLIST.md)
 - [OPERATIONS_README.md](./OPERATIONS_README.md)
-

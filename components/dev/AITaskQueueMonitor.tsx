@@ -135,7 +135,7 @@ const AITaskQueueMonitor: React.FC = () => {
       <div className="fixed bottom-4 right-4 z-50">
         <button
           onClick={() => setIsExpanded(true)}
-          className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+          className="bg-slate-800 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-slate-700 transition-all flex items-center gap-2 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
         >
           <span className="text-xl">🤖</span>
           <div className="text-left">
@@ -152,7 +152,7 @@ const AITaskQueueMonitor: React.FC = () => {
   return (
     <div className="fixed bottom-4 right-4 z-50 bg-gray-900 text-white rounded-lg shadow-2xl w-96 max-h-96 overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-3 flex items-center justify-between">
+      <div className="bg-slate-800 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xl">🤖</span>
           <div>

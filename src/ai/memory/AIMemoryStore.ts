@@ -10,8 +10,15 @@ import {
   MemoryStats,
   MemoryDecayConfig,
 } from './memoryTypes';
-import { logInfo, logWarn } from '../../utils/logger';
+import { logWarn } from '../../utils/logger';
 import { getActiveWorkspaceScopedStorageKey } from '../../utils/workspaceStorage';
+import {
+  applyMemoryDecay,
+  buildMemoryStats,
+  buildUserMemoryProfile,
+  logDecayIfNeeded,
+  pruneExpiredMemoryEntries,
+} from './AIMemoryStoreHelpers';
 
 const STORAGE_KEY = 'flow_ai_memory_v2';
 const MAX_MEMORIES_PER_USER = 500;
@@ -79,56 +86,16 @@ class AIMemoryStore {
   }
 
   private applyDecay(): void {
-    if (!this.decayConfig.enabled) return;
-
-    const now = Date.now();
-    const oneDayMs = 24 * 60 * 60 * 1000;
-    let decayed = 0;
-
-    for (const [id, memory] of this.memories) {
-      const daysSinceUpdate = (now - memory.updatedAt) / oneDayMs;
-      
-      if (daysSinceUpdate > this.decayConfig.timeWindow) {
-        // Apply decay
-        const contextMultiplier =
-          typeof memory.metadata?.contextDecayMultiplier === 'number'
-            ? Math.max(0.1, memory.metadata.contextDecayMultiplier)
-            : 1;
-        const decayAmount = daysSinceUpdate * this.decayConfig.decayRate * contextMultiplier;
-        memory.confidence = Math.max(0, memory.confidence - decayAmount);
-        memory.strength = Math.max(0, memory.strength - decayAmount * 100);
-
-        if (memory.confidence < this.decayConfig.minConfidence) {
-          this.memories.delete(id);
-          decayed++;
-        }
-      }
-    }
+    const decayed = applyMemoryDecay(this.memories, this.decayConfig);
+    logDecayIfNeeded(decayed, this.activeStorageKey);
 
     if (decayed > 0) {
-      logInfo('[AI Memory Store] Decayed old memories', {
-        decayed,
-        storageKey: this.activeStorageKey,
-        fallback: 'ai-memory-store-decayed-old-memories',
-      });
       this.saveToStorage();
     }
   }
 
-  private isExpired(memory: AIMemoryEntry): boolean {
-    const expiresAt = memory.metadata?.expiresAt;
-    return typeof expiresAt === 'number' && expiresAt <= Date.now();
-  }
-
   private pruneExpiredMemories(): void {
-    let removed = 0;
-    for (const [id, memory] of this.memories) {
-      if (this.isExpired(memory)) {
-        this.memories.delete(id);
-        removed += 1;
-      }
-    }
-
+    const removed = pruneExpiredMemoryEntries(this.memories);
     if (removed > 0) {
       this.saveToStorage();
     }
@@ -259,31 +226,7 @@ class AIMemoryStore {
   getStats(userId: string): MemoryStats {
     this.ensureWorkspaceScope();
     const userMemories = this.getMemoriesByUser(userId);
-
-    const byType = Object.fromEntries(Object.values(AIMemoryType).map((type) => [type, 0])) as Record<AIMemoryType, number>;
-
-    let totalConfidence = 0;
-    let totalStrength = 0;
-    let oldest = Infinity;
-    let newest = 0;
-
-    for (const memory of userMemories) {
-      byType[memory.type]++;
-      totalConfidence += memory.confidence;
-      totalStrength += memory.strength;
-      oldest = Math.min(oldest, memory.createdAt);
-      newest = Math.max(newest, memory.createdAt);
-    }
-
-    return {
-      totalMemories: userMemories.length,
-      byType,
-      avgConfidence: userMemories.length > 0 ? totalConfidence / userMemories.length : 0,
-      avgStrength: userMemories.length > 0 ? totalStrength / userMemories.length : 0,
-      oldestMemory: oldest === Infinity ? undefined : oldest,
-      newestMemory: newest === 0 ? undefined : newest,
-      lastUpdated: Date.now(),
-    };
+    return buildMemoryStats(userMemories);
   }
 
   getUserMemoryProfile(userId: string): {
@@ -294,12 +237,7 @@ class AIMemoryStore {
   } {
     this.ensureWorkspaceScope();
     const memories = this.getMemoriesByUser(userId);
-    return {
-      userId,
-      patterns: memories.filter((m) => m.type === AIMemoryType.SPENDING_PATTERN || m.type === AIMemoryType.TIME_PATTERN),
-      spending_profile: memories.filter((m) => m.type === AIMemoryType.FINANCIAL_PROFILE),
-      merchant_categories: memories.filter((m) => m.type === AIMemoryType.MERCHANT_CATEGORY),
-    };
+    return buildUserMemoryProfile(userId, memories);
   }
 
   setDecayConfig(config: Partial<MemoryDecayConfig>): void {

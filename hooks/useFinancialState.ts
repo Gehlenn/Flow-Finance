@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Account } from '../models/Account';
-import { Alert, Goal, Reminder, Transaction } from '../types';
+import { Alert, Goal, Reminder, Transaction, Receivable } from '../types';
 import { FinancialLeak } from '../src/ai/leakDetector';
 import { detectAndLearnPatterns } from '../src/ai/aiMemory';
 import { runAdaptiveLearning } from '../src/ai/adaptiveAIEngine';
@@ -46,6 +46,7 @@ export function useFinancialState(options: UseFinancialStateOptions) {
   const accounts = syncEngine.entities.accounts;
   const transactions = syncEngine.entities.transactions;
   const goals = syncEngine.entities.goals;
+  const receivables = syncEngine.entities.receivables;
   const reminders = useMemo(() => {
     const byId = new Map<string, Reminder>();
 
@@ -71,9 +72,10 @@ export function useFinancialState(options: UseFinancialStateOptions) {
     accounts,
     transactions,
     goals,
+    receivables,
     reminders,
     alerts,
-  }), [accounts, alerts, goals, reminders, transactions]);
+  }), [accounts, alerts, goals, receivables, reminders, transactions]);
 
   const serviceContext = useMemo(() => {
     if (!userId) {
@@ -250,6 +252,7 @@ export function useFinancialState(options: UseFinancialStateOptions) {
     transactions,
     accounts,
     goals,
+    receivables,
     reminders,
     alerts,
     latestLeaks,

@@ -11,7 +11,7 @@ import {
 } from '../src/services/workspaceSession';
 import { logWarn } from '../src/utils/logger';
 import { canViewWorkspaceAudit } from '../src/security/workspacePermissions';
-import type { Tab } from '../hooks/useNavigationTabs';
+import type { Tab } from '../hooks/navigationTypes';
 
 interface WorkspaceAuditPageProps {
   userId: string | null;
@@ -192,9 +192,9 @@ const WorkspaceAuditPage: React.FC<WorkspaceAuditPageProps> = ({
   if (!canAccessAudit && !loading) {
     return (
       <div className="space-y-4 animate-in fade-in duration-500 pb-24">
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-6 rounded-[2rem] text-white shadow-lg shadow-slate-900/20">
-          <h2 className="text-2xl font-semibold tracking-tight">Auditoria do workspace</h2>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-white/70 mt-2">Owner ou admin necessários</p>
+        <div className="rounded-[2rem] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Auditoria do workspace</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400 mt-2">Owner ou admin necessários</p>
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 space-y-4">
           <p className="text-sm text-slate-700 dark:text-slate-100">Sua função atual não pode ver a trilha de auditoria.</p>
@@ -211,20 +211,20 @@ const WorkspaceAuditPage: React.FC<WorkspaceAuditPageProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-24">
-      <div className="bg-gradient-to-r from-blue-700 to-blue-800 p-6 rounded-[2rem] flex items-center justify-between shadow-lg shadow-blue-900/10">
+      <div className="rounded-[2rem] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 flex items-center justify-between gap-4 shadow-sm">
         <div>
-          <h2 className="text-2xl font-semibold text-white tracking-tight">Auditoria do workspace</h2>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-white/70 mt-2">{activeTenantName || workspace?.tenantName || 'Tenant'} · {activeWorkspaceName || workspace?.name || 'Workspace'}</p>
+          <h2 className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight">Auditoria do workspace</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400 mt-2">{activeTenantName || workspace?.tenantName || 'Tenant'} · {activeWorkspaceName || workspace?.name || 'Workspace'}</p>
         </div>
         <button
           onClick={() => onNavigateToTab('workspaceadmin')}
-          className="px-4 py-3 rounded-2xl bg-white/10 text-white text-xs font-semibold uppercase tracking-[0.08em] border border-white/20 flex items-center gap-2"
+          className="px-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-100 text-xs font-semibold uppercase tracking-[0.08em] border border-slate-200 dark:border-slate-600 flex items-center gap-2"
         >
           <ChevronLeft size={14} /> Voltar
         </button>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 space-y-6">
+      <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 space-y-6 shadow-sm">
         <div className="grid gap-3 md:grid-cols-3">
           <label className="space-y-2">
             <span className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400 flex items-center gap-2"><CalendarRange size={14} /> Período</span>
@@ -272,7 +272,7 @@ const WorkspaceAuditPage: React.FC<WorkspaceAuditPageProps> = ({
             {errorDiagnostic && (
               <div role="status" className="rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-500/10 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.08em] text-rose-700 dark:text-rose-300">{errorDiagnostic.title}</p>
-                <p className="mt-1 text-[11px] text-rose-700 dark:text-rose-100">{errorDiagnostic.message}</p>
+                <p className="mt-1 text-xs text-rose-700 dark:text-rose-100">{errorDiagnostic.message}</p>
                 <p className="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-rose-600 dark:text-rose-300">Próximo passo: {errorDiagnostic.suggestion}</p>
               </div>
             )}
@@ -290,7 +290,7 @@ const WorkspaceAuditPage: React.FC<WorkspaceAuditPageProps> = ({
               {canLoadMore && (
                 <button
                   onClick={() => void handleLoadMore()}
-                  className="px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 text-xs font-semibold uppercase tracking-[0.08em]"
+                  className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-100 text-xs font-semibold uppercase tracking-[0.08em]"
                 >
                   {loadingMore ? 'Carregando...' : 'Carregar mais'}
                 </button>
@@ -303,13 +303,13 @@ const WorkspaceAuditPage: React.FC<WorkspaceAuditPageProps> = ({
                     <p className="text-sm font-semibold text-slate-800 dark:text-white">{event.action}</p>
                     <p className="text-xs uppercase tracking-[0.08em] text-slate-400">{event.resourceType} · {event.resourceId}</p>
                   </div>
-                  <div className="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-500/10 text-xs font-semibold uppercase tracking-[0.08em] text-blue-600 dark:text-blue-300 flex items-center gap-2">
+                  <div className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700 dark:text-slate-100 flex items-center gap-2">
                     <ShieldCheck size={12} /> {new Date(event.createdAt).toLocaleString('pt-BR')}
                   </div>
                 </div>
-                <p className="text-[11px] font-medium text-slate-500 dark:text-slate-300">Autor: {event.userId}</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-300">Autor: {event.userId}</p>
                 {event.metadata && Object.keys(event.metadata).length > 0 && (
-                  <pre className="p-3 rounded-xl bg-slate-950 text-slate-200 text-[11px] overflow-x-auto">{JSON.stringify(event.metadata, null, 2)}</pre>
+                  <pre className="p-3 rounded-xl bg-slate-950 text-slate-200 text-xs overflow-x-auto">{JSON.stringify(event.metadata, null, 2)}</pre>
                 )}
               </div>
             ))}

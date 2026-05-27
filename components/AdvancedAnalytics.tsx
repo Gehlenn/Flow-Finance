@@ -7,6 +7,8 @@ import { formatCurrency } from '../utils/helpers';
 import { Transaction, TransactionType } from '../types';
 import { TrendingUp, TrendingDown, Minus, FileText } from 'lucide-react';
 import { buildMonthlyForecast } from '../src/engines/finance/forecastEngine';
+import { addMoney, compareMoney, divideMoney, multiplyMoney, roundMoney, subtractMoney } from '../src/security/moneyMath';
+import { FLOW_CHART_COLORS, FLOW_CHART_UI } from '../src/styles/chartPalette';
 
 interface AdvancedAnalyticsProps {
   activeWorkspaceName?: string | null;
@@ -14,21 +16,15 @@ interface AdvancedAnalyticsProps {
   hideValues: boolean;
 }
 
-const COLORS = {
-  income: '#10b981', // emerald
-  expenses: '#ef4444', // red
-  balance: '#6366f1', // indigo
-  categories: [
-    '#6366f1', // indigo
-    '#8b5cf6', // violet
-    '#ec4899', // pink
-    '#f59e0b', // amber
-    '#10b981', // emerald
-    '#06b6d4', // cyan
-    '#84cc16', // lime
-    '#f97316', // orange
-  ]
+const COLORS = FLOW_CHART_COLORS;
+const TOOLTIP_CONTENT_STYLE = {
+  backgroundColor: FLOW_CHART_UI.tooltipBackground,
+  border: `1px solid ${FLOW_CHART_UI.tooltipBorder}`,
+  borderRadius: '0.75rem',
+  boxShadow: FLOW_CHART_UI.tooltipShadow,
 };
+const TOOLTIP_LABEL_STYLE = { color: FLOW_CHART_UI.tooltipText };
+const LEGEND_TEXT_STYLE = { color: FLOW_CHART_UI.tooltipText, fontSize: '14px', fontWeight: 600 };
 
 const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceName, transactions, hideValues }) => {
 
@@ -40,7 +36,9 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
 
     let runningBalance = 0;
     return sortedTransactions.map((transaction, index) => {
-      runningBalance += transaction.type === TransactionType.RECEITA ? transaction.amount : -transaction.amount;
+      runningBalance = transaction.type === TransactionType.RECEITA
+        ? addMoney(runningBalance, transaction.amount)
+        : subtractMoney(runningBalance, transaction.amount);
       return {
         date: new Date(transaction.date).toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' }),
         balance: runningBalance,
@@ -56,13 +54,13 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
     transactions.forEach(transaction => {
       if (transaction.type === TransactionType.DESPESA) {
         const category = transaction.category || 'Outros';
-        categoryTotals[category] = (categoryTotals[category] || 0) + transaction.amount;
+        categoryTotals[category] = addMoney(categoryTotals[category] || 0, transaction.amount);
       }
     });
 
     return Object.entries(categoryTotals)
       .map(([category, amount]) => ({ category, amount }))
-      .sort((a, b) => b.amount - a.amount)
+      .sort((a, b) => compareMoney(b.amount, a.amount))
       .slice(0, 8); // Top 8 categories
   }, [transactions]);
 
@@ -70,11 +68,9 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
   const incomeExpenseData = useMemo(() => {
     const totals = transactions.reduce((acc, transaction) => {
       if (transaction.type === TransactionType.RECEITA) {
-        acc.income += transaction.amount;
-      } else {
-        acc.expenses += transaction.amount;
+        return { ...acc, income: addMoney(acc.income, transaction.amount) };
       }
-      return acc;
+      return { ...acc, expenses: addMoney(acc.expenses, transaction.amount) };
     }, { income: 0, expenses: 0 });
 
     return [
@@ -90,18 +86,25 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
       new Date(t.date) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     );
 
-    const dailyAverage = last30Days.reduce((acc, t) => {
-      const amount = t.type === TransactionType.RECEITA ? t.amount : -t.amount;
-      return acc + amount;
-    }, 0) / 30;
-
-    const currentBalance = transactions.reduce((acc, t) =>
-      acc + (t.type === TransactionType.RECEITA ? t.amount : -t.amount), 0
+    const signedLast30Days = last30Days.map((transaction) => (
+      transaction.type === TransactionType.RECEITA
+        ? transaction.amount
+        : multiplyMoney(transaction.amount, -1)
+    ));
+    const dailyAverage = divideMoney(
+      signedLast30Days.reduce((acc, amount) => addMoney(acc, amount), 0),
+      30,
     );
+
+    const currentBalance = transactions.reduce((acc, transaction) => (
+      transaction.type === TransactionType.RECEITA
+        ? addMoney(acc, transaction.amount)
+        : subtractMoney(acc, transaction.amount)
+    ), 0);
 
     return Array.from({ length: 90 }, (_, i) => ({
       day: i + 1,
-      balance: currentBalance + (dailyAverage * i),
+      balance: roundMoney(addMoney(currentBalance, multiplyMoney(dailyAverage, i))),
       projected: true
     }));
   }, [transactions]);
@@ -133,30 +136,28 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
 
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400">Analytics</p>
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Relatórios Avançados</h2>
-          </div>
-          <div className="rounded-2xl bg-slate-100 px-4 py-2 text-right dark:bg-slate-700">
-            <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-slate-400">Workspace ativo</p>
-            <p className="text-sm text-slate-700 dark:text-slate-100">
-              {activeWorkspaceName || 'Carregando workspace'}
-            </p>
-          </div>
+      <div className="flex items-center justify-between gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Analytics</p>
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Relatórios Avançados</h2>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-right dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Workspace ativo</p>
+          <p className="text-sm text-slate-700 dark:text-slate-100">
+            {activeWorkspaceName || 'Carregando workspace'}
+          </p>
         </div>
       </div>
 
       {/* Balance Trend Chart */}
-      <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center">
-            <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-indigo-300">
+            <svg className="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Tendência de Saldo</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">Evolução do seu patrimônio ao longo do tempo</p>
           </div>
@@ -170,18 +171,13 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
                   <stop offset="95%" stopColor={COLORS.balance} stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
-              <YAxis tickFormatter={formatAxisValue} stroke="#64748b" fontSize={12} />
+              <CartesianGrid strokeDasharray="3 3" stroke={FLOW_CHART_UI.grid} />
+              <XAxis dataKey="date" stroke={FLOW_CHART_UI.axis} fontSize={12} />
+              <YAxis tickFormatter={formatAxisValue} stroke={FLOW_CHART_UI.axis} fontSize={12} />
               <Tooltip
                 formatter={(value) => [formatTooltipValue(Number(value)), 'Saldo']}
-                labelStyle={{ color: '#374151' }}
-                contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '0.5rem',
-                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                }}
+                labelStyle={TOOLTIP_LABEL_STYLE}
+                contentStyle={TOOLTIP_CONTENT_STYLE}
               />
               <Area
                 type="monotone"
@@ -197,14 +193,14 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
       </div>
 
       {/* Category Distribution Chart */}
-      <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-violet-50 dark:bg-violet-500/10 rounded-xl flex items-center justify-center">
-            <svg className="w-5 h-5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-violet-500 dark:border-slate-700 dark:bg-slate-900 dark:text-violet-300">
+            <svg className="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Gastos por Categoria</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">Principais categorias de despesa</p>
           </div>
@@ -212,18 +208,13 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={categoryData} layout="horizontal">
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis type="number" tickFormatter={formatAxisValue} stroke="#64748b" fontSize={12} />
-              <YAxis dataKey="category" type="category" width={80} stroke="#64748b" fontSize={12} />
+              <CartesianGrid strokeDasharray="3 3" stroke={FLOW_CHART_UI.grid} />
+              <XAxis type="number" tickFormatter={formatAxisValue} stroke={FLOW_CHART_UI.axis} fontSize={12} />
+              <YAxis dataKey="category" type="category" width={80} stroke={FLOW_CHART_UI.axis} fontSize={12} />
               <Tooltip
                 formatter={(value) => [formatTooltipValue(Number(value)), 'Total']}
-                labelStyle={{ color: '#374151' }}
-                contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '0.5rem',
-                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                }}
+                labelStyle={TOOLTIP_LABEL_STYLE}
+                contentStyle={TOOLTIP_CONTENT_STYLE}
               />
               <Bar dataKey="amount" fill={COLORS.expenses} radius={[0, 4, 4, 0]} />
             </BarChart>
@@ -232,15 +223,15 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
       </div>
 
       {/* Income vs Expenses Pie Chart */}
-      <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl flex items-center justify-center">
-            <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-emerald-300">
+            <svg className="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
             </svg>
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Receitas vs Despesas</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">Distribuição geral do fluxo financeiro</p>
           </div>
@@ -263,17 +254,12 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
               </Pie>
               <Tooltip
                 formatter={(value) => [formatTooltipValue(Number(value)), '']}
-                contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '0.5rem',
-                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                }}
+                contentStyle={TOOLTIP_CONTENT_STYLE}
               />
               <Legend
                 verticalAlign="bottom"
                 height={36}
-                formatter={(value) => <span style={{ color: '#374151', fontSize: '14px', fontWeight: 'bold' }}>{value}</span>}
+                formatter={(value) => <span style={LEGEND_TEXT_STYLE}>{value}</span>}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -281,14 +267,14 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
       </div>
 
       {/* Cash Flow Projection */}
-      <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-cyan-50 dark:bg-cyan-500/10 rounded-xl flex items-center justify-center">
-            <svg className="w-5 h-5 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-cyan-300">
+            <svg className="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Projeção de Fluxo de Caixa</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">Previsão baseada nos últimos 30 dias</p>
           </div>
@@ -296,23 +282,18 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={cashFlowProjection}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke={FLOW_CHART_UI.grid} />
               <XAxis
                 dataKey="day"
-                stroke="#64748b"
+                stroke={FLOW_CHART_UI.axis}
                 fontSize={12}
                 label={{ value: 'Dias', position: 'insideBottom', offset: -5 }}
               />
-              <YAxis tickFormatter={formatAxisValue} stroke="#64748b" fontSize={12} />
+              <YAxis tickFormatter={formatAxisValue} stroke={FLOW_CHART_UI.axis} fontSize={12} />
               <Tooltip
                 formatter={(value) => [formatTooltipValue(Number(value)), 'Saldo Projetado']}
                 labelFormatter={(label) => `Dia ${label}`}
-                contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '0.5rem',
-                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                }}
+                contentStyle={TOOLTIP_CONTENT_STYLE}
               />
               <Line
                 type="monotone"
@@ -328,12 +309,12 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
       </div>
 
       {/* Monthly Trends Chart */}
-      <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-amber-50 dark:bg-amber-500/10 rounded-xl flex items-center justify-center">
-            <TrendingUp className="w-5 h-5 text-amber-500" />
+      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-amber-500 dark:border-slate-700 dark:bg-slate-900 dark:text-amber-300">
+            <TrendingUp className="h-4.5 w-4.5" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Relatório Mensal</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">Receitas e despesas nos últimos 6 meses</p>
           </div>
@@ -341,15 +322,15 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={monthlyTrends} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-              <XAxis dataKey="label" stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
-              <YAxis tickFormatter={formatAxisValue} stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke={FLOW_CHART_UI.grid} vertical={false} />
+              <XAxis dataKey="label" stroke={FLOW_CHART_UI.axis} fontSize={11} tickLine={false} axisLine={false} />
+              <YAxis tickFormatter={formatAxisValue} stroke={FLOW_CHART_UI.axis} fontSize={11} tickLine={false} axisLine={false} />
               <Tooltip
                 formatter={(value, name) => [
                   formatTooltipValue(Number(value)),
                   name === 'receitas' ? 'Receitas' : name === 'despesas' ? 'Despesas' : 'Saldo',
                 ]}
-                contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                contentStyle={TOOLTIP_CONTENT_STYLE}
               />
               <Bar dataKey="receitas" fill={COLORS.income} radius={[6, 6, 0, 0]} barSize={16} opacity={0.9} />
               <Bar dataKey="despesas" fill={COLORS.expenses} radius={[6, 6, 0, 0]} barSize={16} opacity={0.9} />
@@ -360,26 +341,26 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
         <div className="flex items-center justify-center gap-6 mt-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.income }} />
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Receitas</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Receitas</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.expenses }} />
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Despesas</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Despesas</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-0.5 rounded" style={{ backgroundColor: COLORS.balance }} />
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Saldo</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Saldo</span>
           </div>
         </div>
       </div>
 
       {/* Monthly Report Table */}
-      <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center">
-            <FileText className="w-5 h-5 text-indigo-500" />
+      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="mb-6 flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-indigo-300">
+            <FileText className="h-4.5 w-4.5" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Comparativo Mensal</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">Receitas e despesas nos últimos 6 meses</p>
           </div>
@@ -388,11 +369,11 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-100 dark:border-slate-700">
-                <th className="text-left pb-3 text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Mês</th>
-                <th className="text-right pb-3 text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Receitas</th>
-                <th className="text-right pb-3 text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Despesas</th>
-                <th className="text-right pb-3 text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Saldo</th>
-                <th className="text-right pb-3 text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Var. Desp.</th>
+                <th className="text-left pb-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Mês</th>
+                <th className="text-right pb-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Receitas</th>
+                <th className="text-right pb-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Despesas</th>
+                <th className="text-right pb-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Saldo</th>
+                <th className="text-right pb-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Var. Desp.</th>
               </tr>
             </thead>
             <tbody>
@@ -410,7 +391,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
                   </td>
                   <td className="py-3 text-right">
                     {row.despesaChange !== null ? (
-                      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                      <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
                         row.despesaChange > 5
                           ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500'
                           : row.despesaChange < -5
@@ -421,14 +402,14 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
                         {Math.abs(row.despesaChange).toFixed(0)}%
                       </span>
                     ) : (
-                      <span className="text-[10px] text-slate-300 dark:text-slate-600">—</span>
+                      <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
                     )}
                   </td>
                 </tr>
               ))}
               {monthlyReport.every(r => r.receitas === 0 && r.despesas === 0) && (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-[10px] font-semibold text-slate-300 dark:text-slate-600 uppercase tracking-[0.08em]">
+                  <td colSpan={5} className="py-8 text-center text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-[0.08em]">
                     Sem dados nos últimos 6 meses
                   </td>
                 </tr>
