@@ -20,7 +20,7 @@ import {
   isReceivablePending,
   isReceivableRealized,
 } from '../src/finance/receivableService';
-import { addMoney, compareMoney, subtractMoney, sumTransactions } from '../src/security/moneyMath';
+import { addMoney, compareMoney, sumTransactions } from '../src/security/moneyMath';
 
 interface DashboardProps {
   userName?: string | null;
@@ -63,6 +63,12 @@ export interface DashboardReminderStateSummary {
   overdueAmount: number;
   dueTodayCount: number;
   dueThisWeekCount: number;
+}
+
+export interface DashboardNextReceivableSummary {
+  amount: number;
+  dueLabel: string;
+  note: string;
 }
 
 function parseDate(value: string): Date | null {
@@ -132,6 +138,74 @@ function daysBetween(dateIso: string, referenceDate: Date): number {
   const reminderDay = startOfDay(parsed).getTime();
   const currentDay = startOfDay(referenceDate).getTime();
   return Math.round((reminderDay - currentDay) / (1000 * 60 * 60 * 24));
+}
+
+function buildDueLabel(distance: number): string {
+  if (!Number.isFinite(distance)) {
+    return 'Sem recebimentos previstos';
+  }
+
+  if (distance === 0) {
+    return 'Vence hoje';
+  }
+
+  if (distance > 0) {
+    return `Vence em ${distance} dia${distance === 1 ? '' : 's'}`;
+  }
+
+  const overdueDays = Math.abs(distance);
+  return `Vencido ha ${overdueDays} dia${overdueDays === 1 ? '' : 's'}`;
+}
+
+function buildDashboardNextReceivableSummary(
+  reminders: Reminder[],
+  receivables: Receivable[],
+  referenceDate: Date = new Date(),
+  forceReceivablesSourceOfTruth?: boolean,
+): DashboardNextReceivableSummary {
+  if (shouldUseReceivablesAsSourceOfTruth(forceReceivablesSourceOfTruth)) {
+    const activeReceivables = receivables
+      .filter((receivable) => isReceivablePending(receivable, referenceDate) || isReceivableOverdue(receivable, referenceDate))
+      .sort((left, right) => String(left.due_date).localeCompare(String(right.due_date), 'pt-BR'));
+    const nextReceivable = activeReceivables[0];
+
+    if (!nextReceivable) {
+      return {
+        amount: 0,
+        dueLabel: 'Sem recebimentos previstos',
+        note: 'Receita prevista no curto prazo ainda nao apareceu.',
+      };
+    }
+
+    const dueDistance = daysBetween(nextReceivable.due_date, referenceDate);
+
+    return {
+      amount: nextReceivable.expected_amount || 0,
+      dueLabel: buildDueLabel(dueDistance),
+      note: 'Receita prevista no curto prazo.',
+    };
+  }
+
+  const activeReminders = reminders
+    .filter((reminder) => hasFinancialImpact(reminder))
+    .sort((left, right) => String(left.date).localeCompare(String(right.date), 'pt-BR'));
+  const nextReminder = activeReminders[0];
+
+  if (!nextReminder) {
+    return {
+      amount: 0,
+      dueLabel: 'Sem recebimentos previstos',
+      note: 'Receita prevista no curto prazo ainda nao apareceu.',
+    };
+  }
+
+  const dueDistance = daysBetween(nextReminder.date, referenceDate);
+
+  return {
+    amount: nextReminder.amount || 0,
+    dueLabel: buildDueLabel(dueDistance),
+    note: 'Receita prevista no curto prazo.',
+  };
 }
 
 function shouldUseReceivablesAsSourceOfTruth(force?: boolean): boolean {
@@ -303,6 +377,10 @@ const Dashboard: React.FC<DashboardProps> = ({
     [transactions, accounts, reminders, alerts.length, receivables],
   );
   const focusNote = useMemo(() => buildDashboardFocusNote(metrics), [metrics]);
+  const nextReceivable = useMemo(
+    () => buildDashboardNextReceivableSummary(reminders, receivables, new Date()),
+    [reminders, receivables],
+  );
   const reminderSummary = useMemo(
     () => buildDashboardReminderStateSummary(reminders, new Date(), receivables),
     [reminders, receivables],
@@ -314,15 +392,15 @@ const Dashboard: React.FC<DashboardProps> = ({
   }).format(value);
 
   const valueOrHidden = (value: number) => (hideValues ? '••••••' : formatCurrency(value));
-  const netMonth = subtractMoney(metrics.inflowMonth, metrics.outflowMonth);
   const insightsActionTitle = activeWorkspacePlan === 'pro' ? 'Ver insights completos' : 'Ver insights essenciais';
   const insightsActionDescription = activeWorkspacePlan === 'pro'
     ? 'Abra analises profundas e comparativos historicos do periodo.'
     : 'Abra sinais principais para validar sua leitura de caixa.';
+  const PANEL_SURFACE = 'rounded-3xl border border-slate-200 bg-white shadow-[0_18px_45px_-24px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800';
 
   return (
     <div className="flex flex-col gap-5 pb-8">
-      <div className="rounded-3xl border border-slate-200 bg-white px-6 py-5 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
+      <div className={`${PANEL_SURFACE} px-6 py-5`}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Caixa</p>
@@ -343,7 +421,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 type="button"
                 onClick={onNavigateToSettings}
                 aria-label="Abrir ajustes"
-                className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition-colors hover:border-indigo-200 hover:text-indigo-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-indigo-500/40 dark:hover:text-indigo-300"
+                className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-slate-100"
               >
                 <SettingsIcon size={16} />
               </button>
@@ -352,52 +430,60 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Saldo atual</p>
-              <h3 className="mt-2 text-4xl font-semibold tracking-tight text-slate-950 dark:text-white ">
-                {valueOrHidden(metrics.currentBalance)}
-              </h3>
-              <p className="mt-2 max-w-md text-sm font-semibold text-slate-500 dark:text-slate-300">
-                Dinheiro confirmado nas contas. Valores pendentes e vencidos nao entram neste total.
-              </p>
+      <section className={`${PANEL_SURFACE} p-6`}>
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.18fr)_minmax(280px,0.82fr)] lg:items-start">
+          <div className="min-w-0">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Saldo atual</p>
+                <h3 className="mt-2 text-4xl font-semibold tracking-tight text-slate-950 dark:text-white">
+                  {valueOrHidden(metrics.currentBalance)}
+                </h3>
+                <p className="mt-2 max-w-md text-sm font-semibold text-slate-500 dark:text-slate-300">
+                  Dinheiro confirmado nas contas. Valores pendentes e vencidos nao entram neste total.
+                </p>
+              </div>
+              <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                <Wallet size={18} />
+              </div>
             </div>
-            <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-              <Wallet size={18} />
+
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/30">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Leitura rapida</p>
+              <p className="mt-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Priorize saldo confirmado, entradas e saidas do mes, e o proximo recebivel antes de abrir o restante.
+              </p>
             </div>
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
             <ComparisonMetricCard
-              label="Entrou no mes"
+              label="Entradas"
               value={valueOrHidden(metrics.inflowMonth)}
               tone="positive"
               icon={<ArrowUpRight size={16} />}
+              description="Confirmadas no mes"
             />
             <ComparisonMetricCard
-              label="Saiu no mes"
+              label="Saidas"
               value={valueOrHidden(metrics.outflowMonth)}
               tone="negative"
               icon={<ArrowDownRight size={16} />}
+              description="Registradas no mes"
             />
             <ComparisonMetricCard
-              label="Receita prevista"
-              value={valueOrHidden(metrics.projectedRevenueMonth)}
-              tone="positive"
+              label="Proximo recebivel"
+              value={valueOrHidden(nextReceivable.amount)}
+              tone={nextReceivable.amount > 0 ? 'scheduled' : 'neutral'}
               icon={<CalendarClock size={16} />}
-            />
-            <ComparisonMetricCard
-              label="Saldo do mes"
-              value={valueOrHidden(netMonth)}
-              tone={netMonth >= 0 ? 'positive' : 'negative'}
-              icon={<Wallet size={16} />}
+              description={nextReceivable.amount > 0 ? `${nextReceivable.dueLabel}. ${nextReceivable.note}` : nextReceivable.note}
             />
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,0.95fr)]">
+        <section className={`${PANEL_SURFACE} p-5`}>
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Estados financeiros</p>
@@ -429,10 +515,8 @@ const Dashboard: React.FC<DashboardProps> = ({
             />
           </div>
         </section>
-      </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,0.95fr)]">
-        <section className="rounded-3xl border border-amber-200 bg-amber-50/80 p-5 shadow-sm dark:border-amber-500/20 dark:bg-amber-500/10">
+        <section className="rounded-3xl border border-amber-200 bg-amber-50/80 p-5 shadow-[0_18px_45px_-28px_rgba(245,158,11,0.45)] dark:border-amber-500/20 dark:bg-amber-500/10">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">O que pede atencao</p>
@@ -472,7 +556,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           )}
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
+        <section className={`${PANEL_SURFACE} p-5`}>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Leitura de recebiveis</p>
           <div className="mt-4 space-y-3">
             <MiniSummaryRow
@@ -494,7 +578,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         </section>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
+      <div className={`${PANEL_SURFACE} p-5`}>
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Acoes principais</p>
@@ -534,6 +618,8 @@ const Dashboard: React.FC<DashboardProps> = ({
 const COMPARISON_TONE_CLASS_MAP = {
   positive: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300',
   negative: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300',
+  scheduled: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300',
+  neutral: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-200',
 };
 
 const STATE_TONE_CLASS_MAP = {
@@ -553,11 +639,18 @@ const MINI_SUMMARY_TONE_CLASS_MAP = {
   overdue: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300',
 };
 
-const ComparisonMetricCard: React.FC<{ label: string; value: string; icon: React.ReactNode; tone: 'positive' | 'negative' }> = ({
+const ComparisonMetricCard: React.FC<{
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  tone: 'positive' | 'negative' | 'scheduled' | 'neutral';
+  description?: string;
+}> = ({
   label,
   value,
   icon,
   tone,
+  description,
 }) => (
   <div className={`rounded-2xl border p-4 ${COMPARISON_TONE_CLASS_MAP[tone]}`}>
     <div className="flex items-center justify-between">
@@ -565,6 +658,7 @@ const ComparisonMetricCard: React.FC<{ label: string; value: string; icon: React
       <span className="rounded-lg p-1.5">{icon}</span>
     </div>
     <p className="mt-2 text-xl font-semibold tracking-tight text-slate-900 dark:text-white">{value}</p>
+    {description && <p className="mt-1 text-sm font-medium opacity-80">{description}</p>}
   </div>
 );
 

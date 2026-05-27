@@ -335,42 +335,68 @@ const App: React.FC = () => {
       }}
     >
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-500 pb-0 md:pb-12 overflow-visible">
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 transition-all duration-500">
-          {authState.isDemoBootstrapActive && (
-            <div className="flow-status-pill bg-slate-900/95 px-4 py-2 rounded-full flex items-center gap-2 animate-in zoom-in-95">
-              <BadgeInfo size={12} className="text-cyan-300" />
-              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-white">
-                Demo Pro
-              </span>
-            </div>
-          )}
-          {syncEngine.syncStatus === "syncing" && (
-            <div className="flow-status-pill px-4 py-2 rounded-full flex items-center gap-2 animate-in slide-in-from-top-4">
-              <Loader2 size={12} className="text-indigo-400 animate-spin" />
-              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-white">
-                Gravando na Nuvem...
-              </span>
-            </div>
-          )}
-          {syncEngine.syncStatus === "synced" && (
-            <div className="flow-status-pill bg-emerald-500/90 px-4 py-2 rounded-full flex items-center gap-2 animate-in zoom-in-95">
-              <CloudCheck size={12} className="text-white" />
-              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-white">
-                Sincronizado
-              </span>
-            </div>
-          )}
-          {syncEngine.syncStatus === "error" && (
-            <div className="flow-status-pill bg-rose-500/95 px-4 py-2 rounded-full flex items-center gap-2 animate-pulse">
-              <CloudOff size={12} className="text-white" />
-              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-white">
-                Erro de Conexao
-              </span>
+        <div className="fixed top-6 left-1/2 z-[100] -translate-x-1/2 transition-all duration-500">
+          {showTopStatus && (
+            <div
+              className={`flow-status-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 ${
+                syncEngine.syncStatus === "synced"
+                  ? "bg-emerald-500/90"
+                  : syncEngine.syncStatus === "error"
+                    ? "bg-rose-500/95"
+                    : "bg-slate-900/95"
+              } ${
+                syncEngine.syncStatus === "syncing"
+                  ? "animate-in slide-in-from-top-4"
+                  : "animate-in zoom-in-95"
+              }`}
+            >
+              {authState.isDemoBootstrapActive && (
+                <>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-cyan-400/15 bg-cyan-400/10 px-2 py-0.5">
+                    <BadgeInfo size={10} className="text-cyan-300" />
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-cyan-50 leading-none">
+                      Demo Pro
+                    </span>
+                  </span>
+                  {(syncEngine.syncStatus === "syncing" ||
+                    syncEngine.syncStatus === "synced" ||
+                    syncEngine.syncStatus === "error") && (
+                    <span
+                      aria-hidden="true"
+                      className="h-3.5 w-px rounded-full bg-white/15"
+                    />
+                  )}
+                </>
+              )}
+              {syncEngine.syncStatus === "syncing" && (
+                <div className="flex items-center gap-1.5">
+                  <Loader2 size={12} className="text-indigo-400 animate-spin" />
+                  <span className="text-xs font-semibold uppercase tracking-[0.08em] text-white">
+                    Gravando na Nuvem...
+                  </span>
+                </div>
+              )}
+              {syncEngine.syncStatus === "synced" && (
+                <div className="flex items-center gap-1.5">
+                  <CloudCheck size={12} className="text-white" />
+                  <span className="text-xs font-semibold uppercase tracking-[0.08em] text-white">
+                    Sincronizado
+                  </span>
+                </div>
+              )}
+              {syncEngine.syncStatus === "error" && (
+                <div className="flex items-center gap-1.5">
+                  <CloudOff size={12} className="text-white" />
+                  <span className="text-xs font-semibold uppercase tracking-[0.08em] text-white">
+                    Erro de Conexao
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        <div className={`${activeTabContainerClass} mx-auto px-4 ${showTopStatus ? "pt-20" : "pt-5"} pb-28 md:pb-44`}>
+        <div className={`${activeTabContainerClass} mx-auto px-4 ${showTopStatus ? "pt-16" : "pt-5"} pb-28 md:pb-44`}>
           {activeNavigationSection.items.length > 1 && (
             <div className="mb-4 overflow-x-auto pb-1 no-scrollbar" aria-label={`${activeNavigationSection.label} subsecoes`}>
               <div className="flex min-w-full items-center gap-1 rounded-2xl border border-slate-200 bg-white/85 p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">

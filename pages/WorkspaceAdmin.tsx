@@ -529,7 +529,7 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
             {canManageMembers && (
               <section className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <Users size={18} className="text-indigo-600" />
+                  <Users size={18} className="text-slate-500" />
                   <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-800 dark:text-white">Membros do workspace</h3>
                 </div>
                 <div className="grid grid-cols-[1fr_auto_auto] gap-2">
@@ -551,7 +551,7 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
                   <button
                     onClick={() => void handleAddMember()}
                     disabled={busy || !memberUserId.trim()}
-                    className="px-4 rounded-2xl bg-indigo-600 text-white text-xs font-semibold uppercase tracking-[0.08em] disabled:opacity-50"
+                    className="px-4 rounded-2xl bg-slate-900 text-white text-xs font-semibold uppercase tracking-[0.08em] disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
                   >
                     Add
                   </button>
@@ -607,7 +607,7 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
 
             <section className="space-y-3">
               <div className="flex items-center gap-3">
-                <Sparkles size={18} className="text-violet-600" />
+                <Sparkles size={18} className="text-slate-500" />
                 <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-800 dark:text-white">Prontidão do workspace</h3>
               </div>
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-100">

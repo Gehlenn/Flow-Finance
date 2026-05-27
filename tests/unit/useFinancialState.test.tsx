@@ -78,6 +78,7 @@ describe('useFinancialState', () => {
       activeTenantId: 'tenant-1',
       activeWorkspaceId: 'ws-1',
       syncEngine: syncEngine as never,
+      isDemoMode: false,
     }));
 
     expect(result.current.accounts).toBe(syncEngine.entities.accounts);
@@ -123,6 +124,7 @@ describe('useFinancialState', () => {
       activeTenantId: 'tenant-1',
       activeWorkspaceId: 'ws-1',
       syncEngine: syncEngine as never,
+      isDemoMode: false,
     }));
 
     await act(async () => {
@@ -187,6 +189,7 @@ describe('useFinancialState', () => {
       activeTenantId: 'tenant-1',
       activeWorkspaceId: 'ws-1',
       syncEngine: syncEngine as never,
+      isDemoMode: false,
     }));
 
     await waitFor(() => {
@@ -226,6 +229,7 @@ describe('useFinancialState', () => {
       activeTenantId: 'tenant-1',
       activeWorkspaceId: 'ws-1',
       syncEngine: syncEngine as never,
+      isDemoMode: false,
     }));
 
     await waitFor(() => {
@@ -271,6 +275,7 @@ describe('useFinancialState', () => {
       activeTenantId: 'tenant-1',
       activeWorkspaceId: 'ws-1',
       syncEngine: syncEngine as never,
+      isDemoMode: false,
     }));
 
     await waitFor(() => {

@@ -61,7 +61,6 @@ describe('CashFlow clarity', () => {
     expect(screen.getByText('Receita realizada')).toBeTruthy();
     expect(screen.getByText('Entradas')).toBeTruthy();
     expect(screen.getByText(/Sa.*das/i)).toBeTruthy();
-    expect(screen.getByText(/Pr.*ximo passo financeiro/i)).toBeTruthy();
   }, 20_000);
 
   it('ignora relatorio estrategico armazenado invalido sem quebrar a tela', () => {
@@ -78,6 +77,7 @@ describe('CashFlow clarity', () => {
     );
 
     expect(screen.getByText('Receita realizada')).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: /Estratégia/i }));
     expect(screen.getByText(/Pr.*ximo passo financeiro/i)).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Abrir diagn/i })).toBeNull();
     expect(cashFlowMocks.logWarn).toHaveBeenCalledWith(
@@ -114,6 +114,7 @@ describe('CashFlow clarity', () => {
     );
 
     expect(screen.getByText('Receita realizada')).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: /Estratégia/i }));
     expect(screen.getByText(/Pr.*ximo passo financeiro/i)).toBeTruthy();
   }, 20_000);
 
@@ -153,8 +154,9 @@ describe('CashFlow clarity', () => {
       />,
     );
 
+    fireEvent.click(screen.getByRole('tab', { name: /Estratégia/i }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Abrir diagn/i })).toBeTruthy();
+      expect(screen.getByText(/Resumo estratégico salvo/i)).toBeTruthy();
     });
 
     expect(localStorage.getItem(reportKey)).not.toBeNull();
@@ -186,6 +188,7 @@ describe('CashFlow clarity', () => {
       />,
     );
 
+    fireEvent.click(screen.getByRole('tab', { name: /Estratégia/i }));
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Gerar diagn/i })).toBeTruthy();
     });
@@ -206,7 +209,8 @@ describe('CashFlow clarity', () => {
       />,
     );
 
-        fireEvent.click(screen.getByRole('button', { name: /Gerar diagn/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /Estratégia/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Gerar diagn/i }));
 
     await waitFor(() => {
       expect(cashFlowMocks.logWarn).toHaveBeenCalledWith(
@@ -217,6 +221,88 @@ describe('CashFlow clarity', () => {
       );
     });
   }, 20_000);
+
+  it('mostra estados vazios uteis quando nao ha movimentos no recorte', () => {
+    render(
+      <CashFlow
+        activeWorkspaceId={workspaceId}
+        activeWorkspaceName="Clinica Flow"
+        transactions={[]}
+        hideValues={false}
+        theme="light"
+      />,
+    );
+
+    expect(screen.getByText(/Sem movimento neste recorte/i)).toBeTruthy();
+    expect(screen.getByText(/Sem despesas para segmentar/i)).toBeTruthy();
+    expect(screen.getByText(/Sem ranking ainda/i)).toBeTruthy();
+  });
+
+  it('alterna entre subsecoes de receitas com controle local na propria tela', () => {
+    render(
+      <CashFlow
+        activeWorkspaceId={workspaceId}
+        activeWorkspaceName="Clinica Flow"
+        transactions={[
+          {
+            id: '1',
+            amount: 500,
+            type: TransactionType.RECEITA,
+            category: Category.CONSULTORIO,
+            description: 'Receita confirmada',
+            date: '2026-04-10T10:00:00.000Z',
+          },
+        ]}
+        receivables={[
+          {
+            id: 'recv-1',
+            user_id: 'user-1',
+            tenant_id: 'tenant-1',
+            workspace_id: workspaceId,
+            description: 'Recebivel pendente',
+            expected_amount: 180,
+            realized_amount: 0,
+            due_date: '2026-04-25',
+            realized_at: null,
+            status: 'open',
+            source: 'manual',
+            created_at: '2026-04-10T00:00:00.000Z',
+            updated_at: '2026-04-10T00:00:00.000Z',
+          },
+          {
+            id: 'recv-2',
+            user_id: 'user-1',
+            tenant_id: 'tenant-1',
+            workspace_id: workspaceId,
+            description: 'Recebivel vencido',
+            expected_amount: 90,
+            realized_amount: 0,
+            due_date: '2026-04-01',
+            realized_at: null,
+            status: 'open',
+            source: 'manual',
+            created_at: '2026-04-10T00:00:00.000Z',
+            updated_at: '2026-04-10T00:00:00.000Z',
+          },
+        ]}
+        hideValues={false}
+        theme="light"
+      />,
+    );
+
+    expect(screen.getByRole('tab', { name: /Realizado/i }).getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.click(screen.getByRole('tab', { name: /Previsto/i }));
+    expect(screen.getAllByText(/Previsão de receita/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Pr.*ximos receb/i).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('tab', { name: /Pendências/i }));
+    expect(screen.getByText(/Pendências em aberto/i)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /Vencidos/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Estratégia/i }));
+    expect(screen.getByRole('button', { name: /Gerar diagn/i })).toBeTruthy();
+  });
 });
 
 

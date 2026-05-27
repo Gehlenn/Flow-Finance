@@ -13,6 +13,10 @@ import {
   mapPulledWorkspaceSyncEntities,
   WorkspaceSyncEntities,
 } from '../src/services/sync/workspaceSyncEntities';
+import {
+  createDemoProfileState,
+  createDemoWorkspaceEntities,
+} from '../src/demo/demoBootstrap';
 import { logWarn } from '../src/utils/logger';
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
@@ -38,6 +42,7 @@ interface UseSyncEngineOptions {
   activeTenantId: string | null;
   activeWorkspaceId: string | null;
   isE2EBootstrapActive: boolean;
+  isDemoBootstrapActive: boolean;
   cloudSyncEnabled: boolean;
   backendSyncEnabled: boolean;
   onDisableCloudSync: () => void;
@@ -71,6 +76,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
     activeTenantId,
     activeWorkspaceId,
     isE2EBootstrapActive,
+    isDemoBootstrapActive,
     cloudSyncEnabled,
     backendSyncEnabled,
     onDisableCloudSync,
@@ -84,6 +90,11 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
   const [hasLoadedEntities, setHasLoadedEntities] = useState(false);
 
   const entityRef = useRef<SyncEntityState>(createEmptyWorkspaceSyncEntities());
+  const bootstrapContext = useMemo(() => ({
+    userId,
+    tenantId: activeTenantId,
+    workspaceId: activeWorkspaceId,
+  }), [activeTenantId, activeWorkspaceId, userId]);
 
   useEffect(() => {
     entityRef.current = entities;
@@ -95,6 +106,20 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
       entityRef.current = emptyEntities;
       setEntities(emptyEntities);
       setHasLoadedEntities(true);
+      setSyncStatus('idle');
+      return;
+    }
+
+    if (isDemoBootstrapActive) {
+      const demoEntities = createDemoWorkspaceEntities({
+        userId: bootstrapContext.userId || 'demo-user',
+        tenantId: bootstrapContext.tenantId || 'tenant-demo-flow-finance',
+        workspaceId: bootstrapContext.workspaceId || 'ws-demo-flow-finance',
+      });
+      entityRef.current = demoEntities;
+      setEntities(demoEntities);
+      setHasLoadedEntities(true);
+      setSyncStatus('idle');
       return;
     }
 
@@ -128,10 +153,27 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
     };
 
     void loadEntities();
-  }, [activeWorkspaceId, backendSyncEnabled, cloudSyncEnabled, isE2EBootstrapActive, onDisableBackendSync, onDisableCloudSync, userId]);
+  }, [
+    activeWorkspaceId,
+    activeTenantId,
+    backendSyncEnabled,
+    bootstrapContext,
+    cloudSyncEnabled,
+    isDemoBootstrapActive,
+    isE2EBootstrapActive,
+    onDisableBackendSync,
+    onDisableCloudSync,
+    userId,
+  ]);
 
   useEffect(() => {
     if (isE2EBootstrapActive) {
+      setIsProfileReady(true);
+      return;
+    }
+
+    if (isDemoBootstrapActive) {
+      setProfile(createDemoProfileState());
       setIsProfileReady(true);
       return;
     }
@@ -175,7 +217,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
     );
 
     return () => unsubscribe();
-  }, [isE2EBootstrapActive, onDisableCloudSync, userId]);
+  }, [isDemoBootstrapActive, isE2EBootstrapActive, onDisableCloudSync, userId]);
 
   const syncProfile = useCallback(async (
     updates: Partial<{ name: string; theme: 'light' | 'dark'; alerts: Alert[]; reminders: Reminder[] }>,
@@ -186,7 +228,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
 
     setSyncStatus('syncing');
     try {
-      if (cloudSyncEnabled && Object.keys(updates).length > 0) {
+      if (cloudSyncEnabled && Object.keys(updates).length > 0 && !isDemoBootstrapActive && !isE2EBootstrapActive) {
         await saveUserProfile(userId, updates);
       }
 
@@ -210,7 +252,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
         setSyncStatus('idle');
       }
     }
-  }, [cloudSyncEnabled, onDisableCloudSync, userId]);
+  }, [cloudSyncEnabled, isDemoBootstrapActive, isE2EBootstrapActive, onDisableCloudSync, userId]);
 
   const syncEntities = useCallback(async (
     updates: Partial<SyncEntityState>,
@@ -224,7 +266,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
       receivables: updates.receivables || entityRef.current.receivables,
     };
 
-    if (isE2EBootstrapActive || !userId || !activeWorkspaceId || !activeTenantId) {
+    if (isE2EBootstrapActive || isDemoBootstrapActive || !userId || !activeWorkspaceId || !activeTenantId) {
       entityRef.current = nextLocalEntities;
       setEntities(nextLocalEntities);
       setHasLoadedEntities(true);
@@ -329,7 +371,16 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
       }
       throw error;
     }
-  }, [activeTenantId, activeWorkspaceId, cloudSyncEnabled, isE2EBootstrapActive, onDisableBackendSync, onDisableCloudSync, userId]);
+  }, [
+    activeTenantId,
+    activeWorkspaceId,
+    cloudSyncEnabled,
+    isDemoBootstrapActive,
+    isE2EBootstrapActive,
+    onDisableBackendSync,
+    onDisableCloudSync,
+    userId,
+  ]);
 
   const resetEntityState = useCallback(() => {
     const emptyEntities = createEmptyWorkspaceSyncEntities();

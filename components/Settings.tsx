@@ -953,7 +953,7 @@ const Settings: React.FC<SettingsProps> = ({
             onClick={() => setShowAiSupport(true)}
             className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4 flex items-center gap-3 group hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800 transition-all text-left"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white shadow-lg dark:bg-slate-100 dark:text-slate-900"><BrainCircuit size={18} /></div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 shadow-lg dark:bg-slate-800 dark:text-slate-300"><BrainCircuit size={18} /></div>
             <div className="flex-1">
               <h5 className="text-sm font-semibold text-slate-800 dark:text-white uppercase tracking-[0.12em]">Guia com IA</h5>
               <p className="text-xs text-slate-400 font-medium">Tire dúvidas sobre caixa, integrações ou fluxo do produto</p>
@@ -964,9 +964,9 @@ const Settings: React.FC<SettingsProps> = ({
             href="https://wa.me/5551995730813?text=Ola!%20Preciso%20de%20ajuda%20com%20o%20Flow%20Finance."
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4 flex items-center gap-3 group hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-emerald-500/10 transition-all text-left"
+            className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4 flex items-center gap-3 group hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800 transition-all text-left"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-lg"><Phone size={18} /></div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 shadow-lg dark:bg-slate-800 dark:text-slate-300"><Phone size={18} /></div>
             <div className="flex-1">
               <h5 className="text-sm font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Suporte humano</h5>
               <p className="text-xs text-slate-400 font-medium">Fale com a equipe pelo WhatsApp</p>
@@ -1013,7 +1013,7 @@ const Settings: React.FC<SettingsProps> = ({
           <div className="bg-white dark:bg-slate-800 w-full max-w-lg max-h-[85vh] rounded-[3rem] overflow-hidden flex flex-col shadow-2xl">
             <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-900 text-white rounded-xl shadow-md dark:bg-slate-100 dark:text-slate-900"><BrainCircuit size={16} /></div>
+                <div className="p-2 bg-slate-100 text-slate-600 rounded-xl shadow-md dark:bg-slate-800 dark:text-slate-300"><BrainCircuit size={16} /></div>
                 <h3 className="text-lg font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Guia com IA</h3>
               </div>
               <button onClick={() => { setShowAiSupport(false); setSupportResponse(''); setSupportQuery(''); setSupportDiagnostic(null); }} className="p-2 text-slate-400"><X size={20} /></button>

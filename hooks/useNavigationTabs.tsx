@@ -81,6 +81,7 @@ export interface NavigationRenderContext {
   hideValues: boolean;
   theme: 'light' | 'dark';
   isDev: boolean;
+  canAccessDevTools: boolean;
   transactions: Transaction[];
   accounts: Account[];
   alerts: Alert[];
@@ -271,7 +272,7 @@ export function useNavigationTabs() {
           </Suspense>
         );
       case 'aicontrol':
-        return context.isDev ? (
+        return context.canAccessDevTools ? (
           <Suspense fallback={<LoadingFallback />}>
             <AIControlPanel
               transactions={context.transactions}
@@ -343,7 +344,7 @@ export function useNavigationTabs() {
           </Suspense>
         );
       case 'performance':
-        return (
+        return context.canAccessDevTools ? (
           <div className="flex flex-col gap-4 animate-in fade-in duration-700 pb-24 overflow-visible">
             <div className="bg-gradient-to-r from-[#f59e0b] to-[#d97706] p-6 rounded-[2rem] flex justify-between items-center shadow-lg shadow-amber-500/20 shrink-0 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 blur-3xl -mr-16 -mt-16 pointer-events-none" />
@@ -357,7 +358,7 @@ export function useNavigationTabs() {
             </div>
             <PerformanceMonitor />
           </div>
-        );
+        ) : null;
       default:
         return null;
     }

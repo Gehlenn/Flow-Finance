@@ -115,6 +115,8 @@ const TRANSACTION_LIST_CLASSES = {
 };
 
 const TRANSACTION_CATEGORY_FILTERS: Array<Category | 'Todas'> = ['Todas', ...Object.values(Category)];
+const PANEL_SURFACE = 'rounded-3xl border border-slate-200 bg-white shadow-[0_18px_45px_-24px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800';
+const MODAL_SURFACE = 'rounded-3xl bg-white shadow-[0_18px_45px_-24px_rgba(15,23,42,0.28)] dark:bg-slate-800';
 
 // Cache global para persistir entre remontagens
 const listCache = {
@@ -536,7 +538,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
 
   return (
     <div className="w-full flex flex-col gap-6 animate-in fade-in duration-700 pb-20 relative">
-      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
+      <div className={`${PANEL_SURFACE} p-6`}>
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Workspace</p>
@@ -591,7 +593,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
         </div>
 
         {showFilters && (
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[2.5rem] p-5 shadow-sm space-y-5 animate-in slide-in-from-top-2">
+          <div className={`${PANEL_SURFACE} p-5 space-y-5 animate-in slide-in-from-top-2`}>
              <div className="flex items-center justify-between border-b border-slate-50 dark:border-slate-700 pb-2">
                 <span className="text-sm font-semibold text-slate-400 uppercase tracking-[0.18em]">Filtros</span>
                 <button onClick={() => {setCategoryFilter('Todas'); setStateFilter('Todas'); setDateStart(''); setDateEnd('');}} className="text-sm font-semibold text-slate-500 hover:text-slate-700 uppercase flex items-center gap-1 tracking-[0.16em]"><RotateCcw size={10} /> Reset</button>
@@ -660,10 +662,31 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
         </button>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden divide-y divide-slate-50 dark:divide-slate-700">
+      <div className={`${PANEL_SURFACE} overflow-hidden divide-y divide-slate-50 dark:divide-slate-700`}>
         {filteredAndSorted.length === 0 && (
-          <div className="px-6 py-10 text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Nenhum lancamento encontrado</p>
+          <div className="px-6 py-12 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+              <History size={22} />
+            </div>
+            <p className="mt-4 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              {transactions.length === 0 ? 'Nenhum lançamento ainda' : 'Nenhum lançamento encontrado'}
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              {transactions.length === 0
+                ? 'Comece pelo botão + no Dashboard. Depois os lançamentos aparecem aqui para revisão.'
+                : 'Tente limpar os filtros ou volte ao Dashboard para conferir se o lançamento foi feito em outro recorte.'}
+            </p>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                Dashboard
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                +
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                Transações
+              </span>
+            </div>
           </div>
         )}
 
@@ -763,7 +786,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
 
       {isShareModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-[3rem] p-8 shadow-2xl space-y-6 animate-in zoom-in-95">
+          <div className={`${MODAL_SURFACE} w-full max-w-sm p-8 space-y-6 animate-in zoom-in-95`}>
             <div className="flex justify-between items-center">
               <h3 className="text-xl font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Gerar Relatório</h3>
               <button onClick={() => { setIsShareModalOpen(false); setShowDestinations(false); }} className="p-1 text-slate-400"><X size={20} /></button>
@@ -850,7 +873,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
 
       {editingTransaction && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[300] flex items-center justify-center p-4 animate-in fade-in duration-300" role="dialog" aria-modal="true" aria-label="Editar Categoria">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl space-y-6 animate-in zoom-in-95">
+          <div className={`${MODAL_SURFACE} w-full max-w-xs p-8 space-y-6 animate-in zoom-in-95`}>
             <div className="flex justify-between items-center mb-2">
               <h3 className="text-lg font-semibold text-slate-800 dark:text-white uppercase tracking-tight" id="modal-title">Editar Categoria</h3>
               <button onClick={() => setEditingTransaction(null)} className="p-1 text-slate-400" aria-label="Fechar modal de edição de categoria"><X size={20} /></button>
@@ -940,7 +963,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
 
       {viewingTransaction && !isShareModalOpen && !transactionToDelete && !editingTransaction && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 w-full max-sm:rounded-[2.5rem] p-8 shadow-2xl space-y-6 animate-in zoom-in-95">
+          <div className={`${MODAL_SURFACE} w-full max-sm:rounded-3xl p-8 space-y-6 animate-in zoom-in-95`}>
             <div className="flex justify-between items-center">
               <div className={`p-2.5 ${TRANSACTION_LIST_CLASSES.neutralInfoBadge}`}><Info size={20} /></div>
               <button onClick={() => setViewingTransaction(null)} className="p-2 text-slate-400"><X size={20} /></button>
@@ -966,7 +989,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
       {/* Modal de Confirmação de Exclusão Individual */}
       {transactionToDelete && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[250] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-[340px] rounded-[2.5rem] p-8 shadow-2xl space-y-6 animate-in zoom-in-95 text-center">
+          <div className={`${MODAL_SURFACE} w-full max-w-[340px] p-8 space-y-6 animate-in zoom-in-95 text-center`}>
             <div className="w-16 h-16 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mx-auto">
               <AlertTriangle size={32} />
             </div>

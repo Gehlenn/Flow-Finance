@@ -205,7 +205,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
             <h1 className="text-6xl font-black tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-b from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
               Flow
             </h1>
-            <p className="text-[14px] font-black text-indigo-500 uppercase tracking-[0.6em] mt-2">Finance</p>
+            <p className="text-[14px] font-black text-slate-500 uppercase tracking-[0.6em] mt-2">Finance</p>
             <p className="text-xs text-slate-400 mt-1">Flow Finance</p>
           </div>
         </div>
@@ -214,8 +214,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
           
           {error?.code === 'auth/unauthorized-domain' ? (
             <div className="animate-in slide-in-from-top-4 duration-500 space-y-3">
-              <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-[2rem] space-y-2 text-center">
-                <FlaskConical size={24} className="mx-auto text-indigo-500" />
+              <div className="p-4 bg-slate-500/5 border border-slate-200 rounded-[2rem] space-y-2 text-center dark:border-slate-700">
+                <FlaskConical size={24} className="mx-auto text-slate-500" />
                 <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 leading-tight">
                   OAuth restrito. Use a demonstração segura para explorar o Flow.
                 </p>
@@ -224,7 +224,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
                     setIsAnimating(true);
                     setTimeout(() => onLogin('teste@flow.com'), 400);
                   }}
-                  className="w-full py-3.5 bg-indigo-600 text-white rounded-2xl font-black text-[9px] uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+                  className="w-full py-3.5 bg-slate-900 text-white rounded-2xl font-black text-[9px] uppercase tracking-widest shadow-xl active:scale-95 transition-all dark:bg-slate-100 dark:text-slate-900"
                 >
                   <ShieldCheck size={14} className="mr-2 inline" /> Iniciar Modo Demo
                 </button>
@@ -253,7 +253,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
                   <form onSubmit={handleEmailLogin} className="space-y-3">
                     <div className="space-y-2">
                       <div className="relative group">
-                        <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 transition-colors ${focusedField === 'email' ? 'text-indigo-500' : ''}`} size={15} />
+                        <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 transition-colors ${focusedField === 'email' ? 'text-slate-500' : ''}`} size={15} />
                         <input 
                           type="email" required value={email}
                           onFocus={() => setFocusedField('email')} onBlur={() => setFocusedField(null)}
@@ -261,11 +261,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
                           aria-label="E-mail de acesso"
                           placeholder="E-mail"
                           data-testid="email"
-                          className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent focus:border-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 text-xs font-bold outline-none transition-all shadow-inner"
+                          className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent focus:border-slate-400/30 focus:bg-white dark:focus:bg-slate-800 text-xs font-bold outline-none transition-all shadow-inner"
                         />
                       </div>
                       <div className="relative group">
-                        <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 transition-colors ${focusedField === 'password' ? 'text-indigo-500' : ''}`} size={15} />
+                        <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 transition-colors ${focusedField === 'password' ? 'text-slate-500' : ''}`} size={15} />
                         <input 
                           type="password" required value={password}
                           onFocus={() => setFocusedField('password')} onBlur={() => setFocusedField(null)}
@@ -273,12 +273,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
                           aria-label="Senha de acesso"
                           placeholder="Senha"
                           data-testid="password"
-                          className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent focus:border-indigo-500/20 focus:bg-white dark:focus:bg-slate-800 text-xs font-bold outline-none transition-all shadow-inner"
+                          className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent focus:border-slate-400/30 focus:bg-white dark:focus:bg-slate-800 text-xs font-bold outline-none transition-all shadow-inner"
                         />
                       </div>
-                      <button type="button" onClick={() => setView('recover')} className="block w-full text-right text-[9px] font-black text-indigo-500 uppercase tracking-widest px-1">Esqueci a senha</button>
+                      <button type="button" onClick={() => setView('recover')} className="block w-full text-right text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Esqueci a senha</button>
                     </div>
-                  <button type="submit" disabled={isLoading} data-testid="login-button" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-600/30 active:scale-95 disabled:opacity-50 transition-all">
+                  <button type="submit" disabled={isLoading} data-testid="login-button" className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/20 active:scale-95 disabled:opacity-50 transition-all dark:bg-slate-100 dark:text-slate-900">
                     {isLoading ? 'Autenticando...' : 'Acessar Conta'} <ArrowRight size={14} className="inline ml-1" />
                   </button>
                 </form>
@@ -294,7 +294,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
                   </button>
 
                   <button onClick={() => setView('signup')} className="w-full text-center text-[9px] font-black text-slate-400 uppercase tracking-widest pt-1.5 group">
-                    Novo por aqui? <span className="text-indigo-600 group-hover:underline">Cadastre-se</span>
+                    Novo por aqui? <span className="text-slate-600 group-hover:underline dark:text-slate-300">Cadastre-se</span>
                   </button>
                 </>
               )}
@@ -303,11 +303,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
                 <form onSubmit={handleSignup} className="space-y-3 animate-in slide-in-from-right-4 duration-500">
                   <button type="button" onClick={() => setView('login')} className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase mb-1"><ChevronLeft size={14} /> Voltar</button>
                   <div className="space-y-2">
-                    <input type="text" required aria-label="Nome completo" placeholder="Seu nome" value={name} onChange={e => setName(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
-                    <input type="email" required aria-label="E-mail para cadastro" placeholder="Seu e-mail" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
-                    <input type="password" required aria-label="Senha para cadastro" placeholder="Senha (min 6 car.)" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
+                    <input type="text" required aria-label="Nome completo" placeholder="Seu nome" value={name} onChange={e => setName(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-slate-400/30 shadow-inner" />
+                    <input type="email" required aria-label="E-mail para cadastro" placeholder="Seu e-mail" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-slate-400/30 shadow-inner" />
+                    <input type="password" required aria-label="Senha para cadastro" placeholder="Senha (min 6 car.)" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-slate-400/30 shadow-inner" />
                   </div>
-                  <button type="submit" disabled={isLoading} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-xl active:scale-95 transition-all">
+                  <button type="submit" disabled={isLoading} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase shadow-xl active:scale-95 transition-all dark:bg-slate-100 dark:text-slate-900">
                     Criar meu Acesso <UserPlus size={16} className="ml-2 inline" />
                   </button>
                 </form>
@@ -318,9 +318,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
                   <button type="button" onClick={() => setView('login')} className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase mb-1"><ChevronLeft size={14} /> Voltar</button>
                   <div className="space-y-3">
                     <p className="text-[10px] font-bold text-slate-500 text-center leading-relaxed px-2">Enviaremos um link de recuperação para o e-mail cadastrado.</p>
-                    <input type="email" required aria-label="E-mail para recuperar senha" placeholder="E-mail cadastrado" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-4 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500/20 shadow-inner" />
+                    <input type="email" required aria-label="E-mail para recuperar senha" placeholder="E-mail cadastrado" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-4 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-slate-400/30 shadow-inner" />
                   </div>
-                  <button type="submit" className="w-full py-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all">Recuperar Senha</button>
+                  <button type="submit" className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all dark:bg-slate-100 dark:text-slate-900">Recuperar Senha</button>
                 </form>
               )}
 
@@ -343,7 +343,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
               setIsAnimating(true);
               setTimeout(() => onLogin('teste@flow.com'), 400);
             }}
-            className="flex items-center gap-2 px-5 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-full border border-indigo-500/20 text-[9px] font-black uppercase tracking-[0.2em] transition-all active:scale-90"
+            className="flex items-center gap-2 px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 rounded-full border border-slate-200 dark:border-slate-700 text-[9px] font-black uppercase tracking-[0.2em] transition-all active:scale-90"
           >
             <ShieldCheck size={13} /> Sessão protegida
           </button>

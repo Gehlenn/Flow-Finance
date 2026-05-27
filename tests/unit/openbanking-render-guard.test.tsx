@@ -16,6 +16,7 @@ const baseContext: NavigationRenderContext = {
   hideValues: false,
   theme: 'light',
   isDev: false,
+  canAccessDevTools: false,
   transactions: [],
   accounts: [],
   alerts: [],
@@ -81,6 +82,20 @@ describe('guard de render da rota openbanking desativada', () => {
     const output = result.current.renderActiveTab({ ...baseContext, isDev: false });
 
     expect(output).toBeNull();
+  });
+
+  it('aicontrol e performance ficam bloqueados sem conta dev mesmo em ambiente dev', () => {
+    const { result } = renderHook(() => useNavigationTabs());
+
+    act(() => {
+      result.current.setActiveTab('aicontrol');
+    });
+    expect(result.current.renderActiveTab({ ...baseContext, isDev: true, canAccessDevTools: false })).toBeNull();
+
+    act(() => {
+      result.current.setActiveTab('performance');
+    });
+    expect(result.current.renderActiveTab({ ...baseContext, isDev: true, canAccessDevTools: false })).toBeNull();
   });
 
   it('analytics mostra upgrade suave no plano free e tela completa no plano pro', () => {

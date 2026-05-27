@@ -3,6 +3,7 @@ import { auth, isFirebaseConfigured, onAuthStateChanged } from '../services/fire
 import { addBreadcrumb, clearUser, setUser } from '../src/config/sentry';
 import { getStoredWorkspaceId, setStoredWorkspaceId } from '../src/config/api.config';
 import { getE2EAuthBootstrap } from '../src/utils/e2eAuthBootstrap';
+import { getDemoBootstrap, isDemoBootstrapAvailable, type DemoBootstrap } from '../src/demo/demoBootstrap';
 import {
   bootstrapBackendSessionFromFirebase,
   bootstrapBackendSessionWithPasswordLogin,
@@ -52,6 +53,7 @@ export type ActiveWorkspaceState = {
 
 export function useAuthAndWorkspace() {
   const e2eSearch = typeof window === 'undefined' ? '' : window.location.search;
+  const demoSearch = typeof window === 'undefined' ? '' : window.location.search;
   const e2eBootstrap = useMemo(() => {
     if (typeof window === 'undefined') {
       return null;
@@ -59,7 +61,16 @@ export function useAuthAndWorkspace() {
 
     return getE2EAuthBootstrap(window.location.search, window.localStorage, canEnableE2EBootstrap());
   }, [e2eSearch]);
+  const demoBootstrap = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    return getDemoBootstrap(window.location.search, window.localStorage, isDemoBootstrapAvailable());
+  }, [demoSearch]);
   const isE2EBootstrapActive = Boolean(e2eBootstrap);
+  const [isDemoBootstrapActive, setIsDemoBootstrapActive] = useState(false);
+  const [isDemoBootstrapDismissed, setIsDemoBootstrapDismissed] = useState(false);
 
   const [user, setCurrentUser] = useState<AuthenticatedUser>({
     id: null,
@@ -86,8 +97,36 @@ export function useAuthAndWorkspace() {
     setBackendSyncEnabled(false);
     setCloudSyncEnabled(true);
     setActiveWorkspace({ workspaceId: null, tenantId: null, tenantName: null, name: null, plan: null, role: null });
+    setIsDemoBootstrapActive(false);
     clearUser();
     addBreadcrumb('User logged out', 'auth', 'info');
+  }, []);
+
+  const bootstrapDemoWorkspace = useCallback((demo: DemoBootstrap) => {
+    setCloudSyncEnabled(false);
+    setBackendSyncEnabled(false);
+    setCurrentUser({
+      id: demo.userId,
+      email: demo.userEmail,
+      name: demo.userName,
+    });
+    setUser({
+      id: demo.userId,
+      email: demo.userEmail || undefined,
+    });
+    setStoredWorkspaceId(null);
+    clearEphemeralAccessToken();
+    setActiveWorkspace({
+      workspaceId: demo.workspaceId,
+      tenantId: demo.tenantId,
+      tenantName: demo.tenantName,
+      name: demo.workspaceName,
+      plan: demo.plan,
+      role: 'owner',
+    });
+    setIsDemoBootstrapActive(true);
+    addBreadcrumb(`Demo local bootstrap enabled for ${demo.userEmail}`, 'auth', 'info');
+    setIsInitialLoading(false);
   }, []);
 
   useEffect(() => {
@@ -186,10 +225,13 @@ export function useAuthAndWorkspace() {
 
   const handleLogout = useCallback(async () => {
     await auth.signOut();
+    if (isDemoBootstrapActive) {
+      setIsDemoBootstrapDismissed(true);
+    }
     if (!isFirebaseConfigured || !auth.currentUser) {
       resetAuthenticatedState();
     }
-  }, [resetAuthenticatedState]);
+  }, [isDemoBootstrapActive, resetAuthenticatedState]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -209,7 +251,7 @@ export function useAuthAndWorkspace() {
         role: null,
       });
 
-      if (workspaceId && !isE2EBootstrapActive) {
+      if (workspaceId && !isE2EBootstrapActive && !isDemoBootstrapActive) {
         void refreshWorkspace().catch((error) => {
           logWarn('[Workspace] Failed to refresh workspace context', {
             error,
@@ -222,7 +264,7 @@ export function useAuthAndWorkspace() {
 
     window.addEventListener(WORKSPACE_CHANGED_EVENT, handleWorkspaceChanged as EventListener);
     return () => window.removeEventListener(WORKSPACE_CHANGED_EVENT, handleWorkspaceChanged as EventListener);
-  }, [isE2EBootstrapActive, refreshWorkspace]);
+  }, [isDemoBootstrapActive, isE2EBootstrapActive, refreshWorkspace]);
 
   useEffect(() => {
     if (isE2EBootstrapActive && e2eBootstrap) {
@@ -246,6 +288,11 @@ export function useAuthAndWorkspace() {
       setEphemeralAccessToken(e2eBootstrap.token);
       addBreadcrumb(`E2E auth bootstrap enabled for ${e2eBootstrap.userEmail}`, 'auth', 'info');
       setIsInitialLoading(false);
+      return;
+    }
+
+    if (demoBootstrap && !isDemoBootstrapDismissed) {
+      bootstrapDemoWorkspace(demoBootstrap);
       return;
     }
 
@@ -304,13 +351,25 @@ export function useAuthAndWorkspace() {
           setIsInitialLoading(false);
         }
       } else {
+        if (demoBootstrap && !isDemoBootstrapDismissed) {
+          bootstrapDemoWorkspace(demoBootstrap);
+          return;
+        }
+
         resetAuthenticatedState();
         setIsInitialLoading(false);
       }
     });
 
     return () => unsubscribe();
-  }, [e2eBootstrap, hydrateWorkspace, isE2EBootstrapActive, resetAuthenticatedState]);
+  }, [
+    bootstrapDemoWorkspace,
+    demoBootstrap,
+    hydrateWorkspace,
+    isDemoBootstrapDismissed,
+    isE2EBootstrapActive,
+    resetAuthenticatedState,
+  ]);
 
   useEffect(() => {
     if (!isInitialLoading || isE2EBootstrapActive || typeof window === 'undefined') {
@@ -342,6 +401,7 @@ export function useAuthAndWorkspace() {
     setUserName,
     setCloudSyncEnabled,
     setBackendSyncEnabled,
+    isDemoBootstrapActive,
   };
 }
 

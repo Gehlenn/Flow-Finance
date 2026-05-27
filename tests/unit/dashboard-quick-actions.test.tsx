@@ -51,7 +51,7 @@ describe('dashboard quick actions', () => {
     expect(onNavigateToSettings).toHaveBeenCalledTimes(1);
   });
 
-  it('surfaces projected revenue as a first-class dashboard metric', () => {
+  it('surfaces next receivable as a first-class dashboard metric', () => {
     render(
       <Dashboard
         userName="Flow User"
@@ -64,6 +64,7 @@ describe('dashboard quick actions', () => {
       />,
     );
 
+    expect(screen.getAllByText(/Proximo recebivel/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Receita prevista/i)).toBeTruthy();
   });
 

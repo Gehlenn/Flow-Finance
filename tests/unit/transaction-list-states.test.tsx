@@ -83,4 +83,21 @@ describe('transaction financial states', () => {
     expect(screen.getByRole('button', { name: /^Pendente$/i }).className).toContain('bg-indigo-600');
     expect(screen.getByText(/Recebimento agendado/i)).toBeTruthy();
   });
+
+  it('orienta o primeiro lancamento quando a lista ainda esta vazia', () => {
+    render(
+      <TransactionList
+        transactions={[]}
+        hideValues={false}
+        onDelete={vi.fn()}
+        onDeleteMultiple={vi.fn()}
+        onUpdate={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/Nenhum lançamento ainda/i)).toBeTruthy();
+    expect(screen.getByText(/botão \+ no Dashboard/i)).toBeTruthy();
+    expect(screen.getByText('Dashboard', { selector: 'span' })).toBeTruthy();
+    expect(screen.getByText('+', { selector: 'span' })).toBeTruthy();
+  });
 });

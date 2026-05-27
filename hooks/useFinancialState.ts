@@ -35,10 +35,11 @@ interface UseFinancialStateOptions {
   activeTenantId: string | null;
   activeWorkspaceId: string | null;
   syncEngine: ReturnType<typeof useSyncEngine>;
+  isDemoMode: boolean;
 }
 
 export function useFinancialState(options: UseFinancialStateOptions) {
-  const { userId, activeTenantId, activeWorkspaceId, syncEngine } = options;
+  const { userId, activeTenantId, activeWorkspaceId, syncEngine, isDemoMode } = options;
 
   const workspaceDefaultAccountRef = useRef<string | null>(null);
   const [latestLeaks, setLatestLeaks] = useState<FinancialLeak[]>([]);
@@ -89,11 +90,15 @@ export function useFinancialState(options: UseFinancialStateOptions) {
       collections,
       syncProfile: syncEngine.syncProfile,
       syncEntities: syncEngine.syncEntities,
-      emitTransactionCreated: FinancialEventEmitter.transactionCreated,
+      emitTransactionCreated: isDemoMode ? undefined : FinancialEventEmitter.transactionCreated,
     };
-  }, [activeTenantId, activeWorkspaceId, collections, syncEngine.syncEntities, syncEngine.syncProfile, userId]);
+  }, [activeTenantId, activeWorkspaceId, collections, isDemoMode, syncEngine.syncEntities, syncEngine.syncProfile, userId]);
 
   useEffect(() => {
+    if (isDemoMode) {
+      return;
+    }
+
     if (userId && transactions.length >= 3) {
       detectAndLearnPatterns(userId, transactions);
       runAdaptiveLearning(userId, transactions).catch((error) => {
@@ -103,10 +108,10 @@ export function useFinancialState(options: UseFinancialStateOptions) {
         });
       });
     }
-  }, [transactions, userId]);
+  }, [isDemoMode, transactions, userId]);
 
   useEffect(() => {
-    if (!userId) {
+    if (isDemoMode || !userId) {
       return undefined;
     }
 
@@ -121,10 +126,10 @@ export function useFinancialState(options: UseFinancialStateOptions) {
         setLatestReport(report);
       },
     }));
-  }, [accounts, transactions, userId]);
+  }, [accounts, isDemoMode, transactions, userId]);
 
   useEffect(() => {
-    if (!serviceContext || !activeWorkspaceId || !syncEngine.backendSyncEnabled || !syncEngine.hasLoadedEntities) {
+    if (isDemoMode || !serviceContext || !activeWorkspaceId || !syncEngine.backendSyncEnabled || !syncEngine.hasLoadedEntities) {
       return;
     }
 
@@ -148,6 +153,7 @@ export function useFinancialState(options: UseFinancialStateOptions) {
     accounts.length,
     activeWorkspaceId,
     activeTenantId,
+    isDemoMode,
     serviceContext,
     syncEngine,
     userId,
