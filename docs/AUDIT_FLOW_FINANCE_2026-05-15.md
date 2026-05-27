@@ -1,10 +1,10 @@
-﻿# Auditoria SÃªnior Flow Finance â€” 2026-05-15
+�# Auditoria Sênior Flow Finance � 2026-05-15
 
 ## Papel deste documento
 
-Auditoria multidisciplinar (produto, engenharia, seguranÃ§a, UX, SaaS) realizada em `2026-05-15` contra `package.json` versÃ£o `0.9.7`, cÃ³digo vivo do repo e documentaÃ§Ã£o canÃ´nica em `obsidian-vault/Projetos/Core/`.
+Auditoria multidisciplinar (produto, engenharia, segurança, UX, SaaS) realizada em `2026-05-15` contra `package.json` versão `0.9.7`, código vivo do repo e documentação canônica em `obsidian-vault/Projetos/Core/`.
 
-Tom: tÃ©cnico, direto, crÃ­tico. Sem suavizaÃ§Ã£o.
+Tom: técnico, direto, crítico. Sem suavização.
 
 Fontes de verdade lidas:
 
@@ -30,216 +30,216 @@ Fontes de verdade lidas:
 - `src/ai/aiOrchestrator.ts`
 - `.env.example`, `.gitignore`
 
-Plano de execuÃ§Ã£o derivado: `docs/PLANO_ACAO_AUDITORIA_2026-05-15.md`.
+Plano de execução derivado: `docs/PLANO_ACAO_AUDITORIA_2026-05-15.md`.
 
 ---
 
 ## 1. Veredito executivo
 
-O Flow Finance Ã© um projeto operacionalmente sÃ©rio com base tÃ©cnica acima da mÃ©dia (Firestore rules razoavelmente densas, JWT hardening, refresh token rotation, Helmet, CORS allowlist, 218 testes unitÃ¡rios, cobertura crÃ­tica em 99% e auditoria de seguranÃ§a recente com 4 fixes documentados). Em paralelo, Ã© um projeto estrategicamente desfocado: o repositÃ³rio carrega Open Banking (Pluggy), AI CFO conversacional, Financial Autopilot, Receipt Scanner com OCR e PDF parse, integraÃ§Ã£o de clÃ­nica como rota de primeiro nÃ­vel no backend, e um pipeline AI de 21 arquivos rodando no cliente. Tudo o que o `Product Plan.md` diz que NÃƒO Ã© o eixo do produto.
+O Flow Finance é um projeto operacionalmente sério com base técnica acima da média (Firestore rules razoavelmente densas, JWT hardening, refresh token rotation, Helmet, CORS allowlist, 218 testes unitários, cobertura crítica em 99% e auditoria de segurança recente com 4 fixes documentados). Em paralelo, é um projeto estrategicamente desfocado: o repositório carrega Open Banking (Pluggy), AI CFO conversacional, Financial Autopilot, Receipt Scanner com OCR e PDF parse, integração de clínica como rota de primeiro nível no backend, e um pipeline AI de 21 arquivos rodando no cliente. Tudo o que o `Product Plan.md` diz que NÒO é o eixo do produto.
 
-A maior fraqueza Ã© integridade financeira frÃ¡gil. A soma de saldos do Dashboard, do CashFlow e da lista de transaÃ§Ãµes usa float JS cru. `moneyMath` existe mas Ã© usado quase sÃ³ em `reportEngine`.
+A maior fraqueza é integridade financeira frágil. A soma de saldos do Dashboard, do CashFlow e da lista de transações usa float JS cru. `moneyMath` existe mas é usado quase só em `reportEngine`.
 
-O maior risco Ã© dupla quebra de confianÃ§a: produÃ§Ã£o fora do ar (backend Vercel devolve 404 em `/health`, `/api/health`, `/api/version` desde 2026-04 e ainda em 2026-05-08 segundo `docs/DEPLOYMENT_STATUS.md`) e auditoria de fachada no frontend (`auditLogService.ts` grava em array em memÃ³ria).
+O maior risco é dupla quebra de confiança: produção fora do ar (backend Vercel devolve 404 em `/health`, `/api/health`, `/api/version` desde 2026-04 e ainda em 2026-05-08 segundo `docs/DEPLOYMENT_STATUS.md`) e auditoria de fachada no frontend (`auditLogService.ts` grava em array em memória).
 
-A maior oportunidade Ã© cortar 30-40% da superfÃ­cie do produto e do AI engine para alinhar com o que estÃ¡ escrito no `Product Plan.md`.
+A maior oportunidade é cortar 30-40% da superfície do produto e do AI engine para alinhar com o que está escrito no `Product Plan.md`.
 
-NÃ£o estÃ¡ pronto para validaÃ§Ã£o com cliente real pagante. EstÃ¡ pronto para piloto privado com clÃ­nica, com avisos.
+Não está pronto para validação com cliente real pagante. Está pronto para piloto privado com clínica, com avisos.
 
 ## 2. Tabela de notas
 
 | Quesito | Nota 0-10 | Status | Principal problema | Prioridade |
 |---|---:|---|---|---|
-| 1. Produto / posicionamento | 4 | desalinhado | CÃ³digo contradiz `Product Plan.md` (AI CFO, Autopilot, Open Banking, Receipt Scanner) | P1 |
-| 2. Utilidade real p/ serviÃ§o | 5 | parcial | "Receita prevista" derivada de `Reminder` Ã© frÃ¡gil; faltam recebÃ­veis formais | P1 |
-| 3. Arquitetura geral | 6 | aceitÃ¡vel | Camadas certas (front, backend proxy, Firebase, Stripe), mas 4+ integraÃ§Ãµes inativas | P2 |
+| 1. Produto / posicionamento | 4 | desalinhado | Código contradiz `Product Plan.md` (AI CFO, Autopilot, Open Banking, Receipt Scanner) | P1 |
+| 2. Utilidade real p/ serviço | 5 | parcial | "Receita prevista" derivada de `Reminder` é frágil; faltam recebíveis formais | P1 |
+| 3. Arquitetura geral | 6 | aceitável | Camadas certas (front, backend proxy, Firebase, Stripe), mas 4+ integrações inativas | P2 |
 | 4. Estrutura do projeto | 4 | confusa | `src/` duplica responsabilidades com `components/`, `pages/`, `services/`, `hooks/`, `utils/`, `models/` em paralelo | P2 |
-| 5. Backend | 6 | aceitÃ¡vel | Bom uso de Express/Helmet, mas escopo heavy clinic/business/external integration | P1 |
-| 6. Banco / modelo de dados | 5 | fraco | Receita prevista, recebÃ­vel, lembrete, transaÃ§Ã£o misturados sem schema canÃ´nico | P1 |
-| 7. SeguranÃ§a | 7 | bom | Auditoria recente fechou 4 issues; ainda hÃ¡ resÃ­duos (audit log em memÃ³ria, stubs auth) | P1 |
+| 5. Backend | 6 | aceitável | Bom uso de Express/Helmet, mas escopo heavy clinic/business/external integration | P1 |
+| 6. Banco / modelo de dados | 5 | fraco | Receita prevista, recebível, lembrete, transação misturados sem schema canônico | P1 |
+| 7. Segurança | 7 | bom | Auditoria recente fechou 4 issues; ainda há resíduos (audit log em memória, stubs auth) | P1 |
 | 8. Vazamento de dados | 7 | bom | Backend proxy correto p/ Gemini; query params removidos do log; XSS escapado | P2 |
-| 9. Auth / authz / multi-tenant | 7 | bom | Rules densas; refresh tokens; stubs dev presentes (guardas em produÃ§Ã£o) | P1 |
-| 10. Firestore rules | 7 | bom | Boa estrutura, mas `tenant_members read` Ã© generosa; sem rate-limit declarado | P2 |
-| 11. Frontend | 5 | aceitÃ¡vel | InconsistÃªncia visual reconhecida (baseline 14/24), 30% melhorada | P2 |
-| 12. Mobile / responsivo | 6 | aceitÃ¡vel | Capacitor presente; falta evidÃªncia de QA real em iOS | P2 |
+| 9. Auth / authz / multi-tenant | 7 | bom | Rules densas; refresh tokens; stubs dev presentes (guardas em produção) | P1 |
+| 10. Firestore rules | 7 | bom | Boa estrutura, mas `tenant_members read` é generosa; sem rate-limit declarado | P2 |
+| 11. Frontend | 5 | aceitável | Inconsistência visual reconhecida (baseline 14/24), 30% melhorada | P2 |
+| 12. Mobile / responsivo | 6 | aceitável | Capacitor presente; falta evidência de QA real em iOS | P2 |
 | 13. Design visual | 5 | fraco | Excesso de gradientes, font-black, microtipografia text-[7px] | P2 |
-| 14. UI / hierarquia | 5 | fraco | CTA primÃ¡rio e densidade variando entre telas | P2 |
+| 14. UI / hierarquia | 5 | fraco | CTA primário e densidade variando entre telas | P2 |
 | 15. UX / jornada | 5 | fraco | 5 tabs ok, mas Consultor IA, Insights e Fluxo competem entre si | P1 |
-| 16. Dashboard | 5 | fraco | Float JS direto nos cÃ¡lculos de saldo; texto consultivo bom mas dado frÃ¡gil | **P0** |
-| 17. TransaÃ§Ãµes / fluxo de caixa | 5 | aceitÃ¡vel | Sem reconciliaÃ§Ã£o real, sem conciliaÃ§Ã£o bancÃ¡ria declarada | P1 |
+| 16. Dashboard | 5 | fraco | Float JS direto nos cálculos de saldo; texto consultivo bom mas dado frágil | **P0** |
+| 17. Transações / fluxo de caixa | 5 | aceitável | Sem reconciliação real, sem conciliação bancária declarada | P1 |
 | 18. Receita prevista vs realizada | 4 | fraca | Modelo duplo (Reminder em Dashboard, status em CashFlow) | P1 |
-| 19. IA consultiva | 4 | desalinhada | Promessa "consultiva" + cÃ³digo "autopilot/orchestrator/autonomous" | P1 |
-| 20. Bugs provÃ¡veis | 5 | risco | Race conditions sync, Sentry duplo, lucide-react@1.8 errado | P1 |
+| 19. IA consultiva | 4 | desalinhada | Promessa "consultiva" + código "autopilot/orchestrator/autonomous" | P1 |
+| 20. Bugs prováveis | 5 | risco | Race conditions sync, Sentry duplo, lucide-react@1.8 errado | P1 |
 | 21. Testes / QA | 7 | bom | 218 unit + 12 e2e + critical 99.5%, mas peso em AI; baixo em integridade $ | P2 |
-| 22. Observabilidade | 6 | aceitÃ¡vel | Endpoints contratados, Sentry no cÃ³digo, mas DSN ausente no destino | P1 |
+| 22. Observabilidade | 6 | aceitável | Endpoints contratados, Sentry no código, mas DSN ausente no destino | P1 |
 | 23. Performance | 5 | fraco | Bundle pesado (tesseract.js + pdf-parse + recharts + 2 Sentrys + 2 Geminis) | P2 |
 | 24. Acessibilidade | 4 | fraco | Sem teste a11y; microtipografia ruim; contraste com gradientes | P2 |
-| 25. Developer experience | 6 | aceitÃ¡vel | Scripts numerosos, mas com 3 logs de backend dev acumulados na raiz | P3 |
-| 26. DocumentaÃ§Ã£o | 7 | boa | Vault + docs/ + repo; mas com "registro histÃ³rico" 0.9.6 vs cÃ³digo 0.9.7 | P2 |
-| 27. ComercializaÃ§Ã£o / rentabilidade | 4 | fraco | Stripe sandbox ok local; sem pricing claro, sem paywall claro | P1 |
-| 28. ProntidÃ£o p/ validaÃ§Ã£o real | 3 | crÃ­tico | Backend Vercel fora do ar (404 health endpoints) | **P0** |
-| 29. Riscos estratÃ©gicos | 4 | alto | Escopo, supply chain de OCR/PDF, dependÃªncia de Pluggy | P1 |
-| 30. PrÃ³ximas prioridades | â€” | â€” | Definidas no plano de aÃ§Ã£o | â€” |
+| 25. Developer experience | 6 | aceitável | Scripts numerosos, mas com 3 logs de backend dev acumulados na raiz | P3 |
+| 26. Documentação | 7 | boa | Vault + docs/ + repo; mas com "registro histórico" 0.9.6 vs código 0.9.7 | P2 |
+| 27. Comercialização / rentabilidade | 4 | fraco | Stripe sandbox ok local; sem pricing claro, sem paywall claro | P1 |
+| 28. Prontidão p/ validação real | 3 | crítico | Backend Vercel fora do ar (404 health endpoints) | **P0** |
+| 29. Riscos estratégicos | 4 | alto | Escopo, supply chain de OCR/PDF, dependência de Pluggy | P1 |
+| 30. Próximas prioridades | � | � | Definidas no plano de ação | � |
 
-MÃ©dia ponderada: 5.4 / 10.
+Média ponderada: 5.4 / 10.
 
 ---
 
-## 3. Achados crÃ­ticos (P0 + P1)
+## 3. Achados críticos (P0 + P1)
 
-### P0-01 â€” Backend de produÃ§Ã£o fora do contrato de API
+### P0-01 � Backend de produção fora do contrato de API
 
-EvidÃªncia:
+Evidência:
 
 - `docs/DEPLOYMENT_STATUS.md` documenta o estado operacional do backend publicado.
 - `README.md:12` confirma o bloqueio como remanescente.
-- VersÃ£o `0.9.7` no `package.json`; doc fala em `0.9.6.1v` como registro histÃ³rico.
+- Versão `0.9.7` no `package.json`; doc fala em `0.9.6.1v` como registro histórico.
 
 Impacto:
 
-- Sem backend, a IA nÃ£o responde, o billing nÃ£o fecha o ciclo end-to-end, o sync nÃ£o persiste, o login Firebaseâ†’sessÃ£o nÃ£o troca tokens.
-- O frontend "funciona" mas Ã© uma vitrine vazia. Validar com cliente queima credibilidade.
+- Sem backend, a IA não responde, o billing não fecha o ciclo end-to-end, o sync não persiste, o login Firebase� sessão não troca tokens.
+- O frontend "funciona" mas é uma vitrine vazia. Validar com cliente queima credibilidade.
 
-RecomendaÃ§Ã£o:
+Recomendação:
 
-- Corrigir root directory do projeto Vercel do backend (apontar para `backend/`, nÃ£o para a raiz do repo).
+- Corrigir root directory do projeto Vercel do backend (apontar para `backend/`, não para a raiz do repo).
 - Validar via `npm run health:vercel` com `VERCEL_TARGET_URL`.
 - Bloquear deploy se health falhar.
 
-EsforÃ§o: 0.5 dia.
+Esforço: 0.5 dia.
 
-Risco se ignorar: validaÃ§Ã£o impossÃ­vel, cobranÃ§a impossÃ­vel, confianÃ§a financeira impossÃ­vel.
+Risco se ignorar: validação impossível, cobrança impossível, confiança financeira impossível.
 
-### P0-02 â€” CÃ¡lculos financeiros usando float JavaScript no Dashboard, CashFlow e listas
+### P0-02 � Cálculos financeiros usando float JavaScript no Dashboard, CashFlow e listas
 
-EvidÃªncia:
+Evidência:
 
-- `components/Dashboard.tsx:99` â€” `accounts.reduce((sum, account) => sum + account.balance, 0)`.
-- `components/Dashboard.tsx:104,107,112,115,182,184` â€” somas diretas.
-- `components/CashFlow.tsx:115-125` â€” `summary.pending += transaction.amount`.
-- `src/security/moneyMath.ts` existe mas sÃ³ `src/finance/reportEngine.ts` importa (grep confirmado).
+- `components/Dashboard.tsx:99` � `accounts.reduce((sum, account) => sum + account.balance, 0)`.
+- `components/Dashboard.tsx:104,107,112,115,182,184` � somas diretas.
+- `components/CashFlow.tsx:115-125` � `summary.pending += transaction.amount`.
+- `src/security/moneyMath.ts` existe mas só `src/finance/reportEngine.ts` importa (grep confirmado).
 
 Impacto:
 
-- Em produto financeiro, `0.1 + 0.2 = 0.30000000000000004` Ã© inaceitÃ¡vel.
-- DiferenÃ§as entre "Saldo" e "Soma de transaÃ§Ãµes" vÃ£o aparecer em ambientes reais com volume.
-- Quebra a regra explÃ­cita do `Project Rules.md`: integridade e rastreabilidade antes de velocidade.
+- Em produto financeiro, `0.1 + 0.2 = 0.30000000000000004` é inaceitável.
+- Diferenças entre "Saldo" e "Soma de transações" vão aparecer em ambientes reais com volume.
+- Quebra a regra explícita do `Project Rules.md`: integridade e rastreabilidade antes de velocidade.
 
-RecomendaÃ§Ã£o:
+Recomendação:
 
-- Tornar `moneyMath.ts` o Ãºnico caminho para operaÃ§Ãµes monetÃ¡rias no frontend.
+- Tornar `moneyMath.ts` o único caminho para operações monetárias no frontend.
 - Aumentar `Decimal.set({ precision: 28 })`.
-- Adicionar teste de invariante: "soma de N lembretes via floats vs decimais Ã© idÃªntica centavo a centavo".
+- Adicionar teste de invariante: "soma de N lembretes via floats vs decimais é idêntica centavo a centavo".
 
-EsforÃ§o: 1-2 dias para refactor mais 0.5 dia para testes.
+Esforço: 1-2 dias para refactor mais 0.5 dia para testes.
 
-Risco se ignorar: erro silencioso de centavos; cliente perde confianÃ§a no nÃºmero do saldo.
+Risco se ignorar: erro silencioso de centavos; cliente perde confiança no número do saldo.
 
-### P0-03 â€” Audit log do frontend sÃ³ em memÃ³ria
+### P0-03 � Audit log do frontend só em memória
 
-EvidÃªncia:
+Evidência:
 
-- `src/security/auditLogService.ts:18` â€” `const auditLogs: AuditLogEntry[] = [];`.
+- `src/security/auditLogService.ts:18` � `const auditLogs: AuditLogEntry[] = [];`.
 - Nunca persiste.
-- `firestore.rules:261-274` cria a coleÃ§Ã£o `audit_logs/{tenantId}/events/{eventId}` com `allow update, delete: if false` (tamper-evident), mas o frontend nunca escreve nela.
+- `firestore.rules:261-274` cria a coleção `audit_logs/{tenantId}/events/{eventId}` com `allow update, delete: if false` (tamper-evident), mas o frontend nunca escreve nela.
 
 Impacto:
 
-- Promessa de auditabilidade sÃ³ no schema, nÃ£o no comportamento.
-- Falsa sensaÃ§Ã£o de rastreabilidade para um produto financeiro.
+- Promessa de auditabilidade só no schema, não no comportamento.
+- Falsa sensação de rastreabilidade para um produto financeiro.
 
-RecomendaÃ§Ã£o:
+Recomendação:
 
 - Substituir `auditLogs.push(entry)` por escrita em Firestore em `audit_logs/{tenantId}/events`.
-- Manter array em memÃ³ria apenas como cache opcional.
+- Manter array em memória apenas como cache opcional.
 - Cobrir com teste de rules.
 
-EsforÃ§o: 0.5 dia.
+Esforço: 0.5 dia.
 
-Risco se ignorar: defesa jurÃ­dica enfraquecida em incidente; falha de conformidade.
+Risco se ignorar: defesa jurídica enfraquecida em incidente; falha de conformidade.
 
-### P1-01 â€” Escopo do produto contradiz o `Product Plan.md`
+### P1-01 � Escopo do produto contradiz o `Product Plan.md`
 
-EvidÃªncia:
+Evidência:
 
-- `Product Plan.md` diz NÃƒO super-app, NÃƒO Open Finance como eixo, NÃƒO "CFO autÃ´nomo".
-- CÃ³digo atual:
+- `Product Plan.md` diz NÒO super-app, NÒO Open Finance como eixo, NÒO "CFO autônomo".
+- Código atual:
   - `pages/AICFO.tsx`, `pages/Autopilot.tsx`, `pages/OpenBanking.tsx`, `pages/ReceiptScanner.tsx` presentes.
   - `src/ai/financialAutopilot.ts`, `src/ai/aiCFO.ts`, `src/ai/aiOrchestrator.ts` pipeline completo.
   - Backend `bankingRoutes` (com `featureGateOpenFinance`), `clinicIntegrationRoutes`, `businessIntegrationRoutes`, `externalIntegrationRoutes`.
-  - `package.json` lista `react-pluggy-connect`, `tesseract.js`, `pdf-parse`, `@google/genai`, `@google/generative-ai` como dependÃªncias (nÃ£o devDependencies).
-  - `.env.example:105` â€” `VITE_FEATURE_AUTOPILOT=true` por padrÃ£o.
+  - `package.json` lista `react-pluggy-connect`, `tesseract.js`, `pdf-parse`, `@google/genai`, `@google/generative-ai` como dependências (não devDependencies).
+  - `.env.example:105` � `VITE_FEATURE_AUTOPILOT=true` por padrão.
 
 Impacto:
 
-- Bundle inflado, complexidade cognitiva alta, manutenÃ§Ã£o pesada, mensagem confusa para o cliente.
+- Bundle inflado, complexidade cognitiva alta, manutenção pesada, mensagem confusa para o cliente.
 - Custo de IA inflado por funcionalidades fora do eixo.
-- Reforma de UI ficou cosmÃ©tica: a casa por trÃ¡s continua igual.
+- Reforma de UI ficou cosmética: a casa por trás continua igual.
 
-RecomendaÃ§Ã£o:
+Recomendação:
 
-- Cortar com bisturi as 4 pÃ¡ginas legadas (mover para `pages/legacy/` ou deletar).
+- Cortar com bisturi as 4 páginas legadas (mover para `pages/legacy/` ou deletar).
 - Remover `react-pluggy-connect`, `tesseract.js`, `pdf-parse`, `@google/genai`.
-- Apagar `src/ai/financialAutopilot.ts` e dependÃªncias.
+- Apagar `src/ai/financialAutopilot.ts` e dependências.
 - Reduzir `src/ai/` de 21 arquivos para ~5.
-- Pluggy continua sÃ³ atrÃ¡s de feature flag default off.
+- Pluggy continua só atrás de feature flag default off.
 
-EsforÃ§o: 2-3 dias.
+Esforço: 2-3 dias.
 
-Risco se ignorar: projeto nÃ£o se explica em uma frase; cliente novo confunde.
+Risco se ignorar: projeto não se explica em uma frase; cliente novo confunde.
 
-### P1-02 â€” "Receita prevista" tem dois modelos competindo
+### P1-02 � "Receita prevista" tem dois modelos competindo
 
-EvidÃªncia:
+Evidência:
 
-- `Dashboard.tsx:109-117` constrÃ³i `projectedRevenueMonth` somando `reminders` com `amount > 0` e `!completed`.
-- `CashFlow.tsx:90-133` constrÃ³i o mesmo conceito derivando `status` de `transaction.generated` + `transaction.date`.
-- NÃ£o existe entidade canÃ´nica de "RecebÃ­vel".
+- `Dashboard.tsx:109-117` constrói `projectedRevenueMonth` somando `reminders` com `amount > 0` e `!completed`.
+- `CashFlow.tsx:90-133` constrói o mesmo conceito derivando `status` de `transaction.generated` + `transaction.date`.
+- Não existe entidade canônica de "Recebível".
 
 Impacto:
 
-- Dois nÃºmeros diferentes para a mesma pergunta dependendo da tela.
-- O eixo central declarado no `Product Plan.md` (receita prevista + receita realizada) nÃ£o tem dado canÃ´nico.
+- Dois números diferentes para a mesma pergunta dependendo da tela.
+- O eixo central declarado no `Product Plan.md` (receita prevista + receita realizada) não tem dado canônico.
 
-RecomendaÃ§Ã£o:
+Recomendação:
 
 - Definir modelo `Receivable` com campos: `id`, `workspace_id`, `tenant_id`, `due_date`, `expected_amount`, `realized_amount`, `source`, `status`.
 - Migrar `Reminder` financeiro e `transaction.generated` para alimentar esse modelo.
 - Dashboard e CashFlow leem do mesmo agregado.
 - Teste invariante: "soma de Receivables.open == projetado no Dashboard == pendente no CashFlow".
 
-EsforÃ§o: 3-4 dias.
+Esforço: 3-4 dias.
 
-Risco se ignorar: toda decisÃ£o consultiva da IA fica em cima de dado inconsistente.
+Risco se ignorar: toda decisão consultiva da IA fica em cima de dado inconsistente.
 
-### P1-03 â€” IA "consultiva" embalada como "autÃ´noma"
+### P1-03 � IA "consultiva" embalada como "autônoma"
 
-EvidÃªncia:
+Evidência:
 
 - `src/ai/aiOrchestrator.ts:36` importa `runFinancialAutopilot`.
 - `src/ai/financialAutopilot.ts` produz `AutopilotAction`.
-- `pages/AICFO.tsx` mostra `Consultor IA` (rÃ³tulo simpÃ¡tico) mas chama `runAIPipelineSync` que executa 6 camadas client-side.
+- `pages/AICFO.tsx` mostra `Consultor IA` (rótulo simpático) mas chama `runAIPipelineSync` que executa 6 camadas client-side.
 - 21 arquivos em `src/ai/`.
 
 Impacto:
 
-- Promessa quebrada: a IA nÃ£o Ã© IA, Ã© regras client-side.
-- Sob rÃ³tulo "Autopilot".
-- Risco reputacional mÃ©dio em demos sofisticadas.
+- Promessa quebrada: a IA não é IA, é regras client-side.
+- Sob rótulo "Autopilot".
+- Risco reputacional médio em demos sofisticadas.
 
-RecomendaÃ§Ã£o:
+Recomendação:
 
 - Renomear `financialAutopilot` para `signalEngine`.
 - Reduzir pipeline de 6 camadas para 3 (Financial Engine + Risk + Insight).
-- Qualquer decisÃ£o real fica fora â€” sÃ³ sinaliza.
+- Qualquer decisão real fica fora � só sinaliza.
 
-EsforÃ§o: 1-2 dias.
+Esforço: 1-2 dias.
 
-Risco se ignorar: demo do produto mostra "Autopilot" no cÃ³digo; cliente sofisticado descobre.
+Risco se ignorar: demo do produto mostra "Autopilot" no código; cliente sofisticado descobre.
 
-### P1-04 â€” Stubs de auth presentes com guardas sÃ³ de `NODE_ENV`
+### P1-04 � Stubs de auth presentes com guardas só de `NODE_ENV`
 
-EvidÃªncia:
+Evidência:
 
 - `backend/src/auth/authService.ts:7-11`:
 
@@ -251,91 +251,91 @@ EvidÃªncia:
 
 Impacto:
 
-- Se um deploy for promovido com `NODE_ENV` ausente ou setado para staging/development por engano, o login local fictÃ­cio passa.
-- ConfiguraÃ§Ã£o-zumbi que mata fintech.
+- Se um deploy for promovido com `NODE_ENV` ausente ou setado para staging/development por engano, o login local fictício passa.
+- Configuração-zumbi que mata fintech.
 
-RecomendaÃ§Ã£o:
+Recomendação:
 
 - Remover a stub.
-- Se precisar de dev login, isolar em arquivo carregado por dynamic import condicional sÃ³ no startup local.
-- Trocar check de NODE_ENV por allowlist explÃ­cita (`AUTH_DEV_BYPASS_TOKEN`) com log "INSECURE DEV LOGIN ACTIVE" no boot.
+- Se precisar de dev login, isolar em arquivo carregado por dynamic import condicional só no startup local.
+- Trocar check de NODE_ENV por allowlist explícita (`AUTH_DEV_BYPASS_TOKEN`) com log "INSECURE DEV LOGIN ACTIVE" no boot.
 
-EsforÃ§o: 0.5 dia.
+Esforço: 0.5 dia.
 
-Risco se ignorar: auth bypass por configuraÃ§Ã£o errada.
+Risco se ignorar: auth bypass por configuração errada.
 
-### P1-05 â€” `lucide-react@1.8.0` e Sentry com dois majors
+### P1-05 � `lucide-react@1.8.0` e Sentry com dois majors
 
-EvidÃªncia:
+Evidência:
 
 - `package.json:70`: `"lucide-react": "1.8.0"`.
-- A linha de release legÃ­tima de `lucide-react` estÃ¡ em `0.4xx`. A versÃ£o `1.8.0` nÃ£o existe no npm canÃ´nico â€” provÃ¡vel typosquat ou pacote diferente.
-- `@sentry/react@10.47.0` + `@sentry/tracing@7.120.4` â€” APIs incompatÃ­veis entre majors 7 e 10.
+- A linha de release legítima de `lucide-react` está em `0.4xx`. A versão `1.8.0` não existe no npm canônico � provável typosquat ou pacote diferente.
+- `@sentry/react@10.47.0` + `@sentry/tracing@7.120.4` � APIs incompatíveis entre majors 7 e 10.
 
 Impacto:
 
 - Risco de supply chain alto se `lucide-react@1.8.0` for typosquat.
-- Sentry duplo: traces da v7 nÃ£o conectam com transport da v10. Observabilidade comprometida silenciosamente.
+- Sentry duplo: traces da v7 não conectam com transport da v10. Observabilidade comprometida silenciosamente.
 
-RecomendaÃ§Ã£o:
+Recomendação:
 
 - Verificar publisher e provenance em `package-lock.json`.
-- Trocar para `lucide-react@^0.x` legÃ­timo.
+- Trocar para `lucide-react@^0.x` legítimo.
 - Migrar Sentry para v10 e remover `@sentry/tracing@7`.
 
-EsforÃ§o: 0.5 dia.
+Esforço: 0.5 dia.
 
-Risco se ignorar: comprometimento de build ou ruÃ­do crÃ´nico de Sentry.
+Risco se ignorar: comprometimento de build ou ruído crônico de Sentry.
 
-### P1-06 â€” Backend trafega 4 modelos de integraÃ§Ã£o em paralelo
+### P1-06 � Backend trafega 4 modelos de integração em paralelo
 
-EvidÃªncia:
+Evidência:
 
 - `backend/src/index.ts:351-359` registra `/api/integrations/external`, `/api/integrations/keys`, `/api/integrations`, `/api/integrations/clinic`.
 - Mais `bankingRoutes` (Pluggy).
-- Middlewares prÃ³prios: `clinicAudit`, `clinicPayloadLimit`, `businessIntegrationContract`, `integrationBindingScope`, `externalIntegrationAuth`.
+- Middlewares próprios: `clinicAudit`, `clinicPayloadLimit`, `businessIntegrationContract`, `integrationBindingScope`, `externalIntegrationAuth`.
 
 Impacto:
 
-- Cada vetor Ã© uma surface de risco (HMAC, idempotÃªncia, quota).
-- ManutenÃ§Ã£o quadruplicada.
-- A regra "preservar fronteiras SaaS" do `Project Rules.md` estÃ¡ sendo multiplicada, nÃ£o preservada.
+- Cada vetor é uma surface de risco (HMAC, idempotência, quota).
+- Manutenção quadruplicada.
+- A regra "preservar fronteiras SaaS" do `Project Rules.md` está sendo multiplicada, não preservada.
 
-RecomendaÃ§Ã£o:
+Recomendação:
 
-- Definir um contrato Ãºnico de integraÃ§Ã£o externa (`/api/integrations/{provider}` com HMAC + idempotency-key + workspace binding).
-- Mover clinic e business para serem providers desse contrato, nÃ£o rotas separadas.
-- Bloquear por feature flag atÃ© existir cliente real.
+- Definir um contrato único de integração externa (`/api/integrations/{provider}` com HMAC + idempotency-key + workspace binding).
+- Mover clinic e business para serem providers desse contrato, não rotas separadas.
+- Bloquear por feature flag até existir cliente real.
 
-EsforÃ§o: 2-3 dias.
+Esforço: 2-3 dias.
 
-Risco se ignorar: dÃ­vida de manutenÃ§Ã£o e auditoria.
+Risco se ignorar: dívida de manutenção e auditoria.
 
-### P1-07 â€” `.env.example` contradiz defaults reais do backend
+### P1-07 � `.env.example` contradiz defaults reais do backend
 
-EvidÃªncia:
+Evidência:
 
-- `.env.example:105` â€” `VITE_FEATURE_AUTOPILOT=true`.
-- `.env.example:120-122` â€” `VITE_FEATURE_OPEN_BANKING=true`, `VITE_FEATURE_RECEIPT_SCANNER=true`, `VITE_FEATURE_AI_CFO=true`.
-- `backend/src/config/env.ts:102` â€” `FEATURE_OPEN_FINANCE=false` (default).
+- `.env.example:105` � `VITE_FEATURE_AUTOPILOT=true`.
+- `.env.example:120-122` � `VITE_FEATURE_OPEN_BANKING=true`, `VITE_FEATURE_RECEIPT_SCANNER=true`, `VITE_FEATURE_AI_CFO=true`.
+- `backend/src/config/env.ts:102` � `FEATURE_OPEN_FINANCE=false` (default).
 
 Impacto:
 
-- Devs que copiam o exemplo ligam features que o backend nÃ£o suporta por padrÃ£o.
-- Ambiente inconsistente; decisÃµes de produto contraditas pela documentaÃ§Ã£o de setup.
+- Devs que copiam o exemplo ligam features que o backend não suporta por padrão.
+- Ambiente inconsistente; decisões de produto contraditas pela documentação de setup.
 
-RecomendaÃ§Ã£o:
+Recomendação:
 
 - Default todas as features fora do eixo para `false`.
-- ComentÃ¡rio inline: "ative sÃ³ para experimentaÃ§Ã£o".
+- Comentário inline: "ative só para experimentação".
 
-EsforÃ§o: 5 minutos.
+Esforço: 5 minutos.
 
-Risco se ignorar: confusÃ£o crÃ´nica entre devs.
+Risco se ignorar: confusão crônica entre devs.
 
-### P1-08 â€” Sentry sem DSN no destino e dois inits
+### P1-08 � Sentry sem DSN no destino e dois inits
 
-EvidÃªncia:
+Evidência:
 
 - `App.tsx:39` chama `initSentry()`; backend faz o mesmo.
 - `docs/DEPLOYMENT_STATUS.md` agora trata `VITE_SENTRY_DSN`/`SENTRY_DSN` como provisionados em producao.
@@ -343,75 +343,75 @@ EvidÃªncia:
 
 Impacto:
 
-- Falhas em produÃ§Ã£o invisÃ­veis.
-- Para um sistema financeiro, bug silencioso pode passar dias sem detecÃ§Ã£o.
+- Falhas em produção invisíveis.
+- Para um sistema financeiro, bug silencioso pode passar dias sem detecção.
 
-RecomendaÃ§Ã£o:
+Recomendação:
 
 - Configurar DSN no Vercel.
 - Bloquear deploy se DSN ausente em `NODE_ENV=production`.
 - Remover `@sentry/tracing@7`.
 
-EsforÃ§o: 0.5 dia.
+Esforço: 0.5 dia.
 
-Risco se ignorar: bugs em produÃ§Ã£o sem rastreio.
+Risco se ignorar: bugs em produção sem rastreio.
 
 ---
 
-## 4. Bugs e riscos provÃ¡veis (catÃ¡logo)
+## 4. Bugs e riscos prováveis (catálogo)
 
 ### Funcionais
 
 - **B-F-01 (P0)** Soma de saldos com float em Dashboard, CashFlow, lista.
 - **B-F-02 (P1)** Receita prevista diverge entre Dashboard (Reminders) e CashFlow (`transaction.generated`).
-- **B-F-03 (P1)** `Dashboard.tsx:113-115` soma `overdueRevenueAmount` sem filtro de mÃªs, mas `pendingRevenueMonth` filtra por mÃªs. `projectedRevenueMonth = pendingRevenueMonth + overdueRevenueAmount` mistura escopos temporais.
-- **B-F-04 (P2)** `CashFlow.tsx:194` usa `JSON.stringify(transactions.map(t => t.id + t.amount))` como assinatura. ConcatenaÃ§Ã£o string+number causa colisÃµes.
-- **B-F-05 (P2)** Workspace recovery em `api.config.ts:329-341` escolhe o primeiro workspace silenciosamente. UsuÃ¡rio multi-workspace pode abrir o errado.
+- **B-F-03 (P1)** `Dashboard.tsx:113-115` soma `overdueRevenueAmount` sem filtro de mês, mas `pendingRevenueMonth` filtra por mês. `projectedRevenueMonth = pendingRevenueMonth + overdueRevenueAmount` mistura escopos temporais.
+- **B-F-04 (P2)** `CashFlow.tsx:194` usa `JSON.stringify(transactions.map(t => t.id + t.amount))` como assinatura. Concatenação string+number causa colisões.
+- **B-F-05 (P2)** Workspace recovery em `api.config.ts:329-341` escolhe o primeiro workspace silenciosamente. Usuário multi-workspace pode abrir o errado.
 
 ### Visuais
 
 - **B-V-01 (P2)** `text-[7px]` documentado no baseline; ainda parcialmente presente.
 - **B-V-02 (P2)** Gradiente do FAB pode conflitar com gradiente da nav inferior em mobile.
-- **B-V-03 (P2)** Status pill com `z-index: 100` pode ficar atrÃ¡s de modais em iOS Safari.
+- **B-V-03 (P2)** Status pill com `z-index: 100` pode ficar atrás de modais em iOS Safari.
 
 ### Dados
 
 - **B-D-01 (P0)** Float drift nos agregados.
-- **B-D-02 (P1)** Mistura de timezones: `new Date(transaction.date)` sem normalizaÃ§Ã£o TZ; clientes em fuso diferente verÃ£o data errada.
+- **B-D-02 (P1)** Mistura de timezones: `new Date(transaction.date)` sem normalização TZ; clientes em fuso diferente verão data errada.
 - **B-D-03 (P1)** Audit log perdido a cada reload.
 
-### SeguranÃ§a
+### Segurança
 
 - **B-S-01 (P1)** Stubs de auth (P1-04).
 - **B-S-02 (P1)** `lucide-react@1.8.0` suspeito.
-- **B-S-03 (P2)** `firestore.rules` para `tenant_members` permite read se `canManageWorkspace(workspaceId)` â€” verificar se admin de workspace A enxerga membros de workspace B do mesmo tenant.
+- **B-S-03 (P2)** `firestore.rules` para `tenant_members` permite read se `canManageWorkspace(workspaceId)` � verificar se admin de workspace A enxerga membros de workspace B do mesmo tenant.
 - **B-S-04 (P2)** `helmet()` sem CSP customizado.
 
-### ExperiÃªncia
+### Experiência
 
-- **B-X-01 (P1)** Backend 404 em produÃ§Ã£o: login Firebase nÃ£o troca por sessÃ£o real; app cai em fallback silencioso.
-- **B-X-02 (P2)** `NamePromptModal` aparece sem onboarding â€” usuÃ¡rio leigo abandona.
+- **B-X-01 (P1)** Backend 404 em produção: login Firebase não troca por sessão real; app cai em fallback silencioso.
+- **B-X-02 (P2)** `NamePromptModal` aparece sem onboarding � usuário leigo abandona.
 - **B-X-03 (P2)** Falha de cloudSync desativa `cloudSyncEnabled` silenciosamente sem notificar.
 
 ### Mobile
 
-- **B-M-01 (P2)** `resources:generate` removido por supply chain â€” build mobile nÃ£o reprodutÃ­vel sem intervenÃ§Ã£o manual.
-- **B-M-02 (P2)** Sem evidÃªncia de QA real em iOS Safari mobile.
+- **B-M-01 (P2)** `resources:generate` removido por supply chain � build mobile não reprodutível sem intervenção manual.
+- **B-M-02 (P2)** Sem evidência de QA real em iOS Safari mobile.
 
 ---
 
 ## 5. Alinhamento com o rumo do produto
 
-| Eixo declarado | Estado no cÃ³digo | Alinhado? |
+| Eixo declarado | Estado no código | Alinhado? |
 |---|---|---|
-| Fluxo de caixa | `CashFlow.tsx` agrega entradas e saÃ­das | Parcial (falta moneyMath consistente) |
-| Empresas de serviÃ§o | Sem nada specific-by-design; clinic-specific embutido no backend | NÃ£o |
-| Receita prevista vs realizada | Dois modelos competindo (Reminder vs `transaction.status`) | NÃ£o |
-| OperaÃ§Ã£o â†” financeiro | Endpoints `/api/integrations/clinic` e `/api/integrations` existem, mas isolados do dashboard | Parcial |
-| IA consultiva | Promessa correta; cÃ³digo entrega "autopilot/orchestrator" | NÃ£o |
-| Simplicidade | Nav reformada (sim); cÃ³digo (nÃ£o, escopo inflado) | Parcial |
-| Confiabilidade financeira | Decimal.js existe, mal usado | NÃ£o |
-| MonetizaÃ§Ã£o | Backend pronto, fluxo de usuÃ¡rio nÃ£o | Parcial |
+| Fluxo de caixa | `CashFlow.tsx` agrega entradas e saídas | Parcial (falta moneyMath consistente) |
+| Empresas de serviço | Sem nada specific-by-design; clinic-specific embutido no backend | Não |
+| Receita prevista vs realizada | Dois modelos competindo (Reminder vs `transaction.status`) | Não |
+| Operação �  financeiro | Endpoints `/api/integrations/clinic` e `/api/integrations` existem, mas isolados do dashboard | Parcial |
+| IA consultiva | Promessa correta; código entrega "autopilot/orchestrator" | Não |
+| Simplicidade | Nav reformada (sim); código (não, escopo inflado) | Parcial |
+| Confiabilidade financeira | Decimal.js existe, mal usado | Não |
+| Monetização | Backend pronto, fluxo de usuário não | Parcial |
 
 Competindo com o foco:
 
@@ -421,19 +421,19 @@ Competindo com o foco:
 - `pages/ReceiptScanner.tsx` + `tesseract.js` + `pdf-parse`.
 - Backend `clinicIntegrationRoutes`, `businessIntegrationRoutes`, `externalIntegrationRoutes`, `integrationKeyRoutes`.
 
-Veredito: produto declarado Ã© "simples e Ãºtil"; cÃ³digo entregue Ã© "denso e ambicioso". DivergÃªncia crÃ´nica.
+Veredito: produto declarado é "simples e útil"; código entregue é "denso e ambicioso". Divergência crônica.
 
 ---
 
-## 6. DecisÃµes difÃ­ceis evitadas pelo projeto
+## 6. Decisões difíceis evitadas pelo projeto
 
 1. **Cortar AICFO e Autopilot.** Filho preferido; manter atrasa o produto real.
-2. **Aceitar que clÃ­nica Ã© vertical, nÃ£o horizontal.** Backend jÃ¡ tem clinic-specific routes. Ou vira clinic-only ou apaga.
-3. **Open Finance Ã© distraÃ§Ã£o atÃ© PMF.** Pluggy custa ~R$1k/mÃªs (comentÃ¡rio no `env.ts`); luxo prÃ©-receita.
-4. **Backend Vercel quebrado por 30+ dias.** Deveria ter sido P0 absoluto hÃ¡ um mÃªs. Reformar UI enquanto API estÃ¡ em 404 Ã© prioridade trocada.
-5. **Cobrar pelo quÃª.** Sem paywall, billing virou infraestrutura sem ROI.
-6. **Promessa de IA vs heurÃ­stica client-side.** Renomear ou implementar de verdade backend-side com LLM no loop.
-7. **"Web e mobile primeira classe"** com `resources:generate` removido â€” mobile nÃ£o tem build reprodutÃ­vel.
+2. **Aceitar que clínica é vertical, não horizontal.** Backend já tem clinic-specific routes. Ou vira clinic-only ou apaga.
+3. **Open Finance é distração até PMF.** Pluggy custa ~R$1k/mês (comentário no `env.ts`); luxo pré-receita.
+4. **Backend Vercel quebrado por 30+ dias.** Deveria ter sido P0 absoluto há um mês. Reformar UI enquanto API está em 404 é prioridade trocada.
+5. **Cobrar pelo quê.** Sem paywall, billing virou infraestrutura sem ROI.
+6. **Promessa de IA vs heurística client-side.** Renomear ou implementar de verdade backend-side com LLM no loop.
+7. **"Web e mobile primeira classe"** com `resources:generate` removido � mobile não tem build reprodutível.
 8. **Dois Sentrys, dois SDKs Gemini, dois bancos (Firestore + Postgres backend).** Custo de manter ambas as escolhas; escolher uma de cada.
 
 ---
@@ -444,35 +444,35 @@ Flow Finance hoje: **5.4 / 10**.
 
 Por que essa nota:
 
-- Engenharia tem rigor (testes, rules, seguranÃ§a auditada, refresh tokens, rate limit) â€” puxa para cima.
-- Produto estÃ¡ desfocado (escopo inflado, IA performativa, dados financeiros frÃ¡geis) â€” puxa para baixo.
-- Ambiente alvo de produÃ§Ã£o quebrado hÃ¡ 30+ dias bloqueia validaÃ§Ã£o real.
+- Engenharia tem rigor (testes, rules, segurança auditada, refresh tokens, rate limit) � puxa para cima.
+- Produto está desfocado (escopo inflado, IA performativa, dados financeiros frágeis) � puxa para baixo.
+- Ambiente alvo de produção quebrado há 30+ dias bloqueia validação real.
 
 O que faria subir 2 pontos (para ~7.5):
 
 1. Backend Vercel respondendo o contrato.
 2. moneyMath em 100% dos agregados.
 3. Audit log persistido em Firestore.
-4. 4 pÃ¡ginas legadas cortadas do bundle.
-5. Modelo canÃ´nico de Receivable substituindo o Reminder-financeiro.
+4. 4 páginas legadas cortadas do bundle.
+5. Modelo canônico de Receivable substituindo o Reminder-financeiro.
 
 O que impediria de validar:
 
-- Backend Vercel em 404 (impossÃ­vel).
+- Backend Vercel em 404 (impossível).
 - Saldos com erro de centavos.
 - Audit log fake.
 - Promessa de "Autopilot" sem entregar.
 
-PrÃ³xima aÃ§Ã£o mais importante: fechar o backend de produÃ§Ã£o (P0-01). Antes disso, qualquer outro trabalho Ã© desperdÃ­cio.
+Próxima ação mais importante: fechar o backend de produção (P0-01). Antes disso, qualquer outro trabalho é desperdício.
 
 ---
 
 ## 8. Limites desta auditoria
 
-- Foi feita sÃ³ lendo repositÃ³rio, docs e config.
-- NÃ£o rodei lint, testes nem subi o app.
-- A nota Ã© baseada em evidÃªncia de cÃ³digo.
-- Confirmar P0-01 e P0-02 com execuÃ§Ã£o real antes de agir.
+- Foi feita só lendo repositório, docs e config.
+- Não rodei lint, testes nem subi o app.
+- A nota é baseada em evidência de código.
+- Confirmar P0-01 e P0-02 com execução real antes de agir.
 
-Plano de execuÃ§Ã£o detalhado: `docs/PLANO_ACAO_AUDITORIA_2026-05-15.md`.
+Plano de execução detalhado: `docs/PLANO_ACAO_AUDITORIA_2026-05-15.md`.
 

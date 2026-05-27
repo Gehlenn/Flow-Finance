@@ -1,20 +1,20 @@
 ﻿/**
- * ADAPTIVE AI ENGINE â€” InteligÃªncia Financeira Adaptativa
+ * ADAPTIVE AI ENGINE — Inteligência Financeira Adaptativa
  *
- * Aprende padrÃµes do histÃ³rico do usuÃ¡rio para melhorar:
- *   - PrediÃ§Ãµes de fluxo de caixa
- *   - GeraÃ§Ã£o de insights personalizados
- *   - CategorizaÃ§Ã£o automÃ¡tica
+ * Aprende padrões do histórico do usuário para melhorar:
+ *   - Predições de fluxo de caixa
+ *   - Geração de insights personalizados
+ *   - Categorização automática
  *   - Alertas contextualizados
  *
- * REGRA: Nunca modifica transaÃ§Ãµes existentes. Apenas aprende e melhora previsÃµes.
+ * REGRA: Nunca modifica transações existentes. Apenas aprende e melhora previsões.
  *
  * Fluxo:
  *   Transactions â†’ detectFinancialPatterns
  *       â†“
  *   Patterns â†’ learnMemory (AI Memory)
  *       â†“
- *   Memory â†’ adjustCashflowWithPatterns (prediÃ§Ã£o adaptativa)
+ *   Memory -> adjustCashflowWithPatterns (predição adaptativa)
  *       â†“
  *   Memory â†’ generateAdaptiveInsights (insights personalizados)
  */
@@ -158,7 +158,7 @@ export function adjustCashflowWithPatterns(
 
   const get = (key: string) => memories.find(m => m.key === key);
 
-  // Weekend spending pattern â†’ ajustar projeÃ§Ã£o de gastos
+  // Weekend spending pattern -> ajustar projeção de gastos
   const weekendMem = get('weekend_spending');
   if (weekendMem) {
     if (weekendMem.value === 'very_high') multiplier += 0.12 * weekendMem.confidence;
@@ -173,14 +173,14 @@ export function adjustCashflowWithPatterns(
     else if (deliveryMem.value === 'moderate') multiplier += 0.04 * deliveryMem.confidence;
   }
 
-  // Salary day â†’ ajustar projeÃ§Ã£o de receita se dia estÃ¡ prÃ³ximo
+  // Salary day -> ajustar projeção de receita se dia está próximo
   const salaryMem = get('salary_day');
   let projected_income = base.projected_income;
   if (salaryMem) {
     const salaryDay = Number.parseInt(salaryMem.value, 10);
     const daysUntilSalary = getDaysUntilSalaryDay(salaryDay);
     if (daysUntilSalary !== null && daysUntilSalary <= 7) {
-      // Receita esperada em breve â†’ boosta confianÃ§a da projeÃ§Ã£o
+      // Receita esperada em breve -> aumenta a confiança da projeção
       projected_income *= (1 + 0.02 * salaryMem.confidence);
     }
   }
@@ -252,7 +252,7 @@ export function generateAdaptiveInsights(
     if (total > 0) {
       insights.push(makeInsight(
         'warning',
-        `VocÃª costuma gastar mais nos fins de semana. Nos Ãºltimos registros, ${formatCurrency(total)} foram gastos em fins de semana.`,
+        `Você costuma gastar mais nos fins de semana. Nos últimos registros, ${formatCurrency(total)} foram gastos em fins de semana.`,
         weekendMem.value === 'very_high' ? 'medium' : 'low'
       ));
     }
@@ -263,7 +263,7 @@ export function generateAdaptiveInsights(
   if (deliveryMem?.value === 'heavy' || deliveryMem?.value === 'moderate') {
     insights.push(makeInsight(
       'warning',
-      `VocÃª tem um padrÃ£o ${deliveryMem.value === 'heavy' ? 'intenso' : 'regular'} de gastos com delivery. Preparar refeiÃ§Ãµes em casa pode gerar economia significativa.`,
+      `Você tem um padrão ${deliveryMem.value === 'heavy' ? 'intenso' : 'regular'} de gastos com delivery. Preparar refeições em casa pode gerar economia significativa.`,
       deliveryMem.value === 'heavy' ? 'medium' : 'low'
     ));
   }
@@ -276,7 +276,7 @@ export function generateAdaptiveInsights(
     if (daysUntil !== null && daysUntil <= 5) {
       insights.push(makeInsight(
         'saving',
-        `Com base no seu histÃ³rico, sua receita costuma entrar por volta do dia ${salaryDay}. Faltam aproximadamente ${daysUntil} dia(s).`,
+        `Com base no seu histórico, sua receita costuma entrar por volta do dia ${salaryDay}. Faltam aproximadamente ${daysUntil} dia(s).`,
         'low'
       ));
     }
@@ -292,7 +292,7 @@ export function generateAdaptiveInsights(
     if (catTotal > 0) {
       insights.push(makeInsight(
         'spending',
-        `"${domCatMem.value}" Ã© sua categoria dominante com ${formatCurrency(catTotal)} no histÃ³rico. VocÃª tem preferÃªncia consistente por esta Ã¡rea.`,
+        `"${domCatMem.value}" é sua categoria dominante com ${formatCurrency(catTotal)} no histórico. Você tem preferência consistente por esta área.`,
         'low'
       ));
     }
@@ -303,7 +303,7 @@ export function generateAdaptiveInsights(
   if (merchantMemories.length >= 3) {
     insights.push(makeInsight(
       'spending',
-      `VocÃª tem ${merchantMemories.length} estabelecimento(s) favorito(s) recorrentes. Fidelidade a poucos lugares pode facilitar o controle de gastos.`,
+      `Você tem ${merchantMemories.length} estabelecimento(s) favorito(s) recorrentes. Fidelidade a poucos lugares pode facilitar o controle de gastos.`,
       'low'
     ));
   }
@@ -311,7 +311,7 @@ export function generateAdaptiveInsights(
   return insights;
 }
 
-// â”€â”€â”€ PART 8 â€” Run Adaptive Learning (funÃ§Ã£o principal) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- PART 8 — Run Adaptive Learning (função principal) ---
 
 export interface AdaptiveLearningResult {
   patterns: FinancialPattern[];
@@ -337,20 +337,20 @@ export async function runAdaptiveLearning(
     };
   }
 
-  // 1. Detectar padrÃµes
+  // 1. Detectar padrões
   const patterns = detectFinancialPatterns(base);
 
-  // 2. Salvar padrÃµes na memÃ³ria
+  // 2. Salvar padrões na memória
   await storePatternMemories(userId, patterns);
 
   // 3. Aprender categorias de merchants
   await learnMerchantCategories(userId, base);
 
-  // 4. Ler memÃ³ria atualizada para gerar insights adaptativos
+  // 4. Ler memória atualizada para gerar insights adaptativos
   const memories = await getAIMemory(userId);
   const adaptiveInsights = generateAdaptiveInsights(base, memories, userId);
 
-  // 5. Registrar mÃ©tricas de aprendizado
+  // 5. Registrar métricas de aprendizado
   await learnMemory(userId, 'last_learning_run', new Date().toISOString(), 1.0);
   await learnMemory(userId, 'patterns_detected_count', String(patterns.length), 1.0);
   await learnMemory(userId, 'total_transactions_learned', String(base.length), 1.0);

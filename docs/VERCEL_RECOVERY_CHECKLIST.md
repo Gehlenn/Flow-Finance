@@ -1,6 +1,6 @@
-﻿# Checklist de recuperaÃ§Ã£o do Vercel
+�# Checklist de recuperação do Vercel
 
-Este checklist existe para o caso em que o domÃ­nio backend passa a responder HTML na raiz e `404` nas rotas de saÃºde. Nessa situaÃ§Ã£o, o problema mais provÃ¡vel nÃ£o Ã© o contrato do Express, e sim o projeto/alias do Vercel apontando para o lugar errado.
+Este checklist existe para o caso em que o domínio backend passa a responder HTML na raiz e `404` nas rotas de saúde. Nessa situação, o problema mais provável não é o contrato do Express, e sim o projeto/alias do Vercel apontando para o lugar errado.
 
 ## Estado vivo em 2026-05-25
 
@@ -17,18 +17,18 @@ Este checklist existe para o caso em que o domÃ­nio backend passa a responder 
 
 ## O que verificar no Vercel
 
-1. O projeto do backend estÃ¡ separado do frontend.
-2. O `root directory` do projeto backend Ã© `backend/`.
+1. O projeto do backend está separado do frontend.
+2. O `root directory` do projeto backend é `backend/`.
 3. O entrypoint serverless do backend continua sendo `backend/api/index.ts`.
-4. O domÃ­nio `flow-finance-backend.vercel.app` estÃ¡ apontando para o projeto backend, nÃ£o para o projeto frontend.
+4. O domínio `flow-finance-backend.vercel.app` está apontando para o projeto backend, não para o projeto frontend.
 5. Nenhum alias do backend foi reaproveitado pelo projeto do frontend.
-6. As variÃ¡veis de ambiente de backend continuam corretas:
+6. As variáveis de ambiente de backend continuam corretas:
    - `APP_VERSION`
    - `SENTRY_DSN`
    - `FRONTEND_URL`
-   - credenciais reais do runtime, quando aplicÃ¡vel
+   - credenciais reais do runtime, quando aplicável
 
-## RevalidaÃ§Ã£o local
+## Revalidação local
 
 Depois de corrigir o projeto:
 
@@ -41,9 +41,9 @@ Resultado desejado:
 - `/health` responde `200`
 - `/api/health` responde `200`
 - `/api/version` responde `200`
-- a raiz nÃ£o deve parecer o shell do frontend
+- a raiz não deve parecer o shell do frontend
 
-## ReferÃªncias
+## Referências
 
 - [docs/DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md)
 - [docs/ROADMAP.md](./ROADMAP.md)

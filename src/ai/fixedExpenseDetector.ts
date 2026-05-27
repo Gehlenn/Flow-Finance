@@ -1,16 +1,16 @@
 ﻿/**
- * FIXED EXPENSE DETECTOR â€” src/services/ai/fixedExpenseDetector.ts
+ * FIXED EXPENSE DETECTOR — src/services/ai/fixedExpenseDetector.ts
  *
- * PART 5 â€” Detecta despesas fixas recorrentes:
- *   â€¢ Aluguel / moradia
- *   â€¢ Assinaturas de serviÃ§os
- *   â€¢ Contas de utilidades (luz, Ã¡gua, gÃ¡s, internet)
- *   â€¢ Seguros
- *   â€¢ Mensalidades (escola, academia, etc.)
- *   â€¢ Financiamentos / crÃ©dito
+ * PART 5 — Detecta despesas fixas recorrentes:
+ *   • Aluguel / moradia
+ *   • Assinaturas de serviços
+ *   • Contas de utilidades (luz, água, gás, internet)
+ *   • Seguros
+ *   • Mensalidades (escola, academia, etc.)
+ *   • Financiamentos / crédito
  *
- * Complementa o subscriptionDetector.ts (que foca em serviÃ§os digitais)
- * com uma visÃ£o mais ampla de todas as despesas fixas do usuÃ¡rio.
+ * Complementa o subscriptionDetector.ts (que foca em serviços digitais)
+ * com uma visão mais ampla de todas as despesas fixas do usuário.
  */
 
 import { Transaction, TransactionType } from '../../types';
@@ -39,9 +39,9 @@ export type {
 // â”€â”€â”€ PART 5 â€” detectFixedExpenses â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
- * Detecta despesas fixas recorrentes nas transaÃ§Ãµes.
+ * Detecta despesas fixas recorrentes nas transações.
  *
- * @param transactions - lista completa de transaÃ§Ãµes do usuÃ¡rio
+ * @param transactions - lista completa de transações do usuário
  * @param monthlyIncome - renda mensal (opcional, para calcular commitment_ratio)
  * @returns FixedExpenseReport
  */
@@ -212,8 +212,8 @@ const CATEGORY_LABELS: Record<FixedExpenseCategory, string> = {
   utilities:    'Utilidades',
   subscription: 'Assinaturas',
   insurance:    'Seguros',
-  education:    'EducaÃ§Ã£o',
-  fitness:      'SaÃºde / Fitness',
+  education:    'Educação',
+  fitness:      'Saúde / Fitness',
   transport:    'Transporte',
   financing:    'Financiamentos',
   other_fixed:  'Outros Fixos',
@@ -239,10 +239,10 @@ export function assessCommitmentRatio(ratio: number | undefined): {
   color: string;
   warning: boolean;
 } {
-  if (!ratio) return { label: 'NÃ£o calculado', color: 'text-slate-400', warning: false };
+  if (!ratio) return { label: 'Não calculado', color: 'text-slate-400', warning: false };
   const pct = Math.round(ratio * 100);
-  if (pct <= 30) return { label: `${pct}% da renda â€” saudÃ¡vel`, color: 'text-emerald-500', warning: false };
-  if (pct <= 50) return { label: `${pct}% da renda â€” atenÃ§Ã£o`,  color: 'text-amber-500',  warning: false };
-  return           { label: `${pct}% da renda â€” crÃ­tico`,       color: 'text-rose-500',   warning: true  };
+  if (pct <= 30) return { label: `${pct}% da renda — saudável`, color: 'text-emerald-500', warning: false };
+  if (pct <= 50) return { label: `${pct}% da renda — atenção`,  color: 'text-amber-500',  warning: false };
+  return           { label: `${pct}% da renda — crítico`,       color: 'text-rose-500',   warning: true  };
 }
 
