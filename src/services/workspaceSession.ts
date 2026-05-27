@@ -1,6 +1,11 @@
 import { auth } from '../../services/firebase';
 import { getStoredWorkspaceId, setStoredWorkspaceId } from '../config/api.config';
 import {
+  buildDemoWorkspaceSummary,
+  canUseDemoWorkspaceFallback,
+  getDemoBootstrapIdentity,
+} from '../demo/demoBootstrap';
+import {
   addWorkspaceMember,
   createPersonalWorkspace as createPersonalWorkspaceInFirestore,
   ensureActiveWorkspaceForUser,
@@ -53,6 +58,11 @@ export const WORKSPACE_CHANGED_EVENT = 'flow:workspace-changed';
 export function getCurrentWorkspaceIdentity(): UserIdentity | undefined {
   const currentUser = auth.currentUser;
   if (!currentUser?.uid) {
+    const demoIdentity = getDemoBootstrapIdentity();
+    if (demoIdentity?.userId) {
+      return demoIdentity;
+    }
+
     return getE2EBootstrapIdentity();
   }
 
@@ -87,6 +97,13 @@ export function clearActiveWorkspace(): void {
 }
 
 export async function listUserWorkspaces(userId?: string | null): Promise<WorkspaceSummary[]> {
+  if (canUseDemoWorkspaceFallback(userId)) {
+    const demoWorkspace = buildDemoWorkspaceSummary();
+    if (demoWorkspace) {
+      return [demoWorkspace];
+    }
+  }
+
   if (canUseE2EWorkspaceFallback(userId)) {
     const identity = getE2EBootstrapIdentity();
     if (identity?.userId) {
@@ -105,6 +122,14 @@ export async function createPersonalWorkspace(identity?: UserIdentity, name?: st
 
 export async function ensureActiveWorkspace(identity?: UserIdentity): Promise<WorkspaceSummary> {
   const resolvedIdentity = resolveIdentity(identity);
+
+  if (canUseDemoWorkspaceFallback(resolvedIdentity.userId)) {
+    const demoWorkspace = buildDemoWorkspaceSummary();
+    if (demoWorkspace) {
+      setActiveWorkspaceId(demoWorkspace.workspaceId);
+      return demoWorkspace;
+    }
+  }
 
   if (canUseE2EWorkspaceFallback(resolvedIdentity.userId)) {
     const e2eWorkspace = buildE2EWorkspaceSummary(resolvedIdentity);

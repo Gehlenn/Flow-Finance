@@ -30,6 +30,7 @@ import { clearCFOConversation, loadCFOConversation, saveCFOConversation, type CF
 import UpgradePromptCard from '../components/UpgradePromptCard';
 import { getWorkspaceBillingOverview, incrementWorkspaceUsage } from '../src/services/firestoreBillingStore';
 import { ensureActiveWorkspace, getCurrentWorkspaceIdentity } from '../src/services/workspaceSession';
+import { getDemoBootstrapIdentity } from '../src/demo/demoBootstrap';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -75,6 +76,8 @@ const RESPONSE_DEPTH_LABEL: Record<'standard' | 'reduced', string> = {
   standard: 'Profundidade normal',
   reduced: 'Profundidade reduzida',
 };
+const PANEL_SURFACE = 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900';
+const SOFT_SURFACE = 'rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900';
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
@@ -118,7 +121,7 @@ function buildResponseReminder(message: Message): Partial<Reminder> {
 const UserBubble: React.FC<{ msg: Message }> = ({ msg }) => (
   <div className="flex justify-end gap-3 animate-in slide-in-from-right-4 duration-300">
     <div className="max-w-[80%]">
-      <div className="bg-slate-900 text-white px-5 py-3.5 rounded-[1.8rem] rounded-tr-lg shadow-md dark:bg-slate-100 dark:text-slate-900">
+      <div className="bg-slate-900 text-white px-5 py-3.5 rounded-3xl rounded-tr-lg shadow-md dark:bg-slate-100 dark:text-slate-900">
         <p className="text-sm leading-relaxed text-slate-100">{msg.text}</p>
       </div>
       <p className="text-xs text-slate-400 mt-1 text-right">
@@ -139,7 +142,7 @@ const AssistantBubble: React.FC<{ msg: Message; onCreateReminder?: (reminder: Pa
         <BrainCircuit size={15} />
       </div>
       <div className="max-w-[85%]">
-        <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-5 py-4 rounded-[1.8rem] rounded-tl-lg shadow-sm">
+        <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-5 py-4 rounded-3xl rounded-tl-lg shadow-sm">
           {intentStyle && (
             <span className={`inline-block text-xs font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded-full mb-2 ${intentStyle.color}`}>
               {intentStyle.label}
@@ -228,7 +231,7 @@ const TypingBubble: React.FC = () => (
     <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border border-slate-200 bg-white text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
       <BrainCircuit size={15} />
     </div>
-    <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-5 py-4 rounded-[1.8rem] rounded-tl-lg shadow-sm flex items-center gap-2">
+    <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-5 py-4 rounded-3xl rounded-tl-lg shadow-sm flex items-center gap-2">
       <div className="flex gap-1">
         {[0, 1, 2].map(i => (
           <span
@@ -249,8 +252,8 @@ const WelcomeScreen: React.FC<{
   onPrompt: (q: string) => void;
   prompts: { label: string; question: string; icon: React.ReactNode }[];
 }> = ({ onPrompt, prompts }) => (
-  <div className="flex flex-col items-center gap-6 py-6 px-2 animate-in fade-in duration-500">
-    <div className="w-20 h-20 rounded-[2rem] flex items-center justify-center border border-slate-200 bg-white text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+    <div className="flex flex-col items-center gap-5 py-5 px-2 animate-in fade-in duration-500">
+    <div className="w-20 h-20 rounded-3xl flex items-center justify-center border border-slate-200 bg-white text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
       <BrainCircuit size={36} />
     </div>
     <div className="text-center">
@@ -267,12 +270,12 @@ const WelcomeScreen: React.FC<{
         <button
           key={p.question}
           onClick={() => onPrompt(p.question)}
-          className="w-full flex items-center gap-3 p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl hover:border-slate-200 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-all active:scale-[0.98] group text-left"
+          className="w-full flex items-center gap-3 p-3.5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl hover:border-slate-200 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-all active:scale-[0.98] group text-left"
         >
           <span className="w-8 h-8 bg-slate-50 dark:bg-slate-900/50 text-slate-500 rounded-xl flex items-center justify-center shrink-0">
             {p.icon}
           </span>
-          <span className="flex-1 text-sm text-slate-700 dark:text-slate-200">{p.label}</span>
+          <span className="flex-1 text-sm leading-snug text-slate-700 dark:text-slate-200">{p.label}</span>
           <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-500 transition-colors" />
         </button>
       ))}
@@ -373,8 +376,38 @@ const AICFO: React.FC<AICFOProps> = ({
 
   useEffect(() => {
     let cancelled = false;
+    const demoIdentity = getDemoBootstrapIdentity();
 
     const loadUsage = async () => {
+      if (demoIdentity?.userId) {
+        try {
+          const workspace = await ensureActiveWorkspace(demoIdentity);
+          if (cancelled) {
+            return;
+          }
+
+          setWorkspaceId(workspace.workspaceId);
+          setUsageDiagnostic(null);
+          return;
+        } catch (error) {
+          if (cancelled) {
+            return;
+          }
+
+          logWarn('[AICFO] Failed to resolve demo workspace usage context', {
+            error,
+            userId,
+            fallback: 'aicfo-demo-usage-context-failed',
+          });
+          setUsageDiagnostic({
+            title: 'Uso do plano indisponivel',
+            message: 'Nao foi possivel preparar o contexto local do Consultor IA agora.',
+            suggestion: 'Recarregue a pagina ou saia do modo demo para usar a leitura do workspace real.',
+          });
+          return;
+        }
+      }
+
       try {
         const workspace = await ensureActiveWorkspace(getCurrentWorkspaceIdentity());
         const overview = await getWorkspaceBillingOverview({
@@ -518,12 +551,12 @@ const AICFO: React.FC<AICFOProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)] animate-in fade-in duration-700">
+    <div className="flex min-h-[calc(100dvh-9.5rem)] flex-col animate-in fade-in duration-700 md:h-[calc(100vh-8rem)]">
 
-      <div className="mb-4 flex items-center justify-between gap-4 rounded-[2rem] border border-slate-200 bg-white px-5 py-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className={`mb-2 flex items-center justify-between gap-3 ${PANEL_SURFACE} px-3 py-2.5 sm:px-5 sm:py-4`}>
         <div className="min-w-0">
-          <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">{AI_CFO_COPY.headerTitle}</h2>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">{AI_CFO_COPY.headerSubtitle}</p>
+          <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white sm:text-xl">{AI_CFO_COPY.headerTitle}</h2>
+          <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 sm:text-xs">{AI_CFO_COPY.headerSubtitle}</p>
         </div>
         <div className="flex items-center gap-2">
           {messages.length > 0 && (
@@ -542,23 +575,23 @@ const AICFO: React.FC<AICFOProps> = ({
       </div>
 
       {learningDiagnostic && (
-        <div role="status" className="mb-4 rounded-2xl border border-amber-100 bg-amber-50/80 p-3 dark:border-amber-500/20 dark:bg-amber-500/10">
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-600">{learningDiagnostic.title}</p>
-          <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{learningDiagnostic.message}</p>
-          <p className="mt-1 text-xs font-semibold text-amber-500">{learningDiagnostic.suggestion}</p>
+        <div role="status" className="mb-2 rounded-2xl border border-amber-100 bg-amber-50/80 p-2.5 dark:border-amber-500/20 dark:bg-amber-500/10 sm:p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-600">{learningDiagnostic.title}</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">{learningDiagnostic.message}</p>
+          <p className="mt-1 text-[11px] font-semibold text-amber-500">{learningDiagnostic.suggestion}</p>
         </div>
       )}
 
       {/* Snapshot financeiro rápido */}
-      <div className="grid grid-cols-3 gap-2 mb-4 shrink-0">
+      <div className="grid grid-cols-2 gap-1.5 mb-2 shrink-0 sm:grid-cols-3 sm:gap-2 sm:mb-3">
         {[
           { label: 'Saldo', value: intelligence.context.cashflowForecast.currentBalance },
           { label: '7 dias', value: intelligence.context.cashflowForecast.in7Days },
           { label: '30 dias', value: intelligence.context.cashflowForecast.in30Days },
         ].map(({ label, value }) => (
-          <div key={label} className="rounded-2xl border border-slate-200 bg-white p-3 text-center dark:border-slate-700 dark:bg-slate-800">
+          <div key={label} className={SOFT_SURFACE + ' p-2.5 text-center sm:p-3'}>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">{label}</p>
-            <p className={`text-xs font-semibold mt-0.5 ${value >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>
+            <p className={`text-[11px] font-semibold mt-0.5 ${value >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>
               {hideValues ? '••••' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)}
             </p>
           </div>
@@ -566,50 +599,50 @@ const AICFO: React.FC<AICFOProps> = ({
       </div>
 
       {isFreePlan && (
-        <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">Modo Free</p>
-          <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+        <div className="mb-2 rounded-2xl border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-700 dark:bg-slate-800/60 sm:mb-3 sm:p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">Modo Free</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
             O Consultor IA segue liberado no Free com as mesmas respostas consultivas, mas para em {queryLimit} consultas por mes. No Pro, o uso fica ilimitado por {proMonthlyPriceLabel}.
           </p>
         </div>
       )}
 
       {usageDiagnostic && (
-        <div role="status" className="mb-4 rounded-2xl border border-amber-100 bg-amber-50/80 p-3 dark:border-amber-500/20 dark:bg-amber-500/10">
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-600">{usageDiagnostic.title}</p>
-          <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{usageDiagnostic.message}</p>
-          <p className="mt-1 text-xs font-semibold text-amber-500">{usageDiagnostic.suggestion}</p>
+        <div role="status" className="mb-2 rounded-2xl border border-amber-100 bg-amber-50/80 p-2.5 dark:border-amber-500/20 dark:bg-amber-500/10 sm:mb-3 sm:p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-600">{usageDiagnostic.title}</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">{usageDiagnostic.message}</p>
+          <p className="mt-1 text-[11px] font-semibold text-amber-500">{usageDiagnostic.suggestion}</p>
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 mb-4 shrink-0">
-        <span className="px-3 py-1 rounded-full border border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
+      <div className="flex flex-wrap gap-2 mb-2 shrink-0 pb-1 sm:mb-3 sm:flex-nowrap sm:overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+        <span className="shrink-0 px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
           Confiança {Math.round(intelligence.context.confidence.overall * 100)}%
         </span>
-        <span className="px-3 py-1 rounded-full border border-slate-200 bg-slate-100 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-300">
+        <span className="shrink-0 px-2.5 py-1 rounded-full border border-slate-200 bg-slate-100 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-300">
           Recorrências {intelligence.recurringCount}
         </span>
         {isFreePlan && (
-          <span className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-[0.08em] ${
+        <span className={`shrink-0 px-2 py-1 rounded-full text-[10px] font-semibold sm:px-2.5 sm:text-[11px] ${
             paywallVisible
               ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
-              : 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300'
+              : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
           }`}>
             Consultas Free {Math.min(monthlyAiQueriesUsed, queryLimit)}/{queryLimit}
-          </span>
+        </span>
         )}
-        <span className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-[0.08em] border ${hasStrongGrounding ? 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300' : 'border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300'}`}>
+        <span className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-[0.08em] border ${hasStrongGrounding ? 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300' : 'border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300'}`}>
           {hasStrongGrounding ? 'Base suficiente' : 'Base incompleta'}
         </span>
         {intelligence.dominantCategoryLabel && (
-          <span className="px-3 py-1 rounded-full border border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
+          <span className="shrink-0 px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
             {intelligence.dominantCategoryLabel}
           </span>
         )}
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto flex flex-col gap-4 pb-2 min-h-0">
+      <div className="order-2 flex-1 overflow-y-auto flex flex-col gap-4 pb-4 min-h-0 md:order-none">
         {paywallVisible && (
           <UpgradePromptCard
             title="Consultor IA ilimitado"
@@ -637,7 +670,7 @@ const AICFO: React.FC<AICFOProps> = ({
       </div>
 
       {/* Input */}
-      <div className="shrink-0 mt-3 flex items-end gap-3 rounded-[2rem] border border-slate-200 bg-white p-3 pl-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className={`order-1 shrink-0 mt-2 flex items-end gap-2.5 ${PANEL_SURFACE} p-2.5 pl-4 sm:mt-3 sm:gap-3 sm:p-3 sm:pl-5 md:order-none`}>
         <textarea
           ref={inputRef}
           value={input}
@@ -646,23 +679,23 @@ const AICFO: React.FC<AICFOProps> = ({
           placeholder={paywallVisible ? 'Limite mensal do Free atingido. Assine o Pro para continuar.' : AI_CFO_COPY.inputPlaceholder}
           rows={1}
           disabled={paywallVisible}
-          className="flex-1 max-h-32 resize-none bg-transparent py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 placeholder:font-normal dark:text-white"
+          className="flex-1 max-h-28 resize-none bg-transparent py-1.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 placeholder:font-normal dark:text-white sm:max-h-32 sm:py-2"
           style={{ scrollbarWidth: 'none' }}
         />
         <button
           onClick={() => sendMessage(input)}
           disabled={!input.trim() || isLoading || paywallVisible}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-md transition-all active:scale-90 disabled:scale-100 disabled:bg-slate-100 disabled:text-slate-300 disabled:shadow-none dark:bg-slate-100 dark:text-slate-900 dark:disabled:bg-slate-700 dark:disabled:text-slate-500"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-md transition-all active:scale-90 disabled:scale-100 disabled:bg-slate-100 disabled:text-slate-300 disabled:shadow-none dark:bg-slate-100 dark:text-slate-900 dark:disabled:bg-slate-700 dark:disabled:text-slate-500 sm:h-11 sm:w-11"
         >
           {isLoading
-            ? <Loader2 size={18} className="animate-spin" />
-            : <Send size={18} />
+            ? <Loader2 size={16} className="animate-spin sm:size-[18px]" />
+            : <Send size={16} className="sm:size-[18px]" />
           }
         </button>
       </div>
 
       {messages.length > 0 && !isLoading && (
-        <div className="shrink-0 mt-2 flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+        <div className="order-3 shrink-0 mt-2 flex gap-2 overflow-x-auto pb-1 md:order-none" style={{ scrollbarWidth: 'none' }}>
           {quickPrompts.map(p => (
             <button
               key={p.question}

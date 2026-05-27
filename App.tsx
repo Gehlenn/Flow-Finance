@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import {
   Activity,
+  BadgeInfo,
   CloudCheck,
   CloudOff,
   History,
@@ -34,7 +35,11 @@ import { useAuthAndWorkspace } from "./hooks/useAuthAndWorkspace";
 import { useFinancialState } from "./hooks/useFinancialState";
 import { useNavigationTabs } from "./hooks/useNavigationTabs";
 import { useSyncEngine } from "./hooks/useSyncEngine";
-import { getMainNavigationItems } from "./src/app/mainNavigation";
+import { canAccessDeveloperTools } from "./src/app/developerAccess";
+import {
+  getActiveNavigationSection,
+  getMainNavigationItems,
+} from "./src/app/mainNavigation";
 
 const IS_DEV = import.meta.env.DEV;
 const FAB_ENABLED_TABS = new Set(["dashboard"]);
@@ -89,6 +94,7 @@ const App: React.FC = () => {
     activeTenantId: authState.activeWorkspace.tenantId,
     activeWorkspaceId: authState.activeWorkspace.workspaceId,
     isE2EBootstrapActive: authState.isE2EBootstrapActive,
+    isDemoBootstrapActive: authState.isDemoBootstrapActive,
     cloudSyncEnabled: authState.cloudSyncEnabled,
     backendSyncEnabled: authState.backendSyncEnabled,
     onDisableCloudSync: handleDisableCloudSync,
@@ -99,9 +105,26 @@ const App: React.FC = () => {
     activeTenantId: authState.activeWorkspace.tenantId,
     activeWorkspaceId: authState.activeWorkspace.workspaceId,
     syncEngine,
+    isDemoMode: authState.isDemoBootstrapActive,
   });
   const navigation = useNavigationTabs();
-  const mainNavigationItems = useMemo(() => getMainNavigationItems(IS_DEV), []);
+  const canAccessDevTools = canAccessDeveloperTools({
+    isDevMode: IS_DEV,
+    email: authState.user.email,
+  });
+  const mainNavigationItems = useMemo(
+    () => getMainNavigationItems(canAccessDevTools),
+    [canAccessDevTools],
+  );
+  const activeNavigationSection = useMemo(
+    () => getActiveNavigationSection(navigation.activeTab, canAccessDevTools),
+    [canAccessDevTools, navigation.activeTab],
+  );
+  const showTopStatus =
+    authState.isDemoBootstrapActive ||
+    syncEngine.syncStatus === "syncing" ||
+    syncEngine.syncStatus === "synced" ||
+    syncEngine.syncStatus === "error";
   const activeTabContainerClass =
     navigation.activeTab === "cfo"
       ? "max-w-4xl"
@@ -109,7 +132,7 @@ const App: React.FC = () => {
         ? "max-w-6xl"
         : "max-w-xl";
   const showFloatingEntryButton = FAB_ENABLED_TABS.has(navigation.activeTab);
-  const showDevPanels = IS_DEV && !authState.isE2EBootstrapActive;
+  const showDevPanels = canAccessDevTools && !authState.isE2EBootstrapActive && !authState.isDemoBootstrapActive;
 
   const [hideValues, setHideValues] = useState(false);
   const [showAIInput, setShowAIInput] = useState(false);
@@ -133,7 +156,7 @@ const App: React.FC = () => {
   }, [theme]);
 
   useEffect(() => {
-    if (authState.isE2EBootstrapActive) {
+    if (authState.isE2EBootstrapActive || authState.isDemoBootstrapActive) {
       configureBillingTransport(null);
       void resetUsageStoreAdapter();
       return;
@@ -164,6 +187,7 @@ const App: React.FC = () => {
     };
   }, [
     authState.activeWorkspace.workspaceId,
+    authState.isDemoBootstrapActive,
     authState.isE2EBootstrapActive,
     authState.isLoggedIn,
     authState.user.id,
@@ -183,6 +207,7 @@ const App: React.FC = () => {
       hideValues,
       theme,
       isDev: IS_DEV,
+      canAccessDevTools,
       transactions: financialState.transactions,
       accounts: financialState.accounts,
       alerts: financialState.alerts,
@@ -257,6 +282,7 @@ const App: React.FC = () => {
       financialState.updateReminder,
       financialState.updateTransaction,
       hideValues,
+      canAccessDevTools,
       navigation.setActiveTab,
       syncEngine,
       theme,
@@ -308,8 +334,16 @@ const App: React.FC = () => {
         });
       }}
     >
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-500 pb-24 md:pb-12 overflow-visible">
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] transition-all duration-500">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-500 pb-0 md:pb-12 overflow-visible">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 transition-all duration-500">
+          {authState.isDemoBootstrapActive && (
+            <div className="flow-status-pill bg-slate-900/95 px-4 py-2 rounded-full flex items-center gap-2 animate-in zoom-in-95">
+              <BadgeInfo size={12} className="text-cyan-300" />
+              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-white">
+                Demo Pro
+              </span>
+            </div>
+          )}
           {syncEngine.syncStatus === "syncing" && (
             <div className="flow-status-pill px-4 py-2 rounded-full flex items-center gap-2 animate-in slide-in-from-top-4">
               <Loader2 size={12} className="text-indigo-400 animate-spin" />
@@ -336,9 +370,30 @@ const App: React.FC = () => {
           )}
         </div>
 
-        <div
-          className={`${activeTabContainerClass} mx-auto px-4 pt-6 pb-40 md:pb-44`}
-        >
+        <div className={`${activeTabContainerClass} mx-auto px-4 ${showTopStatus ? "pt-20" : "pt-5"} pb-28 md:pb-44`}>
+          {activeNavigationSection.items.length > 1 && (
+            <div className="mb-4 overflow-x-auto pb-1 no-scrollbar" aria-label={`${activeNavigationSection.label} subsecoes`}>
+              <div className="flex min-w-full items-center gap-1 rounded-2xl border border-slate-200 bg-white/85 p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
+                {activeNavigationSection.items.map((item) => {
+                  const active = navigation.activeTab === item.tab;
+                  return (
+                    <button
+                      key={item.tab}
+                      type="button"
+                      onClick={() => navigation.setActiveTab(item.tab)}
+                      className={`min-w-[5.25rem] flex-1 whitespace-nowrap rounded-xl px-3 py-2 text-center text-xs font-semibold transition-colors ${
+                        active
+                          ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                          : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <Suspense fallback={<TabLoader label="Carregando aba..." />}>
             {navigation.renderActiveTab(navigationContext)}
           </Suspense>
@@ -348,17 +403,17 @@ const App: React.FC = () => {
             onClick={() => setShowAIInput(true)}
             aria-label="Adicionar lançamento"
             title="Adicionar lançamento"
-            className="flow-fab fixed bottom-24 right-6 z-50 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-500 text-white transition-all duration-300 hover:scale-110 active:scale-90 btn-liquid md:bottom-8 md:right-8"
-          >
-            <Plus size={32} strokeWidth={2.5} />
+           className="flow-fab fixed bottom-24 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-[0_18px_40px_-24px_rgba(15,23,42,0.5)] transition-all duration-200 hover:bg-slate-800 active:scale-95 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white md:bottom-8 md:right-8 md:h-16 md:w-16"
+        >
+            <Plus size={24} strokeWidth={2.5} className="md:size-8" />
           </button>
         )}
 
-        <nav className="flow-nav fixed bottom-0 left-0 right-0 z-[60] flex items-center justify-between px-1 py-3 md:left-1/2 md:right-auto md:bottom-6 md:w-[min(92vw,56rem)] md:-translate-x-1/2 md:justify-center md:gap-2 md:rounded-[2rem] md:border md:border-slate-200/80 md:bg-white/95 md:px-3 md:py-2 md:shadow-[0_18px_48px_-24px_rgba(15,23,42,0.35)] md:backdrop-blur dark:md:border-slate-800 dark:md:bg-slate-950/90">
+        <nav className="flow-nav fixed bottom-0 left-0 right-0 z-[60] flex items-stretch justify-between px-1.5 py-1 md:left-1/2 md:right-auto md:bottom-5 md:w-[min(92vw,44rem)] md:-translate-x-1/2 md:justify-center md:gap-1.5 md:rounded-2xl md:border md:border-slate-200/80 md:bg-white/95 md:px-2 md:py-1.5 md:shadow-[0_16px_40px_-26px_rgba(15,23,42,0.35)] md:backdrop-blur dark:md:border-slate-800 dark:md:bg-slate-950/90">
           {mainNavigationItems.map((item) => (
             <NavButton
               key={item.tab}
-              active={navigation.activeTab === item.tab}
+              active={activeNavigationSection.defaultTab === item.tab}
               onClick={() => navigation.setActiveTab(item.tab)}
               icon={renderTabIcon(item.tab)}
               label={item.label}
@@ -391,15 +446,15 @@ const App: React.FC = () => {
 
 const NAV_BUTTON_CLASS_MAP = {
   buttonBase:
-    "flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1.5 transition-all duration-300 md:min-w-[5.5rem] md:flex-none md:px-2",
-  active: "text-indigo-600 dark:text-indigo-300 -translate-y-1",
+    "flex min-h-9 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1 transition-colors duration-200 md:min-h-12 md:min-w-[7rem] md:flex-none md:flex-row md:gap-2 md:rounded-xl md:px-3 md:py-1",
+  active: "text-slate-950 dark:text-white -translate-y-1 md:translate-y-0",
   inactive:
     "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300",
   iconActive:
-    "flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 shadow-sm dark:bg-indigo-500/15",
-  iconInactive: "flex h-10 w-10 items-center justify-center rounded-2xl",
+    "flex h-8 w-8 items-center justify-center rounded-2xl bg-slate-100 shadow-sm md:h-8 md:w-8 md:rounded-xl dark:bg-slate-800",
+  iconInactive: "flex h-8 w-8 items-center justify-center rounded-2xl md:h-8 md:w-8 md:rounded-xl",
   label:
-    "max-w-[4.6rem] text-center text-[10px] font-semibold uppercase leading-tight tracking-[0.02em] md:max-w-none md:text-xs md:tracking-[0.08em]",
+    "max-w-[5rem] text-center text-[8px] font-semibold uppercase leading-none tracking-[0.01em] md:max-w-none md:text-xs md:leading-tight md:tracking-[0.08em]",
 };
 
 function renderTabIcon(tab: string): React.ReactNode {

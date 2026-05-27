@@ -14,6 +14,14 @@ Para status real do ciclo e pendencias operacionais atuais, consultar:
 
 - 2026-05-26 (registro da linha de polimento visual, refinamento de empty states e modais menores)
 
+## 2026-05-27 - Demo local isolado da nuvem e validado em navegador
+
+- O modo `demoData=1` passou a resolver identidade e workspace locais sem tocar em Firestore, igualando o comportamento do bootstrap demo ao fluxo E2E local.
+- `App.tsx` agora trata `isDemoBootstrapActive` como trilha local-only para billing/usage, evitando adapters de Firestore durante a revisao demo.
+- `pages/AICFO.tsx` deixou de carregar usage real do workspace no modo demo, eliminando o warning de permissao que ainda aparecia no console.
+- O contrato foi coberto por teste unitario em `workspace-session` e por um spec E2E dedicado ao bootstrap demo.
+- Os artefatos temporarios de revisao local foram limpos apos a validacao final.
+
 ## 2026-05-26 - Bootstrap E2E e runtime local estabilizados para revisao visual
 
 - `App.tsx` passou a resetar o usage store para memoria quando a sessao esta em bootstrap E2E, sem usuario/workspace valido ou sem Firebase configurado, evitando que adapters do Firestore vazem para a revisao local.
