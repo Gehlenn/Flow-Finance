@@ -79,6 +79,21 @@ const RESPONSE_DEPTH_LABEL: Record<'standard' | 'reduced', string> = {
 const PANEL_SURFACE = 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900';
 const SOFT_SURFACE = 'rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900';
 
+function getDemoWorkspacePlanOverride(): 'free' | 'pro' | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const isDemoMode = params.get('demoData') === '1' || window.localStorage.getItem('flow_demo_data') === '1';
+  if (!isDemoMode) {
+    return null;
+  }
+
+  const rawPlan = (params.get('demoPlan') || window.localStorage.getItem('flow_demo_plan') || 'pro').toLowerCase();
+  return rawPlan === 'free' ? 'free' : 'pro';
+}
+
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
 type Message = Omit<CFOConversationMessage, 'intent'> & {
@@ -314,7 +329,9 @@ const AICFO: React.FC<AICFOProps> = ({
 
   const scopedTransactions = useMemo(() => transactions, [transactions]);
   const quickPrompts = useMemo(() => QUICK_PROMPTS, []);
-  const isFreePlan = workspacePlan !== 'pro';
+  const demoWorkspacePlan = useMemo(() => getDemoWorkspacePlanOverride(), []);
+  const effectiveWorkspacePlan = demoWorkspacePlan ?? workspacePlan;
+  const isFreePlan = effectiveWorkspacePlan !== 'pro';
   const queryLimit = FREE_LIMITS.consultorIaQueriesPerMonth;
   const proMonthlyPriceLabel = useMemo(
     () => `R$ ${MONETIZATION_PRICING.proMonthlyBRL.toFixed(2).replace('.', ',')}/mes`,
@@ -371,8 +388,8 @@ const AICFO: React.FC<AICFOProps> = ({
       return;
     }
 
-    setPaywallVisible(!withinFreeLimit(workspacePlan, 'consultorIaQueriesPerMonth', monthlyAiQueriesUsed));
-  }, [isFreePlan, monthlyAiQueriesUsed, workspacePlan]);
+    setPaywallVisible(!withinFreeLimit(effectiveWorkspacePlan, 'consultorIaQueriesPerMonth', monthlyAiQueriesUsed));
+  }, [effectiveWorkspacePlan, isFreePlan, monthlyAiQueriesUsed]);
 
   useEffect(() => {
     let cancelled = false;
@@ -476,7 +493,7 @@ const AICFO: React.FC<AICFOProps> = ({
 
   const sendMessage = async (question: string) => {
     if (!question.trim() || isLoading) return;
-    if (!withinFreeLimit(workspacePlan, 'consultorIaQueriesPerMonth', monthlyAiQueriesUsed)) {
+    if (!withinFreeLimit(effectiveWorkspacePlan, 'consultorIaQueriesPerMonth', monthlyAiQueriesUsed)) {
       setPaywallVisible(true);
       setInput('');
       return;
