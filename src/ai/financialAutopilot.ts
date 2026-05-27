@@ -5,13 +5,15 @@ import { type CashflowPrediction } from './riskAnalyzer';
 import { buildFinancialGraph, graphToAIContext } from './financialGraph';
 import { getMerchantCategories, getRecurringExpenses, getSpendingPatterns, getUserBehaviors, hasBehavior } from './memory';
 import { generateSmartBudget } from '../engines/finance/budgetEngine';
-import { learnMemory } from './aiMemory';
 import { makeId, formatCurrency } from '../../utils/helpers';
 import { logWarn } from '../utils/logger';
 import { type LegacyAutopilotAction } from './signalEngine';
 import {
+  DELIVERY_KEYWORDS,
+  SUBSCRIPTION_KEYWORDS,
   getMonthTxs,
   matchKeywords,
+  nowIso,
   parseAutopilotDate,
   pushDefaultAction,
   sortAutopilotActions,
@@ -20,20 +22,7 @@ import {
 
 export type AutopilotAction = LegacyAutopilotAction;
 
-function now(): string {
-  return new Date().toISOString();
-}
 
-const SUBSCRIPTION_KEYWORDS = [
-  'netflix', 'spotify', 'amazon prime', 'disney', 'hbo', 'apple',
-  'youtube', 'deezer', 'globoplay', 'paramount', 'assinatura',
-  'mensalidade', 'plano', 'subscription', 'prime',
-];
-
-const DELIVERY_KEYWORDS = [
-  'ifood', 'rappi', 'uber eats', 'delivery', '99food',
-  'james', 'loggi', 'entrega', 'pedido',
-];
 
 export function runFinancialAutopilot(
   accounts: Account[],
@@ -85,7 +74,7 @@ export function runFinancialAutopilot(
         value: suggestedCut,
         category,
         action_label: 'Ver Detalhes',
-        created_at: now(),
+        created_at: nowIso(),
       });
       actions.push({
         id: makeId(),
@@ -96,7 +85,7 @@ export function runFinancialAutopilot(
         value: suggestedCut,
         category,
         action_label: 'Criar Meta de Corte',
-        created_at: now(),
+        created_at: nowIso(),
       });
       actions.push({
         id: makeId(),
@@ -107,7 +96,7 @@ export function runFinancialAutopilot(
         value: suggestedCut,
         category,
         action_label: 'Criar Meta Automatica',
-        created_at: now(),
+        created_at: nowIso(),
       });
     }
   }
@@ -121,7 +110,7 @@ export function runFinancialAutopilot(
       description: `Sua projecao para os proximos 30 dias e de ${formatCurrency(prediction.balance_30_days)}. Considere reduzir gastos ou antecipar receitas.`,
       value: prediction.balance_30_days,
       action_label: 'Ver Projecao',
-      created_at: now(),
+      created_at: nowIso(),
     });
   } else if (prediction.balance_7_days < prediction.current_balance * 0.2) {
     actions.push({
@@ -132,7 +121,7 @@ export function runFinancialAutopilot(
       description: `Em 7 dias seu saldo pode cair para ${formatCurrency(prediction.balance_7_days)} - abaixo de 20% do valor atual.`,
       value: prediction.balance_7_days,
       action_label: 'Ver Fluxo',
-      created_at: now(),
+      created_at: nowIso(),
     });
   }
 
@@ -147,7 +136,7 @@ export function runFinancialAutopilot(
       description: `Seus gastos este mes (${formatCurrency(currentExpenses)}) estao ${pct}% acima do mes anterior (${formatCurrency(lastExpenses)}).`,
       value: currentExpenses - lastExpenses,
       action_label: 'Ver Historico',
-      created_at: now(),
+      created_at: nowIso(),
     });
   }
 
@@ -173,7 +162,7 @@ export function runFinancialAutopilot(
       value: monthlyEst,
       category: 'Assinaturas',
       action_label: 'Revisar',
-      created_at: now(),
+      created_at: nowIso(),
     });
   }
 
@@ -193,7 +182,7 @@ export function runFinancialAutopilot(
       value: monthlyEst,
       category: 'Alimentacao',
       action_label: 'Ver Gastos',
-      created_at: now(),
+      created_at: nowIso(),
     });
   }
 
@@ -218,7 +207,7 @@ export function runFinancialAutopilot(
         value: potential,
         category: topCategory,
         action_label: 'Criar Meta',
-        created_at: now(),
+        created_at: nowIso(),
       });
       actions.push({
         id: makeId(),
@@ -229,7 +218,7 @@ export function runFinancialAutopilot(
         value: potential,
         category: topCategory,
         action_label: 'Criar Meta Automatica',
-        created_at: now(),
+        created_at: nowIso(),
       });
     }
   }
@@ -244,7 +233,7 @@ export function runFinancialAutopilot(
       description: `O recomendado e ter ${formatCurrency(emergencyTarget)} de reserva (3 meses de despesas). Seu saldo atual e ${formatCurrency(prediction.current_balance)}.`,
       value: emergencyTarget - prediction.current_balance,
       action_label: 'Criar Meta',
-      created_at: now(),
+      created_at: nowIso(),
     });
     actions.push({
       id: makeId(),
@@ -255,7 +244,7 @@ export function runFinancialAutopilot(
       value: emergencyTarget - prediction.current_balance,
       category: 'Reserva de Emergencia',
       action_label: 'Criar Meta Automatica',
-      created_at: now(),
+      created_at: nowIso(),
     });
   }
 
@@ -270,7 +259,7 @@ export function runFinancialAutopilot(
         description: `Com base nos seus dados, voce esta poupando cerca de ${Math.round(savingRate * 100)}% da sua renda projetada. Continue assim!`,
         value: savingRate,
         action_label: 'Ver Insights',
-        created_at: now(),
+        created_at: nowIso(),
       });
     }
   }
@@ -291,7 +280,7 @@ export function runFinancialAutopilot(
       description: `${smallRecent.length} compras abaixo de R$30 nos ultimos 30 dias totalizaram ${formatCurrency(smallTotal)}. Pequenos gastos frequentes somam mais do que parecem.`,
       value: smallTotal,
       action_label: 'Ver Historico',
-      created_at: now(),
+      created_at: nowIso(),
     });
   }
 
@@ -319,7 +308,7 @@ export function runFinancialAutopilot(
         value: (weekendPattern as { avgAmount?: number }).avgAmount,
         category: 'Comportamento',
         action_label: 'Ver Padroes',
-        created_at: now(),
+        created_at: nowIso(),
       });
     }
 
@@ -336,7 +325,7 @@ export function runFinancialAutopilot(
           value: impulsive.score,
           category: 'Comportamento',
           action_label: 'Ver Dicas',
-          created_at: now(),
+          created_at: nowIso(),
         });
       }
     }
@@ -354,7 +343,7 @@ export function runFinancialAutopilot(
         value: totalSubscriptions,
         category: 'Assinaturas',
         action_label: 'Gerenciar',
-        created_at: now(),
+        created_at: nowIso(),
       });
     }
 
@@ -371,7 +360,7 @@ export function runFinancialAutopilot(
         value: topMerchant.totalSpent,
         category: topMerchant.category,
         action_label: 'Ver Detalhes',
-        created_at: now(),
+        created_at: nowIso(),
       });
     }
   } catch (error) {

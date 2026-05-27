@@ -14,10 +14,12 @@ import { logWarn } from '../../utils/logger';
 import { getActiveWorkspaceScopedStorageKey } from '../../utils/workspaceStorage';
 import {
   applyMemoryDecay,
+  buildDefaultMemoryEntry,
   buildMemoryStats,
   buildUserMemoryProfile,
   logDecayIfNeeded,
   pruneExpiredMemoryEntries,
+  pickMemoryToEvict,
 } from './AIMemoryStoreHelpers';
 
 const STORAGE_KEY = 'flow_ai_memory_v2';
@@ -103,13 +105,11 @@ class AIMemoryStore {
 
   saveMemory(memory: AIMemoryEntry): void {
     this.ensureWorkspaceScope();
-    // Enforce per-user limits
     const userMemories = this.getMemoriesByUser(memory.userId);
     if (userMemories.length >= MAX_MEMORIES_PER_USER) {
-      // Remove oldest low-confidence memory
-      const sorted = userMemories.sort((a, b) => a.confidence - b.confidence || a.updatedAt - b.updatedAt);
-      if (sorted.length > 0) {
-        this.memories.delete(sorted[0].id);
+      const memoryToEvict = pickMemoryToEvict(userMemories);
+      if (memoryToEvict) {
+        this.memories.delete(memoryToEvict.id);
       }
     }
 
@@ -118,23 +118,7 @@ class AIMemoryStore {
   }
 
   save(memory: Partial<AIMemoryEntry> & { type: AIMemoryType; value: unknown; key?: string; userId?: string }): void {
-    const now = Date.now();
-    const entry: AIMemoryEntry = {
-      id: memory.id || `mem_${now}_${Math.random().toString(36).slice(2, 11)}`,
-      userId: memory.userId || 'local',
-      type: memory.type,
-      key: memory.key || memory.type.toLowerCase(),
-      value: memory.value,
-      confidence: memory.confidence ?? 0.7,
-      strength: memory.strength ?? 25,
-      occurrences: memory.occurrences ?? 1,
-      createdAt: memory.createdAt ?? now,
-      updatedAt: memory.updatedAt ?? now,
-      lastObservedAt: memory.lastObservedAt ?? now,
-      metadata: memory.metadata,
-    };
-
-    this.saveMemory(entry);
+    this.saveMemory(buildDefaultMemoryEntry(memory));
   }
 
   getMemory(id: string): AIMemoryEntry | undefined {

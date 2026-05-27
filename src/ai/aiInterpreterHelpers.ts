@@ -30,3 +30,68 @@ export function estimateInterpreterConfidence(
 
   return Math.min(parseFloat(score.toFixed(2)), 1.0);
 }
+
+export function buildUnknownTextInterpretation(params: {
+  input: string;
+  memories: AIMemory[];
+  processingMs: number;
+  enriched: boolean;
+  message: string;
+  suggestion: string;
+  kind?: 'ai_unavailable' | 'ai_uncertain';
+  confidence?: number;
+}): {
+  intent: 'unknown';
+  modality: 'text';
+  data: [];
+  confidence: number;
+  memory_context_used: string[];
+  raw_input: string;
+  processing_ms: number;
+  enriched: boolean;
+  diagnostic: {
+    kind: 'ai_unavailable' | 'ai_uncertain';
+    message: string;
+    suggestion?: string;
+  };
+} {
+  return {
+    intent: 'unknown',
+    modality: 'text',
+    data: [],
+    confidence: params.confidence ?? 0.1,
+    memory_context_used: params.memories.map((memory) => memory.key),
+    raw_input: params.input,
+    processing_ms: params.processingMs,
+    enriched: params.enriched,
+    diagnostic: {
+      kind: params.kind ?? 'ai_uncertain',
+      message: params.message,
+      suggestion: params.suggestion,
+    },
+  };
+}
+
+export function buildUnknownImageInterpretation(params: {
+  processingMs: number;
+}): {
+  intent: 'unknown';
+  modality: 'image';
+  data: [];
+  confidence: number;
+  memory_context_used: [];
+  raw_input: string;
+  processing_ms: number;
+  enriched: false;
+} {
+  return {
+    intent: 'unknown',
+    modality: 'image',
+    data: [],
+    confidence: 0,
+    memory_context_used: [],
+    raw_input: '[image]',
+    processing_ms: params.processingMs,
+    enriched: false,
+  };
+}

@@ -1,12 +1,10 @@
 import fs from 'fs';
-import path from 'path';
 import { randomUUID } from 'crypto';
 import {
   Tenant,
   Workspace,
   WorkspaceSummary,
   WorkspaceUser,
-  WorkspaceUserPreference,
   Role,
   WorkspacePlan,
   WorkspaceSubscription,
@@ -14,6 +12,20 @@ import {
 } from '../../types';
 import { recordAuditEvent } from './auditLog';
 import logger from '../../config/logger';
+import {
+  buildEntitlements,
+  cloneState,
+  getActiveTenantIdsForUser,
+  getActiveWorkspaceIdsForUser,
+  ensureWorkspaceTenants,
+  ensureStoreDirExists,
+  getWorkspaceStoreFilePath,
+  normalizeTenant,
+  normalizeWorkspace,
+  normalizeWorkspaceStoreState,
+  replaceUserPreference,
+  type WorkspaceStoreState,
+} from './workspaceStoreHelpers';
 import {
   loadJsonState,
   isPostgresStateStoreEnabled,
@@ -29,57 +41,6 @@ import {
   saveWorkspaceStoreState,
 } from '../persistence/postgresStateStore';
 
-interface WorkspaceStoreState {
-  tenants: Tenant[];
-  workspaces: Workspace[];
-  workspaceUsers: WorkspaceUser[];
-  userPreferences: WorkspaceUserPreference[];
-}
-
-function buildEntitlements(plan: WorkspacePlan): WorkspaceEntitlements {
-  if (plan === 'pro') {
-    return {
-      features: ['advancedInsights', 'multiBankSync', 'adminConsole', 'prioritySupport', 'billingManagement'],
-      limits: {
-        transactionsPerMonth: 10000,
-        aiQueriesPerMonth: 5000,
-        bankConnections: 20,
-      },
-    };
-  }
-
-  return {
-    features: ['advancedInsights'],
-    limits: {
-      transactionsPerMonth: 500,
-      aiQueriesPerMonth: 100,
-      bankConnections: 1,
-    },
-  };
-}
-
-function normalizeWorkspace(workspace: Workspace): Workspace {
-  const plan = workspace.plan || 'free';
-  return {
-    ...workspace,
-    tenantId: workspace.tenantId || workspace.workspaceId,
-    isDefault: workspace.isDefault ?? true,
-    plan,
-    status: workspace.status || 'active',
-    updatedAt: workspace.updatedAt || workspace.createdAt,
-    entitlements: workspace.entitlements || buildEntitlements(plan),
-  };
-}
-
-function normalizeTenant(tenant: Tenant): Tenant {
-  return {
-    ...tenant,
-    plan: tenant.plan || 'free',
-    updatedAt: tenant.updatedAt || tenant.createdAt,
-  };
-}
-
-const DEFAULT_STORE_FILE = path.resolve(__dirname, '../../../data/workspaces.json');
 const POSTGRES_STATE_KEY = 'workspace_store_state';
 const EMPTY_STATE: WorkspaceStoreState = {
   tenants: [],
@@ -94,27 +55,6 @@ function areLegacyStateBlobsDisabled(): boolean {
   return String(process.env.DISABLE_LEGACY_STATE_BLOBS || '').toLowerCase() === 'true';
 }
 
-function cloneState(state: WorkspaceStoreState): WorkspaceStoreState {
-  return {
-    tenants: state.tenants.map((tenant) => normalizeTenant({ ...tenant })),
-    workspaces: state.workspaces.map((workspace) => normalizeWorkspace({ ...workspace })),
-    workspaceUsers: state.workspaceUsers.map((workspaceUser) => ({
-      ...workspaceUser,
-      tenantId: workspaceUser.tenantId || workspaceUser.workspaceId,
-      role: (workspaceUser.role as string) === 'user' ? 'member' : workspaceUser.role,
-    })),
-    userPreferences: state.userPreferences.map((userPreference) => ({ ...userPreference })),
-  };
-}
-
-function getStoreFilePath(): string {
-  return process.env.WORKSPACE_STORE_FILE || DEFAULT_STORE_FILE;
-}
-
-function ensureStoreDirExists(filePath: string): void {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-}
-
 function loadState(): WorkspaceStoreState {
   if (stateCache) {
     return stateCache;
@@ -125,7 +65,7 @@ function loadState(): WorkspaceStoreState {
     return stateCache;
   }
 
-  const filePath = getStoreFilePath();
+  const filePath = getWorkspaceStoreFilePath();
 
   try {
     if (!fs.existsSync(filePath)) {
@@ -141,12 +81,7 @@ function loadState(): WorkspaceStoreState {
     }
 
     const parsed = JSON.parse(raw) as Partial<WorkspaceStoreState>;
-    stateCache = {
-      tenants: Array.isArray(parsed.tenants) ? parsed.tenants.map((tenant) => normalizeTenant(tenant)) : [],
-      workspaces: Array.isArray(parsed.workspaces) ? parsed.workspaces.map((workspace) => normalizeWorkspace(workspace)) : [],
-      workspaceUsers: Array.isArray(parsed.workspaceUsers) ? parsed.workspaceUsers : [],
-      userPreferences: Array.isArray(parsed.userPreferences) ? parsed.userPreferences : [],
-    };
+    stateCache = cloneState(normalizeWorkspaceStoreState(parsed));
   } catch (error) {
     logger.warn({
       error,
@@ -162,7 +97,7 @@ function loadState(): WorkspaceStoreState {
 function persistState(state: WorkspaceStoreState): void {
   stateCache = cloneState(state);
   if (!areLegacyStateBlobsDisabled()) {
-    const filePath = getStoreFilePath();
+    const filePath = getWorkspaceStoreFilePath();
     ensureStoreDirExists(filePath);
     fs.writeFileSync(filePath, JSON.stringify(state, null, 2), 'utf8');
   }
@@ -244,14 +179,7 @@ export function createTenant(name: string, ownerUserId: string): { tenant: Tenan
     tenants: [...state.tenants, tenant],
     workspaces: [...state.workspaces, workspace],
     workspaceUsers: [...state.workspaceUsers, ownerMembership],
-    userPreferences: [
-      ...state.userPreferences.filter((userPreference) => userPreference.userId !== ownerUserId),
-      {
-        userId: ownerUserId,
-        lastSelectedWorkspaceId: workspaceId,
-        updatedAt: createdAt,
-      },
-    ],
+    userPreferences: replaceUserPreference(state.userPreferences, ownerUserId, workspaceId, createdAt),
   });
 
   recordAuditEvent({
@@ -306,14 +234,7 @@ export function createWorkspace(name: string, ownerUserId: string, tenantId?: st
     tenants: state.tenants.map((item) => item.tenantId === tenantId ? { ...item, updatedAt: createdAt } : item),
     workspaces: [...state.workspaces, workspace],
     workspaceUsers: [...state.workspaceUsers, ownerMembership],
-    userPreferences: [
-      ...state.userPreferences.filter((userPreference) => userPreference.userId !== ownerUserId),
-      {
-        userId: ownerUserId,
-        lastSelectedWorkspaceId: workspaceId,
-        updatedAt: createdAt,
-      },
-    ],
+    userPreferences: replaceUserPreference(state.userPreferences, ownerUserId, workspaceId, createdAt),
   });
 
   recordAuditEvent({
@@ -349,11 +270,7 @@ export async function getWorkspaceAsync(workspaceId: string): Promise<Workspace 
 
 export function listWorkspacesForUser(userId: string): Workspace[] {
   const state = loadState();
-  const workspaceIds = new Set(
-    state.workspaceUsers
-      .filter((workspaceUser) => workspaceUser.userId === userId && workspaceUser.status === 'active')
-      .map((workspaceUser) => workspaceUser.workspaceId),
-  );
+  const workspaceIds = getActiveWorkspaceIdsForUser(state, userId);
 
   return state.workspaces
     .filter((workspace) => workspaceIds.has(workspace.workspaceId))
@@ -373,11 +290,7 @@ export async function listWorkspacesForUserAsync(userId: string): Promise<Worksp
 
 export function listTenantsForUser(userId: string): Tenant[] {
   const state = loadState();
-  const tenantIds = new Set(
-    state.workspaceUsers
-      .filter((workspaceUser) => workspaceUser.userId === userId && workspaceUser.status === 'active')
-      .map((workspaceUser) => workspaceUser.tenantId),
-  );
+  const tenantIds = getActiveTenantIdsForUser(state, userId);
 
   return state.tenants
     .filter((tenant) => tenantIds.has(tenant.tenantId))
@@ -671,14 +584,7 @@ export function setLastWorkspaceForUser(userId: string, workspaceId: string): vo
     tenants: state.tenants,
     workspaces: state.workspaces,
     workspaceUsers: state.workspaceUsers,
-    userPreferences: [
-      ...state.userPreferences.filter((userPreference) => userPreference.userId !== userId),
-      {
-        userId,
-        lastSelectedWorkspaceId: workspaceId,
-        updatedAt,
-      },
-    ],
+    userPreferences: replaceUserPreference(state.userPreferences, userId, workspaceId, updatedAt),
   });
 }
 
@@ -705,7 +611,7 @@ export async function getLastWorkspaceForUserAsync(userId: string): Promise<Work
 export function resetWorkspaceStoreForTests(): void {
   stateCache = cloneState(EMPTY_STATE);
 
-  const filePath = getStoreFilePath();
+  const filePath = getWorkspaceStoreFilePath();
   if (fs.existsSync(filePath)) {
     fs.rmSync(filePath, { force: true });
   }
@@ -718,21 +624,7 @@ export function getWorkspaceStoreSnapshotForTests(): WorkspaceStoreState {
 export async function initializeWorkspaceStorePersistence(): Promise<void> {
   const normalized = await loadWorkspaceStoreState();
   if (normalized) {
-    stateCache = {
-      tenants: Array.isArray(normalized.tenants) ? normalized.tenants.map((tenant) => normalizeTenant(tenant)) : [],
-      workspaces: Array.isArray(normalized.workspaces) ? normalized.workspaces.map((workspace) => normalizeWorkspace(workspace)) : [],
-      workspaceUsers: Array.isArray(normalized.workspaceUsers) ? normalized.workspaceUsers : [],
-      userPreferences: Array.isArray(normalized.userPreferences) ? normalized.userPreferences : [],
-    };
-    if (stateCache.tenants.length === 0 && stateCache.workspaces.length > 0) {
-      stateCache.tenants = stateCache.workspaces.map((workspace) => ({
-        tenantId: workspace.tenantId,
-        name: workspace.name,
-        plan: workspace.plan,
-        createdAt: workspace.createdAt,
-        updatedAt: workspace.updatedAt || workspace.createdAt,
-      }));
-    }
+    stateCache = ensureWorkspaceTenants(cloneState(normalizeWorkspaceStoreState(normalized)));
     return;
   }
 
@@ -745,34 +637,8 @@ export async function initializeWorkspaceStorePersistence(): Promise<void> {
     return;
   }
 
-  stateCache = {
-    tenants: Array.isArray(persisted.tenants) ? persisted.tenants.map((tenant) => normalizeTenant(tenant)) : [],
-    workspaces: Array.isArray(persisted.workspaces) ? persisted.workspaces.map((workspace) => normalizeWorkspace(workspace)) : [],
-    workspaceUsers: Array.isArray(persisted.workspaceUsers) ? persisted.workspaceUsers : [],
-    userPreferences: Array.isArray(persisted.userPreferences) ? persisted.userPreferences : [],
-  };
-
-  if (stateCache.tenants.length === 0 && stateCache.workspaces.length > 0) {
-    stateCache.tenants = stateCache.workspaces.map((workspace) => ({
-      tenantId: workspace.tenantId || workspace.workspaceId,
-      name: workspace.name,
-      plan: workspace.plan,
-      createdAt: workspace.createdAt,
-      updatedAt: workspace.updatedAt || workspace.createdAt,
-    }));
-    stateCache.workspaces = stateCache.workspaces.map((workspace) => ({
-      ...workspace,
-      tenantId: workspace.tenantId || workspace.workspaceId,
-      isDefault: workspace.isDefault ?? true,
-    }));
-    stateCache.workspaceUsers = stateCache.workspaceUsers.map((workspaceUser) => ({
-      ...workspaceUser,
-      tenantId: workspaceUser.tenantId || workspaceUser.workspaceId,
-      role: (workspaceUser.role as string) === 'user' ? 'member' : workspaceUser.role,
-    }));
-  }
-
-  const backfillState = stateCache;
+  const backfillState = ensureWorkspaceTenants(cloneState(normalizeWorkspaceStoreState(persisted)));
+  stateCache = backfillState;
   void saveWorkspaceStoreState(backfillState).catch((error) => {
     logger.warn({
       error,

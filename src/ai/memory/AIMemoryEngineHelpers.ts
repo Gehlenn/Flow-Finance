@@ -76,3 +76,51 @@ export function buildFeedbackMetadata(
     lastFeedbackAt: now,
   };
 }
+
+export function generateAIMemoryId(now: number = Date.now()): string {
+  return `mem_${now}_${Math.random().toString(36).slice(2, 11)}`;
+}
+
+export function selectMemoryToEvict(memories: AIMemoryEntry[]): AIMemoryEntry | undefined {
+  if (memories.length === 0) {
+    return undefined;
+  }
+
+  return [...memories].sort((left, right) => {
+    const confidenceDiff = left.confidence - right.confidence;
+    if (confidenceDiff !== 0) return confidenceDiff;
+    return left.updatedAt - right.updatedAt;
+  })[0];
+}
+
+export function buildMemoryUpdateMetadata(
+  type: AIMemoryType,
+  key: string,
+  confidence: number,
+  now: number,
+  current?: Record<string, unknown>,
+): Record<string, unknown> {
+  return (
+    buildMemoryMetadata(type, key, confidence, now, current) ||
+    {
+      ...(current || {}),
+    }
+  );
+}
+
+export function persistAnalyzedMemorySet<TValue>(params: {
+  userId: string;
+  type: AIMemoryType;
+  values: Map<string, TValue>;
+  saveOrUpdate: (userId: string, type: AIMemoryType, key: string, value: TValue, confidence: number) => void;
+  confidenceFor: (value: TValue, key: string) => number;
+}): number {
+  let updated = 0;
+
+  for (const [key, value] of params.values) {
+    params.saveOrUpdate(params.userId, params.type, key, value, params.confidenceFor(value, key));
+    updated += 1;
+  }
+
+  return updated;
+}

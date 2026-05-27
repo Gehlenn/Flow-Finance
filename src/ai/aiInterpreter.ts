@@ -15,7 +15,12 @@ import { TransactionData, ReminderData } from '../../types';
 import { getAIMemory, AIMemory } from './aiMemory';
 import { logAIDebug } from './aiDebugService';
 import { logWarn } from '../utils/logger';
-import { buildMemoryContextBlock, estimateInterpreterConfidence } from './aiInterpreterHelpers';
+import {
+  buildMemoryContextBlock,
+  buildUnknownImageInterpretation,
+  buildUnknownTextInterpretation,
+  estimateInterpreterConfidence,
+} from './aiInterpreterHelpers';
 
 // ─── Output Types ─────────────────────────────────────────────────────────────
 
@@ -81,21 +86,14 @@ export async function interpretText(
         error: 'Intent invalido retornado pelo interpretador',
         processing_ms: Date.now() - start,
       });
-      return {
-        intent: 'unknown',
-        modality: 'text',
-        data: [],
-        confidence: 0.1,
-        memory_context_used: memories.map(m => m.key),
-        raw_input: input,
-        processing_ms: Date.now() - start,
+      return buildUnknownTextInterpretation({
+        input,
+        memories,
+        processingMs: Date.now() - start,
         enriched,
-        diagnostic: {
-          kind: 'ai_uncertain',
-          message: 'Nao consegui classificar esta entrada com seguranca.',
-          suggestion: 'Tente descrever o lancamento com valor, data e contexto mais claros.',
-        },
-      };
+        message: 'Nao consegui classificar esta entrada com seguranca.',
+        suggestion: 'Tente descrever o lancamento com valor, data e contexto mais claros.',
+      });
     }
 
     const confidence = estimateConfidence(result.data, result.intent);
@@ -135,21 +133,16 @@ export async function interpretText(
       error: error instanceof Error ? error.message : 'Erro desconhecido no interpretador',
       processing_ms,
     });
-    return {
-      intent: 'unknown',
-      modality: 'text',
-      data: [],
-      confidence: 0,
-      memory_context_used: [],
-      raw_input: input,
-      processing_ms,
+    return buildUnknownTextInterpretation({
+      input,
+      memories: [],
+      processingMs: processing_ms,
       enriched: false,
-      diagnostic: {
-        kind: 'ai_unavailable',
-        message: 'A IA de entrada falhou ao processar este texto.',
-        suggestion: 'Tente novamente ou use o modo manual para registrar o lancamento.',
-      },
-    };
+      kind: 'ai_unavailable',
+      confidence: 0,
+      message: 'A IA de entrada falhou ao processar este texto.',
+      suggestion: 'Tente novamente ou use o modo manual para registrar o lancamento.',
+    });
   }
 }
 
@@ -203,9 +196,8 @@ export async function interpretImage(
       error: error instanceof Error ? error.message : String(error ?? 'unknown-error'),
       processing_ms: Date.now() - start,
     });
-    return {
-      intent: 'unknown', modality: 'image', data: [], confidence: 0,
-      memory_context_used: [], raw_input: '[image]', processing_ms: Date.now() - start, enriched: false,
-    };
+    return buildUnknownImageInterpretation({
+      processingMs: Date.now() - start,
+    });
   }
 }

@@ -2,6 +2,17 @@ import { type Transaction, TransactionType } from '../../types';
 import { makeId } from '../../utils/helpers';
 import { type LegacyAutopilotAction } from './signalEngine';
 
+export const SUBSCRIPTION_KEYWORDS = [
+  'netflix', 'spotify', 'amazon prime', 'disney', 'hbo', 'apple',
+  'youtube', 'deezer', 'globoplay', 'paramount', 'assinatura',
+  'mensalidade', 'plano', 'subscription', 'prime',
+];
+
+export const DELIVERY_KEYWORDS = [
+  'ifood', 'rappi', 'uber eats', 'delivery', '99food',
+  'james', 'loggi', 'entrega', 'pedido',
+];
+
 export function nowIso(): string {
   return new Date().toISOString();
 }

@@ -105,3 +105,35 @@ export function logDecayIfNeeded(decayed: number, storageKey: string): void {
     });
   }
 }
+
+export function buildDefaultMemoryEntry(input: Partial<AIMemoryEntry> & { type: AIMemoryType; value: unknown; key?: string; userId?: string }): AIMemoryEntry {
+  const now = Date.now();
+  return {
+    id: input.id || `mem_${now}_${Math.random().toString(36).slice(2, 11)}`,
+    userId: input.userId || 'local',
+    type: input.type,
+    key: input.key || input.type.toLowerCase(),
+    value: input.value,
+    confidence: input.confidence ?? 0.7,
+    strength: input.strength ?? 25,
+    occurrences: input.occurrences ?? 1,
+    createdAt: input.createdAt ?? now,
+    updatedAt: input.updatedAt ?? now,
+    lastObservedAt: input.lastObservedAt ?? now,
+    metadata: input.metadata,
+  };
+}
+
+export function pickMemoryToEvict(memories: AIMemoryEntry[]): AIMemoryEntry | undefined {
+  if (memories.length === 0) {
+    return undefined;
+  }
+
+  return [...memories].sort((left, right) => {
+    const confidenceDiff = left.confidence - right.confidence;
+    if (confidenceDiff !== 0) {
+      return confidenceDiff;
+    }
+    return left.updatedAt - right.updatedAt;
+  })[0];
+}

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ADAPTIVE AI ENGINE — Inteligência Financeira Adaptativa
  *
  * Aprende padrões do histórico do usuário para melhorar:
@@ -22,10 +22,9 @@
 import { Transaction, TransactionType } from '../../types';
 import { learnMemory, getAIMemory, getAIMemorySnapshot, AIMemory } from './aiMemory';
 import { CashflowPrediction } from './riskAnalyzer';
-import { AIInsight } from './insightGenerator';
-import { makeId, formatCurrency } from '../../utils/helpers';
 import { logWarn } from '../utils/logger';
-import { getDaysUntilSalaryDay, getRecentTxs, parseAdaptiveDate } from './adaptiveAIEngineHelpers';
+import { getDaysUntilSalaryDay } from './adaptiveAIEngineHelpers';
+import { generateAdaptiveInsights } from './adaptiveAIEngineInsightHelpers';
 import {
   detectCategoryPreferencePattern,
   detectDeliveryPattern,
@@ -35,6 +34,7 @@ import {
 } from './adaptiveAIEnginePatternHelpers';
 
 export { getDaysUntilSalaryDay } from './adaptiveAIEngineHelpers';
+export { generateAdaptiveInsights } from './adaptiveAIEngineInsightHelpers';
 
 // â”€â”€â”€ PART 2 â€” FinancialPattern model â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -62,46 +62,6 @@ export interface AdaptiveLearningState {
   top_patterns: FinancialPattern[];
 }
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-function parseAdaptiveDateLegacy(value: string): Date | null {
-  const dateOnly = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (dateOnly) {
-    const year = Number(dateOnly[1]);
-    const month = Number(dateOnly[2]) - 1;
-    const day = Number(dateOnly[3]);
-    const localDate = new Date(year, month, day);
-    return Number.isNaN(localDate.getTime()) ? null : localDate;
-  }
-
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-export function getDaysUntilSalaryDayLegacy(salaryDay: number, today = new Date()): number | null {
-  if (!Number.isInteger(salaryDay) || salaryDay < 1 || salaryDay > 31) {
-    return null;
-  }
-
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  for (let offset = 0; offset <= 62; offset++) {
-    const candidate = new Date(start);
-    candidate.setDate(start.getDate() + offset);
-    if (candidate.getDate() === salaryDay) {
-      return offset;
-    }
-  }
-
-  return null;
-}
-
-function getRecentTxsLegacy(txs: Transaction[], days: number): Transaction[] {
-  const cutoff = new Date(Date.now() - days * 86400000);
-  return txs.filter(t => {
-    const parsed = parseAdaptiveDate(t.date);
-    return Boolean(parsed && parsed >= cutoff && !t.generated);
-  });
-}
 
 // â”€â”€â”€ PART 3 â€” Pattern Detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -221,95 +181,6 @@ export async function learnMerchantCategories(
   }
 }
 
-// â”€â”€â”€ PART 7 â€” Adaptive Insights â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-export function generateAdaptiveInsights(
-  transactions: Transaction[],
-  memories: AIMemory[],
-  userId: string
-): AIInsight[] {
-  const insights: AIInsight[] = [];
-  const get = (key: string) => memories.find(m => m.key === key);
-
-  const makeInsight = (
-    type: AIInsight['type'],
-    message: string,
-    severity: AIInsight['severity']
-  ): AIInsight => ({
-    id: makeId(), user_id: userId, type, message, severity,
-    created_at: new Date().toISOString(),
-  });
-
-  // â”€â”€ Weekend spending â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const weekendMem = get('weekend_spending');
-  if (weekendMem?.value === 'high' || weekendMem?.value === 'very_high') {
-    const weekendTxs = transactions.filter(t => {
-      const d = parseAdaptiveDate(t.date)?.getDay();
-      if (d === undefined) return false;
-      return !t.generated && t.type === TransactionType.DESPESA && (d === 0 || d === 6);
-    });
-    const total = weekendTxs.reduce((s, t) => s + t.amount, 0);
-    if (total > 0) {
-      insights.push(makeInsight(
-        'warning',
-        `Você costuma gastar mais nos fins de semana. Nos últimos registros, ${formatCurrency(total)} foram gastos em fins de semana.`,
-        weekendMem.value === 'very_high' ? 'medium' : 'low'
-      ));
-    }
-  }
-
-  // â”€â”€ Delivery pattern â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const deliveryMem = get('delivery_pattern');
-  if (deliveryMem?.value === 'heavy' || deliveryMem?.value === 'moderate') {
-    insights.push(makeInsight(
-      'warning',
-      `Você tem um padrão ${deliveryMem.value === 'heavy' ? 'intenso' : 'regular'} de gastos com delivery. Preparar refeições em casa pode gerar economia significativa.`,
-      deliveryMem.value === 'heavy' ? 'medium' : 'low'
-    ));
-  }
-
-  // â”€â”€ Salary day awareness â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const salaryMem = get('salary_day');
-  if (salaryMem) {
-    const salaryDay = Number.parseInt(salaryMem.value, 10);
-    const daysUntil = getDaysUntilSalaryDay(salaryDay);
-    if (daysUntil !== null && daysUntil <= 5) {
-      insights.push(makeInsight(
-        'saving',
-        `Com base no seu histórico, sua receita costuma entrar por volta do dia ${salaryDay}. Faltam aproximadamente ${daysUntil} dia(s).`,
-        'low'
-      ));
-    }
-  }
-
-  // â”€â”€ Dominant category â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const domCatMem = get('dominant_category');
-  if (domCatMem) {
-    const catTxs = transactions.filter(t =>
-      !t.generated && t.type === TransactionType.DESPESA && t.category === domCatMem.value
-    );
-    const catTotal = catTxs.reduce((s, t) => s + t.amount, 0);
-    if (catTotal > 0) {
-      insights.push(makeInsight(
-        'spending',
-        `"${domCatMem.value}" é sua categoria dominante com ${formatCurrency(catTotal)} no histórico. Você tem preferência consistente por esta área.`,
-        'low'
-      ));
-    }
-  }
-
-  // â”€â”€ Merchant loyalty â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const merchantMemories = memories.filter(m => m.key.startsWith('merchant_') && m.value === 'frequent');
-  if (merchantMemories.length >= 3) {
-    insights.push(makeInsight(
-      'spending',
-      `Você tem ${merchantMemories.length} estabelecimento(s) favorito(s) recorrentes. Fidelidade a poucos lugares pode facilitar o controle de gastos.`,
-      'low'
-    ));
-  }
-
-  return insights;
-}
 
 // --- PART 8 — Run Adaptive Learning (função principal) ---
 

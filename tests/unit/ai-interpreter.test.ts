@@ -28,6 +28,8 @@ describe('aiInterpreter', () => {
     );
 
     expect(result.intent).toBe('unknown');
+    expect(result.confidence).toBe(0);
+    expect(result.diagnostic).toEqual(expect.objectContaining({ kind: 'ai_unavailable' }));
     expect(logWarn).toHaveBeenCalledWith(
       '[AI Interpreter] Text interpretation failed; returning unknown intent',
       expect.objectContaining({
@@ -51,6 +53,7 @@ describe('aiInterpreter', () => {
     expect(result.intent).toBe('unknown');
     expect(result.data).toEqual([]);
     expect(result.confidence).toBe(0.1);
+    expect(result.diagnostic).toEqual(expect.objectContaining({ kind: 'ai_uncertain' }));
   });
 
   it('logs contextual data when image interpretation fails', async () => {

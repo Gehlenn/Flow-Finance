@@ -1,3 +1,5 @@
+import type { Transaction } from '../../../types';
+
 export function parseMemoryAnalyzerDate(value: string): Date | null {
   const trimmed = value.trim();
   const dateOnlyMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -24,4 +26,44 @@ export function normalizeMemoryAnalyzerText(value: string): string {
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+export function average(values: number[]): number {
+  if (values.length === 0) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+export function standardDeviation(values: number[]): number {
+  if (values.length === 0) return 0;
+  const avg = average(values);
+  const variance = values.reduce((sum, value) => sum + Math.pow(value - avg, 2), 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+export function groupBy<T, K extends string | number>(items: T[], keyFn: (item: T) => K): Map<K, T[]> {
+  const groups = new Map<K, T[]>();
+  for (const item of items) {
+    const key = keyFn(item);
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+    groups.get(key)!.push(item);
+  }
+  return groups;
+}
+
+export function getExpenseTransactions(transactions: Transaction[]): Transaction[] {
+  return transactions.filter((transaction) => transaction.type === 'Despesa' && !transaction.generated);
+}
+
+export function getIncomeTransactions(transactions: Transaction[]): Transaction[] {
+  return transactions.filter((transaction) => transaction.type === 'Receita' && !transaction.generated);
+}
+
+export function normalizeMemoryAnalyzerMerchant(transaction: Pick<Transaction, 'merchant' | 'description'>): string {
+  return (transaction.merchant || transaction.description).trim().toLowerCase();
+}
+
+export function getMemoryAnalyzerDayOfWeek(transaction: Pick<Transaction, 'date'>): number | null {
+  return parseMemoryAnalyzerDate(transaction.date)?.getDay() ?? null;
 }

@@ -15,9 +15,8 @@
  *   9. Dispara análise de salário + despesas fixas em background
  */
 
-import { Transaction, TransactionType, Category } from '../../types';
+import { Transaction } from '../../types';
 import { Account } from '../../models/Account';
-import { BankConnection, SyncResult } from '../../models/BankConnection';
 import {
   getConnections,
   getConnection,
@@ -25,9 +24,20 @@ import {
   parseLastSyncDate,
 } from '../../services/integrations/openBankingService';
 import { FinancialEventEmitter } from '../events/eventEngine';
-import { detectSalary, SalaryDetectionResult } from '../ai/salaryDetector';
-import { detectFixedExpenses, FixedExpenseReport } from '../ai/fixedExpenseDetector';
+import type { SalaryDetectionResult } from '../ai/salaryDetector';
+import type { FixedExpenseReport } from '../ai/fixedExpenseDetector';
 import { logWarn } from '../utils/logger';
+import {
+  analyzeBankSyncTransactions,
+  normalizeImportedTransactionId,
+  saveSyncReport,
+} from './bankSyncEngineHelpers';
+export {
+  formatSyncDuration,
+  getLastSyncReport,
+  getSyncReports,
+  getSyncStatusSummary,
+} from './bankSyncEngineHelpers';
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -80,41 +90,6 @@ export interface BankSyncReport {
   results:               BankSyncConnectionResult[];
   salary_analysis?:      SalaryDetectionResult;
   fixed_expense_report?: FixedExpenseReport;
-}
-
-// ─── Storage key for sync reports ────────────────────────────────────────────
-
-const SYNC_REPORTS_KEY = 'flow_bank_sync_reports';
-const MAX_REPORTS = 10;
-
-function saveSyncReport(report: BankSyncReport): void {
-  try {
-    const existing: BankSyncReport[] = JSON.parse(localStorage.getItem(SYNC_REPORTS_KEY) || '[]');
-    const updated = [report, ...existing].slice(0, MAX_REPORTS);
-    localStorage.setItem(SYNC_REPORTS_KEY, JSON.stringify(updated));
-  } catch (error) {
-    logWarn('[BankSyncEngine] Failed to persist sync report:', {
-      error,
-      storageKey: SYNC_REPORTS_KEY,
-    });
-  }
-}
-
-export function getSyncReports(): BankSyncReport[] {
-  try {
-    return JSON.parse(localStorage.getItem(SYNC_REPORTS_KEY) || '[]');
-  } catch (error) {
-    logWarn('[BankSyncEngine] Failed to read sync reports; returning empty set', {
-      error,
-      storageKey: SYNC_REPORTS_KEY,
-    });
-    return [];
-  }
-}
-
-export function getLastSyncReport(): BankSyncReport | null {
-  const reports = getSyncReports();
-  return reports[0] ?? null;
 }
 
 // ─── PART 3 — runBankSync ─────────────────────────────────────────────────────
@@ -264,29 +239,13 @@ export async function runBankSync(
 
   const allTransactions = [
     ...existingTransactions,
-    ...newlyImported.map(t => ({ ...t, id: t.id ?? Math.random().toString(36) } as Transaction)),
+    ...newlyImported.map((t) => ({ ...t, id: normalizeImportedTransactionId(t) } as Transaction)),
   ];
 
-  let salaryAnalysis: SalaryDetectionResult | undefined;
-  let fixedExpenseReport: FixedExpenseReport | undefined;
-
-  try {
-    salaryAnalysis = detectSalary(allTransactions);
-  } catch (error) {
-    logWarn('[BankSyncEngine] Salary analysis failed; continuing without insights', {
-      error,
-      transactionCount: allTransactions.length,
-    });
-  }
-
-  try {
-    fixedExpenseReport = detectFixedExpenses(allTransactions);
-  } catch (error) {
-    logWarn('[BankSyncEngine] Fixed expense analysis failed; continuing without insights', {
-      error,
-      transactionCount: allTransactions.length,
-    });
-  }
+  const {
+    salaryAnalysis,
+    fixedExpenseReport,
+  } = analyzeBankSyncTransactions(allTransactions);
 
   emit({ type: 'done', bank_name: 'Todos', message: `Sync completo. ${totalImported} transações importadas.`, progress: 100 });
 
@@ -424,39 +383,4 @@ export function stopAutoSync(): void {
     clearInterval(autoSyncInterval);
     autoSyncInterval = null;
   }
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-export function formatSyncDuration(ms: number): string {
-  if (ms < 1000)  return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${Math.round(ms / 60000)}min`;
-}
-
-export function getSyncStatusSummary(userId: string): {
-  total_banks:    number;
-  connected:      number;
-  last_sync:      string | null;
-  needs_sync:     boolean;
-} {
-  const conns = getConnections(userId);
-  const connected = conns.filter(c => c.connection_status === 'connected' || c.connection_status === 'syncing');
-  const lastSyncTimes = conns
-    .map(c => c.last_sync)
-    .filter(Boolean)
-    .sort()
-    .reverse();
-  const lastSync = lastSyncTimes[0] ?? null;
-  const lastSyncDate = parseLastSyncDate(lastSync ?? undefined);
-
-  // Needs sync if last sync was > 4 hours ago or never
-  const needsSync = !lastSyncDate || (Date.now() - lastSyncDate.getTime()) > 4 * 60 * 60 * 1000;
-
-  return {
-    total_banks: conns.length,
-    connected:   connected.length,
-    last_sync:   lastSync,
-    needs_sync:  needsSync,
-  };
 }

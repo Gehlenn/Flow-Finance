@@ -6,6 +6,8 @@ import logger from '../config/logger';
 import { AppError, asyncHandler } from '../middleware/errorHandler';
 import { safeJsonParse, validateAIResponse } from '../utils/jsonHelpers';
 import { validatePromptInput, getSafeBlockedResponse } from '../services/ai/PromptInjectionGuard';
+import { buildCfoPrompt, buildInsightsFallbackResponse, buildInterpretFallbackResponse, normalizeCFORequestInput } from './aiControllerHelpers';
+export { normalizeCFORequestInput, summarizeConfidenceSummary } from './aiControllerHelpers';
 import {
   InterpretRequest,
   InterpretResponse,
@@ -22,61 +24,6 @@ import {
   DailyInsight,
   StrategicReport,
 } from '../types';
-
-const MAX_CFO_CONTEXT_CHARS = 20000;
-const ALLOWED_CFO_INTENTS = new Set([
-  'spending_advice',
-  'cash_position',
-  'risk_question',
-  'savings_question',
-  'monthly_summary',
-  'receivables_question',
-]);
-
-export function normalizeCFORequestInput(payload: {
-  question?: unknown;
-  context?: unknown;
-  intent?: unknown;
-}): { question: string; context: string; intent: string } {
-  const question = typeof payload.question === 'string' ? payload.question.trim() : '';
-  if (!question) {
-    throw new AppError(400, 'question is required');
-  }
-
-  const rawContext = typeof payload.context === 'string' ? payload.context : '';
-  const context = rawContext.length > MAX_CFO_CONTEXT_CHARS
-    ? rawContext.slice(0, MAX_CFO_CONTEXT_CHARS)
-    : rawContext;
-
-  const rawIntent = typeof payload.intent === 'string' ? payload.intent : '';
-  const intent = ALLOWED_CFO_INTENTS.has(rawIntent) ? rawIntent : 'monthly_summary';
-
-  return { question, context, intent };
-}
-
-function buildInterpretFallbackResponse(): InterpretResponse {
-  return {
-    intent: 'transaction',
-    data: [],
-  };
-}
-
-function buildInsightsFallbackResponse(type: 'daily' | 'strategic'): GenerateInsightsResponse {
-  if (type === 'daily') {
-    return { insights: [] };
-  }
-
-  return {
-    report: {
-      summary: 'Não foi possível gerar o relatório estratégico agora.',
-      strengths: [],
-      weaknesses: [],
-      risks: [],
-      opportunities: [],
-      actions: [],
-    },
-  };
-}
 
 // ─── INTERPRET — Parse smart input (text → transactions/reminders) ─────────────
 
@@ -126,7 +73,7 @@ Responda em JSON estruturado conforme o schema.`;
       reminders?: ReminderData[];
     };
     const intent = parsedRecord.intent === 'reminder' ? 'reminder' : 'transaction';
-    
+
     const response: InterpretResponse = {
       intent,
       data: intent === 'transaction'
@@ -336,44 +283,11 @@ export const cfoController = asyncHandler(async (req: Request, res: Response) =>
 
   logger.info({ intent, questionLength: sanitizedQuestion.length }, 'CFO request received');
 
-  const SAFETY_PREAMBLE = `
-Você é o Assistente Financeiro do Flow Finance.
-
-REGRAS OBRIGATÓRIAS:
-1. Nunca faça garantias financeiras absolutas.
-2. Responda como apoio consultivo prático de caixa de curto prazo, não como agente autônomo.
-3. Seja direto, objetivo e em português brasileiro.
-4. Responda em 2 a 4 blocos curtos, com foco operacional.
-5. Quando houver risco, avise com clareza mas sem alarmismo.
-6. Nunca invente dados — use APENAS o contexto fornecido.
-7. Se não houver dados suficientes, diga isso de forma explícita e curta.
-8. Diferencie claramente: caixa confirmado, previsto, pendente e vencido.
-9. Recebível pendente NÃO é dinheiro disponível.
-10. Não proponha automação externa, integrações novas nem ações automáticas fora do produto.
-11. Não faça recomendação de investimento e não trate investimento como foco da resposta.
-`.trim();
-
-  const intentGuide: Record<string, string> = {
-    spending_advice:  'O usuário quer saber se pode gastar agora. Traga impacto no caixa confirmado e risco de curto prazo.',
-    cash_position: 'O usuário quer leitura de saldo e caixa disponível. Diferencie confirmado de previsto.',
-    risk_question:    'O usuário quer risco de curto prazo. Destaque sinais de atenção sem exagero.',
-    receivables_question:'O usuário quer leitura de recebíveis, pendências e vencidos. Separe claramente o que está apenas previsto/pendente do que está confirmado.',
-    savings_question: 'O usuário quer economia prática. Sugira cortes concretos e de curto prazo.',
-    monthly_summary:  'O usuário quer resumo do mês com foco em decisão operacional.',
-  };
-
-  const prompt = `
-${SAFETY_PREAMBLE}
-
-CONTEXTO FINANCEIRO:
-${context}
-
-TIPO DE PERGUNTA: ${intentGuide[intent] || intent}
-
-PERGUNTA DO USUÁRIO: "${sanitizedQuestion}"
-
-Responda de forma consultiva, personalizada e baseada exclusivamente nos dados acima.
-`;
+  const prompt = buildCfoPrompt({
+    context,
+    intent,
+    question: sanitizedQuestion,
+  });
 
   logger.debug({ promptLength: prompt.length }, 'Calling generateContent for CFO');
 
@@ -383,7 +297,7 @@ Responda de forma consultiva, personalizada e baseada exclusivamente nos dados a
     res.json({ answer });
   } catch (error: unknown) {
     const normalizedError = error instanceof Error ? error : new Error(String(error ?? 'Unknown error'));
-    logger.error({ 
+    logger.error({
       error: normalizedError.message,
       errorType: normalizedError.constructor.name,
       status: (error as { status?: number } | null | undefined)?.status,
@@ -395,50 +309,3 @@ Responda de forma consultiva, personalizada e baseada exclusivamente nos dados a
     throw new AppError(500, `Failed to generate CFO response: ${normalizedError.message || 'Unknown error'}`);
   }
 });
-
-/**
- * Summarizes confidence data from AI interpretation results.
- * Accepts either an array of `{ confidence: number }` items or an object
- * with a `fieldConfidences` map of field → number|string.
- * Returns 'high', 'medium', 'low', or 'unknown'.
- */
-export function summarizeConfidenceSummary(
-  data: unknown,
-): 'high' | 'medium' | 'low' | 'unknown' {
-  if (Array.isArray(data)) {
-    const numeric = (data as Array<{ confidence?: unknown }>)
-      .map((item) => Number(item?.confidence))
-      .filter((v) => !isNaN(v));
-    if (numeric.length === 0) return 'unknown';
-    const avg = numeric.reduce((a, b) => a + b, 0) / numeric.length;
-    if (avg >= 0.75) return 'high';
-    if (avg >= 0.5) return 'medium';
-    return 'low';
-  }
-
-  if (data && typeof data === 'object') {
-    const obj = data as Record<string, unknown>;
-    if (obj.fieldConfidences && typeof obj.fieldConfidences === 'object') {
-      const values = Object.values(obj.fieldConfidences as Record<string, unknown>);
-      let hasLow = false;
-      let hasHigh = false;
-      for (const v of values) {
-        if (v === 'low' || (typeof v === 'number' && v < 0.5)) hasLow = true;
-        if (v === 'high' || (typeof v === 'number' && v >= 0.75)) hasHigh = true;
-      }
-      if (hasLow) return 'low';
-      if (hasHigh) return 'high';
-      return 'medium';
-    }
-    if (obj.confidence !== undefined) {
-      const v = Number(obj.confidence);
-      if (!isNaN(v)) {
-        if (v >= 0.75) return 'high';
-        if (v >= 0.5) return 'medium';
-        return 'low';
-      }
-    }
-  }
-
-  return 'unknown';
-}
