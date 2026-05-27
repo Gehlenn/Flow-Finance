@@ -115,6 +115,12 @@ vi.mock('../../hooks/useSyncEngine', () => ({
 }));
 
 vi.mock('../../src/app/mainNavigation', () => ({
+  getActiveNavigationSection: () => ({
+    id: 'cash',
+    label: 'Dashboard',
+    defaultTab: 'dashboard',
+    items: [{ tab: 'dashboard', label: 'Dashboard' }],
+  }),
   getMainNavigationItems: () => [
     { tab: 'dashboard', label: 'Dashboard' },
   ],

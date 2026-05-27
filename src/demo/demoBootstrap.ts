@@ -330,6 +330,7 @@ export function getDemoBootstrapIdentity(): {
   userId: string;
   email: string | null;
   name: string | null;
+  plan: 'free' | 'pro';
 } | undefined {
   if (typeof window === 'undefined') {
     return undefined;
@@ -344,7 +345,17 @@ export function getDemoBootstrapIdentity(): {
     userId: bootstrap.userId,
     email: bootstrap.userEmail,
     name: bootstrap.userName,
+    plan: bootstrap.plan,
   };
+}
+
+export function getDemoBootstrapPlan(): 'free' | 'pro' | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const bootstrap = getDemoBootstrap(window.location.search, window.localStorage, canEnableDemoBootstrap());
+  return bootstrap?.plan ?? null;
 }
 
 export function canUseDemoWorkspaceFallback(userId?: string | null): boolean {

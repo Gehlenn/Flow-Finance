@@ -1,12 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { calculateDashboardMetrics, buildDashboardReminderStateSummary } from '../../components/Dashboard';
 import {
   createDemoProfileState,
   createDemoWorkspaceEntities,
   getDemoBootstrap,
+  getDemoBootstrapPlan,
 } from '../../src/demo/demoBootstrap';
 
 describe('demo bootstrap', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.pushState({}, '', '/');
+  });
+
   it('stays off without an explicit flag', () => {
     const storage = {
       getItem: () => null,
@@ -43,6 +49,19 @@ describe('demo bootstrap', () => {
       workspaceId: 'ws-demo-check',
       plan: 'pro',
     });
+  });
+
+  it('resolves the active demo plan from query or local storage', () => {
+    window.history.pushState({}, '', '/?demoData=1&demoPlan=pro');
+    expect(getDemoBootstrapPlan()).toBe('pro');
+
+    window.history.pushState({}, '', '/?demoData=1&demoPlan=free');
+    expect(getDemoBootstrapPlan()).toBe('free');
+
+    window.history.pushState({}, '', '/');
+    localStorage.setItem('flow_demo_data', '1');
+    localStorage.setItem('flow_demo_plan', 'pro');
+    expect(getDemoBootstrapPlan()).toBe('pro');
   });
 
   it('returns coherent transactions, receivables and reminder metrics for the dashboard', () => {

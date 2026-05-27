@@ -4,6 +4,7 @@ import {
   apiRequest,
   getAuthHeaders,
 } from '../config/api.config';
+import { getDemoBootstrapPlan } from '../demo/demoBootstrap';
 import { logWarn } from '../utils/logger';
 
 export type WorkspacePlanCatalog = {
@@ -58,6 +59,11 @@ export async function getWorkspacePlanCatalog(input: {
   workspaceId: string;
   currentPlan?: 'free' | 'pro';
 }): Promise<WorkspacePlanCatalog> {
+  const demoPlan = getDemoBootstrapPlan();
+  if (demoPlan) {
+    return createFallbackPlanCatalog(input.workspaceId, demoPlan);
+  }
+
   try {
     return await apiRequest<WorkspacePlanCatalog>(API_ENDPOINTS.SAAS.PLANS, {
       method: 'GET',

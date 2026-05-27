@@ -30,7 +30,7 @@ import { clearCFOConversation, loadCFOConversation, saveCFOConversation, type CF
 import UpgradePromptCard from '../components/UpgradePromptCard';
 import { getWorkspaceBillingOverview, incrementWorkspaceUsage } from '../src/services/firestoreBillingStore';
 import { ensureActiveWorkspace, getCurrentWorkspaceIdentity } from '../src/services/workspaceSession';
-import { getDemoBootstrapIdentity } from '../src/demo/demoBootstrap';
+import { getDemoBootstrapIdentity, getDemoBootstrapPlan } from '../src/demo/demoBootstrap';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -78,21 +78,6 @@ const RESPONSE_DEPTH_LABEL: Record<'standard' | 'reduced', string> = {
 };
 const PANEL_SURFACE = 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900';
 const SOFT_SURFACE = 'rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900';
-
-function getDemoWorkspacePlanOverride(): 'free' | 'pro' | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const params = new URLSearchParams(window.location.search);
-  const isDemoMode = params.get('demoData') === '1' || window.localStorage.getItem('flow_demo_data') === '1';
-  if (!isDemoMode) {
-    return null;
-  }
-
-  const rawPlan = (params.get('demoPlan') || window.localStorage.getItem('flow_demo_plan') || 'pro').toLowerCase();
-  return rawPlan === 'free' ? 'free' : 'pro';
-}
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
@@ -329,7 +314,7 @@ const AICFO: React.FC<AICFOProps> = ({
 
   const scopedTransactions = useMemo(() => transactions, [transactions]);
   const quickPrompts = useMemo(() => QUICK_PROMPTS, []);
-  const demoWorkspacePlan = useMemo(() => getDemoWorkspacePlanOverride(), []);
+  const demoWorkspacePlan = useMemo(() => getDemoBootstrapPlan(), []);
   const effectiveWorkspacePlan = demoWorkspacePlan ?? workspacePlan;
   const isFreePlan = effectiveWorkspacePlan !== 'pro';
   const queryLimit = FREE_LIMITS.consultorIaQueriesPerMonth;

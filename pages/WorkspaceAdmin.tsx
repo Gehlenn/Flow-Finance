@@ -33,6 +33,7 @@ import {
 } from '../src/security/workspacePermissions';
 import { logWarn } from '../src/utils/logger';
 import type { Tab } from '../hooks/navigationTypes';
+import { getDemoBootstrapPlan } from '../src/demo/demoBootstrap';
 
 interface WorkspaceAdminPageProps {
   userId: string | null;
@@ -111,6 +112,29 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
   }, [activeTenantName, activeWorkspace?.tenantName]);
 
   const loadWorkspaceData = async (workspace: WorkspaceSummary) => {
+    const demoPlan = getDemoBootstrapPlan();
+    if (demoPlan) {
+      const [billingOverview, planCatalog] = await Promise.all([
+        getWorkspaceBillingOverview({ tenantId: workspace.tenantId, workspaceId: workspace.workspaceId }),
+        getWorkspacePlanCatalog({
+          workspaceId: workspace.workspaceId,
+          currentPlan: demoPlan,
+        }),
+      ]);
+
+      setBillingCatalog(planCatalog);
+      setCurrentPlan(planCatalog.currentPlan || billingOverview.currentPlan);
+      setMonthlyUsageSummary(
+        `${billingOverview.currentMonthUsage.transactions} transações · ` +
+        `${billingOverview.currentMonthUsage.aiQueries} AI · ` +
+        `${billingOverview.currentMonthUsage.bankConnections} conexões bancárias`,
+      );
+      setWorkspaceMembers([]);
+      setAuditEvents([]);
+      setBillingHooks([]);
+      return;
+    }
+
     const [billingOverview, planCatalog, members, audit, hooks] = await Promise.all([
       getWorkspaceBillingOverview({ tenantId: workspace.tenantId, workspaceId: workspace.workspaceId }),
       getWorkspacePlanCatalog({

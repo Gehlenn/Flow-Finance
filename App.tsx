@@ -40,6 +40,7 @@ import {
   getActiveNavigationSection,
   getMainNavigationItems,
 } from "./src/app/mainNavigation";
+import { getDemoBootstrapPlan } from "./src/demo/demoBootstrap";
 
 const IS_DEV = import.meta.env.DEV;
 const FAB_ENABLED_TABS = new Set(["dashboard"]);
@@ -194,57 +195,61 @@ const App: React.FC = () => {
   ]);
 
   const navigationContext = useMemo(
-    () => ({
-      userId: authState.user.id,
-      userName,
-      userEmail: authState.user.email,
-      activeWorkspaceId: authState.activeWorkspace.workspaceId,
-      activeTenantId: authState.activeWorkspace.tenantId,
-      activeTenantName: authState.activeWorkspace.tenantName,
-      activeWorkspaceName: authState.activeWorkspace.name,
-      activeWorkspacePlan: authState.activeWorkspace.plan || "free",
-      activeWorkspaceRole: authState.activeWorkspace.role,
-      hideValues,
-      theme,
-      isDev: IS_DEV,
-      canAccessDevTools,
-      transactions: financialState.transactions,
-      accounts: financialState.accounts,
-      alerts: financialState.alerts,
-      reminders: financialState.reminders,
-      receivables: financialState.receivables,
-      goals: financialState.goals,
-      latestLeaks: financialState.latestLeaks,
-      latestReport: financialState.latestReport,
-      onToggleHideValues: () => setHideValues((current) => !current),
-      onNavigateToTab: navigation.setActiveTab,
-      onUpdateProfileName: (name: string) => {
-        authState.setUserName(name);
-        void syncEngine.syncProfile({ name });
-      },
-      onThemeChange: (nextTheme: "light" | "dark") => {
-        void syncEngine.syncProfile({ theme: nextTheme });
-      },
-      onLogout: authState.handleLogout,
-      onOpenWorkspaceAdmin: () => navigation.setActiveTab("workspaceadmin"),
-      onAddTransactions: financialState.addTransactions,
-      onDeleteTransaction: financialState.deleteTransaction,
-      onDeleteMultipleTransactions: financialState.deleteTransactions,
-      onUpdateTransaction: financialState.updateTransaction,
-      onCreateAccount: financialState.createAccount,
-      onDeleteAccount: financialState.deleteAccount,
-      onUpdateAccount: financialState.updateAccount,
-      onCreateGoal: financialState.createGoal,
-      onDeleteGoal: financialState.deleteGoal,
-      onContributeGoal: financialState.contributeGoal,
-      onUpdateGoal: financialState.updateGoal,
-      onToggleReminder: financialState.toggleReminder,
-      onDeleteReminder: financialState.deleteReminder,
-      onAddReminder: financialState.addReminder,
-      onUpdateReminder: financialState.updateReminder,
-      onAddAlert: financialState.addAlert,
-      onDeleteAlert: financialState.deleteAlert,
-    }),
+    () => {
+      const activeWorkspacePlan = getDemoBootstrapPlan() || authState.activeWorkspace.plan || "free";
+
+      return {
+        userId: authState.user.id,
+        userName,
+        userEmail: authState.user.email,
+        activeWorkspaceId: authState.activeWorkspace.workspaceId,
+        activeTenantId: authState.activeWorkspace.tenantId,
+        activeTenantName: authState.activeWorkspace.tenantName,
+        activeWorkspaceName: authState.activeWorkspace.name,
+        activeWorkspacePlan,
+        activeWorkspaceRole: authState.activeWorkspace.role,
+        hideValues,
+        theme,
+        isDev: IS_DEV,
+        canAccessDevTools,
+        transactions: financialState.transactions,
+        accounts: financialState.accounts,
+        alerts: financialState.alerts,
+        reminders: financialState.reminders,
+        receivables: financialState.receivables,
+        goals: financialState.goals,
+        latestLeaks: financialState.latestLeaks,
+        latestReport: financialState.latestReport,
+        onToggleHideValues: () => setHideValues((current) => !current),
+        onNavigateToTab: navigation.setActiveTab,
+        onUpdateProfileName: (name: string) => {
+          authState.setUserName(name);
+          void syncEngine.syncProfile({ name });
+        },
+        onThemeChange: (nextTheme: "light" | "dark") => {
+          void syncEngine.syncProfile({ theme: nextTheme });
+        },
+        onLogout: authState.handleLogout,
+        onOpenWorkspaceAdmin: () => navigation.setActiveTab("workspaceadmin"),
+        onAddTransactions: financialState.addTransactions,
+        onDeleteTransaction: financialState.deleteTransaction,
+        onDeleteMultipleTransactions: financialState.deleteTransactions,
+        onUpdateTransaction: financialState.updateTransaction,
+        onCreateAccount: financialState.createAccount,
+        onDeleteAccount: financialState.deleteAccount,
+        onUpdateAccount: financialState.updateAccount,
+        onCreateGoal: financialState.createGoal,
+        onDeleteGoal: financialState.deleteGoal,
+        onContributeGoal: financialState.contributeGoal,
+        onUpdateGoal: financialState.updateGoal,
+        onToggleReminder: financialState.toggleReminder,
+        onDeleteReminder: financialState.deleteReminder,
+        onAddReminder: financialState.addReminder,
+        onUpdateReminder: financialState.updateReminder,
+        onAddAlert: financialState.addAlert,
+        onDeleteAlert: financialState.deleteAlert,
+      };
+    },
     [
       authState.activeWorkspace.name,
       authState.activeWorkspace.plan,

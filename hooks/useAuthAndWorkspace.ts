@@ -3,7 +3,12 @@ import { auth, isFirebaseConfigured, onAuthStateChanged } from '../services/fire
 import { addBreadcrumb, clearUser, setUser } from '../src/config/sentry';
 import { getStoredWorkspaceId, setStoredWorkspaceId } from '../src/config/api.config';
 import { getE2EAuthBootstrap } from '../src/utils/e2eAuthBootstrap';
-import { getDemoBootstrap, isDemoBootstrapAvailable, type DemoBootstrap } from '../src/demo/demoBootstrap';
+import {
+  buildDemoWorkspaceSummary,
+  getDemoBootstrap,
+  isDemoBootstrapAvailable,
+  type DemoBootstrap,
+} from '../src/demo/demoBootstrap';
 import {
   bootstrapBackendSessionFromFirebase,
   bootstrapBackendSessionWithPasswordLogin,
@@ -242,6 +247,21 @@ export function useAuthAndWorkspace() {
       const customEvent = event as CustomEvent<{ workspaceId?: string | null }>;
       const workspaceId = customEvent.detail?.workspaceId || getStoredWorkspaceId();
 
+      if (isDemoBootstrapActive && demoBootstrap && !isDemoBootstrapDismissed) {
+        const demoWorkspace = buildDemoWorkspaceSummary();
+        if (demoWorkspace) {
+          setActiveWorkspace({
+            workspaceId: demoWorkspace.workspaceId,
+            tenantId: demoWorkspace.tenantId,
+            tenantName: demoWorkspace.tenantName || demoWorkspace.name,
+            name: demoWorkspace.name,
+            plan: demoWorkspace.plan,
+            role: demoWorkspace.role,
+          });
+          return;
+        }
+      }
+
       setActiveWorkspace({
         workspaceId: workspaceId || null,
         tenantId: null,
@@ -264,7 +284,7 @@ export function useAuthAndWorkspace() {
 
     window.addEventListener(WORKSPACE_CHANGED_EVENT, handleWorkspaceChanged as EventListener);
     return () => window.removeEventListener(WORKSPACE_CHANGED_EVENT, handleWorkspaceChanged as EventListener);
-  }, [isDemoBootstrapActive, isE2EBootstrapActive, refreshWorkspace]);
+  }, [demoBootstrap, isDemoBootstrapActive, isDemoBootstrapDismissed, isE2EBootstrapActive, refreshWorkspace]);
 
   useEffect(() => {
     if (isE2EBootstrapActive && e2eBootstrap) {

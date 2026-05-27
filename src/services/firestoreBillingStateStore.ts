@@ -4,6 +4,7 @@ import type { BillingHookPayload, PlanName } from '../saas/types';
 import { writeAuditLogEvent } from './firestoreWorkspaceStore';
 import type { WorkspaceBillingHookDocument, WorkspaceBillingState, WorkspaceUsageSnapshot } from './firestoreBillingTypes';
 import { getCurrentMonthKey, getDefaultUsageSnapshot, readWorkspaceUsage } from './firestoreBillingUsageStore';
+import { getDemoBootstrapPlan } from '../demo/demoBootstrap';
 
 const FIREBASE_BILLING_CONFIG_ERROR = new Error('Workspace billing requires Firebase configuration.');
 const FIREBASE_BILLING_CONTEXT_ERROR = new Error('Workspace billing requires a workspaceId and tenantId.');
@@ -40,6 +41,18 @@ export async function getWorkspaceBillingState(
   workspaceId: string,
   tenantId: string,
 ): Promise<WorkspaceBillingState> {
+  const demoPlan = getDemoBootstrapPlan();
+  if (demoPlan) {
+    return {
+      workspaceId,
+      tenantId,
+      plan: demoPlan,
+      status: 'active',
+      updatedAt: nowIso(),
+      updatedByUserId: 'demo',
+    };
+  }
+
   if (!isFirebaseConfigured || !hasWorkspaceContext(workspaceId, tenantId)) {
     return {
       workspaceId,
@@ -197,6 +210,26 @@ export async function getWorkspaceBillingOverview(input: {
   billingState: WorkspaceBillingState;
   billingHooks: WorkspaceBillingHookDocument[];
 }> {
+  const demoPlan = getDemoBootstrapPlan();
+  if (demoPlan) {
+    const billingState: WorkspaceBillingState = {
+      workspaceId: input.workspaceId,
+      tenantId: input.tenantId,
+      plan: demoPlan,
+      status: 'active',
+      updatedAt: nowIso(),
+      updatedByUserId: 'demo',
+    };
+
+    return {
+      currentPlan: demoPlan,
+      usage: {},
+      currentMonthUsage: getDefaultUsageSnapshot(),
+      billingState,
+      billingHooks: [],
+    };
+  }
+
   if (!hasWorkspaceContext(input.workspaceId, input.tenantId)) {
     return {
       currentPlan: 'free',
