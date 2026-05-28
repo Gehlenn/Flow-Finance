@@ -4,20 +4,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AIControlPanel from '../../pages/AIControlPanel';
 
-const logWarnMock = vi.fn();
-const parseOFXMock = vi.fn();
-const parseCSVMock = vi.fn();
+const parserLabMocks = vi.hoisted(() => ({
+  logWarn: vi.fn(),
+  parseOFX: vi.fn(),
+  parseCSV: vi.fn(),
+}));
 
 vi.mock('../../src/utils/logger', () => ({
-  logWarn: (...args: unknown[]) => logWarnMock(...args),
+  logWarn: (...args: unknown[]) => parserLabMocks.logWarn(...args),
 }));
 
 vi.mock('../../src/finance/ofxParser', () => ({
-  parseOFX: (...args: unknown[]) => parseOFXMock(...args),
+  parseOFX: (...args: unknown[]) => parserLabMocks.parseOFX(...args),
 }));
 
 vi.mock('../../src/finance/csvParser', () => ({
-  parseCSV: (...args: unknown[]) => parseCSVMock(...args),
+  parseCSV: (...args: unknown[]) => parserLabMocks.parseCSV(...args),
 }));
 
 describe('AIControlPanel parser lab UI', () => {
@@ -25,8 +27,8 @@ describe('AIControlPanel parser lab UI', () => {
     vi.stubEnv('DEV', 'true');
     vi.stubEnv('VITE_AI_DEBUG_PANEL', '1');
     vi.clearAllMocks();
-    parseOFXMock.mockReturnValue([]);
-    parseCSVMock.mockReturnValue([]);
+    parserLabMocks.parseOFX.mockReturnValue([]);
+    parserLabMocks.parseCSV.mockReturnValue([]);
   });
 
   it('clears stale parser output when the input changes', async () => {
@@ -60,7 +62,7 @@ describe('AIControlPanel parser lab UI', () => {
   });
 
   it('registra contexto quando o Parser Lab falha ao processar entrada', async () => {
-    parseOFXMock.mockImplementationOnce(() => {
+    parserLabMocks.parseOFX.mockImplementationOnce(() => {
       throw new Error('ofx offline');
     });
 
@@ -71,7 +73,7 @@ describe('AIControlPanel parser lab UI', () => {
     fireEvent.change(textarea, { target: { value: 'entrada invalida' } });
     fireEvent.click(screen.getByRole('button', { name: /executar parser/i }));
 
-    expect(logWarnMock).toHaveBeenCalledWith(
+    expect(parserLabMocks.logWarn).toHaveBeenCalledWith(
       '[AIControlPanel] Parser Lab failed to process input',
       expect.objectContaining({
         fallback: 'ai-control-panel-parser-lab-failed',
