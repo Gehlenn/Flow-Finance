@@ -198,4 +198,4 @@ describe('receivables firestore rules', () => {
       { workspace_id: 'ws-2' },
     ));
   });
-}
+});
