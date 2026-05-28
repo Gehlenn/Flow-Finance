@@ -37,6 +37,7 @@ vi.mock('../../src/saas', () => ({
   configureUsageStoreAdapter: vi.fn(),
   createFirestoreBillingTransport: vi.fn(() => ({})),
   createFirestoreUsageStoreAdapter: vi.fn(() => ({})),
+  resetUsageStoreAdapter: vi.fn(),
 }));
 
 vi.mock('../../hooks/useAuthAndWorkspace', () => ({
@@ -110,6 +111,12 @@ vi.mock('../../hooks/useSyncEngine', () => ({
 }));
 
 vi.mock('../../src/app/mainNavigation', () => ({
+  getActiveNavigationSection: () => ({
+    id: 'cash',
+    label: 'Caixa',
+    defaultTab: 'dashboard',
+    items: [{ tab: 'dashboard', label: 'Dashboard' }],
+  }),
   getMainNavigationItems: () => [
     { tab: 'dashboard', label: 'Dashboard' },
   ],
