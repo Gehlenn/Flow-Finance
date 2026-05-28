@@ -11,6 +11,7 @@ import {
   Role,
 } from '../../types';
 import type { AuditAction, AuditEvent, AuditStatus } from './auditLog';
+import { isPostgresStateStoreEnabled } from '../persistence/postgresStateStore';
 
 export interface WorkspaceStoreState {
   tenants: Tenant[];
@@ -202,6 +203,10 @@ export async function readThroughWorkspaceStore<T>(
   loader: () => Promise<T | null | undefined>,
   fallback: () => T,
 ): Promise<T> {
+  if (!isPostgresStateStoreEnabled()) {
+    return fallback();
+  }
+
   const loaded = await loader();
   return loaded ?? fallback();
 }

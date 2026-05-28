@@ -109,18 +109,26 @@ class AIMemoryStore {
     return Array.from(this.memories.values());
   }
 
-  saveMemory(memory: AIMemoryEntry): void {
+  private withScopedMutation(mutator: () => boolean): void {
     this.ensureWorkspaceScope();
-    const userMemories = this.getMemoriesByUser(memory.userId);
-    if (userMemories.length >= MAX_MEMORIES_PER_USER) {
-      const memoryToEvict = pickMemoryToEvict(userMemories);
-      if (memoryToEvict) {
-        this.memories.delete(memoryToEvict.id);
-      }
+    if (mutator()) {
+      this.saveToStorage();
     }
+  }
 
-    this.memories.set(memory.id, memory);
-    this.saveToStorage();
+  saveMemory(memory: AIMemoryEntry): void {
+    this.withScopedMutation(() => {
+      const userMemories = this.getMemoriesByUser(memory.userId);
+      if (userMemories.length >= MAX_MEMORIES_PER_USER) {
+        const memoryToEvict = pickMemoryToEvict(userMemories);
+        if (memoryToEvict) {
+          this.memories.delete(memoryToEvict.id);
+        }
+      }
+
+      this.memories.set(memory.id, memory);
+      return true;
+    });
   }
 
   save(memory: Partial<AIMemoryEntry> & { type: AIMemoryType; value: unknown; key?: string; userId?: string }): void {
@@ -182,29 +190,33 @@ class AIMemoryStore {
   }
 
   updateMemory(id: string, updates: Partial<AIMemoryEntry>): void {
-    this.ensureWorkspaceScope();
-    const memory = this.memories.get(id);
-    if (memory) {
+    this.withScopedMutation(() => {
+      const memory = this.memories.get(id);
+      if (!memory) {
+        return false;
+      }
+
       Object.assign(memory, updates, { updatedAt: Date.now() });
       this.memories.set(id, memory);
-      this.saveToStorage();
-    }
+      return true;
+    });
   }
 
   deleteMemory(id: string): void {
-    this.ensureWorkspaceScope();
-    this.memories.delete(id);
-    this.saveToStorage();
+    this.withScopedMutation(() => this.memories.delete(id));
   }
 
   clearUserMemories(userId: string): void {
-    this.ensureWorkspaceScope();
-    for (const [id, memory] of this.memories) {
-      if (memory.userId === userId) {
-        this.memories.delete(id);
+    this.withScopedMutation(() => {
+      let removed = false;
+      for (const [id, memory] of this.memories) {
+        if (memory.userId === userId) {
+          this.memories.delete(id);
+          removed = true;
+        }
       }
-    }
-    this.saveToStorage();
+      return removed;
+    });
   }
 
   getStats(userId: string): MemoryStats {
@@ -243,9 +255,14 @@ class AIMemoryStore {
   }
 
   clear(): void {
-    this.ensureWorkspaceScope();
-    this.memories.clear();
-    this.saveToStorage();
+    this.withScopedMutation(() => {
+      if (this.memories.size === 0) {
+        return false;
+      }
+
+      this.memories.clear();
+      return true;
+    });
   }
 }
 

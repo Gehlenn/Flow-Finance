@@ -32,7 +32,6 @@ import {
 } from './workspaceStoreHelpers';
 import {
   loadJsonState,
-  isPostgresStateStoreEnabled,
   queryLastWorkspaceForUser,
   queryTenantById,
   queryTenantsForUser,
@@ -262,10 +261,6 @@ export function getWorkspace(workspaceId: string): Workspace | undefined {
 export async function getWorkspaceAsync(workspaceId: string): Promise<Workspace | undefined> {
   return readThroughWorkspaceStore(
     async () => {
-      if (!isPostgresStateStoreEnabled()) {
-        return undefined;
-      }
-
       const workspace = await queryWorkspaceById(workspaceId);
       return workspace ? normalizeWorkspace(workspace) : undefined;
     },
@@ -285,10 +280,6 @@ export function listWorkspacesForUser(userId: string): Workspace[] {
 export async function listWorkspacesForUserAsync(userId: string): Promise<Workspace[]> {
   return readThroughWorkspaceStore(
     async () => {
-      if (!isPostgresStateStoreEnabled()) {
-        return undefined;
-      }
-
       const workspaces = await queryWorkspacesForUser(userId);
       return workspaces.length > 0 ? workspaces.map((workspace) => normalizeWorkspace(workspace)) : undefined;
     },
@@ -308,10 +299,6 @@ export function listTenantsForUser(userId: string): Tenant[] {
 export async function listTenantsForUserAsync(userId: string): Promise<Tenant[]> {
   return readThroughWorkspaceStore(
     async () => {
-      if (!isPostgresStateStoreEnabled()) {
-        return undefined;
-      }
-
       const tenants = await queryTenantsForUser(userId);
       return tenants.length > 0 ? tenants.map((tenant) => normalizeTenant(tenant)) : undefined;
     },
@@ -326,10 +313,6 @@ export function getTenant(tenantId: string): Tenant | undefined {
 export async function getTenantAsync(tenantId: string): Promise<Tenant | undefined> {
   return readThroughWorkspaceStore(
     async () => {
-      if (!isPostgresStateStoreEnabled()) {
-        return undefined;
-      }
-
       const tenant = await queryTenantById(tenantId);
       return tenant ? normalizeTenant(tenant) : undefined;
     },
@@ -396,10 +379,6 @@ export function getWorkspaceUsers(workspaceId: string): WorkspaceUser[] {
 export async function getWorkspaceUsersAsync(workspaceId: string): Promise<WorkspaceUser[]> {
   return readThroughWorkspaceStore(
     async () => {
-      if (!isPostgresStateStoreEnabled()) {
-        return undefined;
-      }
-
       const users = await queryWorkspaceUsers(workspaceId);
       return users.length > 0 ? users : undefined;
     },
@@ -537,10 +516,6 @@ export async function updateWorkspaceBillingAsync(
 ): Promise<Workspace | undefined> {
   return readThroughWorkspaceStore(
     async () => {
-      if (!isPostgresStateStoreEnabled()) {
-        return undefined;
-      }
-
       const workspace = await queryWorkspaceById(workspaceId);
       if (!workspace) {
         return undefined;
@@ -564,10 +539,6 @@ export function findWorkspaceByBillingCustomerId(billingCustomerId: string): Wor
 export async function findWorkspaceByBillingCustomerIdAsync(billingCustomerId: string): Promise<Workspace | undefined> {
   return readThroughWorkspaceStore(
     async () => {
-      if (!isPostgresStateStoreEnabled()) {
-        return undefined;
-      }
-
       const workspace = await queryWorkspaceByBillingCustomerId(billingCustomerId);
       return workspace ? normalizeWorkspace(workspace) : undefined;
     },
@@ -596,10 +567,6 @@ export function getLastWorkspaceForUser(userId: string): Workspace | undefined {
 export async function getLastWorkspaceForUserAsync(userId: string): Promise<Workspace | undefined> {
   return readThroughWorkspaceStore(
     async () => {
-      if (!isPostgresStateStoreEnabled()) {
-        return undefined;
-      }
-
       const workspace = await queryLastWorkspaceForUser(userId);
       return workspace ? normalizeWorkspace(workspace) : undefined;
     },

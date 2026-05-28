@@ -26,9 +26,10 @@ describe('runtime guards', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllEnvs();
   });
 
-  it('treats missing API health endpoint as benign in frontend-only environments', async () => {
+  it('treats missing local API health endpoint as benign in local non-production runtime', async () => {
     fetchMock.mockResolvedValue({
       ok: false,
       status: 404,
@@ -38,7 +39,8 @@ describe('runtime guards', () => {
     const result = await checkAPIHealth();
 
     expect(result.status).toBe('ok');
-    expect(result.message).toContain('frontend-only environment');
+    expect(result.message).toContain('local/non-production runtime');
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('skips API probe in local non-production runtime', async () => {
@@ -56,7 +58,7 @@ describe('runtime guards', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('treats missing version endpoint as benign in frontend-only environments', async () => {
+  it('treats missing local version endpoint as benign in local non-production runtime', async () => {
     fetchMock.mockResolvedValue({
       ok: false,
       status: 404,
@@ -66,7 +68,8 @@ describe('runtime guards', () => {
     const result = await checkAppVersion();
 
     expect(result.status).toBe('ok');
-    expect(result.message).toContain('frontend-only environment');
+    expect(result.message).toContain('local/non-production runtime');
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('skips version probe in local non-production runtime', async () => {
@@ -91,11 +94,13 @@ describe('runtime guards', () => {
     const result = await checkAPIHealth();
 
     expect(result.status).toBe('ok');
-    expect(result.message).toContain('frontend-only environment');
+    expect(result.message).toContain('local/non-production runtime');
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(logWarnMock).not.toHaveBeenCalled();
   });
 
   it('does not reload on version mismatch outside benchmark mode (hotfix)', async () => {
+    vi.stubEnv('VITE_BACKEND_URL', 'https://api.flow.test');
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({ version: '9.9.9' }),
@@ -119,6 +124,7 @@ describe('runtime guards', () => {
   });
 
   it('does not reload on version mismatch in benchmark mode', async () => {
+    vi.stubEnv('VITE_BACKEND_URL', 'https://api.flow.test');
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({ version: '9.9.9' }),
@@ -148,7 +154,8 @@ describe('runtime guards', () => {
     const result = await checkAppVersion();
 
     expect(result.status).toBe('ok');
-    expect(result.message).toContain('frontend-only environment');
+    expect(result.message).toContain('local/non-production runtime');
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(logWarnMock).not.toHaveBeenCalled();
   });
 

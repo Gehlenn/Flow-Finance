@@ -108,7 +108,7 @@ describe('IO Health Check - AI proxy integration', () => {
     expect(interpret.intent).toBe('transaction');
     expect(Array.isArray(interpret.data)).toBe(true);
     expect(tokens).toBe(0);
-    expect(cfo.answer).toBe('');
+    expect(cfo.answer).toContain('Leitura demo');
   });
 
   it('GeminiService should unwrap backend insights payloads', async () => {
