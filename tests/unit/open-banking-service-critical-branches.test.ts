@@ -441,7 +441,7 @@ describe('openBankingService critical branches', () => {
 
   it('interpreta last_sync date-only como data local e rejeita lixo', async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-04-10T03:00:00.000Z'));
+    vi.setSystemTime(new Date(2026, 3, 10, 0, 0));
 
     const { service } = await importService();
 
