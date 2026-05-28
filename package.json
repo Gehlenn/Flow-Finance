@@ -100,5 +100,9 @@
     "typescript": "^6.0.2",
     "vite": "^8.0.8",
     "vitest": "^4.1.4"
+  },
+  "overrides": {
+    "@protobufjs/utf8": "^1.1.1",
+    "protobufjs": "^7.5.8"
   }
 }
