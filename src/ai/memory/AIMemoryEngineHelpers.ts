@@ -124,3 +124,29 @@ export function persistAnalyzedMemorySet<TValue>(params: {
 
   return updated;
 }
+
+export type MemoryAnalysisStep<TValue> = {
+  type: AIMemoryType;
+  values: Map<string, TValue>;
+  confidenceFor: (value: TValue, key: string) => number;
+};
+
+export function runMemoryAnalysisSteps(
+  userId: string,
+  steps: Array<MemoryAnalysisStep<unknown>>,
+  saveOrUpdate: (userId: string, type: AIMemoryType, key: string, value: unknown, confidence: number) => void,
+): number {
+  let updated = 0;
+
+  for (const step of steps) {
+    updated += persistAnalyzedMemorySet({
+      userId,
+      type: step.type,
+      values: step.values,
+      saveOrUpdate,
+      confidenceFor: step.confidenceFor,
+    });
+  }
+
+  return updated;
+}

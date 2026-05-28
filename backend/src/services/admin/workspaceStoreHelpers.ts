@@ -5,8 +5,10 @@ import {
   Workspace,
   WorkspaceEntitlements,
   WorkspacePlan,
+  WorkspaceSummary,
   WorkspaceUser,
   WorkspaceUserPreference,
+  Role,
 } from '../../types';
 import type { AuditAction, AuditEvent, AuditStatus } from './auditLog';
 
@@ -194,4 +196,36 @@ export function buildWorkspaceAuditEvent(input: {
     resourceId: input.resourceId,
     metadata: input.metadata,
   };
+}
+
+export async function readThroughWorkspaceStore<T>(
+  loader: () => Promise<T | null | undefined>,
+  fallback: () => T,
+): Promise<T> {
+  const loaded = await loader();
+  return loaded ?? fallback();
+}
+
+export async function buildWorkspaceSummaries(
+  workspaces: Workspace[],
+  tenants: Tenant[],
+  getRole: (workspaceId: string) => Promise<Role | undefined>,
+): Promise<WorkspaceSummary[]> {
+  const tenantById = new Map(tenants.map((tenant) => [tenant.tenantId, tenant]));
+  const memberships = await Promise.all(workspaces.map(async (workspace) => ({
+    workspaceId: workspace.workspaceId,
+    role: await getRole(workspace.workspaceId),
+  })));
+
+  const roleByWorkspaceId = new Map(memberships.map((membership) => [membership.workspaceId, membership.role]));
+
+  return workspaces.map((workspace) => ({
+    workspaceId: workspace.workspaceId,
+    tenantId: workspace.tenantId,
+    name: workspace.name,
+    isDefault: workspace.isDefault,
+    plan: workspace.plan,
+    role: (roleByWorkspaceId.get(workspace.workspaceId) || 'viewer') as Role,
+    tenantName: tenantById.get(workspace.tenantId)?.name,
+  }));
 }

@@ -29,6 +29,18 @@ export function addQueryFilter(
   clauses.push(buildClause(params.length));
 }
 
+export function resolveQueryLimit(limit: unknown, maxLimit: number): number | undefined {
+  if (!Number.isFinite(limit as number) || (limit as number) <= 0) {
+    return undefined;
+  }
+
+  return Math.min(Number(limit), maxLimit);
+}
+
+export function buildLimitClause(limit: number | undefined): string {
+  return limit ? `LIMIT ${limit}` : '';
+}
+
 export function mapAuditEventRow(row: Record<string, unknown>): PersistedAuditEventRow {
   return {
     id: String(row.id),

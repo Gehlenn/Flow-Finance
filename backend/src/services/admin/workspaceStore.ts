@@ -15,6 +15,7 @@ import logger from '../../config/logger';
 import {
   buildEntitlements,
   buildWorkspaceAuditEvent,
+  buildWorkspaceSummaries,
   buildWorkspaceStoreState,
   cloneState,
   getActiveTenantIdsForUser,
@@ -25,6 +26,7 @@ import {
   normalizeTenant,
   normalizeWorkspace,
   normalizeWorkspaceStoreState,
+  readThroughWorkspaceStore,
   replaceUserPreference,
   type WorkspaceStoreState,
 } from './workspaceStoreHelpers';
@@ -177,13 +179,11 @@ export function createTenant(name: string, ownerUserId: string): { tenant: Tenan
     status: 'active',
   };
 
-  persistState({
-    ...buildWorkspaceStoreState(state, {
-      tenants: [...state.tenants, tenant],
-      workspaces: [...state.workspaces, workspace],
-      workspaceUsers: [...state.workspaceUsers, ownerMembership],
-      userPreferences: replaceUserPreference(state.userPreferences, ownerUserId, workspaceId, createdAt),
-    }),
+  persistStateUpdate(state, {
+    tenants: [...state.tenants, tenant],
+    workspaces: [...state.workspaces, workspace],
+    workspaceUsers: [...state.workspaceUsers, ownerMembership],
+    userPreferences: replaceUserPreference(state.userPreferences, ownerUserId, workspaceId, createdAt),
   });
 
   recordAuditEvent(buildWorkspaceAuditEvent({
@@ -233,13 +233,11 @@ export function createWorkspace(name: string, ownerUserId: string, tenantId?: st
     status: 'active',
   };
 
-  persistState({
-    ...buildWorkspaceStoreState(state, {
-      tenants: state.tenants.map((item) => item.tenantId === tenantId ? { ...item, updatedAt: createdAt } : item),
-      workspaces: [...state.workspaces, workspace],
-      workspaceUsers: [...state.workspaceUsers, ownerMembership],
-      userPreferences: replaceUserPreference(state.userPreferences, ownerUserId, workspaceId, createdAt),
-    }),
+  persistStateUpdate(state, {
+    tenants: state.tenants.map((item) => item.tenantId === tenantId ? { ...item, updatedAt: createdAt } : item),
+    workspaces: [...state.workspaces, workspace],
+    workspaceUsers: [...state.workspaceUsers, ownerMembership],
+    userPreferences: replaceUserPreference(state.userPreferences, ownerUserId, workspaceId, createdAt),
   });
 
   recordAuditEvent(buildWorkspaceAuditEvent({
@@ -262,14 +260,17 @@ export function getWorkspace(workspaceId: string): Workspace | undefined {
 }
 
 export async function getWorkspaceAsync(workspaceId: string): Promise<Workspace | undefined> {
-  if (isPostgresStateStoreEnabled()) {
-    const workspace = await queryWorkspaceById(workspaceId);
-    if (workspace) {
-      return normalizeWorkspace(workspace);
-    }
-  }
+  return readThroughWorkspaceStore(
+    async () => {
+      if (!isPostgresStateStoreEnabled()) {
+        return undefined;
+      }
 
-  return getWorkspace(workspaceId);
+      const workspace = await queryWorkspaceById(workspaceId);
+      return workspace ? normalizeWorkspace(workspace) : undefined;
+    },
+    () => getWorkspace(workspaceId),
+  );
 }
 
 export function listWorkspacesForUser(userId: string): Workspace[] {
@@ -282,14 +283,17 @@ export function listWorkspacesForUser(userId: string): Workspace[] {
 }
 
 export async function listWorkspacesForUserAsync(userId: string): Promise<Workspace[]> {
-  if (isPostgresStateStoreEnabled()) {
-    const workspaces = await queryWorkspacesForUser(userId);
-    if (workspaces.length > 0) {
-      return workspaces.map((workspace) => normalizeWorkspace(workspace));
-    }
-  }
+  return readThroughWorkspaceStore(
+    async () => {
+      if (!isPostgresStateStoreEnabled()) {
+        return undefined;
+      }
 
-  return listWorkspacesForUser(userId);
+      const workspaces = await queryWorkspacesForUser(userId);
+      return workspaces.length > 0 ? workspaces.map((workspace) => normalizeWorkspace(workspace)) : undefined;
+    },
+    () => listWorkspacesForUser(userId),
+  );
 }
 
 export function listTenantsForUser(userId: string): Tenant[] {
@@ -302,14 +306,17 @@ export function listTenantsForUser(userId: string): Tenant[] {
 }
 
 export async function listTenantsForUserAsync(userId: string): Promise<Tenant[]> {
-  if (isPostgresStateStoreEnabled()) {
-    const tenants = await queryTenantsForUser(userId);
-    if (tenants.length > 0) {
-      return tenants.map((tenant) => normalizeTenant(tenant));
-    }
-  }
+  return readThroughWorkspaceStore(
+    async () => {
+      if (!isPostgresStateStoreEnabled()) {
+        return undefined;
+      }
 
-  return listTenantsForUser(userId);
+      const tenants = await queryTenantsForUser(userId);
+      return tenants.length > 0 ? tenants.map((tenant) => normalizeTenant(tenant)) : undefined;
+    },
+    () => listTenantsForUser(userId),
+  );
 }
 
 export function getTenant(tenantId: string): Tenant | undefined {
@@ -317,36 +324,23 @@ export function getTenant(tenantId: string): Tenant | undefined {
 }
 
 export async function getTenantAsync(tenantId: string): Promise<Tenant | undefined> {
-  if (isPostgresStateStoreEnabled()) {
-    const tenant = await queryTenantById(tenantId);
-    if (tenant) {
-      return normalizeTenant(tenant);
-    }
-  }
+  return readThroughWorkspaceStore(
+    async () => {
+      if (!isPostgresStateStoreEnabled()) {
+        return undefined;
+      }
 
-  return getTenant(tenantId);
+      const tenant = await queryTenantById(tenantId);
+      return tenant ? normalizeTenant(tenant) : undefined;
+    },
+    () => getTenant(tenantId),
+  );
 }
 
 export async function listWorkspaceSummariesForUserAsync(userId: string): Promise<WorkspaceSummary[]> {
   const workspaces = await listWorkspacesForUserAsync(userId);
   const tenants = await listTenantsForUserAsync(userId);
-  const tenantById = new Map(tenants.map((tenant) => [tenant.tenantId, tenant]));
-  const memberships = await Promise.all(workspaces.map(async (workspace) => ({
-    workspaceId: workspace.workspaceId,
-    role: await getUserRoleInWorkspaceAsync(userId, workspace.workspaceId),
-  })));
-
-  const roleByWorkspaceId = new Map(memberships.map((membership) => [membership.workspaceId, membership.role]));
-
-  return workspaces.map((workspace) => ({
-    workspaceId: workspace.workspaceId,
-    tenantId: workspace.tenantId,
-    name: workspace.name,
-    isDefault: workspace.isDefault,
-    plan: workspace.plan,
-    role: (roleByWorkspaceId.get(workspace.workspaceId) || 'viewer') as Role,
-    tenantName: tenantById.get(workspace.tenantId)?.name,
-  }));
+  return buildWorkspaceSummaries(workspaces, tenants, (workspaceId) => getUserRoleInWorkspaceAsync(userId, workspaceId));
 }
 
 export function addUserToWorkspace(
@@ -377,10 +371,8 @@ export function addUserToWorkspace(
     status: 'active',
   };
 
-  persistState({
-    ...buildWorkspaceStoreState(state, {
-      workspaceUsers: [...state.workspaceUsers, workspaceUser],
-    }),
+  persistStateUpdate(state, {
+    workspaceUsers: [...state.workspaceUsers, workspaceUser],
   });
 
   recordAuditEvent(buildWorkspaceAuditEvent({
@@ -402,14 +394,17 @@ export function getWorkspaceUsers(workspaceId: string): WorkspaceUser[] {
 }
 
 export async function getWorkspaceUsersAsync(workspaceId: string): Promise<WorkspaceUser[]> {
-  if (isPostgresStateStoreEnabled()) {
-    const users = await queryWorkspaceUsers(workspaceId);
-    if (users.length > 0) {
-      return users;
-    }
-  }
+  return readThroughWorkspaceStore(
+    async () => {
+      if (!isPostgresStateStoreEnabled()) {
+        return undefined;
+      }
 
-  return getWorkspaceUsers(workspaceId);
+      const users = await queryWorkspaceUsers(workspaceId);
+      return users.length > 0 ? users : undefined;
+    },
+    () => getWorkspaceUsers(workspaceId),
+  );
 }
 
 export function getUserRoleInWorkspace(userId: string, workspaceId: string): Role | undefined {
@@ -449,9 +444,7 @@ export function removeUserFromWorkspace(userId: string, workspaceId: string): bo
     return false;
   }
 
-  persistState({
-    ...buildWorkspaceStoreState(state, { workspaceUsers }),
-  });
+  persistStateUpdate(state, { workspaceUsers });
 
   if (workspace) {
     recordAuditEvent(buildWorkspaceAuditEvent({
@@ -503,15 +496,13 @@ export function updateWorkspaceBilling(
     return undefined;
   }
 
-  persistState({
-    ...buildWorkspaceStoreState(state, {
-      tenants: state.tenants.map((tenant) => tenant.tenantId === updatedWorkspace?.tenantId ? {
-        ...tenant,
-        plan: updatedWorkspace?.plan || tenant.plan,
-        updatedAt: new Date().toISOString(),
-      } : tenant),
-      workspaces,
-    }),
+  persistStateUpdate(state, {
+    tenants: state.tenants.map((tenant) => tenant.tenantId === updatedWorkspace?.tenantId ? {
+      ...tenant,
+      plan: updatedWorkspace?.plan || tenant.plan,
+      updatedAt: new Date().toISOString(),
+    } : tenant),
+    workspaces,
   });
 
   recordAuditEvent(buildWorkspaceAuditEvent({
@@ -544,13 +535,21 @@ export async function updateWorkspaceBillingAsync(
     subscription?: WorkspaceSubscription;
   },
 ): Promise<Workspace | undefined> {
-  if (isPostgresStateStoreEnabled()) {
-    const workspace = await queryWorkspaceById(workspaceId);
-    if (!workspace) return undefined;
-    // Write through the sync path so Postgres persistence is triggered.
-    return updateWorkspaceBilling(workspaceId, input);
-  }
-  return updateWorkspaceBilling(workspaceId, input);
+  return readThroughWorkspaceStore(
+    async () => {
+      if (!isPostgresStateStoreEnabled()) {
+        return undefined;
+      }
+
+      const workspace = await queryWorkspaceById(workspaceId);
+      if (!workspace) {
+        return undefined;
+      }
+
+      return updateWorkspaceBilling(workspaceId, input);
+    },
+    () => updateWorkspaceBilling(workspaceId, input),
+  );
 }
 
 export function getWorkspaceEntitlements(workspaceId: string): WorkspaceEntitlements | undefined {
@@ -563,24 +562,25 @@ export function findWorkspaceByBillingCustomerId(billingCustomerId: string): Wor
 }
 
 export async function findWorkspaceByBillingCustomerIdAsync(billingCustomerId: string): Promise<Workspace | undefined> {
-  if (isPostgresStateStoreEnabled()) {
-    const workspace = await queryWorkspaceByBillingCustomerId(billingCustomerId);
-    if (workspace) {
-      return normalizeWorkspace(workspace);
-    }
-  }
+  return readThroughWorkspaceStore(
+    async () => {
+      if (!isPostgresStateStoreEnabled()) {
+        return undefined;
+      }
 
-  return findWorkspaceByBillingCustomerId(billingCustomerId);
+      const workspace = await queryWorkspaceByBillingCustomerId(billingCustomerId);
+      return workspace ? normalizeWorkspace(workspace) : undefined;
+    },
+    () => findWorkspaceByBillingCustomerId(billingCustomerId),
+  );
 }
 
 export function setLastWorkspaceForUser(userId: string, workspaceId: string): void {
   const state = loadState();
   const updatedAt = new Date().toISOString();
 
-  persistState({
-    ...buildWorkspaceStoreState(state, {
-      userPreferences: replaceUserPreference(state.userPreferences, userId, workspaceId, updatedAt),
-    }),
+  persistStateUpdate(state, {
+    userPreferences: replaceUserPreference(state.userPreferences, userId, workspaceId, updatedAt),
   });
 }
 
@@ -594,14 +594,17 @@ export function getLastWorkspaceForUser(userId: string): Workspace | undefined {
 }
 
 export async function getLastWorkspaceForUserAsync(userId: string): Promise<Workspace | undefined> {
-  if (isPostgresStateStoreEnabled()) {
-    const workspace = await queryLastWorkspaceForUser(userId);
-    if (workspace) {
-      return normalizeWorkspace(workspace);
-    }
-  }
+  return readThroughWorkspaceStore(
+    async () => {
+      if (!isPostgresStateStoreEnabled()) {
+        return undefined;
+      }
 
-  return getLastWorkspaceForUser(userId);
+      const workspace = await queryLastWorkspaceForUser(userId);
+      return workspace ? normalizeWorkspace(workspace) : undefined;
+    },
+    () => getLastWorkspaceForUser(userId),
+  );
 }
 
 export function resetWorkspaceStoreForTests(): void {
@@ -611,6 +614,10 @@ export function resetWorkspaceStoreForTests(): void {
   if (fs.existsSync(filePath)) {
     fs.rmSync(filePath, { force: true });
   }
+}
+
+function persistStateUpdate(state: WorkspaceStoreState, updates: Partial<WorkspaceStoreState>): void {
+  persistState(buildWorkspaceStoreState(state, updates));
 }
 
 export function getWorkspaceStoreSnapshotForTests(): WorkspaceStoreState {

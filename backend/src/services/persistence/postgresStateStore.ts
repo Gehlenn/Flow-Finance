@@ -4,6 +4,7 @@ import { Tenant, Workspace, WorkspaceUser, WorkspaceUserPreference } from '../..
 import {
   addQueryFilter,
   buildWhereClause,
+  buildLimitClause,
   buildWorkspaceSaasStateFromRows,
   mapAuditEventRow,
   mapDomainEventRow,
@@ -12,6 +13,7 @@ import {
   mapWorkspaceUsageEventRow,
   queryMappedRow,
   queryMappedRows,
+  resolveQueryLimit,
 } from './postgresStateStoreQueryHelpers';
 import {
   saveWorkspaceSaasRows,
@@ -512,12 +514,10 @@ export async function queryAuditEvents(filters: {
   addQueryFilter(params, clauses, filters.since, (index) => `at >= $${index}`);
   addQueryFilter(params, clauses, filters.until, (index) => `at <= $${index}`);
 
-  const limit = Number.isFinite(filters.limit) && (filters.limit as number) > 0
-    ? Math.min(Number(filters.limit), 5000)
-    : undefined;
+  const limit = resolveQueryLimit(filters.limit, 5000);
 
   const whereClause = buildWhereClause('WHERE 1=1', clauses);
-  const limitClause = limit ? `LIMIT ${limit}` : '';
+  const limitClause = buildLimitClause(limit);
 
   const result = await query(`
     SELECT id, at, tenant_id, workspace_id, user_id, email, action, status, resource_type, resource_id, ip, user_agent, resource, metadata
@@ -609,10 +609,8 @@ export async function queryWorkspaceUsageEvents(
   addQueryFilter(params, clauses, filters.from, (index) => `at >= $${index}`);
   addQueryFilter(params, clauses, filters.to, (index) => `at <= $${index}`);
 
-  const limit = Number.isFinite(filters.limit) && (filters.limit as number) > 0
-    ? Math.min(Number(filters.limit), 5000)
-    : undefined;
-  const limitClause = limit ? `LIMIT ${limit}` : '';
+  const limit = resolveQueryLimit(filters.limit, 5000);
+  const limitClause = buildLimitClause(limit);
 
   const whereClause = buildWhereClause('WHERE 1=1', clauses);
   return queryMappedRows(`
@@ -768,9 +766,7 @@ export async function queryDomainEvents(filters: {
   addQueryFilter(params, clauses, filters.since, (index) => `occurred_at >= $${index}`);
   addQueryFilter(params, clauses, filters.until, (index) => `occurred_at <= $${index}`);
 
-  const limit = Number.isFinite(filters.limit) && (filters.limit as number) > 0
-    ? Math.min(Number(filters.limit), 1000)
-    : 100;
+  const limit = resolveQueryLimit(filters.limit, 1000) ?? 100;
 
   params.push(limit);
   const whereClause = buildWhereClause('WHERE 1=1', clauses);
