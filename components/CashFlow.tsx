@@ -356,7 +356,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
   const reportDiagnostic = report?.diagnostic;
   const reportDiagnosticMessage =
     reportDiagnostic?.message || reportDiagnostic?.suggestion || report?.executiveSummary || '';
-  const hasReportDiagnostic = Boolean(reportDiagnostic);
+  const hasReportDiagnostic = Boolean(reportDiagnostic && reportDiagnostic.kind !== 'demo-local');
 
   const totalsByPeriod = useMemo(() => {
     const summary = calculateCashflowSummary(filtered);

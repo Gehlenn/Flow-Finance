@@ -222,6 +222,36 @@ describe('CashFlow clarity', () => {
     });
   }, 20_000);
 
+  it('nao trata diagnostico local da demo como falha de IA', async () => {
+    vi.spyOn(GeminiService.prototype, 'generateStrategicReport').mockResolvedValueOnce({
+      executiveSummary: 'Diagnostico local pronto para demonstracao.',
+      actionPlan: ['Confirmar recebiveis pendentes antes de assumir novos gastos.'],
+      diagnostic: {
+        kind: 'demo-local',
+        message: 'Diagnostico local gerado sem depender do backend de IA.',
+        suggestion: 'Use esta leitura para demonstracao.',
+      },
+    });
+
+    render(
+      <CashFlow
+        activeWorkspaceId={workspaceId}
+        activeWorkspaceName="Clinica Flow"
+        transactions={[]}
+        hideValues={false}
+        theme="light"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: /Estrat/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Gerar diagn/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/Diagnostico local pronto/i).length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByText(/IA sem resposta completa/i)).toBeNull();
+  }, 20_000);
+
   it('mostra estados vazios uteis quando nao ha movimentos no recorte', () => {
     render(
       <CashFlow
