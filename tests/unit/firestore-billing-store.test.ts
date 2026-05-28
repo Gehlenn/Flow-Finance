@@ -152,8 +152,8 @@ describe('firestoreBillingStore', () => {
   });
 
   it('uses the local calendar month for usage aggregation', () => {
-    const boundary = new Date('2026-05-01T02:00:00.000Z');
-    expect(getCurrentMonthKey(boundary)).toBe('2026-04');
+    expect(getCurrentMonthKey(new Date(2026, 3, 30, 23, 59))).toBe('2026-04');
+    expect(getCurrentMonthKey(new Date(2026, 4, 1, 0, 0))).toBe('2026-05');
   });
 
   it('returns safe defaults when billing context is incomplete and rejects write operations', async () => {
