@@ -1,9 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const logInfoMock = vi.fn();
+const auditLogMocks = vi.hoisted(() => ({
+  logError: vi.fn(),
+  logInfo: vi.fn(),
+  logWarn: vi.fn(),
+}));
 
 vi.mock('../../src/utils/logger', () => ({
-  logInfo: (...args: unknown[]) => logInfoMock(...args),
+  logError: (...args: unknown[]) => auditLogMocks.logError(...args),
+  logInfo: (...args: unknown[]) => auditLogMocks.logInfo(...args),
+  logWarn: (...args: unknown[]) => auditLogMocks.logWarn(...args),
 }));
 
 describe('auditLogService observability', () => {
@@ -18,7 +24,7 @@ describe('auditLogService observability', () => {
     logAuditEvent('transaction_created', 'financial_event', 'tx-1', { source: 'test' });
 
     expect(getAuditLogs()).toHaveLength(1);
-    expect(logInfoMock).toHaveBeenCalledWith(
+    expect(auditLogMocks.logInfo).toHaveBeenCalledWith(
       '[Audit] recorded event',
       expect.objectContaining({
         eventType: 'transaction_created',
