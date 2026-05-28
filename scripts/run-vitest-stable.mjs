@@ -11,6 +11,7 @@ const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 const ignoredDirs = new Set(['node_modules', 'coverage', 'dist', '.git', '.vercel', 'backend']);
 const defaultExcludedPatterns = [
   'tests/e2e/',
+  'tests/firestore/',
   'integration',
   'tests/firestore/firestore.rules.emulator.test.ts',
   'tests/unit/api-storage-provider.test.ts',
