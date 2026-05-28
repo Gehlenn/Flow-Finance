@@ -1,10 +1,10 @@
 ﻿import { test, expect, Page } from '@playwright/test';
 import { skipIfNoAuthShell } from './helpers/skipHelpers';
-import { gotoAuthedApp } from './helpers/appBootstrap';
+import { gotoDemoApp } from './helpers/appBootstrap';
 import { clickWithRetry } from './helpers/resilientActions';
 
 async function openApp(page: Page): Promise<void> {
-  await gotoAuthedApp(page, {
+  await gotoDemoApp(page, {
     userId: 'insights-user',
     userEmail: 'insights@flow.dev',
     userName: 'Insights QA',
@@ -29,6 +29,11 @@ async function tryOpenInsightsSurface(page: Page): Promise<boolean> {
   return false;
 }
 
+async function openConsultorIA(page: Page): Promise<void> {
+  await clickWithRetry(() => page.getByRole('button', { name: /^IA$/i }).first());
+  await clickWithRetry(() => page.getByRole('button', { name: /Consultor|Apoio IA|Consultor IA/i }).first());
+}
+
 test.describe('Insights + AI CFO', () => {
   test('should navigate to IA support and keep insights surface reachable when exposed', async ({ page }) => {
     const consoleIssues: string[] = [];
@@ -47,7 +52,7 @@ test.describe('Insights + AI CFO', () => {
     // Independentemente de trigger textual de Insights, o shell deve permanecer utilizavel.
     await expect(page.locator('body')).toBeVisible();
 
-    await clickWithRetry(() => page.getByRole('button', { name: /Apoio IA|Consultor IA/i }));
+    await openConsultorIA(page);
     await expect(page.locator('body')).toBeVisible();
 
     expect(consoleIssues).toEqual([]);
