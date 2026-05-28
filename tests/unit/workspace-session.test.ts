@@ -127,6 +127,7 @@ describe('workspaceSession', () => {
       userId: 'demo-user-1',
       email: 'demo@flow.dev',
       name: 'Demo QA',
+      plan: 'pro',
     });
   });
 
