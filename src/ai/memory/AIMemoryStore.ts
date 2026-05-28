@@ -116,6 +116,11 @@ class AIMemoryStore {
     }
   }
 
+  private withWorkspaceScope<T>(reader: () => T): T {
+    this.ensureWorkspaceScope();
+    return reader();
+  }
+
   saveMemory(memory: AIMemoryEntry): void {
     this.withScopedMutation(() => {
       const userMemories = this.getMemoriesByUser(memory.userId);
@@ -136,8 +141,7 @@ class AIMemoryStore {
   }
 
   getMemory(id: string): AIMemoryEntry | undefined {
-    this.ensureWorkspaceScope();
-    return this.memories.get(id);
+    return this.withWorkspaceScope(() => this.memories.get(id));
   }
 
   getMemoriesByUser(userId: string): AIMemoryEntry[] {
@@ -220,9 +224,7 @@ class AIMemoryStore {
   }
 
   getStats(userId: string): MemoryStats {
-    this.ensureWorkspaceScope();
-    const userMemories = this.getMemoriesByUser(userId);
-    return buildMemoryStats(userMemories);
+    return this.withWorkspaceScope(() => buildMemoryStats(this.getMemoriesByUser(userId)));
   }
 
   getUserMemoryProfile(userId: string): {
@@ -231,9 +233,7 @@ class AIMemoryStore {
     spending_profile: AIMemoryEntry[];
     merchant_categories: AIMemoryEntry[];
   } {
-    this.ensureWorkspaceScope();
-    const memories = this.getMemoriesByUser(userId);
-    return buildUserMemoryProfile(userId, memories);
+    return this.withWorkspaceScope(() => buildUserMemoryProfile(userId, this.getMemoriesByUser(userId)));
   }
 
   setDecayConfig(config: Partial<MemoryDecayConfig>): void {
@@ -241,13 +241,14 @@ class AIMemoryStore {
   }
 
   runDecayCycle(): void {
-    this.ensureWorkspaceScope();
-    this.applyDecay();
-    this.saveToStorage();
+    this.withWorkspaceScope(() => {
+      this.applyDecay();
+      this.saveToStorage();
+    });
   }
 
   getAllMemories(): AIMemoryEntry[] {
-    return this.getActiveMemoryValues();
+    return this.withWorkspaceScope(() => this.getActiveMemoryValues());
   }
 
   getAll(): AIMemoryEntry[] {
