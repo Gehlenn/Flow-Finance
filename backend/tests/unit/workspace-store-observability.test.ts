@@ -207,4 +207,31 @@ describe('workspaceStore observability', () => {
       }),
     );
   });
+
+  it('usa lista vazia do Postgres sem cair para o fallback local', async () => {
+    mocks.isPostgresStateStoreEnabled.mockReturnValue(true);
+    mocks.queryWorkspacesForUser.mockResolvedValueOnce([]);
+    mocks.queryTenantsForUser.mockResolvedValueOnce([]);
+    mocks.queryWorkspaceUsers.mockResolvedValueOnce([]);
+    mocks.saveWorkspaceStoreState.mockResolvedValue(undefined);
+
+    const {
+      createTenant,
+      listWorkspacesForUserAsync,
+      listTenantsForUserAsync,
+      getWorkspaceUsersAsync,
+      resetWorkspaceStoreForTests,
+    } = await import('../../src/services/admin/workspaceStore');
+
+    resetWorkspaceStoreForTests();
+    const { workspace } = createTenant('Tenant Flow', 'user-1');
+
+    await expect(listWorkspacesForUserAsync('user-1')).resolves.toEqual([]);
+    await expect(listTenantsForUserAsync('user-1')).resolves.toEqual([]);
+    await expect(getWorkspaceUsersAsync(workspace.workspaceId)).resolves.toEqual([]);
+
+    expect(mocks.queryWorkspacesForUser).toHaveBeenCalledWith('user-1');
+    expect(mocks.queryTenantsForUser).toHaveBeenCalledWith('user-1');
+    expect(mocks.queryWorkspaceUsers).toHaveBeenCalledWith(workspace.workspaceId);
+  });
 });

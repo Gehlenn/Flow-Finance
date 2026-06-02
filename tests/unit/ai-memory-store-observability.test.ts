@@ -1,4 +1,4 @@
-﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const logInfoMock = vi.fn();
 
@@ -11,6 +11,10 @@ describe('AIMemoryStore observability', () => {
     vi.resetModules();
     vi.clearAllMocks();
     localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('logs contextual data when decayed memories are pruned', async () => {
@@ -44,5 +48,48 @@ describe('AIMemoryStore observability', () => {
       }),
     );
   });
-});
 
+  it('loads decayed memories without reentering storage during the initial decay pass', async () => {
+    localStorage.setItem('active_workspace_id', 'ws-ai-memory');
+    const now = Date.now();
+    localStorage.setItem(
+      'flow_ai_memory_v2:ws-ai-memory',
+      JSON.stringify([
+        {
+          id: 'old-1',
+          userId: 'user-1',
+          type: 'spending_pattern',
+          key: 'stale_pattern',
+          value: { category: 'transporte' },
+          confidence: 0.19,
+          strength: 19,
+          occurrences: 1,
+          createdAt: now - 100 * 86400000,
+          updatedAt: now - 100 * 86400000,
+          lastObservedAt: now - 100 * 86400000,
+        },
+      ]),
+    );
+
+    const originalGetItem = Storage.prototype.getItem;
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem');
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+    let getItemCalls = 0;
+
+    getItemSpy.mockImplementation(function (this: Storage, key: string) {
+      getItemCalls += 1;
+      if (getItemCalls > 3) {
+        throw new Error('reentrant load detected');
+      }
+
+      return originalGetItem.call(this, key);
+    });
+
+    await expect(import('../../src/ai/memory/AIMemoryStore')).resolves.toMatchObject({
+      aiMemoryStore: expect.any(Object),
+    });
+
+    expect(getItemCalls).toBe(3);
+    expect(setItemSpy).toHaveBeenCalledWith('flow_ai_memory_v2:ws-ai-memory', '[]');
+  });
+});

@@ -59,11 +59,12 @@ class AIMemoryStore {
       if (stored) {
         const parsed = JSON.parse(stored) as AIMemoryEntry[];
         this.memories = new Map(parsed.map((m) => [m.id, m]));
+        this.initialized = true;
         this.applyDecay();
       } else {
         this.memories = new Map();
+        this.initialized = true;
       }
-      this.initialized = true;
     } catch (error) {
       logWarn('[AI Memory Store] Failed to load; returning empty memory set', {
         storageKey: this.activeStorageKey,

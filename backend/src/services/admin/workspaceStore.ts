@@ -281,7 +281,7 @@ export async function listWorkspacesForUserAsync(userId: string): Promise<Worksp
   return readThroughWorkspaceStore(
     async () => {
       const workspaces = await queryWorkspacesForUser(userId);
-      return workspaces.length > 0 ? workspaces.map((workspace) => normalizeWorkspace(workspace)) : undefined;
+      return workspaces.map((workspace) => normalizeWorkspace(workspace));
     },
     () => listWorkspacesForUser(userId),
   );
@@ -300,7 +300,7 @@ export async function listTenantsForUserAsync(userId: string): Promise<Tenant[]>
   return readThroughWorkspaceStore(
     async () => {
       const tenants = await queryTenantsForUser(userId);
-      return tenants.length > 0 ? tenants.map((tenant) => normalizeTenant(tenant)) : undefined;
+      return tenants.map((tenant) => normalizeTenant(tenant));
     },
     () => listTenantsForUser(userId),
   );
@@ -380,7 +380,7 @@ export async function getWorkspaceUsersAsync(workspaceId: string): Promise<Works
   return readThroughWorkspaceStore(
     async () => {
       const users = await queryWorkspaceUsers(workspaceId);
-      return users.length > 0 ? users : undefined;
+      return users;
     },
     () => getWorkspaceUsers(workspaceId),
   );
