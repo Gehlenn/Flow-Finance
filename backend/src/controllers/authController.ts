@@ -58,6 +58,16 @@ export const loginController = asyncHandler(async (req: Request, res: Response) 
 
   // Legacy local login is intentionally blocked unless explicitly enabled.
   if (!isInsecureLocalLoginAllowed()) {
+    logger.warn({
+      event: 'auth_login_blocked',
+      path: req.path,
+      ip: req.ip,
+      userAgent: req.headers?.['user-agent'],
+      emailDomain: normalizedEmail.includes('@') ? normalizedEmail.split('@').pop() : undefined,
+      requestedUserIdProvided: typeof requestedUserId === 'string' && requestedUserId.trim().length > 0,
+      insecureLocalLoginAllowed: false,
+      fallback: 'auth-login-disabled',
+    }, 'Email/password login blocked by backend policy');
     throw new AppError(
       503,
       'Email/password login is disabled. Use Firebase session exchange or configure secure credential verification.'
@@ -119,6 +129,16 @@ export const firebaseSessionController = asyncHandler(async (req: Request, res: 
   }
 
   if (!isFirebaseIdentityVerificationConfigured()) {
+    logger.warn({
+      event: 'auth_firebase_session_blocked',
+      path: req.path,
+      ip: req.ip,
+      userAgent: req.headers?.['user-agent'],
+      hasIdToken: true,
+      idTokenLength: idToken.length,
+      firebaseConfigured: false,
+      fallback: 'firebase-session-misconfigured',
+    }, 'Firebase session exchange unavailable: backend not configured');
     throw new AppError(503, 'Firebase identity verification is not configured on the backend');
   }
 

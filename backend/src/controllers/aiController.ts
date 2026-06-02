@@ -252,6 +252,8 @@ export const tokenCountController = asyncHandler(async (req: Request, res: Respo
 });
 
 // ─── CFO CONTROLLER — free‑form financial assistant using OpenAI ─────────────
+const CFO_FALLBACK_ANSWER = 'Nao consegui gerar a resposta consultiva agora. Verifique a sessao e tente novamente em alguns instantes.';
+
 export const cfoController = asyncHandler(async (req: Request, res: Response) => {
   const { question, context, intent } = normalizeCFORequestInput(req.body as {
     question?: unknown;
@@ -298,14 +300,18 @@ export const cfoController = asyncHandler(async (req: Request, res: Response) =>
   } catch (error: unknown) {
     const normalizedError = error instanceof Error ? error : new Error(String(error ?? 'Unknown error'));
     logger.error({
+      event: 'ai_cfo_request_failed',
       error: normalizedError.message,
       errorType: normalizedError.constructor.name,
       status: (error as { status?: number } | null | undefined)?.status,
       userId: req.userId,
+      path: req.path,
+      hasContext: context.length > 0,
       questionLength: sanitizedQuestion.length,
+      contextLength: context.length,
       intent,
-      fallback: 'cfo-failed',
-    }, 'CFO generation error');
-    throw new AppError(500, `Failed to generate CFO response: ${normalizedError.message || 'Unknown error'}`);
+      fallback: 'cfo-fallback-answer',
+    }, 'CFO generation error; returning fallback answer');
+    res.json({ answer: CFO_FALLBACK_ANSWER });
   }
 });

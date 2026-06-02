@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   User, LogOut, Moon, Sliders, Sun, Edit2,
   ChevronRight, Phone, BrainCircuit, X, Loader2, Send,
@@ -32,6 +32,7 @@ import {
 } from '../src/security/workspacePermissions';
 import { logWarn } from '../src/utils/logger';
 import { FREE_LIMITS, MONETIZATION_PRICING } from '../src/app/monetizationPlan';
+import { getDemoBootstrapPlan } from '../src/demo/demoBootstrap';
 
 function buildSettingsDiagnostic(message: string): { title: string; message: string; suggestion: string } {
   const normalized = message.toLowerCase();
@@ -122,6 +123,8 @@ const Settings: React.FC<SettingsProps> = ({
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [workspaceSwitching, setWorkspaceSwitching] = useState(false);
   const [monthlyUsageSummary, setMonthlyUsageSummary] = useState('0 transacoes - 0 consultas IA');
+  const demoWorkspacePlan = useMemo(() => getDemoBootstrapPlan(), []);
+  const demoMode = demoWorkspacePlan !== null;
 
   // Integration keys state
   const [integrationKeyConfigured, setIntegrationKeyConfigured] = useState(false);
@@ -329,7 +332,9 @@ const Settings: React.FC<SettingsProps> = ({
       setWorkspaces(availableWorkspaces);
       setBillingCatalog(catalog);
       setCurrentPlan(catalog.currentPlan || overview.currentPlan);
-      setPlanName((catalog.currentPlan || overview.currentPlan) === 'pro' ? 'Pro' : 'Free');
+      setPlanName((catalog.currentPlan || overview.currentPlan) === 'pro'
+        ? (demoMode ? 'Pro liberado (beta)' : 'Pro')
+        : 'Free');
       setMonthlyUsageSummary(
         `${overview.currentMonthUsage.transactions} transacoes - ` +
         `${overview.currentMonthUsage.aiQueries} consultas IA`,
@@ -424,13 +429,14 @@ const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  const handleAiSupport = async () => {
-    if (!supportQuery.trim()) return;
+  const handleAiSupport = async (nextQuery?: string) => {
+    const query = nextQuery ?? supportQuery;
+    if (!query.trim()) return;
     setIsGeneratingSupport(true);
     setSupportResponse('');
     setSupportDiagnostic(null);
 
-    const q = supportQuery.toLowerCase();
+    const q = query.toLowerCase();
     let intent = 'monthly_summary';
     if (/(falta entrar|receber|recebivel|pendente|vencido|a receber)/.test(q)) intent = 'receivables_question';
     else if (/(gastar|posso gastar|limite|disponivel|sobrou)/.test(q)) intent = 'spending_advice';
@@ -480,7 +486,7 @@ const Settings: React.FC<SettingsProps> = ({
         {
           method: 'POST',
           body: JSON.stringify({
-            question: supportQuery,
+            question: query,
             context: '',
             intent,
           }),
@@ -612,40 +618,51 @@ const Settings: React.FC<SettingsProps> = ({
                   </ul>
                 </div>
                 <div className="pt-3 flex flex-col gap-2">
-                  {currentPlan === 'pro' ? (
-                    <button
-                      onClick={() => void handleOpenBillingPortal()}
-                      disabled={billingActionBusy || !billingCatalog?.stripePortalEnabled}
-                      className="w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.16em] text-white disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-slate-700"
-                    >
-                      {billingActionBusy ? 'Abrindo portal...' : 'Gerenciar assinatura'}
-                    </button>
+                  {demoMode ? (
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-100 space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-200">Beta com Pro liberado</p>
+                      <p className="text-sm font-medium leading-relaxed">
+                        Este workspace demo já opera no Pro. O checkout e o portal Stripe ficam para a fase futura de billing.
+                      </p>
+                    </div>
                   ) : (
-                    <button
-                      onClick={() => void handleStartUpgrade()}
-                      disabled={billingActionBusy || !billingCatalog?.stripeConfigured}
-              className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold uppercase tracking-[0.16em] text-white disabled:cursor-not-allowed disabled:bg-slate-300 dark:bg-slate-100 dark:text-slate-900 dark:disabled:bg-slate-700"
-                    >
-                      {billingActionBusy ? 'Abrindo checkout...' : `Assinar Pro - R$ ${MONETIZATION_PRICING.proMonthlyBRL.toFixed(2).replace('.', ',')}/mes`}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => window.location.assign('/pricing')}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold uppercase tracking-[0.16em] text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"
-                  >
-                    Ver pricing
-                    <ChevronRight size={14} />
-                  </button>
-                  {!billingCatalog?.stripeConfigured && (
-                    <p className="text-xs font-medium text-amber-600 dark:text-amber-300">
-                      Stripe ainda nao configurado neste ambiente. O wiring de upgrade esta pronto, mas depende dos price IDs e segredos do ambiente alvo.
-                    </p>
-                  )}
-                  {currentPlan === 'pro' && !billingCatalog?.stripePortalEnabled && (
-                    <p className="text-xs font-medium text-amber-600 dark:text-amber-300">
-                      O portal de assinatura libera depois que este workspace estiver vinculado a um customer Stripe valido.
-                    </p>
+                    <>
+                      {currentPlan === 'pro' ? (
+                        <button
+                          onClick={() => void handleOpenBillingPortal()}
+                          disabled={billingActionBusy || !billingCatalog?.stripePortalEnabled}
+                          className="w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.16em] text-white disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-slate-700"
+                        >
+                          {billingActionBusy ? 'Abrindo portal...' : 'Gerenciar assinatura'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => void handleStartUpgrade()}
+                          disabled={billingActionBusy || !billingCatalog?.stripeConfigured}
+                          className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold uppercase tracking-[0.16em] text-white disabled:cursor-not-allowed disabled:bg-slate-300 dark:bg-slate-100 dark:text-slate-900 dark:disabled:bg-slate-700"
+                        >
+                          {billingActionBusy ? 'Abrindo checkout...' : `Assinar Pro - R$ ${MONETIZATION_PRICING.proMonthlyBRL.toFixed(2).replace('.', ',')}/mes`}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => window.location.assign('/pricing')}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold uppercase tracking-[0.16em] text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"
+                      >
+                        Ver pricing
+                        <ChevronRight size={14} />
+                      </button>
+                      {!billingCatalog?.stripeConfigured && (
+                        <p className="text-xs font-medium text-amber-600 dark:text-amber-300">
+                          Stripe ainda nao configurado neste ambiente. O wiring de upgrade esta pronto, mas depende dos price IDs e segredos do ambiente alvo.
+                        </p>
+                      )}
+                      {currentPlan === 'pro' && !billingCatalog?.stripePortalEnabled && (
+                        <p className="text-xs font-medium text-amber-600 dark:text-amber-300">
+                          O portal de assinatura libera depois que este workspace estiver vinculado a um customer Stripe valido.
+                        </p>
+                      )}
+                    </>
                   )}
                   {billingActionError && (
                     <p className="text-sm font-medium text-rose-500">{billingActionError}</p>
@@ -887,7 +904,7 @@ const Settings: React.FC<SettingsProps> = ({
                   ].map(({ type, label }) => (
                     <div key={type} className="flex items-center gap-2">
                       <code className="text-xs font-mono bg-slate-200 dark:bg-slate-700 px-1 rounded text-slate-600 dark:text-slate-300 shrink-0">{type}</code>
-                      <span className="text-xs text-slate-400">→ {label}</span>
+                      <span className="text-xs text-slate-400">-&gt; {label}</span>
                     </div>
                   ))}
                 </div>
@@ -1033,7 +1050,7 @@ const Settings: React.FC<SettingsProps> = ({
                   <p className="text-sm text-slate-400 font-semibold uppercase tracking-[0.16em]">O que voce precisa resolver?</p>
                   <div className="grid grid-cols-1 gap-2 px-4">
                     {['Ajuda com fluxo de caixa', 'Como devo usar meu saldo agora?', 'Como exportar meus dados?'].map((question) => (
-                      <button key={question} onClick={() => { setSupportQuery(question); void handleAiSupport(); }} className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 transition-all text-left border border-transparent hover:border-slate-200">{question}</button>
+                      <button key={question} onClick={() => { setSupportQuery(question); void handleAiSupport(question); }} className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 transition-all text-left border border-transparent hover:border-slate-200">{question}</button>
                     ))}
                   </div>
                 </div>
@@ -1055,11 +1072,18 @@ const Settings: React.FC<SettingsProps> = ({
                 type="text"
                 value={supportQuery}
                 onChange={(event) => setSupportQuery(event.target.value)}
-                onKeyPress={(event) => event.key === 'Enter' && void handleAiSupport()}
+                onKeyPress={(event) => event.key === 'Enter' && void handleAiSupport(event.currentTarget.value)}
                 placeholder="Digite sua pergunta sobre caixa, integrações ou planos..."
                 className="flex-1 p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl outline-none font-medium text-sm text-slate-700 dark:text-white"
               />
-              <button onClick={() => void handleAiSupport()} className="p-4 bg-slate-900 text-white rounded-2xl shadow-lg active:scale-95 transition-all dark:bg-slate-100 dark:text-slate-900"><Send size={20} /></button>
+              <button
+                type="button"
+                aria-label="Enviar pergunta ao guia IA"
+                onClick={() => void handleAiSupport(supportQuery)}
+                className="p-4 bg-slate-900 text-white rounded-2xl shadow-lg active:scale-95 transition-all dark:bg-slate-100 dark:text-slate-900"
+              >
+                <Send size={20} />
+              </button>
             </div>
           </div>
         </div>
@@ -1075,6 +1099,3 @@ const Settings: React.FC<SettingsProps> = ({
 };
 
 export default Settings;
-
-
-

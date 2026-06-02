@@ -134,6 +134,23 @@ describe('AI CFO route integration', () => {
     expect(response.body.answer).toBe('Resposta CFO de teste');
     expect(generateContentMock).toHaveBeenCalledOnce();
   });
+
+  it('returns a fallback answer when the provider fails', async () => {
+    generateContentMock.mockRejectedValueOnce(new Error('provider offline'));
+
+    const response = await request(app)
+      .post('/api/ai/cfo')
+      .set('Authorization', createTestAuthorizationHeader('user-1'))
+      .set('x-workspace-id', 'ws-1')
+      .send({
+        question: 'Posso gastar este mes?',
+        context: 'Saldo atual: 2500',
+        intent: 'spending_advice',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.answer).toContain('Nao consegui gerar a resposta consultiva');
+  });
 });
 
 

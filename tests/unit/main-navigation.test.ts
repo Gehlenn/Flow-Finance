@@ -53,6 +53,8 @@ describe('main navigation focus', () => {
     expect(aiItems[aiItems.length - 2]?.tab).toBe('aicontrol');
     expect(aiItems[aiItems.length - 2]?.label).toBe('Lab IA');
     expect(aiItems[aiItems.length - 1]?.tab).toBe('performance');
+    expect(getActiveNavigationSection('aicontrol', false).id).toBe('cash');
+    expect(getActiveNavigationSection('aicontrol', true).id).toBe('ai');
   });
 
   it('never exposes openbanking as a main nav item in any mode', () => {

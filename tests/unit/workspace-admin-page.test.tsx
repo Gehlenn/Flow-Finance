@@ -19,6 +19,7 @@ const workspaceAdminMocks = vi.hoisted(() => ({
   createWorkspacePortalSession: vi.fn(),
   locationAssign: vi.fn(),
   logWarn: vi.fn(),
+  demoPlan: { value: null as 'free' | 'pro' | null },
 }));
 
 vi.mock('../../src/services/workspaceSession', () => ({
@@ -46,6 +47,10 @@ vi.mock('../../src/saas/billingClient', () => ({
 
 vi.mock('../../src/utils/logger', () => ({
   logWarn: workspaceAdminMocks.logWarn,
+}));
+
+vi.mock('../../src/demo/demoBootstrap', () => ({
+  getDemoBootstrapPlan: () => workspaceAdminMocks.demoPlan.value,
 }));
 
 import WorkspaceAdminPage from '../../pages/WorkspaceAdmin';
@@ -109,6 +114,7 @@ function setup(
 describe('WorkspaceAdminPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    workspaceAdminMocks.demoPlan.value = null;
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: {
@@ -269,5 +275,27 @@ describe('WorkspaceAdminPage', () => {
     expect(screen.getByText(/Falha na operacao do workspace/i)).toBeTruthy();
     expect(screen.getByText(/A operacao do workspace nao concluiu agora/i)).toBeTruthy();
     expect(screen.getByText(/Atualize a tela e tente novamente com a mesma sessao/i)).toBeTruthy();
+  });
+
+  it('shows beta pro state without Stripe or plan-change CTAs in demo mode', async () => {
+    workspaceAdminMocks.demoPlan.value = 'pro';
+
+    setup('owner', {
+      currentPlan: 'pro',
+      stripeConfigured: false,
+      manualPlanChangeAllowed: true,
+      billingProvider: 'none',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Beta com Pro liberado/i)).toBeTruthy();
+    });
+
+    expect(screen.queryByText(/Iniciar upgrade Pro/i)).toBeNull();
+    expect(screen.queryByText(/Abrir portal financeiro/i)).toBeNull();
+    expect(screen.queryByText(/^Definir Free$/i)).toBeNull();
+    expect(screen.queryByText(/^Definir Pro$/i)).toBeNull();
+    expect(screen.getByText(/beta demo/i)).toBeTruthy();
+    expect(screen.getByText(/Plano atual: PRO/i)).toBeTruthy();
   });
 });

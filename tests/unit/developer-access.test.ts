@@ -22,6 +22,18 @@ describe('developer access', () => {
     expect(canAccessDeveloperTools({ isDevMode: true, email: 'demo@flowfinance.local' })).toBe(false);
   });
 
+  it('normalizes allowlist entries and email casing before matching', async () => {
+    vi.stubEnv('VITE_DEV_ACCOUNT_EMAILS', ' Dev@Flow.Test , admin@flow.test ');
+    const { canAccessDeveloperTools } = await import('../../src/app/developerAccess');
+
+    expect(
+      canAccessDeveloperTools({
+        isDevMode: true,
+        email: '  DEV@flow.test  ',
+      }),
+    ).toBe(true);
+  });
+
   it('supports an explicit local override for development sessions', async () => {
     localStorage.setItem('flow_dev_tools', '1');
     const { canAccessDeveloperTools } = await import('../../src/app/developerAccess');

@@ -13,6 +13,7 @@ const settingsMocks = vi.hoisted(() => ({
   createWorkspacePortalSession: vi.fn(),
   apiRequest: vi.fn(),
   logWarn: vi.fn(),
+  demoPlan: { value: null as 'free' | 'pro' | null },
 }));
 
 vi.mock('@google/genai', () => ({
@@ -57,13 +58,18 @@ vi.mock('../../src/utils/logger', () => ({
   logWarn: settingsMocks.logWarn,
 }));
 
+vi.mock('../../src/demo/demoBootstrap', () => ({
+  getDemoBootstrapPlan: () => settingsMocks.demoPlan.value,
+}));
+
 import Settings from '../../components/Settings';
 import { linkWithPopup } from '../../services/firebase';
 
 function renderSettings(
   role: 'owner' | 'viewer',
-  options?: { integrationKeysConfigured?: boolean; generateError?: boolean; revokeError?: boolean },
+  options?: { integrationKeysConfigured?: boolean; generateError?: boolean; revokeError?: boolean; currentPlan?: 'free' | 'pro' },
 ) {
+  const currentPlan = options?.currentPlan || 'free';
   settingsMocks.apiRequest.mockImplementation(async (endpoint: string, init?: { method?: string }) => {
     if (String(endpoint).includes('/integration-keys/generate')) {
       if (options?.generateError) {
@@ -94,19 +100,19 @@ function renderSettings(
     return {};
   });
   settingsMocks.getCurrentWorkspaceIdentity.mockReturnValue({ userId: 'user-1', name: 'Flow User', email: 'user@test.dev' });
-  settingsMocks.listUserWorkspaces.mockResolvedValue([{ workspaceId: 'ws-1', tenantId: 'tenant-1', tenantName: 'Tenant 1', name: 'Workspace 1', plan: 'free', role, isDefault: true }]);
-  settingsMocks.ensureActiveWorkspace.mockResolvedValue({ workspaceId: 'ws-1', tenantId: 'tenant-1', tenantName: 'Tenant 1', name: 'Workspace 1', plan: 'free', role, isDefault: true });
+  settingsMocks.listUserWorkspaces.mockResolvedValue([{ workspaceId: 'ws-1', tenantId: 'tenant-1', tenantName: 'Tenant 1', name: 'Workspace 1', plan: currentPlan, role, isDefault: true }]);
+  settingsMocks.ensureActiveWorkspace.mockResolvedValue({ workspaceId: 'ws-1', tenantId: 'tenant-1', tenantName: 'Tenant 1', name: 'Workspace 1', plan: currentPlan, role, isDefault: true });
   settingsMocks.getWorkspaceBillingOverview.mockResolvedValue({
-    currentPlan: 'free',
+    currentPlan,
     usage: { '2026-04': { transactions: 0, aiQueries: 0, bankConnections: 0 } },
     currentMonthUsage: { transactions: 0, aiQueries: 0, bankConnections: 0 },
-    billingState: { workspaceId: 'ws-1', tenantId: 'tenant-1', plan: 'free', status: 'active', updatedAt: '2026-04-02T00:00:00.000Z', updatedByUserId: 'user-1' },
+    billingState: { workspaceId: 'ws-1', tenantId: 'tenant-1', plan: currentPlan, status: 'active', updatedAt: '2026-04-02T00:00:00.000Z', updatedByUserId: 'user-1' },
     billingHooks: [],
   });
   settingsMocks.getWorkspacePlanCatalog.mockResolvedValue({
     scope: 'workspace',
     workspaceId: 'ws-1',
-    currentPlan: 'free',
+    currentPlan,
     mockBillingEnabled: true,
     stripeConfigured: false,
     stripePortalEnabled: false,
@@ -135,6 +141,7 @@ function renderSettings(
 describe('Settings workspace admin entry', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    settingsMocks.demoPlan.value = null;
   });
 
   it('shows the workspace admin entry for owner', async () => {
@@ -178,8 +185,19 @@ describe('Settings workspace admin entry', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Guia com IA/i }));
-    fireEvent.change(screen.getByPlaceholderText(/caixa, integrações ou planos/i), { target: { value: 'O que ainda falta entrar?' } });
-    fireEvent.keyPress(screen.getByPlaceholderText(/caixa, integrações ou planos/i), { key: 'Enter', code: 'Enter', charCode: 13 });
+    const supportInput = await screen.findByPlaceholderText(/Digite sua pergunta sobre caixa/i);
+    fireEvent.change(supportInput, { target: { value: 'O que ainda falta entrar?' } });
+    await waitFor(() => {
+      expect((supportInput as HTMLInputElement).value).toBe('O que ainda falta entrar?');
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Enviar pergunta ao guia IA/i }));
+
+    await waitFor(() => {
+      expect(settingsMocks.apiRequest).toHaveBeenCalledWith(
+        '/ai/cfo',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
 
     await waitFor(() => {
       expect(screen.getByText(/Diagnóstico do guia com IA/i)).toBeTruthy();
@@ -194,9 +212,9 @@ describe('Settings workspace admin entry', () => {
     renderSettings('owner');
 
     expect(await screen.findByText(/Nao foi possivel carregar o plano do workspace/i)).toBeTruthy();
-    expect(await screen.findByRole('status')).toBeTruthy();
+    const billingStatus = await screen.findByRole('status');
     expect(screen.getByText(/Falha ao carregar a configuracao/i)).toBeTruthy();
-    expect(screen.getByText(/Pr[óo]ximo passo:/i)).toBeTruthy();
+    expect(billingStatus.textContent?.toLowerCase()).toContain('verifique a sessao');
     expect(settingsMocks.logWarn).toHaveBeenCalledWith(
       '[Settings] Failed to load workspace billing overview',
       expect.objectContaining({
@@ -232,7 +250,7 @@ describe('Settings workspace admin entry', () => {
     renderSettings('owner', { generateError: true });
 
     await waitFor(() => {
-      expect(screen.getByText(/Chave de integração/i)).toBeTruthy();
+      expect(screen.getByRole('button', { name: /Gerar chave/i })).toBeTruthy();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Gerar chave/i }));
@@ -264,6 +282,23 @@ describe('Settings workspace admin entry', () => {
         fallback: 'settings-revoke-integration-key-failed',
       }),
     );
+  });
+
+  it('evita CTA de Stripe e mostra estado beta Pro quando demo ativo', async () => {
+    settingsMocks.demoPlan.value = 'pro';
+
+    renderSettings('owner', { currentPlan: 'pro' });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Pro liberado \(beta\)/i)).toBeTruthy();
+    });
+
+    expect(screen.getByText(/Beta com Pro liberado/i)).toBeTruthy();
+    expect(screen.queryByText(/Gerenciar assinatura/i)).toBeNull();
+    expect(screen.queryByText(/Assinar Pro/i)).toBeNull();
+    expect(screen.queryByText(/Ver pricing/i)).toBeNull();
+    expect(screen.queryByText(/Stripe ainda nao configurado neste ambiente/i)).toBeNull();
+    expect(screen.queryByText(/portal de assinatura libera/i)).toBeNull();
   });
 
 });

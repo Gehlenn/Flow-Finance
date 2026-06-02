@@ -98,6 +98,8 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
   const [errorDiagnostic, setErrorDiagnostic] = useState<{ title: string; message: string; suggestion: string } | null>(null);
   const [memberUserId, setMemberUserId] = useState('');
   const [memberRole, setMemberRole] = useState<WorkspaceRole>('member');
+  const demoWorkspacePlan = useMemo(() => getDemoBootstrapPlan(), []);
+  const demoMode = demoWorkspacePlan !== null;
 
   const canManageMembers = canManageWorkspaceMembers(activeWorkspace?.role || activeWorkspaceRole);
   const canManageBilling = canManageWorkspaceBilling(activeWorkspace?.role || activeWorkspaceRole);
@@ -112,13 +114,12 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
   }, [activeTenantName, activeWorkspace?.tenantName]);
 
   const loadWorkspaceData = async (workspace: WorkspaceSummary) => {
-    const demoPlan = getDemoBootstrapPlan();
-    if (demoPlan) {
+    if (demoWorkspacePlan) {
       const [billingOverview, planCatalog] = await Promise.all([
         getWorkspaceBillingOverview({ tenantId: workspace.tenantId, workspaceId: workspace.workspaceId }),
         getWorkspacePlanCatalog({
           workspaceId: workspace.workspaceId,
-          currentPlan: demoPlan,
+          currentPlan: demoWorkspacePlan,
         }),
       ]);
 
@@ -423,7 +424,7 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
   const stripeConfigured = billingCatalog?.stripeConfigured === true;
   const stripePortalEnabled = billingCatalog?.stripePortalEnabled === true;
   const manualPlanChangeAllowed = billingCatalog?.manualPlanChangeAllowed === true;
-  const showMockPlanButtons = canManageBilling && manualPlanChangeAllowed && !stripeConfigured;
+  const showMockPlanButtons = !demoMode && canManageBilling && manualPlanChangeAllowed && !stripeConfigured;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-24">
@@ -481,11 +482,20 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
                   <p className="text-sm font-semibold text-slate-800 dark:text-white">Plano atual: {currentPlan.toUpperCase()}</p>
                   <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Mes atual: {monthlyUsageSummary}</p>
                   <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
-                    Modo de faturamento: {billingCatalog?.billingProvider || 'mock'}
+                    Modo de faturamento: {demoMode ? 'beta demo' : (billingCatalog?.billingProvider || 'none')}
                   </p>
                 </div>
                 <div className="space-y-3">
-                  {stripeConfigured ? (
+                  {demoMode ? (
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-100 space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-emerald-700 dark:text-emerald-200">
+                        Beta com Pro liberado
+                      </p>
+                      <p className="text-sm font-medium leading-relaxed">
+                        Este workspace demo já está no Pro. As rotas de Stripe ficam para uma etapa futura e não devem bloquear a navegação nesta beta.
+                      </p>
+                    </div>
+                  ) : stripeConfigured ? (
                     <div className="space-y-2">
                       {currentPlan === 'pro' ? (
                         <>

@@ -55,13 +55,28 @@ function createFallbackPlanCatalog(workspaceId: string, currentPlan: 'free' | 'p
   };
 }
 
+function createDemoPlanCatalog(workspaceId: string, currentPlan: 'free' | 'pro'): WorkspacePlanCatalog {
+  return {
+    scope: 'workspace',
+    workspaceId,
+    currentPlan,
+    mockBillingEnabled: false,
+    stripeConfigured: false,
+    stripePortalEnabled: false,
+    hasBillingCustomer: false,
+    billingProvider: 'none',
+    manualPlanChangeAllowed: false,
+    plans: [],
+  };
+}
+
 export async function getWorkspacePlanCatalog(input: {
   workspaceId: string;
   currentPlan?: 'free' | 'pro';
 }): Promise<WorkspacePlanCatalog> {
   const demoPlan = getDemoBootstrapPlan();
   if (demoPlan) {
-    return createFallbackPlanCatalog(input.workspaceId, demoPlan);
+    return createDemoPlanCatalog(input.workspaceId, demoPlan);
   }
 
   try {
