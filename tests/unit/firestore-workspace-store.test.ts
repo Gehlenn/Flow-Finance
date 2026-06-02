@@ -56,6 +56,7 @@ import {
   addWorkspaceMember,
   createPersonalWorkspace,
   listWorkspaceAuditEvents,
+  loadWorkspaceEntities,
   listWorkspaceMembers,
   listWorkspaceCollectionDocuments,
   listUserWorkspaceSummaries,
@@ -203,6 +204,56 @@ describe('firestoreWorkspaceStore', () => {
       createdAt: '2026-04-03T00:00:00.000Z',
       id: 'evt-1',
     });
+  });
+
+  it('returns empty entities and blocks writes when workspace context is missing', async () => {
+    await expect(loadWorkspaceEntities('')).resolves.toEqual({
+      accounts: [],
+      transactions: [],
+      goals: [],
+      reminders: [],
+      receivables: [],
+    });
+    await expect(listWorkspaceCollectionDocuments('', 'subscriptions')).resolves.toEqual([]);
+    await expect(listWorkspaceAuditEvents({ tenantId: '', workspaceId: 'ws-1' })).resolves.toEqual([]);
+
+    await expect(upsertWorkspaceCollectionDocument('subscriptions', {
+      id: 'sub-1',
+      name: 'Spotify',
+      amount: 21.9,
+      cycle: 'monthly',
+      status: 'active',
+    }, {
+      userId: 'user-1',
+      tenantId: '',
+      workspaceId: 'ws-1',
+    })).rejects.toThrow(/workspaceId and tenantId/i);
+
+    await expect(replaceWorkspaceEntityCollection(
+      'accounts',
+      [],
+      [],
+      {
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+        workspaceId: '',
+      },
+    )).rejects.toThrow(/workspaceId and tenantId/i);
+
+    await expect(addWorkspaceMember({
+      tenantId: '',
+      workspaceId: 'ws-1',
+      userId: 'user-2',
+      role: 'viewer',
+      invitedByUserId: 'user-1',
+    })).rejects.toThrow(/workspaceId and tenantId/i);
+
+    await expect(removeWorkspaceMember({
+      tenantId: '',
+      workspaceId: 'ws-1',
+      userId: 'user-2',
+      removedByUserId: 'user-1',
+    })).rejects.toThrow(/workspaceId and tenantId/i);
   });
 
   it('reconciles temporary ids and writes audit entries when replacing a workspace collection', async () => {

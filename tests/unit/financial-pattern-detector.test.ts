@@ -67,4 +67,19 @@ describe('FinancialPatternDetector', () => {
     expect(patterns.weeklySpikes).toHaveLength(0);
     expect(patterns.weeklySpikeInsights).toHaveLength(0);
   });
+
+  it('trata datas-only como datas validas e ignora datas invalidas', () => {
+    const detector = new FinancialPatternDetector();
+    const transactions: Transaction[] = [
+      expense('1', 59.9, 'Netflix', '2026-01-04'),
+      expense('2', 59.9, 'Netflix', '2026-02-08'),
+      expense('3', 59.9, 'Netflix', '2026-03-08'),
+      expense('4', 80, 'Broken', 'invalid-date'),
+    ];
+
+    const patterns = detector.detectPatterns(transactions);
+
+    expect(patterns.recurringInsights.some((item) => item.key.includes('netflix'))).toBe(true);
+    expect(patterns.weeklySpikeInsights.every((item) => item.transaction.description !== 'Broken')).toBe(true);
+  });
 });

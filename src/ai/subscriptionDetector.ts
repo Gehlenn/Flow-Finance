@@ -11,12 +11,15 @@
 
 import { Transaction, TransactionType } from '../../types';
 import { makeId } from '../../utils/helpers';
+import { normalizeSubscriptionText, roundSubscriptionAmount } from './subscriptionDetectionCore';
 import {
-  inferSubscriptionCycleFromDates,
-  normalizeSubscriptionText,
-  roundSubscriptionAmount,
-} from './subscriptionDetectionCore';
-
+  detectCycle,
+  estimateNextCharge,
+  groupTransactionsByAmount,
+  parseSubscriptionDate,
+  txMatchesService,
+} from './subscriptionDetectorHelpers';
+import { KNOWN_SERVICES } from './subscriptionDetectorCatalog';
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -47,110 +50,6 @@ export interface SubscriptionSummary {
   categories:       Record<string, number>;  // categoria → total mensal
 }
 
-// ─── Known subscription catalog ───────────────────────────────────────────────
-
-interface KnownService {
-  name:     string;
-  keywords: string[];        // fragments to match in description/merchant
-  category: string;
-  logo:     string;
-  typical_range?: [number, number]; // [min, max] expected value
-}
-
-const KNOWN_SERVICES: KnownService[] = [
-  // Streaming de vídeo
-  { name: 'Netflix',        keywords: ['netflix'],                     category: 'Entretenimento', logo: '🎬', typical_range: [20, 60]  },
-  { name: 'Disney+',        keywords: ['disney', 'disney+'],           category: 'Entretenimento', logo: '🏰', typical_range: [15, 40]  },
-  { name: 'HBO Max',        keywords: ['hbo', 'max', 'warner'],        category: 'Entretenimento', logo: '📺', typical_range: [20, 50]  },
-  { name: 'Amazon Prime',   keywords: ['amazon prime', 'prime video'], category: 'Entretenimento', logo: '📦', typical_range: [10, 30]  },
-  { name: 'Globoplay',      keywords: ['globoplay', 'globo play'],      category: 'Entretenimento', logo: '🌐', typical_range: [15, 40]  },
-  { name: 'Paramount+',     keywords: ['paramount'],                    category: 'Entretenimento', logo: '🎭', typical_range: [15, 35]  },
-  { name: 'Apple TV+',      keywords: ['apple tv'],                     category: 'Entretenimento', logo: '🍎', typical_range: [20, 40]  },
-
-  // Streaming de música
-  { name: 'Spotify',        keywords: ['spotify'],                     category: 'Entretenimento', logo: '🎵', typical_range: [10, 30]  },
-  { name: 'Apple Music',    keywords: ['apple music', 'itunes'],       category: 'Entretenimento', logo: '🎶', typical_range: [10, 30]  },
-  { name: 'Deezer',         keywords: ['deezer'],                      category: 'Entretenimento', logo: '🎧', typical_range: [10, 25]  },
-  { name: 'YouTube Music',  keywords: ['youtube', 'youtube premium'],  category: 'Entretenimento', logo: '▶️', typical_range: [15, 35]  },
-
-  // Cloud / Produtividade
-  { name: 'Google One',     keywords: ['google one', 'google storage'], category: 'Tecnologia', logo: '☁️', typical_range: [5, 40]   },
-  { name: 'iCloud',         keywords: ['icloud', 'apple icloud'],      category: 'Tecnologia', logo: '🍎', typical_range: [5, 35]   },
-  { name: 'Microsoft 365',  keywords: ['microsoft 365', 'office 365', 'ms office'], category: 'Tecnologia', logo: '💻', typical_range: [20, 70] },
-  { name: 'Dropbox',        keywords: ['dropbox'],                     category: 'Tecnologia', logo: '📂', typical_range: [10, 50]  },
-  { name: 'Adobe CC',       keywords: ['adobe', 'creative cloud'],     category: 'Tecnologia', logo: '🎨', typical_range: [50, 300] },
-  { name: 'Notion',         keywords: ['notion'],                      category: 'Tecnologia', logo: '📝', typical_range: [10, 50]  },
-  { name: 'Canva',          keywords: ['canva'],                       category: 'Tecnologia', logo: '🖼️', typical_range: [10, 80]  },
-
-  // Saúde e fitness
-  { name: 'Smart Fit',      keywords: ['smart fit', 'smartfit'],       category: 'Saúde', logo: '💪', typical_range: [50, 120] },
-  { name: 'Gympass',        keywords: ['gympass', 'wellhub'],          category: 'Saúde', logo: '🏋️', typical_range: [50, 200] },
-  { name: 'Headspace',      keywords: ['headspace'],                   category: 'Saúde', logo: '🧘', typical_range: [20, 50]  },
-  { name: 'Calm',           keywords: ['calm'],                        category: 'Saúde', logo: '🌿', typical_range: [20, 50]  },
-
-  // Delivery e alimentação
-  { name: 'iFood',          keywords: ['ifood'],                       category: 'Alimentação', logo: '🍔', typical_range: [20, 50]  },
-  { name: 'Rappi Turbo',    keywords: ['rappi turbo', 'rappiturbo'],   category: 'Alimentação', logo: '🛵', typical_range: [10, 30]  },
-
-  // Notícias e conteúdo
-  { name: 'New York Times', keywords: ['nytimes', 'new york times'],   category: 'Informação', logo: '📰', typical_range: [10, 40]  },
-  { name: 'Medium',         keywords: ['medium.com', 'medium'],       category: 'Informação', logo: '✍️', typical_range: [10, 30]  },
-
-  // Telecomunicações
-  { name: 'Claro',          keywords: ['claro'],                       category: 'Telecomunicações', logo: '📱', typical_range: [30, 200] },
-  { name: 'Vivo',           keywords: ['vivo'],                        category: 'Telecomunicações', logo: '📡', typical_range: [30, 200] },
-  { name: 'TIM',            keywords: ['tim'],                         category: 'Telecomunicações', logo: '📶', typical_range: [30, 200] },
-  { name: 'NET/Claro',      keywords: ['net ', 'net internet'],        category: 'Telecomunicações', logo: '🌐', typical_range: [80, 250] },
-
-  // Seguros
-  { name: 'Sulamerica',     keywords: ['sulamerica', 'sul america'],   category: 'Seguros', logo: '🛡️', typical_range: [50, 500] },
-  { name: 'Bradesco Saúde', keywords: ['bradesco saude', 'bradesco saúde'], category: 'Seguros', logo: '🏥', typical_range: [100, 800] },
-  { name: 'Unimed',         keywords: ['unimed'],                      category: 'Seguros', logo: '⚕️', typical_range: [100, 800] },
-  { name: 'Amil',           keywords: ['amil'],                        category: 'Seguros', logo: '🩺', typical_range: [100, 800] },
-
-  // Outros
-  { name: 'LinkedIn Premium', keywords: ['linkedin'],                  category: 'Carreira', logo: '💼', typical_range: [30, 150] },
-  { name: 'Coursera',       keywords: ['coursera'],                    category: 'Educação', logo: '🎓', typical_range: [20, 200] },
-  { name: 'Duolingo Plus',  keywords: ['duolingo'],                    category: 'Educação', logo: '🦉', typical_range: [10, 30]  },
-];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-
-function estimateNextCharge(lastDate: string, cycle: SubscriptionBillingCycle): string | null {
-  const d = new Date(lastDate);
-  if (isNaN(d.getTime())) return null;
-  if (cycle === 'monthly')  d.setMonth(d.getMonth() + 1);
-  else if (cycle === 'weekly') d.setDate(d.getDate() + 7);
-  else if (cycle === 'annual') d.setFullYear(d.getFullYear() + 1);
-  else return null;
-  return d.toISOString();
-}
-
-function detectCycle(transactions: Transaction[]): SubscriptionBillingCycle {
-  return inferSubscriptionCycleFromDates(
-    transactions.map((transaction) => transaction.date),
-  );
-}
-
-function txMatchesService(tx: Transaction, service: KnownService): boolean {
-  const desc = normalizeSubscriptionText(tx.description ?? '');
-  const merch = normalizeSubscriptionText(tx.merchant ?? '');
-  return service.keywords.some(kw => desc.includes(kw) || merch.includes(kw));
-}
-
-function groupTransactionsByAmount(transactions: Transaction[]): Transaction[][] {
-  const groups: Record<string, Transaction[]> = {};
-
-  for (const transaction of transactions) {
-    const key = roundSubscriptionAmount(transaction.amount).toFixed(2);
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(transaction);
-  }
-
-  return Object.values(groups);
-}
-
 // ─── PART 4 — detectSubscriptions ────────────────────────────────────────────
 
 /**
@@ -173,7 +72,14 @@ export function detectSubscriptions(transactions: Transaction[]): SubscriptionSu
     if (matching.length === 0) continue;
 
     for (const amountGroup of groupTransactionsByAmount(matching)) {
-      const sorted = [...amountGroup].sort((a, b) => b.date.localeCompare(a.date));
+      const sorted = [...amountGroup].sort((a, b) => {
+        const left = parseSubscriptionDate(a.date);
+        const right = parseSubscriptionDate(b.date);
+        if (!left && !right) return b.date.localeCompare(a.date);
+        if (!left) return 1;
+        if (!right) return -1;
+        return right.getTime() - left.getTime();
+      });
       const amounts = amountGroup.map(t => t.amount);
       const avgAmount = amounts.reduce((s, a) => s + a, 0) / amounts.length;
       const cycle = detectCycle(amountGroup);
@@ -235,7 +141,14 @@ export function detectSubscriptions(transactions: Transaction[]): SubscriptionSu
     const cycle = detectCycle(txs);
     if (cycle === 'unknown') continue; // must have a recognisable pattern
 
-    const sorted = [...txs].sort((a, b) => b.date.localeCompare(a.date));
+    const sorted = [...txs].sort((a, b) => {
+      const left = parseSubscriptionDate(a.date);
+      const right = parseSubscriptionDate(b.date);
+      if (!left && !right) return b.date.localeCompare(a.date);
+      if (!left) return 1;
+      if (!right) return -1;
+      return right.getTime() - left.getTime();
+    });
     const name = (sorted[0].merchant ?? sorted[0].description).slice(0, 40);
 
     let confidence = 0.5;
@@ -295,7 +208,8 @@ export function detectSubscriptions(transactions: Transaction[]): SubscriptionSu
 /** Format next charge date in a human-readable way */
 export function formatNextCharge(iso: string | null): string {
   if (!iso) return 'Indeterminado';
-  const d = new Date(iso);
+  const d = parseSubscriptionDate(iso);
+  if (!d) return 'Indeterminado';
   const diffDays = Math.round((d.getTime() - Date.now()) / 86400000);
   if (diffDays < 0)  return 'Atrasado';
   if (diffDays === 0) return 'Hoje';

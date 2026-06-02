@@ -9,6 +9,43 @@ const DATE_REGEXES = [
   /(\d{4}-\d{2}-\d{2})/,
 ];
 
+function parseReceiptDateKey(value: string): string | null {
+  const trimmed = value.trim();
+
+  const brMatch = trimmed.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+  if (brMatch) {
+    const year = Number(brMatch[3]);
+    const month = Number(brMatch[2]) - 1;
+    const day = Number(brMatch[1]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() === year
+      && localDate.getMonth() === month
+      && localDate.getDate() === day
+    ) {
+      return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+    return null;
+  }
+
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    const year = Number(isoMatch[1]);
+    const month = Number(isoMatch[2]) - 1;
+    const day = Number(isoMatch[3]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() === year
+      && localDate.getMonth() === month
+      && localDate.getDate() === day
+    ) {
+      return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+  }
+
+  return null;
+}
+
 export interface ParsedReceipt {
   amount: number | null;
   date: string | null;
@@ -36,12 +73,8 @@ export function detectDate(text: string): string | null {
     const match = text.match(regex);
     if (!match) continue;
 
-    const raw = match[1];
-    const iso = raw.includes('/')
-      ? new Date(raw.split('/').reverse().join('-')).toISOString()
-      : new Date(raw).toISOString();
-
-    if (!Number.isNaN(new Date(iso).getTime())) return iso;
+    const parsed = parseReceiptDateKey(match[1]);
+    if (parsed) return parsed;
   }
   return null;
 }

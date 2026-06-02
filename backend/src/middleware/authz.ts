@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../shared/AppError';
 import { asyncHandler } from './errorHandler';
+import logger from '../config/logger';
 import { getUserRoleInWorkspaceAsync } from '../services/admin/workspaceStore';
 import { assertCanPerform, assertFeatureEnabled, FeatureKey } from '../../shared/policyEngine';
 
@@ -53,6 +54,11 @@ export function authz(permission: string) {
         return;
       }
 
+      logger.warn({
+        err,
+        permission,
+        fallback: 'authz-unexpected-error',
+      }, 'Authz middleware unexpected error');
       res.status(403).json({ error: 'Acesso negado', statusCode: 403 });
     }
   });
@@ -74,6 +80,11 @@ export function requireFeature(feature: FeatureKey) {
         return;
       }
 
+      logger.warn({
+        err,
+        feature,
+        fallback: 'authz-feature-unexpected-error',
+      }, 'Authz feature gate unexpected error');
       res.status(403).json({ error: 'Feature indisponivel', statusCode: 403 });
     }
   });

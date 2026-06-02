@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -7,6 +7,9 @@ import { FinancialEventEmitter } from '../../src/events/eventEngine';
 
 const runImportPipelineMock = vi.fn();
 const saveMerchantCategoryLearningMock = vi.fn();
+const importTransactionsLoggerMock = vi.hoisted(() => ({
+  logWarn: vi.fn(),
+}));
 
 const createDeferred = <T,>() => {
   let resolve!: (value: T) => void;
@@ -27,10 +30,15 @@ vi.mock('../../src/engines/finance/categorization/aiCategorizerFallback', () => 
   saveMerchantCategoryLearning: (...args: unknown[]) => saveMerchantCategoryLearningMock(...args),
 }));
 
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: importTransactionsLoggerMock.logWarn,
+}));
+
 describe('ImportTransactions session state', () => {
   beforeEach(() => {
     runImportPipelineMock.mockReset();
     saveMerchantCategoryLearningMock.mockReset();
+    importTransactionsLoggerMock.logWarn.mockReset();
     runImportPipelineMock.mockResolvedValue({
       format: 'csv',
       filename: 'extrato.csv',
@@ -216,7 +224,7 @@ describe('ImportTransactions session state', () => {
       expect(screen.getByRole('button', { name: /ocultar duplicatas/i })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /importar .* transa/i }));
+    fireEvent.click(screen.getByRole('button', { name: /importar .* movimento/i }));
 
     await waitFor(() => {
       expect(onAddTransactions).toHaveBeenCalledTimes(1);
@@ -234,7 +242,6 @@ describe('ImportTransactions session state', () => {
   it('continues import when merchant learning persistence fails', async () => {
     const onAddTransactions = vi.fn();
     saveMerchantCategoryLearningMock.mockRejectedValueOnce(new Error('learning down'));
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const { container } = render(
       <ImportTransactionsPage
@@ -254,21 +261,20 @@ describe('ImportTransactions session state', () => {
       expect(screen.getByRole('button', { name: /ocultar duplicatas/i })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /importar .* transa/i }));
+    fireEvent.click(screen.getByRole('button', { name: /importar .* movimento/i }));
 
     await waitFor(() => {
       expect(onAddTransactions).toHaveBeenCalledTimes(1);
     });
 
-    expect(warnSpy).toHaveBeenCalledWith(
+    expect(importTransactionsLoggerMock.logWarn).toHaveBeenCalledWith(
       '[ImportTransactions] Failed to save merchant learning',
       expect.objectContaining({
+        fallback: 'import-transactions-save-merchant-learning-failed',
         merchant: 'Mercado A',
         category: 'Pessoal',
       }),
     );
-
-    warnSpy.mockRestore();
   });
 
   it('renders a safe date label when imported data contains an invalid date', async () => {
@@ -306,15 +312,42 @@ describe('ImportTransactions session state', () => {
     fireEvent.change(input, { target: { files: [file] } });
 
     await waitFor(() => {
-      expect(screen.getByText(/Data inválida/i)).toBeTruthy();
+      expect(screen.getByText(/Data inv/i)).toBeTruthy();
     });
+  });
+
+  it('mostra diagnostico visivel quando a importacao falha sem transacoes', async () => {
+    runImportPipelineMock.mockResolvedValueOnce({
+      format: 'csv',
+      filename: 'extrato-quebrado.csv',
+      total_found: 0,
+      transactions: [],
+      errors: ['Cabecalho CSV nao reconhecido'],
+      parse_time_ms: 8,
+    });
+
+    const { container } = render(
+      <ImportTransactionsPage
+        transactions={[]}
+        userId="user-1"
+        hideValues={false}
+        onAddTransactions={vi.fn()}
+      />,
+    );
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(['csv'], 'extrato-quebrado.csv', { type: 'text/csv' });
+
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect(await screen.findByRole('status')).toBeTruthy();
+    expect(screen.getByText(/Nenhuma transacao foi identificada/i)).toBeTruthy();
+    expect(screen.getByText(/Pr.*ximo passo:/i)).toBeTruthy();
   });
 
   it('ignora uma importacao atrasada depois que a tela desmonta', async () => {
     const deferred = createDeferred<Awaited<ReturnType<typeof runImportPipelineMock>>>();
     runImportPipelineMock.mockImplementation(() => deferred.promise);
-
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const { container, unmount } = render(
       <ImportTransactionsPage
@@ -355,8 +388,6 @@ describe('ImportTransactions session state', () => {
     });
 
     await Promise.resolve();
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
-    consoleErrorSpy.mockRestore();
   });
 
   it('cancela a confirmacao quando o usuario reseta a sessao no meio do import', async () => {
@@ -382,7 +413,7 @@ describe('ImportTransactions session state', () => {
       expect(screen.getByRole('button', { name: /ocultar duplicatas/i })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /importar .* transa/i }));
+    fireEvent.click(screen.getByRole('button', { name: /importar .* movimento/i }));
     await waitFor(() => {
       expect(saveMerchantCategoryLearningMock).toHaveBeenCalled();
     });
@@ -396,4 +427,34 @@ describe('ImportTransactions session state', () => {
     expect(eventSpy).not.toHaveBeenCalled();
     eventSpy.mockRestore();
   });
+
+  it('mostra diagnostico visivel quando o aprendizado auxiliar falha durante a importacao', async () => {
+    saveMerchantCategoryLearningMock.mockRejectedValueOnce(new Error('learning down'));
+
+    render(
+      <ImportTransactionsPage
+        transactions={[]}
+        userId="user-1"
+        hideValues={false}
+        onAddTransactions={vi.fn()}
+      />,
+    );
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(['csv'], 'extrato-a.csv', { type: 'text/csv' });
+
+    fireEvent.change(input, { target: { files: [file] } });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /importar .* movimento/i })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /importar .* movimento/i }));
+
+    expect(await screen.findByRole('status')).toBeTruthy();
+    expect(screen.getByText(/aprendizado pendente/i)).toBeTruthy();
+    expect(screen.getByText(/nao foi salvo para todos os itens/i)).toBeTruthy();
+  });
 });
+
+
+

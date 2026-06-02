@@ -10,7 +10,17 @@ import {
   MemoryStats,
   MemoryDecayConfig,
 } from './memoryTypes';
+import { logWarn } from '../../utils/logger';
 import { getActiveWorkspaceScopedStorageKey } from '../../utils/workspaceStorage';
+import {
+  applyMemoryDecay,
+  buildDefaultMemoryEntry,
+  buildMemoryStats,
+  buildUserMemoryProfile,
+  logDecayIfNeeded,
+  pruneExpiredMemoryEntries,
+  pickMemoryToEvict,
+} from './AIMemoryStoreHelpers';
 
 const STORAGE_KEY = 'flow_ai_memory_v2';
 const MAX_MEMORIES_PER_USER = 500;
@@ -55,7 +65,10 @@ class AIMemoryStore {
       }
       this.initialized = true;
     } catch (error) {
-      console.error('[AI Memory Store] Failed to load:', error);
+      logWarn('[AI Memory Store] Failed to load; returning empty memory set', {
+        storageKey: this.activeStorageKey,
+        error,
+      });
       this.memories = new Map();
       this.initialized = true;
     }
@@ -67,115 +80,78 @@ class AIMemoryStore {
       const entries = Array.from(this.memories.values());
       localStorage.setItem(this.activeStorageKey, JSON.stringify(entries));
     } catch (error) {
-      console.error('[AI Memory Store] Failed to save:', error);
+      logWarn('[AI Memory Store] Failed to save; keeping in-memory state', {
+        storageKey: this.activeStorageKey,
+        error,
+      });
     }
   }
 
   private applyDecay(): void {
-    if (!this.decayConfig.enabled) return;
-
-    const now = Date.now();
-    const oneDayMs = 24 * 60 * 60 * 1000;
-    let decayed = 0;
-
-    for (const [id, memory] of this.memories) {
-      const daysSinceUpdate = (now - memory.updatedAt) / oneDayMs;
-      
-      if (daysSinceUpdate > this.decayConfig.timeWindow) {
-        // Apply decay
-        const contextMultiplier =
-          typeof memory.metadata?.contextDecayMultiplier === 'number'
-            ? Math.max(0.1, memory.metadata.contextDecayMultiplier)
-            : 1;
-        const decayAmount = daysSinceUpdate * this.decayConfig.decayRate * contextMultiplier;
-        memory.confidence = Math.max(0, memory.confidence - decayAmount);
-        memory.strength = Math.max(0, memory.strength - decayAmount * 100);
-
-        if (memory.confidence < this.decayConfig.minConfidence) {
-          this.memories.delete(id);
-          decayed++;
-        }
-      }
-    }
+    const decayed = applyMemoryDecay(this.memories, this.decayConfig);
+    logDecayIfNeeded(decayed, this.activeStorageKey);
 
     if (decayed > 0) {
-      console.log(`[AI Memory Store] Decayed ${decayed} old memories`);
       this.saveToStorage();
     }
   }
 
-  private isExpired(memory: AIMemoryEntry): boolean {
-    const expiresAt = memory.metadata?.expiresAt;
-    return typeof expiresAt === 'number' && expiresAt <= Date.now();
-  }
-
   private pruneExpiredMemories(): void {
-    let removed = 0;
-    for (const [id, memory] of this.memories) {
-      if (this.isExpired(memory)) {
-        this.memories.delete(id);
-        removed += 1;
-      }
-    }
-
+    const removed = pruneExpiredMemoryEntries(this.memories);
     if (removed > 0) {
       this.saveToStorage();
     }
   }
 
-  saveMemory(memory: AIMemoryEntry): void {
+  private getActiveMemoryValues(): AIMemoryEntry[] {
     this.ensureWorkspaceScope();
-    // Enforce per-user limits
-    const userMemories = this.getMemoriesByUser(memory.userId);
-    if (userMemories.length >= MAX_MEMORIES_PER_USER) {
-      // Remove oldest low-confidence memory
-      const sorted = userMemories.sort((a, b) => a.confidence - b.confidence || a.updatedAt - b.updatedAt);
-      if (sorted.length > 0) {
-        this.memories.delete(sorted[0].id);
-      }
-    }
-
-    this.memories.set(memory.id, memory);
-    this.saveToStorage();
+    this.pruneExpiredMemories();
+    return Array.from(this.memories.values());
   }
 
-  save(memory: Partial<AIMemoryEntry> & { type: AIMemoryType; value: any; key?: string; userId?: string }): void {
-    const now = Date.now();
-    const entry: AIMemoryEntry = {
-      id: memory.id || `mem_${now}_${Math.random().toString(36).slice(2, 11)}`,
-      userId: memory.userId || 'local',
-      type: memory.type,
-      key: memory.key || memory.type.toLowerCase(),
-      value: memory.value,
-      confidence: memory.confidence ?? 0.7,
-      strength: memory.strength ?? 25,
-      occurrences: memory.occurrences ?? 1,
-      createdAt: memory.createdAt ?? now,
-      updatedAt: memory.updatedAt ?? now,
-      lastObservedAt: memory.lastObservedAt ?? now,
-      metadata: memory.metadata,
-    };
+  private withScopedMutation(mutator: () => boolean): void {
+    this.ensureWorkspaceScope();
+    if (mutator()) {
+      this.saveToStorage();
+    }
+  }
 
-    this.saveMemory(entry);
+  private withWorkspaceScope<T>(reader: () => T): T {
+    this.ensureWorkspaceScope();
+    return reader();
+  }
+
+  saveMemory(memory: AIMemoryEntry): void {
+    this.withScopedMutation(() => {
+      const userMemories = this.getMemoriesByUser(memory.userId);
+      if (userMemories.length >= MAX_MEMORIES_PER_USER) {
+        const memoryToEvict = pickMemoryToEvict(userMemories);
+        if (memoryToEvict) {
+          this.memories.delete(memoryToEvict.id);
+        }
+      }
+
+      this.memories.set(memory.id, memory);
+      return true;
+    });
+  }
+
+  save(memory: Partial<AIMemoryEntry> & { type: AIMemoryType; value: unknown; key?: string; userId?: string }): void {
+    this.saveMemory(buildDefaultMemoryEntry(memory));
   }
 
   getMemory(id: string): AIMemoryEntry | undefined {
-    this.ensureWorkspaceScope();
-    return this.memories.get(id);
+    return this.withWorkspaceScope(() => this.memories.get(id));
   }
 
   getMemoriesByUser(userId: string): AIMemoryEntry[] {
-    this.ensureWorkspaceScope();
-    this.pruneExpiredMemories();
-    return Array.from(this.memories.values())
+    return this.getActiveMemoryValues()
       .filter((m) => m.userId === userId)
       .sort((a, b) => b.updatedAt - a.updatedAt);
   }
 
   getMemoriesByType(userId: string, type: AIMemoryType): AIMemoryEntry[] {
-    this.ensureWorkspaceScope();
-    this.pruneExpiredMemories();
-    return Array.from(this.memories.values())
+    return this.getActiveMemoryValues()
       .filter((m) => m.userId === userId && m.type === type)
       .sort((a, b) => b.strength - a.strength);
   }
@@ -185,9 +161,7 @@ class AIMemoryStore {
   }
 
   queryMemories(filter: MemoryQueryFilter): AIMemoryEntry[] {
-    this.ensureWorkspaceScope();
-    this.pruneExpiredMemories();
-    let results = Array.from(this.memories.values()).filter((m) => m.userId === filter.userId);
+    let results = this.getActiveMemoryValues().filter((m) => m.userId === filter.userId);
 
     if (filter.type) {
       results = results.filter((m) => m.type === filter.type);
@@ -220,62 +194,37 @@ class AIMemoryStore {
   }
 
   updateMemory(id: string, updates: Partial<AIMemoryEntry>): void {
-    this.ensureWorkspaceScope();
-    const memory = this.memories.get(id);
-    if (memory) {
+    this.withScopedMutation(() => {
+      const memory = this.memories.get(id);
+      if (!memory) {
+        return false;
+      }
+
       Object.assign(memory, updates, { updatedAt: Date.now() });
       this.memories.set(id, memory);
-      this.saveToStorage();
-    }
+      return true;
+    });
   }
 
   deleteMemory(id: string): void {
-    this.ensureWorkspaceScope();
-    this.memories.delete(id);
-    this.saveToStorage();
+    this.withScopedMutation(() => this.memories.delete(id));
   }
 
   clearUserMemories(userId: string): void {
-    this.ensureWorkspaceScope();
-    for (const [id, memory] of this.memories) {
-      if (memory.userId === userId) {
-        this.memories.delete(id);
+    this.withScopedMutation(() => {
+      let removed = false;
+      for (const [id, memory] of this.memories) {
+        if (memory.userId === userId) {
+          this.memories.delete(id);
+          removed = true;
+        }
       }
-    }
-    this.saveToStorage();
+      return removed;
+    });
   }
 
   getStats(userId: string): MemoryStats {
-    this.ensureWorkspaceScope();
-    const userMemories = this.getMemoriesByUser(userId);
-
-    const byType: Record<AIMemoryType, number> = {} as any;
-    for (const type of Object.values(AIMemoryType)) {
-      byType[type] = 0;
-    }
-
-    let totalConfidence = 0;
-    let totalStrength = 0;
-    let oldest = Infinity;
-    let newest = 0;
-
-    for (const memory of userMemories) {
-      byType[memory.type]++;
-      totalConfidence += memory.confidence;
-      totalStrength += memory.strength;
-      oldest = Math.min(oldest, memory.createdAt);
-      newest = Math.max(newest, memory.createdAt);
-    }
-
-    return {
-      totalMemories: userMemories.length,
-      byType,
-      avgConfidence: userMemories.length > 0 ? totalConfidence / userMemories.length : 0,
-      avgStrength: userMemories.length > 0 ? totalStrength / userMemories.length : 0,
-      oldestMemory: oldest === Infinity ? undefined : oldest,
-      newestMemory: newest === 0 ? undefined : newest,
-      lastUpdated: Date.now(),
-    };
+    return this.withWorkspaceScope(() => buildMemoryStats(this.getMemoriesByUser(userId)));
   }
 
   getUserMemoryProfile(userId: string): {
@@ -284,14 +233,7 @@ class AIMemoryStore {
     spending_profile: AIMemoryEntry[];
     merchant_categories: AIMemoryEntry[];
   } {
-    this.ensureWorkspaceScope();
-    const memories = this.getMemoriesByUser(userId);
-    return {
-      userId,
-      patterns: memories.filter((m) => m.type === AIMemoryType.SPENDING_PATTERN || m.type === AIMemoryType.TIME_PATTERN),
-      spending_profile: memories.filter((m) => m.type === AIMemoryType.FINANCIAL_PROFILE),
-      merchant_categories: memories.filter((m) => m.type === AIMemoryType.MERCHANT_CATEGORY),
-    };
+    return this.withWorkspaceScope(() => buildUserMemoryProfile(userId, this.getMemoriesByUser(userId)));
   }
 
   setDecayConfig(config: Partial<MemoryDecayConfig>): void {
@@ -299,14 +241,14 @@ class AIMemoryStore {
   }
 
   runDecayCycle(): void {
-    this.ensureWorkspaceScope();
-    this.applyDecay();
-    this.saveToStorage();
+    this.withWorkspaceScope(() => {
+      this.applyDecay();
+      this.saveToStorage();
+    });
   }
 
   getAllMemories(): AIMemoryEntry[] {
-    this.ensureWorkspaceScope();
-    return Array.from(this.memories.values());
+    return this.withWorkspaceScope(() => this.getActiveMemoryValues());
   }
 
   getAll(): AIMemoryEntry[] {
@@ -314,9 +256,14 @@ class AIMemoryStore {
   }
 
   clear(): void {
-    this.ensureWorkspaceScope();
-    this.memories.clear();
-    this.saveToStorage();
+    this.withScopedMutation(() => {
+      if (this.memories.size === 0) {
+        return false;
+      }
+
+      this.memories.clear();
+      return true;
+    });
   }
 }
 

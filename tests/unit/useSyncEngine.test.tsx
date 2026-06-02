@@ -1,4 +1,4 @@
-import { renderHook, waitFor, act } from '@testing-library/react';
+﻿import { renderHook, waitFor, act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSyncEngine } from '../../hooks/useSyncEngine';
 
@@ -13,6 +13,7 @@ const syncEngineMocks = vi.hoisted(() => ({
   }),
   mockSubscribeToUserProfile: vi.fn(),
   mockSaveUserProfile: vi.fn().mockResolvedValue(undefined),
+  logWarn: vi.fn(),
 }));
 
 vi.mock('../../src/services/sync/cloudSyncClient', () => ({
@@ -25,6 +26,10 @@ vi.mock('../../src/services/sync/cloudSyncClient', () => ({
 vi.mock('../../src/services/firestoreWorkspaceStore', () => ({
   subscribeToUserProfile: syncEngineMocks.mockSubscribeToUserProfile,
   saveUserProfile: syncEngineMocks.mockSaveUserProfile,
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: syncEngineMocks.logWarn,
 }));
 
 describe('useSyncEngine', () => {
@@ -62,6 +67,7 @@ describe('useSyncEngine', () => {
       activeTenantId: 'tenant-1',
       activeWorkspaceId: 'ws-1',
       isE2EBootstrapActive: false,
+      isDemoBootstrapActive: false,
       cloudSyncEnabled: true,
       backendSyncEnabled: false,
       onDisableCloudSync,
@@ -90,6 +96,7 @@ describe('useSyncEngine', () => {
       activeTenantId: 'tenant-1',
       activeWorkspaceId: 'ws-1',
       isE2EBootstrapActive: false,
+      isDemoBootstrapActive: false,
       cloudSyncEnabled: true,
       backendSyncEnabled: false,
       onDisableCloudSync,
@@ -134,6 +141,7 @@ describe('useSyncEngine', () => {
       activeTenantId: 'tenant-1',
       activeWorkspaceId: 'ws-1',
       isE2EBootstrapActive: false,
+      isDemoBootstrapActive: false,
       cloudSyncEnabled: true,
       backendSyncEnabled: false,
       onDisableCloudSync,
@@ -153,5 +161,143 @@ describe('useSyncEngine', () => {
 
     expect(syncResult?.idMaps.accounts).toEqual({ 'tmp_acc-1': 'acc-official-1' });
     expect(result.current.entities.accounts[0].id).toBe('acc-official-1');
+  });
+
+  it('registra falha ao carregar entidades sincronizadas sem quebrar o estado do hook', async () => {
+    syncEngineMocks.mockPullSyncEntities.mockRejectedValueOnce(new Error('load failed'));
+
+    const onDisableCloudSync = vi.fn();
+    const onDisableBackendSync = vi.fn();
+
+    const { result } = renderHook(() => useSyncEngine({
+      userId: 'user-1',
+      activeTenantId: 'tenant-1',
+      activeWorkspaceId: 'ws-1',
+      isE2EBootstrapActive: false,
+      isDemoBootstrapActive: false,
+      cloudSyncEnabled: true,
+      backendSyncEnabled: false,
+      onDisableCloudSync,
+      onDisableBackendSync,
+    }));
+
+    await waitFor(() => {
+      expect(syncEngineMocks.logWarn).toHaveBeenCalledWith(
+        '[useSyncEngine] Failed to load synced entities',
+        expect.objectContaining({
+          fallback: 'use-sync-engine-load-entities-failed',
+        }),
+      );
+    });
+
+    expect(onDisableCloudSync).toHaveBeenCalledTimes(1);
+    expect(result.current.hasLoadedEntities).toBe(false);
+  });
+
+  it('registra erro de permissao do Firestore ao assinar o perfil', async () => {
+    syncEngineMocks.mockSubscribeToUserProfile.mockImplementationOnce((_userId, _onNext, onError) => {
+      onError?.({ code: 'permission-denied', message: 'missing or insufficient permissions' });
+      return () => undefined;
+    });
+
+    const onDisableCloudSync = vi.fn();
+    const onDisableBackendSync = vi.fn();
+
+    renderHook(() => useSyncEngine({
+      userId: 'user-1',
+      activeTenantId: 'tenant-1',
+      activeWorkspaceId: 'ws-1',
+      isE2EBootstrapActive: false,
+      isDemoBootstrapActive: false,
+      cloudSyncEnabled: true,
+      backendSyncEnabled: false,
+      onDisableCloudSync,
+      onDisableBackendSync,
+    }));
+
+    await waitFor(() => {
+      expect(syncEngineMocks.logWarn).toHaveBeenCalledWith(
+        '[useSyncEngine] Firestore permission denied while subscribing to user profile',
+        expect.objectContaining({
+          fallback: 'use-sync-engine-firestore-permission-denied',
+        }),
+      );
+    });
+
+    expect(onDisableCloudSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('registra falha ao sincronizar perfil sem quebrar o fluxo', async () => {
+    syncEngineMocks.mockSaveUserProfile.mockRejectedValueOnce(new Error('save failed'));
+
+    const onDisableCloudSync = vi.fn();
+    const onDisableBackendSync = vi.fn();
+
+    const { result } = renderHook(() => useSyncEngine({
+      userId: 'user-1',
+      activeTenantId: 'tenant-1',
+      activeWorkspaceId: 'ws-1',
+      isE2EBootstrapActive: false,
+      isDemoBootstrapActive: false,
+      cloudSyncEnabled: true,
+      backendSyncEnabled: false,
+      onDisableCloudSync,
+      onDisableBackendSync,
+    }));
+
+    await waitFor(() => {
+      expect(result.current.isProfileReady).toBe(true);
+    });
+
+    await act(async () => {
+      await result.current.syncProfile({ name: 'Novo Nome' });
+    });
+
+    expect(syncEngineMocks.logWarn).toHaveBeenCalledWith(
+      '[useSyncEngine] Failed to sync profile',
+      expect.objectContaining({
+        fallback: 'use-sync-engine-profile-sync-failed',
+      }),
+    );
+    expect(onDisableCloudSync).not.toHaveBeenCalled();
+  });
+
+  it('registra falha ao sincronizar entidades e propaga o erro', async () => {
+    syncEngineMocks.mockReplaceSyncEntityCollection.mockRejectedValueOnce(new Error('entity sync failed'));
+
+    const onDisableCloudSync = vi.fn();
+    const onDisableBackendSync = vi.fn();
+
+    const { result } = renderHook(() => useSyncEngine({
+      userId: 'user-1',
+      activeTenantId: 'tenant-1',
+      activeWorkspaceId: 'ws-1',
+      isE2EBootstrapActive: false,
+      isDemoBootstrapActive: false,
+      cloudSyncEnabled: true,
+      backendSyncEnabled: false,
+      onDisableCloudSync,
+      onDisableBackendSync,
+    }));
+
+    await waitFor(() => {
+      expect(result.current.hasLoadedEntities).toBe(true);
+    });
+
+    await expect(async () => {
+      await act(async () => {
+        await result.current.syncEntities({
+          accounts: [{ id: 'acc-2', name: 'Banco', type: 'bank', balance: 10, currency: 'BRL', user_id: 'user-1', workspace_id: 'ws-1', tenant_id: 'tenant-1', created_at: '2026-04-01' }],
+        });
+      });
+    }).rejects.toThrow('entity sync failed');
+
+    expect(syncEngineMocks.logWarn).toHaveBeenCalledWith(
+      '[useSyncEngine] Failed to sync entities',
+      expect.objectContaining({
+        fallback: 'use-sync-engine-entities-sync-failed',
+      }),
+    );
+    expect(onDisableCloudSync).toHaveBeenCalledTimes(1);
   });
 });

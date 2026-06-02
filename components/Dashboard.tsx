@@ -1,4 +1,4 @@
-﻿import React, { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -8,10 +8,19 @@ import {
   CircleAlert,
   CircleCheckBig,
   Clock3,
+  Settings as SettingsIcon,
   Wallet,
 } from 'lucide-react';
 import { Account } from '../models/Account';
-import { Reminder, Transaction, TransactionType } from '../types';
+import { Receivable, Reminder, Transaction, TransactionType } from '../types';
+import { isReceivablesSourceOfTruthEnabled } from '../src/finance/receivableFeatureFlag';
+import {
+  buildDashboardReceivableAggregate,
+  isReceivableOverdue,
+  isReceivablePending,
+  isReceivableRealized,
+} from '../src/finance/receivableService';
+import { addMoney, compareMoney, sumTransactions } from '../src/security/moneyMath';
 
 interface DashboardProps {
   userName?: string | null;
@@ -23,11 +32,12 @@ interface DashboardProps {
   accounts?: Account[];
   alerts?: Array<{ id: string }>;
   reminders?: Reminder[];
+  receivables?: Receivable[];
   hideValues?: boolean;
-  onNavigateToAccounts?: () => void;
   onNavigateToInsights?: () => void;
   onNavigateToHistory?: () => void;
   onNavigateToFlow?: () => void;
+  onNavigateToSettings?: () => void;
 }
 
 export interface DashboardMetrics {
@@ -55,8 +65,34 @@ export interface DashboardReminderStateSummary {
   dueThisWeekCount: number;
 }
 
+export interface DashboardNextReceivableSummary {
+  amount: number;
+  dueLabel: string;
+  note: string;
+}
+
+function parseDate(value: string): Date | null {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const dateOnlyMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const parsed = new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function isSameMonth(dateIso: string, referenceDate: Date): boolean {
-  const date = new Date(dateIso);
+  const date = parseDate(dateIso);
+  if (!date) {
+    return false;
+  }
+
   return (
     date.getFullYear() === referenceDate.getFullYear()
     && date.getMonth() === referenceDate.getMonth()
@@ -64,7 +100,11 @@ function isSameMonth(dateIso: string, referenceDate: Date): boolean {
 }
 
 function isSameDay(dateIso: string, referenceDate: Date): boolean {
-  const date = new Date(dateIso);
+  const date = parseDate(dateIso);
+  if (!date) {
+    return false;
+  }
+
   return (
     date.getFullYear() === referenceDate.getFullYear()
     && date.getMonth() === referenceDate.getMonth()
@@ -77,17 +117,99 @@ function startOfDay(date: Date): Date {
 }
 
 function isOverdueReminder(reminder: Reminder, referenceDate: Date): boolean {
-  return new Date(reminder.date).getTime() < startOfDay(referenceDate).getTime();
+  const reminderDate = parseDate(reminder.date);
+  if (!reminderDate) {
+    return false;
+  }
+
+  return reminderDate.getTime() < startOfDay(referenceDate).getTime();
 }
 
 function hasFinancialImpact(reminder: Reminder): boolean {
-  return !reminder.completed && Boolean(reminder.amount && reminder.amount > 0);
+  return !reminder.completed && Boolean(reminder.amount && compareMoney(reminder.amount, 0) > 0);
 }
 
 function daysBetween(dateIso: string, referenceDate: Date): number {
-  const reminderDay = startOfDay(new Date(dateIso)).getTime();
+  const parsed = parseDate(dateIso);
+  if (!parsed) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const reminderDay = startOfDay(parsed).getTime();
   const currentDay = startOfDay(referenceDate).getTime();
   return Math.round((reminderDay - currentDay) / (1000 * 60 * 60 * 24));
+}
+
+function buildDueLabel(distance: number): string {
+  if (!Number.isFinite(distance)) {
+    return 'Sem recebimentos previstos';
+  }
+
+  if (distance === 0) {
+    return 'Vence hoje';
+  }
+
+  if (distance > 0) {
+    return `Vence em ${distance} dia${distance === 1 ? '' : 's'}`;
+  }
+
+  const overdueDays = Math.abs(distance);
+  return `Vencido ha ${overdueDays} dia${overdueDays === 1 ? '' : 's'}`;
+}
+
+function buildDashboardNextReceivableSummary(
+  reminders: Reminder[],
+  receivables: Receivable[],
+  referenceDate: Date = new Date(),
+  forceReceivablesSourceOfTruth?: boolean,
+): DashboardNextReceivableSummary {
+  if (shouldUseReceivablesAsSourceOfTruth(forceReceivablesSourceOfTruth)) {
+    const activeReceivables = receivables
+      .filter((receivable) => isReceivablePending(receivable, referenceDate) || isReceivableOverdue(receivable, referenceDate))
+      .sort((left, right) => String(left.due_date).localeCompare(String(right.due_date), 'pt-BR'));
+    const nextReceivable = activeReceivables[0];
+
+    if (!nextReceivable) {
+      return {
+        amount: 0,
+        dueLabel: 'Sem recebimentos previstos',
+        note: 'Receita prevista no curto prazo ainda nao apareceu.',
+      };
+    }
+
+    const dueDistance = daysBetween(nextReceivable.due_date, referenceDate);
+
+    return {
+      amount: nextReceivable.expected_amount || 0,
+      dueLabel: buildDueLabel(dueDistance),
+      note: 'Receita prevista no curto prazo.',
+    };
+  }
+
+  const activeReminders = reminders
+    .filter((reminder) => hasFinancialImpact(reminder))
+    .sort((left, right) => String(left.date).localeCompare(String(right.date), 'pt-BR'));
+  const nextReminder = activeReminders[0];
+
+  if (!nextReminder) {
+    return {
+      amount: 0,
+      dueLabel: 'Sem recebimentos previstos',
+      note: 'Receita prevista no curto prazo ainda nao apareceu.',
+    };
+  }
+
+  const dueDistance = daysBetween(nextReminder.date, referenceDate);
+
+  return {
+    amount: nextReminder.amount || 0,
+    dueLabel: buildDueLabel(dueDistance),
+    note: 'Receita prevista no curto prazo.',
+  };
+}
+
+function shouldUseReceivablesAsSourceOfTruth(force?: boolean): boolean {
+  return typeof force === 'boolean' ? force : isReceivablesSourceOfTruthEnabled();
 }
 
 export function calculateDashboardMetrics(
@@ -96,25 +218,50 @@ export function calculateDashboardMetrics(
   reminders: Reminder[],
   activeAlerts: number,
   referenceDate: Date = new Date(),
+  receivables: Receivable[] = [],
+  forceReceivablesSourceOfTruth?: boolean,
 ): DashboardMetrics {
-  const currentBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
+  const currentBalance = sumTransactions(accounts.map((account) => account.balance));
 
   const monthTransactions = transactions.filter((transaction) => isSameMonth(transaction.date, referenceDate));
-  const inflowMonth = monthTransactions
-    .filter((transaction) => transaction.type === TransactionType.RECEITA)
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-  const outflowMonth = monthTransactions
-    .filter((transaction) => transaction.type === TransactionType.DESPESA)
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const inflowMonth = sumTransactions(
+    monthTransactions
+      .filter((transaction) => transaction.type === TransactionType.RECEITA)
+      .map((transaction) => transaction.amount),
+  );
+  const outflowMonth = sumTransactions(
+    monthTransactions
+      .filter((transaction) => transaction.type === TransactionType.DESPESA)
+      .map((transaction) => transaction.amount),
+  );
+
+  if (shouldUseReceivablesAsSourceOfTruth(forceReceivablesSourceOfTruth)) {
+    const aggregate = buildDashboardReceivableAggregate(receivables, referenceDate);
+
+    return {
+      currentBalance,
+      inflowMonth,
+      outflowMonth,
+      projectedRevenueMonth: aggregate.projected,
+      pendingRevenueMonth: aggregate.pending,
+      overdueRevenueAmount: aggregate.overdue,
+      confirmedRevenueMonth: inflowMonth,
+      activeAlerts,
+    };
+  }
 
   const monthFinancialReminders = reminders.filter((reminder) => hasFinancialImpact(reminder) && isSameMonth(reminder.date, referenceDate));
-  const pendingRevenueMonth = monthFinancialReminders
-    .filter((reminder) => !isOverdueReminder(reminder, referenceDate))
-    .reduce((sum, reminder) => sum + (reminder.amount || 0), 0);
-  const overdueRevenueAmount = reminders
-    .filter((reminder) => hasFinancialImpact(reminder) && isOverdueReminder(reminder, referenceDate))
-    .reduce((sum, reminder) => sum + (reminder.amount || 0), 0);
-  const projectedRevenueMonth = pendingRevenueMonth + overdueRevenueAmount;
+  const pendingRevenueMonth = sumTransactions(
+    monthFinancialReminders
+      .filter((reminder) => !isOverdueReminder(reminder, referenceDate))
+      .map((reminder) => reminder.amount || 0),
+  );
+  const overdueRevenueAmount = sumTransactions(
+    reminders
+      .filter((reminder) => hasFinancialImpact(reminder) && isOverdueReminder(reminder, referenceDate))
+      .map((reminder) => reminder.amount || 0),
+  );
+  const projectedRevenueMonth = addMoney(pendingRevenueMonth, overdueRevenueAmount);
 
   return {
     currentBalance,
@@ -143,6 +290,13 @@ export function buildDashboardFocusNote(metrics: DashboardMetrics): DashboardFoc
     };
   }
 
+  if (metrics.currentBalance < 0) {
+    return {
+      title: 'Saldo negativo pede revisao',
+      description: `O saldo consolidado esta negativo em ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Math.abs(metrics.currentBalance))}.`,
+    };
+  }
+
   if (metrics.activeAlerts > 0) {
     return {
       title: 'Alertas pedem revisao',
@@ -166,16 +320,35 @@ export function buildDashboardFocusNote(metrics: DashboardMetrics): DashboardFoc
 export function buildDashboardReminderStateSummary(
   reminders: Reminder[],
   referenceDate: Date = new Date(),
+  receivables: Receivable[] = [],
+  forceReceivablesSourceOfTruth?: boolean,
 ): DashboardReminderStateSummary {
+  if (shouldUseReceivablesAsSourceOfTruth(forceReceivablesSourceOfTruth)) {
+    const pendingReceivables = receivables.filter((receivable) => isReceivablePending(receivable, referenceDate));
+    const overdueReceivables = receivables.filter((receivable) => isReceivableOverdue(receivable, referenceDate));
+
+    return {
+      pendingCount: pendingReceivables.length,
+      pendingAmount: sumTransactions(pendingReceivables.map((receivable) => receivable.expected_amount || 0)),
+      overdueCount: overdueReceivables.length,
+      overdueAmount: sumTransactions(overdueReceivables.map((receivable) => receivable.expected_amount || 0)),
+      dueTodayCount: pendingReceivables.filter((receivable) => isSameDay(receivable.due_date, referenceDate)).length,
+      dueThisWeekCount: pendingReceivables.filter((receivable) => {
+        const distance = daysBetween(receivable.due_date, referenceDate);
+        return distance >= 0 && distance <= 7;
+      }).length,
+    };
+  }
+
   const financialReminders = reminders.filter((reminder) => hasFinancialImpact(reminder));
   const pendingReminders = financialReminders.filter((reminder) => !isOverdueReminder(reminder, referenceDate));
   const overdueReminders = financialReminders.filter((reminder) => isOverdueReminder(reminder, referenceDate));
 
   return {
     pendingCount: pendingReminders.length,
-    pendingAmount: pendingReminders.reduce((sum, reminder) => sum + (reminder.amount || 0), 0),
+    pendingAmount: sumTransactions(pendingReminders.map((reminder) => reminder.amount || 0)),
     overdueCount: overdueReminders.length,
-    overdueAmount: overdueReminders.reduce((sum, reminder) => sum + (reminder.amount || 0), 0),
+    overdueAmount: sumTransactions(overdueReminders.map((reminder) => reminder.amount || 0)),
     dueTodayCount: pendingReminders.filter((reminder) => isSameDay(reminder.date, referenceDate)).length,
     dueThisWeekCount: pendingReminders.filter((reminder) => {
       const distance = daysBetween(reminder.date, referenceDate);
@@ -192,20 +365,25 @@ const Dashboard: React.FC<DashboardProps> = ({
   accounts = [],
   alerts = [],
   reminders = [],
+  receivables = [],
   hideValues = false,
-  onNavigateToAccounts,
   onNavigateToInsights,
   onNavigateToHistory,
   onNavigateToFlow,
+  onNavigateToSettings,
 }) => {
   const metrics = useMemo(
-    () => calculateDashboardMetrics(transactions, accounts, reminders, alerts.length),
-    [transactions, accounts, reminders, alerts.length],
+    () => calculateDashboardMetrics(transactions, accounts, reminders, alerts.length, new Date(), receivables),
+    [transactions, accounts, reminders, alerts.length, receivables],
   );
   const focusNote = useMemo(() => buildDashboardFocusNote(metrics), [metrics]);
+  const nextReceivable = useMemo(
+    () => buildDashboardNextReceivableSummary(reminders, receivables, new Date()),
+    [reminders, receivables],
+  );
   const reminderSummary = useMemo(
-    () => buildDashboardReminderStateSummary(reminders),
-    [reminders],
+    () => buildDashboardReminderStateSummary(reminders, new Date(), receivables),
+    [reminders, receivables],
   );
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', {
@@ -214,76 +392,102 @@ const Dashboard: React.FC<DashboardProps> = ({
   }).format(value);
 
   const valueOrHidden = (value: number) => (hideValues ? '••••••' : formatCurrency(value));
-  const netMonth = metrics.inflowMonth - metrics.outflowMonth;
   const insightsActionTitle = activeWorkspacePlan === 'pro' ? 'Ver insights completos' : 'Ver insights essenciais';
   const insightsActionDescription = activeWorkspacePlan === 'pro'
     ? 'Abra analises profundas e comparativos historicos do periodo.'
     : 'Abra sinais principais para validar sua leitura de caixa.';
+  const PANEL_SURFACE = 'rounded-3xl border border-slate-200 bg-white shadow-[0_18px_45px_-24px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800';
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="rounded-3xl border border-slate-200 bg-white px-6 py-5 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Caixa</p>
-            <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Leitura rapida do caixa</h2>
+    <div className="flex flex-col gap-5 pb-8">
+      <div className={`${PANEL_SURFACE} px-6 py-5`}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Caixa</p>
+            <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">Leitura rapida do caixa</h2>
             <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-300">
               {userName ? `${userName}, veja o que entrou, saiu e exige acao.` : 'Veja o que entrou, saiu e exige acao no workspace ativo.'}
             </p>
           </div>
-          <div className="rounded-2xl bg-slate-100 px-4 py-2 text-right dark:bg-slate-700">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Workspace ativo</p>
-            <p className="text-sm font-black text-slate-700 dark:text-slate-100">
-              {activeWorkspaceName || 'Carregando workspace'}
-            </p>
+          <div className="flex items-center justify-between gap-2 sm:justify-end">
+            <div className="min-w-0 flex-1 rounded-2xl bg-slate-100 px-4 py-2 text-left dark:bg-slate-700 sm:flex-none sm:text-right">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Workspace ativo</p>
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-100 truncate sm:whitespace-nowrap">
+                {activeWorkspaceName || 'Carregando workspace'}
+              </p>
+            </div>
+            {onNavigateToSettings && (
+              <button
+                type="button"
+                onClick={onNavigateToSettings}
+                aria-label="Abrir ajustes"
+                className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-slate-100"
+              >
+                <SettingsIcon size={16} />
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.95fr)]">
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Saldo atual</p>
-              <h3 className="mt-2 text-4xl font-black tracking-tight text-slate-950 dark:text-white ">
-                {valueOrHidden(metrics.currentBalance)}
-              </h3>
-              <p className="mt-2 max-w-md text-sm font-semibold text-slate-500 dark:text-slate-300">
-                Dinheiro confirmado nas contas. Valores pendentes e vencidos nao entram neste total.
-              </p>
+      <section className={`${PANEL_SURFACE} p-6`}>
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.18fr)_minmax(280px,0.82fr)] lg:items-start">
+          <div className="min-w-0">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Saldo atual</p>
+                <h3 className="mt-2 text-4xl font-semibold tracking-tight text-slate-950 dark:text-white">
+                  {valueOrHidden(metrics.currentBalance)}
+                </h3>
+                <p className="mt-2 max-w-md text-sm font-semibold text-slate-500 dark:text-slate-300">
+                  Dinheiro confirmado nas contas. Valores pendentes e vencidos nao entram neste total.
+                </p>
+              </div>
+              <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                <Wallet size={18} />
+              </div>
             </div>
-            <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-              <Wallet size={18} />
+
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/30">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Leitura rapida</p>
+              <p className="mt-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Priorize saldo confirmado, entradas e saidas do mes, e o proximo recebivel antes de abrir o restante.
+              </p>
             </div>
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
             <ComparisonMetricCard
-              label="Entrou no mes"
+              label="Entradas"
               value={valueOrHidden(metrics.inflowMonth)}
               tone="positive"
               icon={<ArrowUpRight size={16} />}
+              description="Confirmadas no mes"
             />
             <ComparisonMetricCard
-              label="Saiu no mes"
+              label="Saidas"
               value={valueOrHidden(metrics.outflowMonth)}
               tone="negative"
               icon={<ArrowDownRight size={16} />}
+              description="Registradas no mes"
             />
             <ComparisonMetricCard
-              label="Saldo do mes"
-              value={valueOrHidden(netMonth)}
-              tone={netMonth >= 0 ? 'positive' : 'negative'}
+              label="Proximo recebivel"
+              value={valueOrHidden(nextReceivable.amount)}
+              tone={nextReceivable.amount > 0 ? 'scheduled' : 'neutral'}
               icon={<CalendarClock size={16} />}
+              description={nextReceivable.amount > 0 ? `${nextReceivable.dueLabel}. ${nextReceivable.note}` : nextReceivable.note}
             />
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,0.95fr)]">
+        <section className={`${PANEL_SURFACE} p-5`}>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Estados financeiros</p>
-              <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">O que ja entrou, o que ainda nao entrou e o que esta atrasado</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Estados financeiros</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">O que ja entrou, o que ainda nao entrou e o que esta atrasado</p>
             </div>
           </div>
 
@@ -311,14 +515,12 @@ const Dashboard: React.FC<DashboardProps> = ({
             />
           </div>
         </section>
-      </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
-        <section className="rounded-3xl border border-amber-200 bg-amber-50/80 p-5 shadow-sm dark:border-amber-500/20 dark:bg-amber-500/10">
+        <section className="rounded-3xl border border-amber-200 bg-amber-50/80 p-5 shadow-[0_18px_45px_-28px_rgba(245,158,11,0.45)] dark:border-amber-500/20 dark:bg-amber-500/10">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-amber-700 dark:text-amber-300">O que pede atencao</p>
-              <p className="mt-1 text-xl font-black tracking-tight text-slate-900 dark:text-white">{focusNote.title}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">O que pede atencao</p>
+              <p className="mt-1 text-xl font-semibold tracking-tight text-slate-900 dark:text-white">{focusNote.title}</p>
               <p className="mt-2 text-sm font-semibold text-slate-600 dark:text-slate-300">{focusNote.description}</p>
             </div>
             <div className="rounded-2xl bg-amber-100 p-2.5 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
@@ -348,14 +550,14 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           {reminderSummary.pendingCount > 0 && (
-            <p className="mt-4 text-sm font-black text-amber-800 dark:text-amber-200">
+            <p className="mt-4 text-sm font-semibold text-amber-800 dark:text-amber-200">
               Recebiveis pendentes no curto prazo: {reminderSummary.pendingCount} · {valueOrHidden(reminderSummary.pendingAmount)}
             </p>
           )}
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Leitura de recebiveis</p>
+        <section className={`${PANEL_SURFACE} p-5`}>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Leitura de recebiveis</p>
           <div className="mt-4 space-y-3">
             <MiniSummaryRow
               label="Pendente"
@@ -376,11 +578,11 @@ const Dashboard: React.FC<DashboardProps> = ({
         </section>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800">
+      <div className={`${PANEL_SURFACE} p-5`}>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Acoes principais</p>
-            <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">Siga para as telas que mudam a decisao do dia</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Acoes principais</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">Siga para as telas que mudam a decisao do dia</p>
           </div>
         </div>
         <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -403,9 +605,9 @@ const Dashboard: React.FC<DashboardProps> = ({
             onClick={onNavigateToInsights}
           />
           <QuickActionButton
-            title="Consultar saldos"
-            description="Veja os saldos e contas registradas no workspace."
-            onClick={onNavigateToAccounts}
+            title="Ver receitas previstas"
+            description="Acompanhe o que ainda deve entrar no caixa nos proximos dias."
+            onClick={onNavigateToFlow}
           />
         </div>
       </div>
@@ -416,6 +618,8 @@ const Dashboard: React.FC<DashboardProps> = ({
 const COMPARISON_TONE_CLASS_MAP = {
   positive: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300',
   negative: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300',
+  scheduled: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300',
+  neutral: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-200',
 };
 
 const STATE_TONE_CLASS_MAP = {
@@ -435,18 +639,26 @@ const MINI_SUMMARY_TONE_CLASS_MAP = {
   overdue: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300',
 };
 
-const ComparisonMetricCard: React.FC<{ label: string; value: string; icon: React.ReactNode; tone: 'positive' | 'negative' }> = ({
+const ComparisonMetricCard: React.FC<{
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  tone: 'positive' | 'negative' | 'scheduled' | 'neutral';
+  description?: string;
+}> = ({
   label,
   value,
   icon,
   tone,
+  description,
 }) => (
   <div className={`rounded-2xl border p-4 ${COMPARISON_TONE_CLASS_MAP[tone]}`}>
     <div className="flex items-center justify-between">
-      <p className="text-[10px] font-black uppercase tracking-[0.22em] opacity-70">{label}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">{label}</p>
       <span className="rounded-lg p-1.5">{icon}</span>
     </div>
-    <p className="mt-2 text-xl font-black tracking-tight text-slate-900 dark:text-white">{value}</p>
+    <p className="mt-2 text-xl font-semibold tracking-tight text-slate-900 dark:text-white">{value}</p>
+    {description && <p className="mt-1 text-sm font-medium opacity-80">{description}</p>}
   </div>
 );
 
@@ -467,11 +679,11 @@ const StateRow: React.FC<{
     <div className="flex min-w-0 items-start gap-3">
       <span className="mt-0.5 rounded-xl p-2">{icon}</span>
       <div className="min-w-0">
-        <p className="text-sm font-black tracking-tight">{label}</p>
+        <p className="text-sm font-semibold tracking-tight">{label}</p>
         <p className="mt-1 text-sm font-medium opacity-80">{description}</p>
       </div>
     </div>
-    <p className="text-right text-xl font-black tracking-tight">{value}</p>
+    <p className="text-right text-xl font-semibold tracking-tight">{value}</p>
   </div>
 );
 
@@ -487,8 +699,8 @@ const UrgencyCard: React.FC<{
   tone,
 }) => (
   <div className={`rounded-2xl border p-4 ${URGENCY_TONE_CLASS_MAP[tone]}`}>
-    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">{label}</p>
-    <p className="mt-2 text-xl font-black tracking-tight text-slate-950 dark:text-white">{value}</p>
+    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{label}</p>
+    <p className="mt-2 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">{value}</p>
     <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-300">{description}</p>
   </div>
 );
@@ -506,10 +718,10 @@ const MiniSummaryRow: React.FC<{
 }) => (
   <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 px-4 py-3 dark:border-slate-700">
     <div>
-      <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white">{label}</p>
+      <p className="text-sm font-semibold tracking-tight text-slate-900 dark:text-white">{label}</p>
       <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-300">{count} item{count === 1 ? '' : 's'}</p>
     </div>
-    <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] ${MINI_SUMMARY_TONE_CLASS_MAP[tone]}`}>
+    <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${MINI_SUMMARY_TONE_CLASS_MAP[tone]}`}>
       {value}
     </span>
   </div>
@@ -526,7 +738,7 @@ const PrimaryActionButton: React.FC<{ title: string; description: string; onClic
     className="flex items-center justify-between rounded-2xl border border-slate-900 bg-slate-900 px-5 py-4 text-left text-white shadow-[0_20px_40px_-24px_rgba(15,23,42,0.5)] transition-colors hover:bg-slate-800 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
   >
     <span>
-      <span className="block text-sm font-black tracking-tight">{title}</span>
+      <span className="block text-sm font-semibold tracking-tight">{title}</span>
       <span className="mt-1 block text-sm font-medium text-slate-200 dark:text-slate-700">{description}</span>
     </span>
     <ChevronRight size={16} className="text-current" />
@@ -544,7 +756,7 @@ const QuickActionButton: React.FC<{ title: string; description: string; onClick?
     className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/40 dark:hover:border-slate-500 dark:hover:bg-slate-900/70"
   >
     <span>
-      <span className="block text-sm font-black tracking-tight text-slate-900 dark:text-white">{title}</span>
+      <span className="block text-sm font-semibold tracking-tight text-slate-900 dark:text-white">{title}</span>
       <span className="mt-1 block text-sm font-medium text-slate-500 dark:text-slate-300">{description}</span>
     </span>
     <ChevronRight size={16} className="text-slate-400" />

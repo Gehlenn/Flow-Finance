@@ -5,6 +5,14 @@ import { describe, expect, it, vi } from 'vitest';
 import Accounts from '../../pages/Accounts';
 import { type Account } from '../../models/Account';
 
+const accountsMocks = vi.hoisted(() => ({
+  logWarn: vi.fn(),
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: accountsMocks.logWarn,
+}));
+
 const accounts: Account[] = [
   {
     id: 'acc-1',
@@ -32,13 +40,16 @@ describe('Accounts form', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Nova Conta/i }));
+    expect(screen.getByText(/Caixa e contas/i)).toBeTruthy();
+    expect(screen.getAllByText(/Saldo consolidado/i).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: /Nova conta de caixa/i }));
     fireEvent.change(screen.getByPlaceholderText(/Ex: Nubank/i), { target: { value: 'Conta teste' } });
     fireEvent.change(screen.getByPlaceholderText('0,00'), { target: { value: '123,45' } });
 
     fireEvent.click(screen.getByRole('button', { name: /Fechar/i }));
 
-    fireEvent.click(screen.getByRole('button', { name: /Nova Conta/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Nova conta de caixa/i }));
     expect((screen.getByPlaceholderText(/Ex: Nubank/i) as HTMLInputElement).value).toBe('');
     expect((screen.getByPlaceholderText('0,00') as HTMLInputElement).value).toBe('');
   });
@@ -59,7 +70,7 @@ describe('Accounts form', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Nova Conta/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Nova conta de caixa/i }));
     fireEvent.change(screen.getByPlaceholderText(/Ex: Nubank/i), { target: { value: 'Conta teste' } });
     fireEvent.change(screen.getByPlaceholderText('0,00'), { target: { value: '123,45' } });
     fireEvent.click(screen.getByRole('button', { name: /Salvar Conta/i }));
@@ -83,12 +94,74 @@ describe('Accounts form', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Nova Conta/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Nova conta de caixa/i }));
     fireEvent.change(screen.getByPlaceholderText(/Ex: Nubank/i), { target: { value: 'Conta teste' } });
     fireEvent.change(screen.getByPlaceholderText('0,00'), { target: { value: 'abc' } });
     fireEvent.click(screen.getByRole('button', { name: /Salvar Conta/i }));
 
     expect(onCreateAccount).not.toHaveBeenCalled();
-    expect(screen.getByText(/Saldo inicial invalido/i)).toBeTruthy();
+    expect(screen.getByRole('status')).toBeTruthy();
+  });
+
+
+  it('mostra diagnostico visivel quando o saldo inicial e invalido', async () => {
+    const onCreateAccount = vi.fn(async () => undefined);
+
+    render(
+      <Accounts
+        userId="user-1"
+        hideValues={false}
+        activeWorkspaceName="Workspace"
+        activeTenantName="Tenant"
+        activeWorkspaceRole="admin"
+        accounts={accounts}
+        onCreateAccount={onCreateAccount}
+        onDeleteAccount={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Nova conta de caixa/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Ex: Nubank/i), { target: { value: 'Conta teste' } });
+    fireEvent.change(screen.getByPlaceholderText('0,00'), { target: { value: 'abc' } });
+    fireEvent.click(screen.getByRole('button', { name: /Salvar Conta/i }));
+
+    expect(await screen.findByRole('status')).toBeTruthy();
+    expect(screen.getByText(/O valor informado nao pode ser convertido em moeda/i)).toBeTruthy();
+    expect(screen.getByText(/Proximo passo:/i)).toBeTruthy();
+  });
+
+  it('mostra diagnostico visivel quando salvar a conta falha', async () => {
+    const onCreateAccount = vi.fn(async () => {
+      throw new Error('save failed');
+    });
+
+    render(
+      <Accounts
+        userId="user-1"
+        hideValues={false}
+        activeWorkspaceName="Workspace"
+        activeTenantName="Tenant"
+        activeWorkspaceRole="admin"
+        accounts={accounts}
+        onCreateAccount={onCreateAccount}
+        onDeleteAccount={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Nova conta de caixa/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Ex: Nubank/i), { target: { value: 'Conta teste' } });
+    fireEvent.change(screen.getByPlaceholderText('0,00'), { target: { value: '123,45' } });
+    fireEvent.click(screen.getByRole('button', { name: /Salvar Conta/i }));
+
+    expect(await screen.findByRole('status')).toBeTruthy();
+    expect(screen.getByText(/Falha ao criar conta/i)).toBeTruthy();
+    expect(screen.getByText(/Nao foi possivel salvar a conta agora/i)).toBeTruthy();
+    expect(screen.getByText(/Proximo passo:/i)).toBeTruthy();
+    expect(accountsMocks.logWarn).toHaveBeenCalledWith(
+      '[Accounts] Failed to create account',
+      expect.objectContaining({
+        fallback: 'accounts-create-account-failed',
+      }),
+    );
   });
 });

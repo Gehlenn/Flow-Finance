@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const enqueueTaskMock = vi.fn();
 const subscribeMock = vi.fn();
+const logWarnMock = vi.fn();
 
 vi.mock('../../src/ai/queue/AITaskQueue', () => ({
   aiTaskQueue: {
@@ -16,15 +17,19 @@ vi.mock('../../src/events/eventEngine', () => ({
   },
 }));
 
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: (...args: unknown[]) => logWarnMock(...args),
+}));
+
 describe('aiQueueListener', () => {
   beforeEach(() => {
     enqueueTaskMock.mockReset();
     subscribeMock.mockReset();
+    logWarnMock.mockReset();
     vi.clearAllMocks();
   });
 
   it('warns when queueing a task fails', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     enqueueTaskMock.mockImplementation(() => {
       throw new Error('queue unavailable');
     });
@@ -39,13 +44,13 @@ describe('aiQueueListener', () => {
     });
 
     expect(enqueueTaskMock).toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalledWith(
+    expect(logWarnMock).toHaveBeenCalledWith(
       '[AIQueueListener] failed to enqueue task from financial event',
       expect.objectContaining({
         eventType: 'transaction_created',
         taskType: expect.any(String),
+        fallback: 'ai-queue-listener-enqueue-failed',
       }),
     );
-    warnSpy.mockRestore();
   });
 });

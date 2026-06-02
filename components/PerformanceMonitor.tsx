@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { usePerformanceMonitoring, formatBytes, formatTime, calculatePerformanceScore } from '../hooks/usePerformanceMonitoring';
 import { Activity, Zap, Monitor, Wifi, HardDrive, Clock, TrendingUp, AlertTriangle } from 'lucide-react';
 
@@ -27,13 +27,13 @@ const PerformanceMonitor: React.FC = () => {
             {icon}
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-black text-slate-800 dark:text-white truncate">{title}</h4>
+            <h4 className="text-sm font-semibold text-slate-800 dark:text-white truncate">{title}</h4>
             {description && (
               <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{description}</p>
             )}
           </div>
         </div>
-        <p className="text-lg font-black text-slate-900 dark:text-white">{value}</p>
+        <p className="text-lg font-semibold text-slate-900 dark:text-white">{value}</p>
       </div>
     );
   };
@@ -51,13 +51,13 @@ const PerformanceMonitor: React.FC = () => {
       <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
         <div className="flex items-center gap-4 mb-4">
           <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-lg"
+            className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-semibold text-lg"
             style={{ backgroundColor: performanceScore.color }}
           >
             {performanceScore.score}
           </div>
           <div>
-            <h3 className="text-xl font-black text-slate-800 dark:text-white">Performance Score</h3>
+            <h3 className="text-xl font-semibold text-slate-800 dark:text-white">Performance Score</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">{performanceScore.grade}</p>
           </div>
         </div>
@@ -74,7 +74,7 @@ const PerformanceMonitor: React.FC = () => {
 
       {/* Core Web Vitals */}
       <div>
-        <h3 className="text-lg font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
           <Zap size={20} />
           Core Web Vitals
         </h3>
@@ -105,7 +105,7 @@ const PerformanceMonitor: React.FC = () => {
 
       {/* Additional Metrics */}
       <div>
-        <h3 className="text-lg font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
           <Clock size={20} />
           Métricas Adicionais
         </h3>
@@ -140,7 +140,7 @@ const PerformanceMonitor: React.FC = () => {
       {/* Memory Usage */}
       {metrics.memoryUsage.used && (
         <div>
-          <h3 className="text-lg font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
             <HardDrive size={20} />
             Uso de Memória
           </h3>
@@ -170,7 +170,7 @@ const PerformanceMonitor: React.FC = () => {
       {/* Network Information */}
       {(metrics.connectionType || metrics.effectiveType) && (
         <div>
-          <h3 className="text-lg font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
             <Wifi size={20} />
             Informações de Rede
           </h3>
@@ -198,33 +198,33 @@ const PerformanceMonitor: React.FC = () => {
       )}
 
       {/* Performance Tips */}
-      <div className="bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-500/10 dark:to-violet-500/10 rounded-[2rem] p-6 border border-indigo-100 dark:border-indigo-500/20">
+      <div className="rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl flex items-center justify-center">
-            <Activity size={20} className="text-indigo-600 dark:text-indigo-400" />
+          <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center">
+            <Activity size={20} className="text-slate-600 dark:text-slate-300" />
           </div>
-          <h3 className="text-lg font-black text-slate-800 dark:text-white">Dicas de Performance</h3>
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Dicas de Performance</h3>
         </div>
         <div className="space-y-3">
           <div className="flex items-start gap-3">
-            <div className="w-6 h-6 bg-emerald-100 dark:bg-emerald-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">✓</span>
+            <div className="w-6 h-6 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">✓</span>
             </div>
             <p className="text-sm text-slate-600 dark:text-slate-300">
               <strong>Otimização automática:</strong> O app usa lazy loading e code splitting para carregamento mais rápido
             </p>
           </div>
           <div className="flex items-start gap-3">
-            <div className="w-6 h-6 bg-emerald-100 dark:bg-emerald-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">✓</span>
+            <div className="w-6 h-6 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">✓</span>
             </div>
             <p className="text-sm text-slate-600 dark:text-slate-300">
               <strong>Monitoramento contínuo:</strong> Métricas são coletadas automaticamente para melhorar a experiência
             </p>
           </div>
           <div className="flex items-start gap-3">
-            <div className="w-6 h-6 bg-blue-100 dark:bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-xs font-black text-blue-600 dark:text-blue-400">ℹ</span>
+            <div className="w-6 h-6 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">i</span>
             </div>
             <p className="text-sm text-slate-600 dark:text-slate-300">
               <strong>Dica:</strong> Feche outras abas para melhorar o desempenho se notar lentidão

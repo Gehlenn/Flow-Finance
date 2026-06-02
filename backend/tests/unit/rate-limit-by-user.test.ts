@@ -1,5 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Request, Response } from 'express';
+
+const { mockWarn } = vi.hoisted(() => ({
+  mockWarn: vi.fn(),
+}));
+
+vi.mock('../../src/config/logger', () => ({
+  default: {
+    warn: mockWarn,
+    debug: vi.fn(),
+  },
+}));
+
 import {
   createRateLimitByUser,
   resetRateLimitStore,
@@ -17,6 +29,7 @@ describe('Rate Limit by User', () => {
 
   beforeEach(() => {
     resetRateLimitStore();
+    mockWarn.mockClear();
   });
 
   it('allows requests under limit', async () => {
@@ -107,7 +120,10 @@ describe('Rate Limit by User', () => {
     const middleware = createRateLimitByUser({
       windowMs: 60000,
       max: 1,
-      keyGenerator: (req) => `custom::${(req as any).customId}`,
+      keyGenerator: (req) => {
+        const customReq = req as Request & { customId?: string };
+        return `custom::${customReq.customId}`;
+      },
     });
 
     const req1 = { headers: {}, customId: '123' } as unknown as Request;
@@ -186,5 +202,33 @@ describe('Rate Limit by User', () => {
     expect(headers['RateLimit-Limit']).toBe('5');
     expect(headers['RateLimit-Remaining']).toBe('4');
     expect(headers['RateLimit-Reset']).toBeDefined();
+  });
+
+  it('registra contexto quando o keyGenerator falha e cai para IP', async () => {
+    const middleware = createRateLimitByUser({
+      windowMs: 60000,
+      max: 1,
+      keyGenerator: () => {
+        throw new Error('key generator exploded');
+      },
+    });
+
+    const req = { headers: { 'x-forwarded-for': '10.0.0.1' } } as Request;
+    const res = createResponse();
+    const next = vi.fn();
+
+    await middleware(req, res as Response, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.any(Error),
+        hasKeyGenerator: true,
+        windowMs: 60000,
+        max: 1,
+        fallback: 'rate-limit-key-generation-failed',
+      }),
+      'Failed to generate rate limit key, falling back to IP',
+    );
   });
 });

@@ -18,6 +18,7 @@ const workspaceAdminMocks = vi.hoisted(() => ({
   createWorkspaceCheckoutSession: vi.fn(),
   createWorkspacePortalSession: vi.fn(),
   locationAssign: vi.fn(),
+  logWarn: vi.fn(),
 }));
 
 vi.mock('../../src/services/workspaceSession', () => ({
@@ -41,6 +42,10 @@ vi.mock('../../src/saas/billingClient', () => ({
   getWorkspacePlanCatalog: workspaceAdminMocks.getWorkspacePlanCatalog,
   createWorkspaceCheckoutSession: workspaceAdminMocks.createWorkspaceCheckoutSession,
   createWorkspacePortalSession: workspaceAdminMocks.createWorkspacePortalSession,
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: workspaceAdminMocks.logWarn,
 }));
 
 import WorkspaceAdminPage from '../../pages/WorkspaceAdmin';
@@ -118,9 +123,9 @@ describe('WorkspaceAdminPage', () => {
     setup('owner');
 
     await waitFor(() => {
-      expect(screen.getByText(/Billing and usage/i)).toBeTruthy();
-      expect(screen.getByPlaceholderText(/Member user id/i)).toBeTruthy();
-      expect(screen.getByText(/Audit trail/i)).toBeTruthy();
+      expect(screen.getByText(/Faturamento e uso do workspace/i)).toBeTruthy();
+      expect(screen.getByPlaceholderText(/ID do usuario do membro/i)).toBeTruthy();
+      expect(screen.getByText(/Trilha de auditoria do workspace/i)).toBeTruthy();
     });
   });
 
@@ -138,10 +143,10 @@ describe('WorkspaceAdminPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Start Pro checkout/i)).toBeTruthy();
+      expect(screen.getByText(/Iniciar upgrade Pro/i)).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByText(/Start Pro checkout/i));
+    fireEvent.click(screen.getByText(/Iniciar upgrade Pro/i));
 
     await waitFor(() => {
       expect(workspaceAdminMocks.createWorkspaceCheckoutSession).toHaveBeenCalledWith({
@@ -167,10 +172,10 @@ describe('WorkspaceAdminPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Open billing portal/i)).toBeTruthy();
+      expect(screen.getByText(/Abrir portal financeiro/i)).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByText(/Open billing portal/i));
+    fireEvent.click(screen.getByText(/Abrir portal financeiro/i));
 
     await waitFor(() => {
       expect(workspaceAdminMocks.createWorkspacePortalSession).toHaveBeenCalledWith({
@@ -190,10 +195,10 @@ describe('WorkspaceAdminPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/^Set Pro$/i)).toBeTruthy();
+      expect(screen.getByText(/^Definir Pro$/i)).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByText(/^Set Pro$/i));
+    fireEvent.click(screen.getByText(/^Definir Pro$/i));
 
     await waitFor(() => {
       expect(workspaceAdminMocks.updateWorkspacePlan).toHaveBeenCalledWith({
@@ -209,9 +214,60 @@ describe('WorkspaceAdminPage', () => {
     setup('viewer');
 
     await waitFor(() => {
-      expect(screen.getByText(/Read-only workspace role/i)).toBeTruthy();
+      expect(screen.getByText(/Funcao apenas leitura/i)).toBeTruthy();
     });
 
-    expect(screen.queryByPlaceholderText(/Member user id/i)).toBeNull();
+    expect(screen.queryByPlaceholderText(/ID do usuario do membro/i)).toBeNull();
+  });
+
+  it('shows a visible diagnostic when workspace admin fails to load', async () => {
+    workspaceAdminMocks.ensureActiveWorkspace.mockRejectedValueOnce(new Error('network down'));
+
+    render(
+      <WorkspaceAdminPage
+        userId="user-1"
+        activeWorkspaceId="ws-1"
+        activeWorkspaceName="Workspace 1"
+        activeTenantName="Tenant 1"
+        activeWorkspaceRole="owner"
+        onNavigateToTab={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText(/Nao foi possivel carregar a administracao do workspace agora/i)).toBeTruthy();
+    expect(await screen.findByRole('status')).toBeTruthy();
+    expect(screen.getByText(/Falha na operacao do workspace/i)).toBeTruthy();
+    expect(screen.getByText(/Pr[óo]ximo passo:/i)).toBeTruthy();
+    expect(workspaceAdminMocks.logWarn).toHaveBeenCalledWith(
+      '[WorkspaceAdmin] Failed to load workspace administration',
+      expect.objectContaining({
+        userId: 'user-1',
+        activeWorkspaceId: 'ws-1',
+        fallback: 'workspace-admin-load-failed',
+      }),
+    );
+
+  });
+
+  it('shows a visible diagnostic when plan change fails', async () => {
+    workspaceAdminMocks.updateWorkspacePlan.mockRejectedValueOnce(new Error('plan update failed'));
+
+    setup('owner', {
+      currentPlan: 'free',
+      stripeConfigured: false,
+      manualPlanChangeAllowed: true,
+      billingProvider: 'mock',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/^Definir Pro$/i)).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText(/^Definir Pro$/i));
+
+    expect(await screen.findByRole('status')).toBeTruthy();
+    expect(screen.getByText(/Falha na operacao do workspace/i)).toBeTruthy();
+    expect(screen.getByText(/A operacao do workspace nao concluiu agora/i)).toBeTruthy();
+    expect(screen.getByText(/Atualize a tela e tente novamente com a mesma sessao/i)).toBeTruthy();
   });
 });

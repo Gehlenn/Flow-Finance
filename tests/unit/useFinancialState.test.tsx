@@ -1,21 +1,47 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { useFinancialState } from '../../hooks/useFinancialState';
+
+const financialStateMocks = vi.hoisted(() => {
+  const mocks = {
+    logWarn: vi.fn(),
+    runAdaptiveLearning: vi.fn(),
+    initEventListeners: vi.fn(),
+    capturedEventStateGetter: null as null | (() => {
+      onLeaks?: (leaks: unknown[]) => void;
+      onReport?: (report: unknown) => void;
+    }),
+  };
+
+  mocks.initEventListeners.mockImplementation((getState: () => {
+    onLeaks?: (leaks: unknown[]) => void;
+    onReport?: (report: unknown) => void;
+  }) => {
+    mocks.capturedEventStateGetter = getState;
+    return () => undefined;
+  });
+
+  return mocks;
+});
 
 vi.mock('../../src/ai/aiMemory', () => ({
   detectAndLearnPatterns: vi.fn(),
 }));
 
 vi.mock('../../src/ai/adaptiveAIEngine', () => ({
-  runAdaptiveLearning: vi.fn().mockResolvedValue(undefined),
+  runAdaptiveLearning: financialStateMocks.runAdaptiveLearning,
 }));
 
 vi.mock('../../src/events/eventEngine', () => ({
   FinancialEventEmitter: {
     transactionCreated: vi.fn(),
   },
-  initEventListeners: vi.fn(() => () => undefined),
+  initEventListeners: financialStateMocks.initEventListeners,
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: financialStateMocks.logWarn,
 }));
 
 describe('useFinancialState', () => {
@@ -52,6 +78,7 @@ describe('useFinancialState', () => {
       activeTenantId: 'tenant-1',
       activeWorkspaceId: 'ws-1',
       syncEngine: syncEngine as never,
+      isDemoMode: false,
     }));
 
     expect(result.current.accounts).toBe(syncEngine.entities.accounts);
@@ -97,6 +124,7 @@ describe('useFinancialState', () => {
       activeTenantId: 'tenant-1',
       activeWorkspaceId: 'ws-1',
       syncEngine: syncEngine as never,
+      isDemoMode: false,
     }));
 
     await act(async () => {
@@ -120,5 +148,175 @@ describe('useFinancialState', () => {
       },
       { accounts: [] },
     );
+  });
+
+  it('logs adaptive learning failures without breaking the hook', async () => {
+    financialStateMocks.runAdaptiveLearning.mockRejectedValueOnce(new Error('adaptive offline'));
+
+    const syncEngine = {
+      entities: {
+        accounts: [],
+        transactions: [
+          { id: 'tx-1', amount: 25, description: 'Cafe', type: 'Despesa', category: 'Pessoal', date: '2026-04-01T00:00:00.000Z', user_id: 'user-1', workspace_id: 'ws-1', tenant_id: 'tenant-1' },
+          { id: 'tx-2', amount: 40, description: 'Almoco', type: 'Despesa', category: 'Pessoal', date: '2026-04-02T00:00:00.000Z', user_id: 'user-1', workspace_id: 'ws-1', tenant_id: 'tenant-1' },
+          { id: 'tx-3', amount: 150, description: 'Freela', type: 'Receita', category: 'Trabalho', date: '2026-04-03T00:00:00.000Z', user_id: 'user-1', workspace_id: 'ws-1', tenant_id: 'tenant-1' },
+        ],
+        goals: [],
+        reminders: [],
+      },
+      profile: {
+        name: 'Flow User',
+        theme: 'light' as const,
+        reminders: [],
+        alerts: [],
+      },
+      syncProfile: vi.fn().mockResolvedValue(undefined),
+      syncEntities: vi.fn().mockResolvedValue({
+        entities: {
+          accounts: [],
+          transactions: [],
+          goals: [],
+          reminders: [],
+        },
+        idMaps: {},
+      }),
+      backendSyncEnabled: true,
+      hasLoadedEntities: true,
+    };
+
+    const { rerender } = renderHook(() => useFinancialState({
+      userId: 'user-1',
+      activeTenantId: 'tenant-1',
+      activeWorkspaceId: 'ws-1',
+      syncEngine: syncEngine as never,
+      isDemoMode: false,
+    }));
+
+    await waitFor(() => {
+      expect(financialStateMocks.logWarn).toHaveBeenCalledWith(
+        '[useFinancialState] Failed to execute adaptive learning',
+        expect.objectContaining({
+          fallback: 'use-financial-state-adaptive-learning-failed',
+        }),
+      );
+    });
+  });
+
+  it('logs default account creation failures without breaking the hook', async () => {
+    const syncEntities = vi.fn().mockRejectedValueOnce(new Error('write failed'));
+
+    const syncEngine = {
+      entities: {
+        accounts: [],
+        transactions: [],
+        goals: [],
+        reminders: [],
+      },
+      profile: {
+        name: 'Flow User',
+        theme: 'light' as const,
+        reminders: [],
+        alerts: [],
+      },
+      syncProfile: vi.fn().mockResolvedValue(undefined),
+      syncEntities,
+      backendSyncEnabled: true,
+      hasLoadedEntities: true,
+    };
+
+    renderHook(() => useFinancialState({
+      userId: 'user-1',
+      activeTenantId: 'tenant-1',
+      activeWorkspaceId: 'ws-1',
+      syncEngine: syncEngine as never,
+      isDemoMode: false,
+    }));
+
+    await waitFor(() => {
+      expect(financialStateMocks.logWarn).toHaveBeenCalledWith(
+        '[useFinancialState] Failed to create default workspace account',
+        expect.objectContaining({
+          fallback: 'use-financial-state-create-default-account-failed',
+        }),
+      );
+    });
+  });
+
+  it('stores leak and report snapshots from the event listener pipeline', async () => {
+    const syncEngine = {
+      entities: {
+        accounts: [],
+        transactions: [],
+        goals: [],
+        reminders: [],
+      },
+      profile: {
+        name: 'Flow User',
+        theme: 'light' as const,
+        reminders: [],
+        alerts: [],
+      },
+      syncProfile: vi.fn().mockResolvedValue(undefined),
+      syncEntities: vi.fn().mockResolvedValue({
+        entities: {
+          accounts: [],
+          transactions: [],
+          goals: [],
+          reminders: [],
+        },
+        idMaps: {},
+      }),
+      backendSyncEnabled: true,
+      hasLoadedEntities: true,
+    };
+
+    const { result } = renderHook(() => useFinancialState({
+      userId: 'user-1',
+      activeTenantId: 'tenant-1',
+      activeWorkspaceId: 'ws-1',
+      syncEngine: syncEngine as never,
+      isDemoMode: false,
+    }));
+
+    await waitFor(() => {
+      expect(financialStateMocks.capturedEventStateGetter).toBeTruthy();
+    });
+
+    await act(async () => {
+      const state = financialStateMocks.capturedEventStateGetter?.();
+      state?.onLeaks?.([
+        {
+          merchant: 'Coffee Shop',
+          occurrences: 4,
+          monthly_cost: 120,
+          suggestion: 'Cortar o gasto recorrente.',
+        },
+      ]);
+      state?.onReport?.({
+        month: '2026-05',
+        total_income: 1000,
+        total_expenses: 200,
+        top_categories: [
+          { category: 'Pessoal', amount: 200, percentage: 100 },
+        ],
+        insights: ['Gastos sob controle'],
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.latestLeaks).toStrictEqual([
+        {
+          merchant: 'Coffee Shop',
+          occurrences: 4,
+          monthly_cost: 120,
+          suggestion: 'Cortar o gasto recorrente.',
+        },
+      ]);
+      expect(result.current.latestReport).toMatchObject({
+        month: '2026-05',
+        total_income: 1000,
+        total_expenses: 200,
+      });
+    });
   });
 });

@@ -1,10 +1,22 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Request, Response } from 'express';
 
+const { mockWarn } = vi.hoisted(() => ({
+  mockWarn: vi.fn(),
+}));
+
+vi.mock('../../src/config/logger', () => ({
+  default: {
+    warn: mockWarn,
+    debug: vi.fn(),
+  },
+}));
+
 import { createDistributedRateLimitByUser } from '../../src/middleware/distributedRateLimitByUser';
 
 function createResponse() {
   const headers: Record<string, string> = {};
+  type RateLimitResponse = Response & { headers: Record<string, string> };
   return {
     headers,
     set: vi.fn((name: string, value: string) => {
@@ -12,10 +24,14 @@ function createResponse() {
     }),
     status: vi.fn().mockReturnThis(),
     json: vi.fn(),
-  } as unknown as Response & { headers: Record<string, string> };
+  } as unknown as RateLimitResponse;
 }
 
 describe('createDistributedRateLimitByUser', () => {
+  beforeEach(() => {
+    mockWarn.mockClear();
+  });
+
   it('allows request under limit and sets headers', async () => {
     const redis = {
       incr: vi.fn().mockResolvedValue(1),
@@ -38,9 +54,9 @@ describe('createDistributedRateLimitByUser', () => {
     await middleware(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    expect((res as any).headers['RateLimit-Limit']).toBe('2');
-    expect((res as any).headers['RateLimit-Remaining']).toBe('1');
-    expect((res as any).headers['RateLimit-Reset']).toBeDefined();
+    expect(res.headers['RateLimit-Limit']).toBe('2');
+    expect(res.headers['RateLimit-Remaining']).toBe('1');
+    expect(res.headers['RateLimit-Reset']).toBeDefined();
     expect(redis.expire).toHaveBeenCalledTimes(1);
   });
 
@@ -66,8 +82,8 @@ describe('createDistributedRateLimitByUser', () => {
     await middleware(req, res, next);
 
     expect(next).not.toHaveBeenCalled();
-    expect((res as any).status).toHaveBeenCalledWith(429);
-    expect((res as any).json).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(429);
+    expect(res.json).toHaveBeenCalled();
   });
 
   it('falls back to in-memory limiter when redis fails', async () => {
@@ -93,6 +109,17 @@ describe('createDistributedRateLimitByUser', () => {
     await middleware(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    expect((res as any).status).toHaveBeenCalledWith(429);
+    expect(res.status).toHaveBeenCalledWith(429);
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.any(Error),
+        namespace: 'clinic-test',
+        limiterKey: 'k-fallback',
+        windowMs: 60000,
+        max: 1,
+        fallback: 'distributed-rate-limit-unavailable',
+      }),
+      'Distributed rate limiter unavailable, falling back to in-memory limiter',
+    );
   });
 });

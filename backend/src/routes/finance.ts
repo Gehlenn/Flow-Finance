@@ -10,6 +10,7 @@ import { financeMetricsController } from '../controllers/financeController';
 import { asyncHandler } from '../middleware/errorHandler';
 import { appendDomainEvent, getDomainEvents } from '../services/finance/eventStore';
 import { acknowledgeEvent, enqueueEvent, getPendingEvents, retryEvent } from '../events/eventQueue';
+import logger from '../config/logger';
 
 const router = Router();
 
@@ -27,7 +28,17 @@ async function flushQueuedDomainEvents(): Promise<void> {
     try {
       await appendDomainEvent(payload);
       await acknowledgeEvent(item.id);
-    } catch {
+    } catch (error) {
+      logger.warn({
+        error,
+        eventId: item.id,
+        workspaceId: payload.workspaceId,
+        eventType: payload.type,
+        aggregateType: payload.aggregateType,
+        hasPayload: !!payload.payload,
+        pendingCount: pending.length,
+        fallback: 'finance-queued-event-flush-failed',
+      }, 'Failed to flush queued finance event; scheduling retry');
       await retryEvent(item.id);
     }
   }
@@ -77,7 +88,16 @@ router.post('/events', authz('finance:read'), financeEventsLimiterByUser, asyncH
     await acknowledgeEvent(queueItem.id);
     res.status(201).json({ event });
     return;
-  } catch {
+  } catch (error) {
+    logger.warn({
+      error,
+      eventId: queueItem.id,
+      workspaceId: eventInput.workspaceId,
+      type: eventInput.type,
+      aggregateType: eventInput.aggregateType,
+      hasMetadata: !!eventInput.metadata,
+      fallback: 'finance-event-persist-failed',
+    }, 'Failed to persist finance event; scheduling retry');
     await retryEvent(queueItem.id);
     res.status(202).json({ queued: true, retryScheduled: true });
     return;

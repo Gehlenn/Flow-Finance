@@ -15,18 +15,29 @@
  *   9. Dispara análise de salário + despesas fixas em background
  */
 
-import { Transaction, TransactionType, Category } from '../../types';
+import { Transaction } from '../../types';
 import { Account } from '../../models/Account';
-import { BankConnection, SyncResult } from '../../models/BankConnection';
 import {
   getConnections,
   getConnection,
   fullSync,
-  formatLastSync,
+  parseLastSyncDate,
 } from '../../services/integrations/openBankingService';
 import { FinancialEventEmitter } from '../events/eventEngine';
-import { detectSalary, SalaryDetectionResult } from '../ai/salaryDetector';
-import { detectFixedExpenses, FixedExpenseReport } from '../ai/fixedExpenseDetector';
+import type { SalaryDetectionResult } from '../ai/salaryDetector';
+import type { FixedExpenseReport } from '../ai/fixedExpenseDetector';
+import { logWarn } from '../utils/logger';
+import {
+  analyzeBankSyncTransactions,
+  normalizeImportedTransactionId,
+  saveSyncReport,
+} from './bankSyncEngineHelpers';
+export {
+  formatSyncDuration,
+  getLastSyncReport,
+  getSyncReports,
+  getSyncStatusSummary,
+} from './bankSyncEngineHelpers';
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -79,32 +90,6 @@ export interface BankSyncReport {
   results:               BankSyncConnectionResult[];
   salary_analysis?:      SalaryDetectionResult;
   fixed_expense_report?: FixedExpenseReport;
-}
-
-// ─── Storage key for sync reports ────────────────────────────────────────────
-
-const SYNC_REPORTS_KEY = 'flow_bank_sync_reports';
-const MAX_REPORTS = 10;
-
-function saveSyncReport(report: BankSyncReport): void {
-  try {
-    const existing: BankSyncReport[] = JSON.parse(localStorage.getItem(SYNC_REPORTS_KEY) || '[]');
-    const updated = [report, ...existing].slice(0, MAX_REPORTS);
-    localStorage.setItem(SYNC_REPORTS_KEY, JSON.stringify(updated));
-  } catch { /* silencioso */ }
-}
-
-export function getSyncReports(): BankSyncReport[] {
-  try {
-    return JSON.parse(localStorage.getItem(SYNC_REPORTS_KEY) || '[]');
-  } catch {
-    return [];
-  }
-}
-
-export function getLastSyncReport(): BankSyncReport | null {
-  const reports = getSyncReports();
-  return reports[0] ?? null;
 }
 
 // ─── PART 3 — runBankSync ─────────────────────────────────────────────────────
@@ -227,11 +212,12 @@ export async function runBankSync(
       totalImported += syncResult.transactions_imported;
       successCount++;
 
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'erro desconhecido';
       emit({
         type: 'error',
         bank_name: conn.bank_name,
-        message: `Erro ao sincronizar ${conn.bank_name}: ${err?.message ?? 'erro desconhecido'}`,
+        message: `Erro ao sincronizar ${conn.bank_name}: ${message}`,
         progress: baseProgress + 10,
       });
 
@@ -241,7 +227,7 @@ export async function runBankSync(
         status:                'error',
         transactions_imported: 0,
         balance_updated:       false,
-        error:                 err?.message ?? 'Erro desconhecido',
+        error:                 message,
         sync_duration_ms:      Date.now() - connT0,
       });
       failCount++;
@@ -253,19 +239,13 @@ export async function runBankSync(
 
   const allTransactions = [
     ...existingTransactions,
-    ...newlyImported.map(t => ({ ...t, id: t.id ?? Math.random().toString(36) } as Transaction)),
+    ...newlyImported.map((t) => ({ ...t, id: normalizeImportedTransactionId(t) } as Transaction)),
   ];
 
-  let salaryAnalysis: SalaryDetectionResult | undefined;
-  let fixedExpenseReport: FixedExpenseReport | undefined;
-
-  try {
-    salaryAnalysis = detectSalary(allTransactions);
-  } catch { /* non-blocking */ }
-
-  try {
-    fixedExpenseReport = detectFixedExpenses(allTransactions);
-  } catch { /* non-blocking */ }
+  const {
+    salaryAnalysis,
+    fixedExpenseReport,
+  } = analyzeBankSyncTransactions(allTransactions);
 
   emit({ type: 'done', bank_name: 'Todos', message: `Sync completo. ${totalImported} transações importadas.`, progress: 100 });
 
@@ -341,11 +321,12 @@ export async function syncSingleBank(
       new_balance:           result.new_balance,
       sync_duration_ms:      Date.now() - t0,
     };
-  } catch (err: any) {
-    console.warn('[BankSyncEngine] Single bank sync failed:', {
+  } catch (error: unknown) {
+    logWarn('[BankSyncEngine] Single bank sync failed', {
       connectionId,
       bankName: conn.bank_name,
-      error: err?.message ?? 'Erro desconhecido',
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      fallback: 'bank-sync-single-bank-failed',
     });
     return {
       connection_id:         connectionId,
@@ -353,7 +334,7 @@ export async function syncSingleBank(
       status:                'error',
       transactions_imported: 0,
       balance_updated:       false,
-      error:                 err?.message ?? 'Erro desconhecido',
+      error:                 error instanceof Error ? error.message : 'Erro desconhecido',
       sync_duration_ms:      Date.now() - t0,
     };
   }
@@ -387,7 +368,13 @@ export function startAutoSync(
         onUpdateAccount,
         { userId, days: 7 } // daily sync = only last 7 days
       );
-    } catch { /* silencioso */ }
+    } catch (error) {
+      logWarn('[BankSyncEngine] Auto sync failed', {
+        userId,
+        error,
+        fallback: 'bank-sync-auto-sync-failed',
+      });
+    }
   }, intervalMinutes * 60 * 1000);
 }
 
@@ -396,38 +383,4 @@ export function stopAutoSync(): void {
     clearInterval(autoSyncInterval);
     autoSyncInterval = null;
   }
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-export function formatSyncDuration(ms: number): string {
-  if (ms < 1000)  return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${Math.round(ms / 60000)}min`;
-}
-
-export function getSyncStatusSummary(userId: string): {
-  total_banks:    number;
-  connected:      number;
-  last_sync:      string | null;
-  needs_sync:     boolean;
-} {
-  const conns = getConnections(userId);
-  const connected = conns.filter(c => c.connection_status === 'connected' || c.connection_status === 'syncing');
-  const lastSyncTimes = conns
-    .map(c => c.last_sync)
-    .filter(Boolean)
-    .sort()
-    .reverse();
-  const lastSync = lastSyncTimes[0] ?? null;
-
-  // Needs sync if last sync was > 4 hours ago or never
-  const needsSync = !lastSync || (Date.now() - new Date(lastSync).getTime()) > 4 * 60 * 60 * 1000;
-
-  return {
-    total_banks: conns.length,
-    connected:   connected.length,
-    last_sync:   lastSync,
-    needs_sync:  needsSync,
-  };
 }

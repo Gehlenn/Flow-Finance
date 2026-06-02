@@ -225,7 +225,12 @@ function parseCursor(cursor?: string): { at: string; id: string } | null {
     }
     return { at: decoded.at, id: decoded.id };
   } catch (err) {
-    logger.warn({ err, cursor: cursor.slice(0, 50) }, 'Cursor decode failed');
+    logger.warn({
+      err,
+      cursor: cursor.slice(0, 50),
+      cursorLength: cursor.length,
+      fallback: 'admin-cursor-decode-failed',
+    }, 'Cursor decode failed');
     return null;
   }
 }

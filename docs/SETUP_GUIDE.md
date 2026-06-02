@@ -1,8 +1,14 @@
-# Guia de Setup
+�# Guia de Setup
 
 ## Papel deste documento
 
 Este é o guia canônico de setup do Flow Finance. Ele cobre a preparação local, a ordem correta de validação e os pontos mínimos para envolver Firebase, Stripe e Vercel sem depender de memória de sessão.
+
+## Estado vivo em 2026-05-25
+
+- o deploy oficial atual ja esta fechado em `0.9.7`
+- use este guia como contrato de setup e regressao para novos ambientes, nao como sinal de pendencia do deploy atual
+
 
 ## Links oficiais atuais
 

@@ -1,5 +1,6 @@
 ﻿import { UserContext } from '../../context/UserContext';
 import { aiTaskQueue } from '../../ai/queue/AITaskQueue';
+import { AutopilotAnalysisPayload } from '../../ai/queue/taskTypes';
 import { aiMemoryStore } from '../../ai/memory/AIMemoryStore';
 import { AIMemoryType } from '../../ai/memory/memoryTypes';
 import { Transaction } from '../../../types';
@@ -75,7 +76,12 @@ export class FinancialAutopilot {
     return alerts;
   }
 
-  enqueueAnalysis(userId: string, accounts: unknown[], transactions: unknown[], goals?: unknown[]): string {
+  enqueueAnalysis(
+    userId: string,
+    accounts: AutopilotAnalysisPayload['accounts'],
+    transactions: AutopilotAnalysisPayload['transactions'],
+    goals?: AutopilotAnalysisPayload['goals']
+  ): string {
     if (!aiTaskQueue.isInitialized()) {
       aiTaskQueue.initialize();
     }

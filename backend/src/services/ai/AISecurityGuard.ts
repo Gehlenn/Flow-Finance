@@ -225,7 +225,7 @@ For out-of-scope questions, politely explain that you're designed specifically f
    */
   static logSecurityEvent(
     type: 'blocked_injection' | 'blocked_scope' | 'blocked_output' | 'allowed',
-    details: Record<string, any>
+    details: Record<string, unknown>
   ): void {
     if (type.startsWith('blocked')) {
       logger.warn(`AI Security: ${type}`, details);

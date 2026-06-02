@@ -105,7 +105,12 @@ export async function retryEvent(id: string): Promise<EventQueueItem | null> {
   }
 
   if (item.retries >= MAX_RETRIES) {
-    logger.warn({ id, retries: item.retries }, 'Event exceeded max retries, moving to dead-letter');
+    logger.warn({
+      id,
+      retries: item.retries,
+      maxRetries: MAX_RETRIES,
+      fallback: 'event-queue-dead-letter',
+    }, 'Event exceeded max retries, moving to dead-letter');
     await eventQueueStore.remove(id);
     return { ...item }; // Return snapshot for dead-letter handling
   }
@@ -122,6 +127,15 @@ export async function retryEvent(id: string): Promise<EventQueueItem | null> {
   };
 
   await eventQueueStore.save(updatedItem);
+  if (nextRetries >= MAX_RETRIES) {
+    logger.warn({
+      id,
+      retries: nextRetries,
+      maxRetries: MAX_RETRIES,
+      fallback: 'event-queue-dead-letter',
+    }, 'Event exceeded max retries, moving to dead-letter');
+  }
+
   return updatedItem;
 }
 

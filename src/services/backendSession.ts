@@ -1,5 +1,6 @@
 import { API_ENDPOINTS } from '../config/api.config';
 import { setEphemeralAccessToken } from './authSessionStore';
+import { logWarn } from '../utils/logger';
 
 interface FirebaseSessionBootstrapInput {
   idToken: string;
@@ -31,7 +32,12 @@ interface PasswordSessionBootstrapInput {
 async function parseJsonSafely(response: Response): Promise<Record<string, unknown>> {
   try {
     return await response.json() as Record<string, unknown>;
-  } catch {
+  } catch (error) {
+    logWarn('[BackendSession] Failed to parse JSON response; falling back to empty payload', {
+      status: response.status,
+      error,
+      fallback: 'backend-session-parse-json-failed',
+    });
     return {};
   }
 }
@@ -82,7 +88,17 @@ export async function bootstrapBackendSessionFromFirebase(
   });
 
   if (firebaseResponse.ok) {
-    const payload = await firebaseResponse.json() as BackendSessionPayload;
+    let payload: BackendSessionPayload;
+    try {
+      payload = await firebaseResponse.json() as BackendSessionPayload;
+    } catch (error) {
+      logWarn('[BackendSession] Firebase session exchange returned invalid JSON', {
+        status: firebaseResponse.status,
+        error,
+        fallback: 'backend-session-firebase-json-invalid',
+      });
+      throw new Error('Invalid session payload returned by backend');
+    }
     setEphemeralAccessToken(payload.accessToken || payload.token || null);
     return payload;
   }

@@ -25,12 +25,21 @@ export async function importOFX(file: TextFileLike): Promise<ImportedStatementTr
   const content = await file.text();
   const transactions = parseOFX(content);
 
-  return transactions.map((tx: any) => {
+  return transactions.map((tx) => {
+    const rawTx = tx as unknown as Record<string, unknown> & { amount: number; date: string };
     const normalized = normalizeImportedTransaction({
-      amount: tx.amount,
-      date: tx.date,
-      description: tx.memo || tx.description || '',
-      merchant: tx.payee || tx.merchant || '',
+      amount: rawTx.amount,
+      date: rawTx.date,
+      description: typeof rawTx.memo === 'string'
+        ? rawTx.memo
+        : typeof rawTx.description === 'string'
+          ? rawTx.description
+          : '',
+      merchant: typeof rawTx.payee === 'string'
+        ? rawTx.payee
+        : typeof rawTx.merchant === 'string'
+          ? rawTx.merchant
+          : '',
     });
 
     return {

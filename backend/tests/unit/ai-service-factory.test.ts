@@ -73,14 +73,17 @@ describe('AIServiceFactory defaults', () => {
 
   it('defaults to Gemini primary and OpenAI fallback', async () => {
     const { AIServiceFactory } = await loadFactoryWithEnv();
-    const providers = new Map<string, any>();
+    const providers = new Map<string, { generateContent: (...args: unknown[]) => unknown }>();
     providers.set('gemini', { generateContent: vi.fn() });
     providers.set('openai', { generateContent: vi.fn() });
 
-    const orchestrator = AIServiceFactory.createOrchestrator(providers as any);
+    const orchestrator = AIServiceFactory.createOrchestrator(providers);
+    const orchestratorWithConfig = orchestrator as unknown as {
+      config: { primaryProvider: string; fallbackProvider: string };
+    };
 
-    expect((orchestrator as any).config.primaryProvider).toBe('gemini');
-    expect((orchestrator as any).config.fallbackProvider).toBe('openai');
+    expect(orchestratorWithConfig.config.primaryProvider).toBe('gemini');
+    expect(orchestratorWithConfig.config.fallbackProvider).toBe('openai');
   });
 
   it('falls back to the first available provider when configured primary is unavailable', async () => {
@@ -88,12 +91,15 @@ describe('AIServiceFactory defaults', () => {
       AI_PRIMARY_PROVIDER: 'gemini',
       AI_FALLBACK_PROVIDER: 'openai',
     });
-    const providers = new Map<string, any>();
+    const providers = new Map<string, { generateContent: (...args: unknown[]) => unknown }>();
     providers.set('openai', { generateContent: vi.fn() });
 
-    const orchestrator = AIServiceFactory.createOrchestrator(providers as any);
+    const orchestrator = AIServiceFactory.createOrchestrator(providers);
+    const orchestratorWithConfig = orchestrator as unknown as {
+      config: { primaryProvider: string; fallbackProvider: string };
+    };
 
-    expect((orchestrator as any).config.primaryProvider).toBe('openai');
-    expect((orchestrator as any).config.fallbackProvider).toBe('openai');
+    expect(orchestratorWithConfig.config.primaryProvider).toBe('openai');
+    expect(orchestratorWithConfig.config.fallbackProvider).toBe('openai');
   });
 });

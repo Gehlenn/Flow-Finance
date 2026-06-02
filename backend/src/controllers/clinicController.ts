@@ -3,10 +3,11 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { ClinicAutomationService } from '../services/clinic';
 import { IntegrationTelemetry, IntegrationMonitor } from '../services/observability';
 import { getFeatureFlagService } from '../config/featureFlags';
-import { ClinicWebhookPayload, ClinicWebhookPayloadSchema } from '../validation/clinicAutomation.schema';
+import { ClinicWebhookPayloadSchema } from '../validation/clinicAutomation.schema';
 import logger from '../config/logger';
 import redisClient from '../config/redis';
 import type { RedisLike } from '../services/clinic/IdempotentEventStore';
+import { normalizeIntegrationEnvironment } from '../services/observability/IntegrationTelemetry';
 
 // Lazy-init: serviços construídos na primeira chamada (sem Redis obrigatório no boot)
 let _service: ClinicAutomationService | null = null;
@@ -73,7 +74,7 @@ export const receiveClinicFinancialEvent = asyncHandler(async (req: Request, res
       res.status(400).json({ success: false, message: 'Invalid clinic webhook payload', errors: parsed.error.issues });
       return;
     }
-    const payload = parsed.data as ClinicWebhookPayload;
+    const payload = parsed.data;
   const signature = req.header('x-integration-signature') ?? '';
   const sourceIp = (req.ip ?? req.socket?.remoteAddress ?? 'unknown').replace('::ffff:', '');
 
@@ -83,7 +84,7 @@ export const receiveClinicFinancialEvent = asyncHandler(async (req: Request, res
     payload,
     signature,
     sourceIp,
-    { environment: (process.env.NODE_ENV || 'production') as any }
+    { environment: normalizeIntegrationEnvironment(process.env.NODE_ENV) }
   );
 
   if (!result.success) {
@@ -99,7 +100,7 @@ export const receiveClinicFinancialEvent = asyncHandler(async (req: Request, res
 export const getClinicIntegrationHealth = asyncHandler(async (_req: Request, res: Response) => {
   const service = getClinicService();
   const featureFlagService = getFeatureFlagService();
-  const environment = (process.env.NODE_ENV || 'production') as 'development' | 'staging' | 'production';
+  const environment = normalizeIntegrationEnvironment(process.env.NODE_ENV);
 
   const context = {
     environment,

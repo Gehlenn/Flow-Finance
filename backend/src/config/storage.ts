@@ -108,7 +108,13 @@ export const uploadFile = async (
       bucket: config.bucket,
     };
   } catch (error) {
-    logger.error({ error, key }, 'File upload failed');
+    logger.error({
+      error,
+      key,
+      bucket: config.bucket,
+      provider: config.provider,
+      fallback: 'cloud-storage-upload-failed',
+    }, 'File upload failed');
     throw error;
   }
 };
@@ -126,7 +132,13 @@ export const getSignedUrl = async (key: string, expiresIn: number = 3600): Promi
     const signedUrl = await getS3SignedUrl(s3Client, command, { expiresIn });
     return signedUrl;
   } catch (error) {
-    logger.error({ error, key }, 'Failed to generate signed URL');
+    logger.error({
+      error,
+      key,
+      bucket: config.bucket,
+      provider: config.provider,
+      fallback: 'cloud-storage-signed-url-failed',
+    }, 'Failed to generate signed URL');
     throw error;
   }
 };
@@ -144,7 +156,13 @@ export const deleteFile = async (key: string): Promise<void> => {
     await s3Client.send(command);
     logger.info({ key }, 'File deleted successfully');
   } catch (error) {
-    logger.error({ error, key }, 'File deletion failed');
+    logger.error({
+      error,
+      key,
+      bucket: config.bucket,
+      provider: config.provider,
+      fallback: 'cloud-storage-delete-failed',
+    }, 'File deletion failed');
     throw error;
   }
 };
@@ -166,7 +184,13 @@ export const fileExists = async (key: string): Promise<boolean> => {
     if (error.name === 'NoSuchKey') {
       return false;
     }
-    logger.error({ error, key }, 'Error checking file existence');
+    logger.error({
+      error,
+      key,
+      bucket: config.bucket,
+      provider: config.provider,
+      fallback: 'cloud-storage-exists-failed',
+    }, 'Error checking file existence');
     throw error;
   }
 };

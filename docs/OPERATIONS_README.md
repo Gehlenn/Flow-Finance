@@ -13,7 +13,9 @@ Este arquivo concentra os documentos de operacao atual do Flow Finance. Ele sepa
 
 - suite global: `verde`
 - billing Stripe sandbox: `validado localmente`
-- bloqueio atual: fechamento do ambiente alvo no Vercel
+- backend oficial: `0.9.7` revalidado em `2026-05-25`
+- pendencia operacional atual: consolidacao da evidencia externa e preview access quando aplicavel
+- polimento visual principal: concluido sem alterar os contratos operacionais
 
 ## Operacao geral
 
@@ -27,6 +29,13 @@ Este arquivo concentra os documentos de operacao atual do Flow Finance. Ele sepa
 - [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)
 - [VERCEL_QUICK_START.md](./VERCEL_QUICK_START.md)
 - [SETUP_GUIDE.md](./SETUP_GUIDE.md)
+
+## Estado do contrato publico
+
+- `/health` responde `200`
+- `/api/health` responde `200`
+- `/api/version` responde `200` com `0.9.7`
+- `/` no backend responde `404` esperado para API-only
 
 ## Billing e observabilidade
 

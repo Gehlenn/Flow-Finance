@@ -1,22 +1,38 @@
-﻿import React, { Suspense, lazy, useCallback, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useState } from 'react';
 import { Loader2, Activity } from 'lucide-react';
 import { Account } from '../models/Account';
 import { Alert, Goal, Reminder, Transaction } from '../types';
+import { FinancialLeak } from '../src/ai/leakDetector';
+import { FinancialReport } from '../src/finance/reportEngine';
 import type { WorkspaceRole } from '../src/services/workspaceSession';
 import { canAccessFeature } from '../src/app/monetizationPlan';
 import UpgradePromptCard from '../components/UpgradePromptCard';
+import { logWarn } from '../src/utils/logger';
 
-const lazyWithRetry = (importFn: () => Promise<any>) => {
-  return lazy(() =>
-    importFn().catch((error) => {
-      console.error('[Navigation] Failed to load module, retrying...', error);
-      return new Promise((resolve) => setTimeout(resolve, 1000))
-        .then(() => importFn())
-        .catch((retryError) => {
-          console.error('[Navigation] Module load failed after retry', retryError);
+type LazyModule<TProps extends object> = { default: React.ComponentType<TProps> };
+
+const lazyWithRetry = <TProps extends object>(importFn: () => Promise<LazyModule<TProps>>) => {
+  return lazy(async () => {
+    try {
+      return await importFn();
+    } catch (error: unknown) {
+      logWarn('[Navigation] Failed to load module, retrying', {
+        error,
+        fallback: 'navigation-module-load-retry',
+      });
+
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return await importFn();
+      } catch (retryError: unknown) {
+        logWarn('[Navigation] Module load failed after retry', {
+          error: retryError,
+          fallback: 'navigation-module-load-failed',
         });
-    }),
-  );
+        throw retryError;
+      }
+    }
+  });
 };
 
 const Dashboard = lazyWithRetry(() => import('../components/Dashboard'));
@@ -31,9 +47,7 @@ const AdvancedAnalytics = lazyWithRetry(() => import('../components/AdvancedAnal
 const AccountsPage = lazyWithRetry(() => import('../pages/Accounts'));
 const InsightsPage = lazyWithRetry(() => import('../pages/Insights'));
 const AICFOPage = lazyWithRetry(() => import('../pages/AICFO'));
-const AutopilotPage = lazyWithRetry(() => import('../pages/Autopilot'));
 const GoalsPage = lazyWithRetry(() => import('../pages/Goals'));
-const ReceiptScannerPage = lazyWithRetry(() => import('../pages/ReceiptScanner'));
 const ImportTransactionsPage = lazyWithRetry(() => import('../pages/ImportTransactions'));
 const AIControlPanel = lazyWithRetry(() => import('../pages/AIControlPanel'));
 
@@ -48,9 +62,7 @@ export type Tab =
   | 'accounts'
   | 'insights'
   | 'cfo'
-  | 'autopilot'
   | 'goals'
-  | 'scanner'
   | 'import'
   | 'aicontrol'
   | 'analytics'
@@ -69,11 +81,14 @@ export interface NavigationRenderContext {
   hideValues: boolean;
   theme: 'light' | 'dark';
   isDev: boolean;
+  canAccessDevTools: boolean;
   transactions: Transaction[];
   accounts: Account[];
   alerts: Alert[];
   reminders: Reminder[];
   goals: Goal[];
+  latestLeaks?: FinancialLeak[];
+  latestReport?: FinancialReport | null;
   onToggleHideValues: () => void;
   onNavigateToTab: (tab: Tab) => void;
   onUpdateProfileName: (name: string) => void;
@@ -126,9 +141,9 @@ export function useNavigationTabs() {
               reminders={context.reminders}
               hideValues={context.hideValues}
               onNavigateToInsights={() => context.onNavigateToTab('insights')}
-              onNavigateToAccounts={() => context.onNavigateToTab('accounts')}
               onNavigateToHistory={() => context.onNavigateToTab('history')}
               onNavigateToFlow={() => context.onNavigateToTab('flow')}
+              onNavigateToSettings={() => context.onNavigateToTab('settings')}
             />
           </Suspense>
         );
@@ -206,18 +221,6 @@ export function useNavigationTabs() {
             />
           </Suspense>
         );
-      case 'autopilot':
-        return (
-          <Suspense fallback={<LoadingFallback />}>
-            <AutopilotPage
-              transactions={context.transactions}
-              accounts={context.accounts}
-              userId={context.userId ?? 'local'}
-              workspacePlan={context.activeWorkspacePlan}
-              hideValues={context.hideValues}
-            />
-          </Suspense>
-        );
       case 'cfo':
         return (
           <Suspense fallback={<LoadingFallback />}>
@@ -239,6 +242,8 @@ export function useNavigationTabs() {
               userId={context.userId ?? 'local'}
               workspacePlan={context.activeWorkspacePlan}
               hideValues={context.hideValues}
+              onNavigateToTab={context.onNavigateToTab}
+              onCreateReminder={context.onAddReminder}
             />
           </Suspense>
         );
@@ -255,15 +260,6 @@ export function useNavigationTabs() {
             />
           </Suspense>
         );
-      case 'scanner':
-        return (
-          <Suspense fallback={<LoadingFallback />}>
-            <ReceiptScannerPage
-              hideValues={context.hideValues}
-              onAddTransaction={context.onAddTransactions}
-            />
-          </Suspense>
-        );
       case 'import':
         return (
           <Suspense fallback={<LoadingFallback />}>
@@ -276,12 +272,14 @@ export function useNavigationTabs() {
           </Suspense>
         );
       case 'aicontrol':
-        return context.isDev ? (
+        return context.canAccessDevTools ? (
           <Suspense fallback={<LoadingFallback />}>
             <AIControlPanel
               transactions={context.transactions}
               accounts={context.accounts}
               userId={context.userId ?? 'local'}
+              leaks={context.latestLeaks}
+              report={context.latestReport}
             />
           </Suspense>
         ) : null;
@@ -289,12 +287,15 @@ export function useNavigationTabs() {
         return context.userId ? (
           <Suspense fallback={<LoadingFallback />}>
             <AccountsPage
+              userId={context.userId}
               hideValues={context.hideValues}
               activeWorkspaceName={context.activeWorkspaceName}
               activeWorkspaceRole={context.activeWorkspaceRole}
               activeTenantName={context.activeTenantName}
               accounts={context.accounts}
-              onCreateAccount={context.onCreateAccount}
+              onCreateAccount={async (account) => {
+                await context.onCreateAccount(account);
+              }}
               onDeleteAccount={context.onDeleteAccount}
             />
           </Suspense>
@@ -320,6 +321,7 @@ export function useNavigationTabs() {
         return (
           <Suspense fallback={<LoadingFallback />}>
             <WorkspaceAdminPage
+              userId={context.userId ?? 'local'}
               activeWorkspaceId={context.activeWorkspaceId}
               activeWorkspaceName={context.activeWorkspaceName}
               activeTenantName={context.activeTenantName}
@@ -332,6 +334,7 @@ export function useNavigationTabs() {
         return (
           <Suspense fallback={<LoadingFallback />}>
             <WorkspaceAuditPage
+              userId={context.userId ?? 'local'}
               activeWorkspaceId={context.activeWorkspaceId}
               activeWorkspaceName={context.activeWorkspaceName}
               activeTenantName={context.activeTenantName}
@@ -341,13 +344,13 @@ export function useNavigationTabs() {
           </Suspense>
         );
       case 'performance':
-        return (
+        return context.canAccessDevTools ? (
           <div className="flex flex-col gap-4 animate-in fade-in duration-700 pb-24 overflow-visible">
             <div className="bg-gradient-to-r from-[#f59e0b] to-[#d97706] p-6 rounded-[2rem] flex justify-between items-center shadow-lg shadow-amber-500/20 shrink-0 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 blur-3xl -mr-16 -mt-16 pointer-events-none" />
               <div className="relative z-10">
-                <h2 className="text-2xl font-black text-white tracking-tight leading-none">Performance</h2>
-                <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mt-1.5">Monitoramento em Tempo Real</p>
+                <h2 className="text-2xl font-semibold text-white tracking-tight leading-none">Performance</h2>
+                <p className="text-[8px] font-semibold text-white/70 uppercase tracking-[0.08em] mt-1.5">Monitoramento em Tempo Real</p>
               </div>
               <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center text-white relative z-10">
                 <Activity size={20} />
@@ -355,7 +358,7 @@ export function useNavigationTabs() {
             </div>
             <PerformanceMonitor />
           </div>
-        );
+        ) : null;
       default:
         return null;
     }
@@ -367,7 +370,3 @@ export function useNavigationTabs() {
     renderActiveTab,
   };
 }
-
-
-
-

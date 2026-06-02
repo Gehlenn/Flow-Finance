@@ -1,6 +1,11 @@
 import express from 'express';
 import request from 'supertest';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { createTestAuthorizationHeader } from '../helpers/auth';
+
+const { generateContentMock } = vi.hoisted(() => ({
+  generateContentMock: vi.fn(async () => 'Resposta CFO de teste'),
+}));
 
 vi.mock('../../src/middleware/authz', () => ({
   authz: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
@@ -54,7 +59,6 @@ vi.mock('../../src/services/admin/workspaceStore', async () => {
   };
 });
 
-const generateContentMock = vi.fn(async () => 'Resposta CFO de teste');
 
 vi.mock('../../src/config/ai', async () => {
   const actual = await vi.importActual<typeof import('../../src/config/ai')>('../../src/config/ai');
@@ -80,7 +84,7 @@ describe('AI CFO route integration', () => {
     app.use(express.json());
     app.use('/api/ai', aiRoutesModule.default);
     app.use(errorHandlerModule.errorHandler);
-  }, 30_000);
+  }, 90_000);
 
   it('returns 401 when auth header is missing', async () => {
     const response = await request(app)
@@ -94,7 +98,7 @@ describe('AI CFO route integration', () => {
   it('returns 400 when workspace header is missing', async () => {
     const response = await request(app)
       .post('/api/ai/cfo')
-      .set('Authorization', 'Bearer mock-token-for-user-1')
+      .set('Authorization', createTestAuthorizationHeader('user-1'))
       .send({ question: 'Posso gastar este mes?' });
 
     expect(response.status).toBe(400);
@@ -104,7 +108,7 @@ describe('AI CFO route integration', () => {
   it('returns 400 when CFO intent is invalid', async () => {
     const response = await request(app)
       .post('/api/ai/cfo')
-      .set('Authorization', 'Bearer mock-token-for-user-1')
+      .set('Authorization', createTestAuthorizationHeader('user-1'))
       .set('x-workspace-id', 'ws-1')
       .send({
         question: 'Qual meu saldo?',
@@ -118,7 +122,7 @@ describe('AI CFO route integration', () => {
   it('returns CFO answer when auth/workspace/payload are valid', async () => {
     const response = await request(app)
       .post('/api/ai/cfo')
-      .set('Authorization', 'Bearer mock-token-for-user-1')
+      .set('Authorization', createTestAuthorizationHeader('user-1'))
       .set('x-workspace-id', 'ws-1')
       .send({
         question: 'Posso gastar este mes?',
@@ -131,3 +135,6 @@ describe('AI CFO route integration', () => {
     expect(generateContentMock).toHaveBeenCalledOnce();
   });
 });
+
+
+

@@ -5,6 +5,7 @@ const businessIntegrationMocks = vi.hoisted(() => ({
   pullSyncItems: vi.fn(),
   pushSyncItems: vi.fn(),
   recordAuditEvent: vi.fn(),
+  logError: vi.fn(),
 }));
 
 vi.mock('../../src/services/admin/workspaceStore', () => ({
@@ -18,6 +19,12 @@ vi.mock('../../src/services/sync/cloudSyncStore', () => ({
 
 vi.mock('../../src/services/admin/auditLog', () => ({
   recordAuditEvent: businessIntegrationMocks.recordAuditEvent,
+}));
+
+vi.mock('../../src/config/logger', () => ({
+  default: {
+    error: businessIntegrationMocks.logError,
+  },
 }));
 
 import {
@@ -218,5 +225,64 @@ describe('businessIntegrationService', () => {
       [expect.objectContaining({ payload: expect.objectContaining({ title: 'Pagar fornecedor', priority: 'alta' }) })],
       expect.objectContaining({ workspaceId: 'ws_123' }),
     );
+  });
+
+  it('logs contextual data when transaction persistence fails before audit', async () => {
+    businessIntegrationMocks.pushSyncItems.mockRejectedValueOnce(new Error('sync failed'));
+
+    await expect(ingestIntegrationTransaction({
+      workspaceId: 'ws_123',
+      sourceSystem: 'n8n_ops',
+      externalRecordId: 'txn_error',
+      type: 'income',
+      amount: 250,
+      currency: 'BRL',
+      occurredAt: '2026-04-09T14:30:00.000Z',
+      description: 'Pagamento com falha',
+      status: 'confirmed',
+    })).rejects.toThrow('sync failed');
+
+    expect(businessIntegrationMocks.logError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: 'ws_123',
+        sourceSystem: 'n8n_ops',
+        externalRecordId: 'txn_error',
+        entity: 'transaction',
+        storedAs: 'transactions',
+        action: 'created',
+        fallback: 'business-integration-ingest-failed',
+      }),
+      'Failed to persist business integration transaction',
+    );
+    expect(businessIntegrationMocks.recordAuditEvent).not.toHaveBeenCalled();
+  });
+
+  it('logs contextual data when reminder persistence fails before audit', async () => {
+    businessIntegrationMocks.pushSyncItems.mockRejectedValueOnce(new Error('sync failed'));
+
+    await expect(ingestIntegrationReminder({
+      workspaceId: 'ws_123',
+      sourceSystem: 'n8n_ops',
+      externalRecordId: 'rem_error',
+      title: 'Falha no lembrete',
+      remindAt: '2026-04-10T10:00:00.000Z',
+      kind: 'financial',
+      status: 'active',
+      priority: 'high',
+    })).rejects.toThrow('sync failed');
+
+    expect(businessIntegrationMocks.logError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: 'ws_123',
+        sourceSystem: 'n8n_ops',
+        externalRecordId: 'rem_error',
+        entity: 'reminder',
+        storedAs: 'reminders',
+        action: 'created',
+        fallback: 'business-integration-ingest-failed',
+      }),
+      'Failed to persist business integration reminder',
+    );
+    expect(businessIntegrationMocks.recordAuditEvent).not.toHaveBeenCalled();
   });
 });

@@ -8,6 +8,7 @@
 import { subscribeToFinancialEvents } from '../eventEngine';
 import { FinancialAutopilot } from '../../engines/autopilot/financialAutopilot';
 import type { FinancialEvent } from '../../../models/FinancialEvent';
+import { logInfo } from '../../utils/logger';
 
 const autopilot = new FinancialAutopilot();
 
@@ -30,7 +31,10 @@ export function registerAutopilotListener(): () => void {
     });
 
     if (alerts.length > 0) {
-      console.info(`[AutopilotListener] ${alerts.length} alerta(s) gerado(s) via evento "${event.type}"`);
+      logInfo('[AutopilotListener] alertas gerados via evento', {
+        alertCount: alerts.length,
+        eventType: event.type,
+      });
     }
   });
 }

@@ -4,6 +4,8 @@ import {
   apiRequest,
   getAuthHeaders,
 } from '../config/api.config';
+import { getDemoBootstrapPlan } from '../demo/demoBootstrap';
+import { logWarn } from '../utils/logger';
 
 export type WorkspacePlanCatalog = {
   scope: 'workspace';
@@ -57,6 +59,11 @@ export async function getWorkspacePlanCatalog(input: {
   workspaceId: string;
   currentPlan?: 'free' | 'pro';
 }): Promise<WorkspacePlanCatalog> {
+  const demoPlan = getDemoBootstrapPlan();
+  if (demoPlan) {
+    return createFallbackPlanCatalog(input.workspaceId, demoPlan);
+  }
+
   try {
     return await apiRequest<WorkspacePlanCatalog>(API_ENDPOINTS.SAAS.PLANS, {
       method: 'GET',
@@ -67,9 +74,11 @@ export async function getWorkspacePlanCatalog(input: {
     });
   } catch (error) {
     if (!(error instanceof ApiRequestError) || error.statusCode >= 500 || error.statusCode === 404) {
-      console.warn('[BillingClient] Falling back to local plan catalog:', {
+      logWarn('[BillingClient] Falling back to local plan catalog', {
         workspaceId: input.workspaceId,
         error: error instanceof Error ? error : new Error(String(error)),
+        currentPlan: input.currentPlan ?? 'free',
+        fallback: 'billing-client-local-catalog-fallback',
       });
       return createFallbackPlanCatalog(input.workspaceId, input.currentPlan);
     }

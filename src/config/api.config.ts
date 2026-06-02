@@ -1,5 +1,6 @@
-﻿import { getEphemeralAccessToken } from '../services/authSessionStore';
+import { getEphemeralAccessToken } from '../services/authSessionStore';
 import { reportError } from './sentry';
+import { logError, logWarn } from '../utils/logger';
 
 /**
  * API CONFIGURATION - Backend Proxy Setup
@@ -155,6 +156,14 @@ export class ApiRequestError extends Error {
   }
 }
 
+const readErrorPayloadField = (payload: unknown, key: 'message' | 'error' | 'requestId' | 'routeScope' | 'details'): unknown => {
+  if (typeof payload !== 'object' || payload === null) {
+    return undefined;
+  }
+
+  return (payload as Record<string, unknown>)[key];
+};
+
 type WorkspaceSummaryLite = {
   workspaceId?: string;
 };
@@ -274,7 +283,7 @@ export async function apiRequest<T>(
   const maxRetries = options?.retries ?? API_CONFIG.RETRY_ATTEMPTS;
   const silent = options?.silent === true;
   
-  let lastError: Error | null = null;
+  let lastError: unknown = null;
   let workspaceRecoveryAttempted = false;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -297,19 +306,23 @@ export async function apiRequest<T>(
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const errorPayload = await response.json().catch(() => ({} as Record<string, unknown>));
-        const payloadMessage = (errorPayload as any).message || (errorPayload as any).error;
+        const errorPayload: unknown = await response.json().catch(() => ({}));
+        const payloadMessage = readErrorPayloadField(errorPayload, 'message') || readErrorPayloadField(errorPayload, 'error');
         const message = String(payloadMessage || response.statusText || 'Request failed');
-        const requestIdFromBody = typeof (errorPayload as any).requestId === 'string' ? (errorPayload as any).requestId : undefined;
+        const requestIdFromBody = typeof readErrorPayloadField(errorPayload, 'requestId') === 'string'
+          ? String(readErrorPayloadField(errorPayload, 'requestId'))
+          : undefined;
         const requestIdFromHeader = response.headers.get('x-request-id') || undefined;
 
         const apiError = new ApiRequestError({
           statusCode: response.status,
           message: `API Error ${response.status}: ${message}`,
           requestId: requestIdFromBody || requestIdFromHeader,
-          routeScope: typeof (errorPayload as any).routeScope === 'string' ? (errorPayload as any).routeScope : undefined,
-          details: typeof (errorPayload as any).details === 'object' && (errorPayload as any).details !== null
-            ? (errorPayload as any).details as Record<string, unknown>
+          routeScope: typeof readErrorPayloadField(errorPayload, 'routeScope') === 'string'
+            ? String(readErrorPayloadField(errorPayload, 'routeScope'))
+            : undefined,
+          details: typeof readErrorPayloadField(errorPayload, 'details') === 'object' && readErrorPayloadField(errorPayload, 'details') !== null
+            ? readErrorPayloadField(errorPayload, 'details') as Record<string, unknown>
             : undefined,
         });
 
@@ -331,15 +344,16 @@ export async function apiRequest<T>(
       }
 
       return await response.json();
-    } catch (error: any) {
+    } catch (error: unknown) {
       clearTimeout(timeoutId);
       lastError = error;
 
-      const statusMatch = String(error?.message ?? '').match(/API Error\s+(\d{3})/);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const statusMatch = errorMessage.match(/API Error\s+(\d{3})/);
       const statusCode = statusMatch ? Number(statusMatch[1]) : null;
       
       // Don't retry on auth errors or non-network issues
-      if (error.message?.includes('401') || error.message?.includes('403')) {
+      if (error instanceof Error && (error.message.includes('401') || error.message.includes('403'))) {
         throw error;
       }
 
@@ -350,7 +364,12 @@ export async function apiRequest<T>(
 
       if (attempt < maxRetries) {
         if (!silent) {
-          console.warn(`[API] Request to ${endpoint} failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying...`);
+          logWarn(`[API] Request to ${endpoint} failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying...`, {
+            endpoint,
+            attempt: attempt + 1,
+            maxAttempts: maxRetries + 1,
+            fallback: 'api-request-retry',
+          });
         }
         await new Promise(resolve => setTimeout(resolve, API_CONFIG.RETRY_DELAY * (attempt + 1)));
       }
@@ -358,9 +377,14 @@ export async function apiRequest<T>(
   }
 
   if (!silent) {
-    console.error(`[API] Request to ${endpoint} failed after ${maxRetries + 1} attempts:`, lastError);
+    logError(`[API] Request to ${endpoint} failed after ${maxRetries + 1} attempts`, {
+      endpoint,
+      attempts: maxRetries + 1,
+      error: lastError,
+      fallback: 'api-request-exhausted',
+    });
   }
-  reportApiFailure(endpoint, lastError, silent);
+  reportApiFailure(endpoint, lastError instanceof Error ? lastError : null, silent);
   throw lastError;
 }
 
@@ -383,6 +407,8 @@ export async function apiRequest<T>(
  *   }
  * );
  */
+
+
 
 
 

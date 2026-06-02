@@ -35,7 +35,7 @@ describe('recurringService', () => {
     );
 
     expect(generated.length).toBeGreaterThan(0);
-    expect(generated.every((tx) => /^\d{4}-\d{2}-\d{2}T/.test(tx.date))).toBe(true);
+    expect(generated.every((tx) => /^\d{4}-\d{2}-\d{2}$/.test(tx.date))).toBe(true);
   });
 
   it('skips malformed recurring dates without crashing', () => {

@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import crypto from 'crypto';
+import logger from '../config/logger';
 import { verifyIntegrationKey } from '../services/workspaceIntegrationKeyStore';
 
 const DEFAULT_MAX_TIMESTAMP_SKEW_SECONDS = 300;
@@ -134,7 +135,15 @@ function verifyHmacSignature(req: Request, secrets: string[]): boolean {
       if (providedDigest.length === expectedDigest.length && crypto.timingSafeEqual(providedDigest, expectedDigest)) {
         return true;
       }
-    } catch {
+    } catch (error) {
+      logger.warn({
+        error,
+        hasSignature: !!signature,
+        hasTimestamp: !!timestamp,
+        method,
+        expectsSignedRequestBody,
+        fallback: 'external-integration-signature-compare-failed',
+      }, '[ExternalIntegrationAuth] timingSafeEqual failed; rejecting signature');
       return false;
     }
   }
@@ -174,9 +183,23 @@ export async function externalIntegrationAuth(
     const result = authorizeExternalIntegrationRequest(req);
     if (!result.ok) {
       if (result.reason === 'invalid_key') {
+        logger.warn({
+          path: req.path,
+          reason: result.reason,
+          hasProvidedKey: !!providedKey,
+          hasEnvKeys: allowedEnvKeys.length > 0,
+          fallback: 'external-integration-invalid-key',
+        }, '[ExternalIntegrationAuth] Invalid integration key');
         res.status(401).json({ error: 'Invalid integration key' });
         return;
       }
+      logger.warn({
+        path: req.path,
+        reason: result.reason,
+        hasProvidedKey: !!providedKey,
+        hasEnvKeys: allowedEnvKeys.length > 0,
+        fallback: 'external-integration-invalid-signature',
+      }, '[ExternalIntegrationAuth] Invalid integration signature');
       res.status(401).json({ error: 'Invalid integration signature' });
       return;
     }
@@ -187,18 +210,37 @@ export async function externalIntegrationAuth(
   // Path B: per-workspace Firestore key
   const workspaceId = typeof req.body?.workspaceId === 'string' ? req.body.workspaceId : '';
   if (!workspaceId || !providedKey) {
+    logger.warn({
+      path: req.path,
+      workspaceId: workspaceId || undefined,
+      hasProvidedKey: !!providedKey,
+      fallback: 'external-integration-key-missing',
+    }, '[ExternalIntegrationAuth] Invalid integration key');
     res.status(401).json({ error: 'Invalid integration key' });
     return;
   }
 
   const keyValid = await verifyIntegrationKey(workspaceId, providedKey);
   if (!keyValid) {
+    logger.warn({
+      path: req.path,
+      workspaceId,
+      hasProvidedKey: !!providedKey,
+      fallback: 'external-integration-key-invalid',
+    }, '[ExternalIntegrationAuth] Invalid integration key');
     res.status(401).json({ error: 'Invalid integration key' });
     return;
   }
 
   const allowedHmacSecrets = getAllowedHmacSecrets();
   if (!verifyHmacSignature(req, allowedHmacSecrets)) {
+    logger.warn({
+      path: req.path,
+      workspaceId,
+      hasProvidedKey: !!providedKey,
+      hasHmacSecrets: allowedHmacSecrets.length > 0,
+      fallback: 'external-integration-signature-invalid',
+    }, '[ExternalIntegrationAuth] Invalid integration signature');
     res.status(401).json({ error: 'Invalid integration signature' });
     return;
   }

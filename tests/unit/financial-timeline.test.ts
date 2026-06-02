@@ -55,6 +55,18 @@ describe('buildFinancialTimeline', () => {
     expect(timeline.points[1].balance).toBe(400);
     expect(timeline.points[2].balance).toBe(600);
   });
+
+  it('trata datas date-only como dias locais na timeline', () => {
+    const timeline = buildFinancialTimeline([
+      makeTx('r1', 500, TransactionType.RECEITA, '2026-01-01'),
+      makeTx('d1', 100, TransactionType.DESPESA, '2026-01-02'),
+      makeTx('r2', 200, TransactionType.RECEITA, '2026-01-03'),
+    ]);
+
+    expect(timeline.points[0].date).toBe('2026-01-01');
+    expect(timeline.points[1].date).toBe('2026-01-02');
+    expect(timeline.points[2].date).toBe('2026-01-03');
+  });
 });
 
 describe('aggregateByMonth', () => {
@@ -74,6 +86,19 @@ describe('aggregateByMonth', () => {
     expect(months[0].savingsRate).toBeCloseTo(2000 / 3000, 3);
     expect(months[1].month).toBe('2026-02');
     expect(months[1].balance).toBe(1500);
+  });
+
+  it('agrega datas date-only por mes local', () => {
+    const months = aggregateByMonth([
+      makeTx('r1', 3000, TransactionType.RECEITA, '2026-01-05'),
+      makeTx('d1', 1000, TransactionType.DESPESA, '2026-01-10'),
+      makeTx('r2', 4000, TransactionType.RECEITA, '2026-02-03'),
+      makeTx('d2', 2500, TransactionType.DESPESA, '2026-02-20'),
+    ]);
+
+    expect(months).toHaveLength(2);
+    expect(months[0].month).toBe('2026-01');
+    expect(months[1].month).toBe('2026-02');
   });
 
   it('retorna array vazio para lista sem transacoes', () => {

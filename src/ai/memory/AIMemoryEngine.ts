@@ -18,6 +18,7 @@ import {
   TimePatternValue,
 } from './memoryTypes';
 import { FinancialPatterns } from '../../engines/finance/patternDetector/financialPatternDetector';
+import { logInfo, logWarn } from '../../utils/logger';
 import {
   analyzeSpendingPatterns,
   analyzeMerchantCategories,
@@ -28,6 +29,12 @@ import {
   analyzeTimePatterns,
 } from './memoryAnalyzer';
 import { MoneyMapSlice } from '../../engines/finance/moneyMap/moneyMapEngine';
+import {
+  buildFeedbackMetadata,
+  buildMemoryUpdateMetadata,
+  generateAIMemoryId,
+  runMemoryAnalysisSteps,
+} from './AIMemoryEngineHelpers';
 
 const DEFAULT_LEARNING_CONFIG: MemoryLearningConfig = {
   minOccurrences: 3,
@@ -44,65 +51,6 @@ class AIMemoryEngine {
     negative: { confidence: -0.12, strength: -12 },
   };
 
-  private getConfidenceBand(confidence: number): 'low' | 'medium' | 'high' {
-    if (confidence >= 0.75) return 'high';
-    if (confidence >= 0.5) return 'medium';
-    return 'low';
-  }
-
-  private resolveExpiryWindowMs(type: AIMemoryType, key: string): number {
-    if (type !== AIMemoryType.SPENDING_PATTERN) {
-      return 45 * 24 * 60 * 60 * 1000;
-    }
-
-    if (key === 'category_dominance' || key === 'money_map_distribution') {
-      return 30 * 24 * 60 * 60 * 1000;
-    }
-
-    return 21 * 24 * 60 * 60 * 1000;
-  }
-
-  private resolveContextDecayMultiplier(type: AIMemoryType, key: string): number {
-    if (type !== AIMemoryType.SPENDING_PATTERN) {
-      return 1;
-    }
-
-    if (key === 'category_dominance') {
-      return 1.3;
-    }
-
-    if (key === 'money_map_distribution') {
-      return 1.15;
-    }
-
-    return 1;
-  }
-
-  private buildMemoryMetadata(
-    type: AIMemoryType,
-    key: string,
-    confidence: number,
-    now: number,
-    current?: Record<string, any>,
-  ): Record<string, any> | undefined {
-    const shouldTrackDistributionSignal =
-      type === AIMemoryType.SPENDING_PATTERN &&
-      (key === 'category_dominance' || key === 'money_map_distribution');
-
-    if (!shouldTrackDistributionSignal) {
-      return current;
-    }
-
-    return {
-      ...(current || {}),
-      signalType: 'category_distribution',
-      confidenceScore: Number(confidence.toFixed(3)),
-      confidenceBand: this.getConfidenceBand(confidence),
-      expiresAt: now + this.resolveExpiryWindowMs(type, key),
-      contextDecayMultiplier: this.resolveContextDecayMultiplier(type, key),
-    };
-  }
-
   private applyFeedbackToMemory(
     memory: AIMemoryEntry,
     feedback: 'positive' | 'negative',
@@ -115,14 +63,7 @@ class AIMemoryEngine {
     aiMemoryStore.updateMemory(memory.id, {
       confidence: nextConfidence,
       strength: nextStrength,
-      metadata: {
-        ...(memory.metadata || {}),
-        confidenceBand: this.getConfidenceBand(nextConfidence),
-        feedbackCount: Number((memory.metadata?.feedbackCount || 0) + 1),
-        lastFeedback: feedback,
-        lastFeedbackContext: context || 'general',
-        lastFeedbackAt: Date.now(),
-      },
+      metadata: buildFeedbackMetadata(memory, feedback, context),
     });
   }
 
@@ -183,48 +124,62 @@ class AIMemoryEngine {
    */
   async updateAIMemory(userId: string, transactions: Transaction[]): Promise<number> {
     if (transactions.length < this.learningConfig.minOccurrences) {
-      console.log('[AI Memory Engine] Not enough transactions to learn from');
+      logWarn('[AI Memory Engine] Not enough transactions to learn from', {
+        userId,
+        transactionCount: transactions.length,
+        minOccurrences: this.learningConfig.minOccurrences,
+        fallback: 'ai-memory-engine-not-enough-transactions',
+      });
       return 0;
     }
 
     let memoriesUpdated = 0;
+    const saveOrUpdateMemory = this.saveOrUpdateMemory.bind(this);
 
     try {
-      // 1. Analyze spending patterns
       const spendingPatterns = analyzeSpendingPatterns(transactions);
-      for (const [key, pattern] of spendingPatterns) {
-        this.saveOrUpdateMemory(userId, AIMemoryType.SPENDING_PATTERN, key, pattern, 0.7);
-        memoriesUpdated++;
-      }
-
-      // 2. Analyze merchant categories
       const merchantCategories = analyzeMerchantCategories(transactions);
-      for (const [key, merchant] of merchantCategories) {
-        const confidence = Math.min(1, merchant.frequency / 4); // 4+ visits/month = high confidence
-        this.saveOrUpdateMemory(userId, AIMemoryType.MERCHANT_CATEGORY, key, merchant, confidence);
-        memoriesUpdated++;
-      }
-
-      // 3. Analyze recurring expenses
       const recurringExpenses = analyzeRecurringExpenses(transactions);
-      for (const [key, recurring] of recurringExpenses) {
-        this.saveOrUpdateMemory(
-          userId,
-          AIMemoryType.RECURRING_EXPENSE,
-          key,
-          recurring,
-          recurring.confidence
-        );
-        memoriesUpdated++;
-      }
-
-      // 4. Analyze user behavior
       const userBehaviors = analyzeUserBehavior(transactions);
-      for (const [key, behavior] of userBehaviors) {
-        const confidence = behavior.score / 100;
-        this.saveOrUpdateMemory(userId, AIMemoryType.USER_BEHAVIOR, key, behavior, confidence);
-        memoriesUpdated++;
-      }
+      const incomePatterns = analyzeIncomePatterns(transactions);
+      const timePatterns = analyzeTimePatterns(transactions);
+
+      memoriesUpdated += runMemoryAnalysisSteps(
+        userId,
+        [
+          {
+            type: AIMemoryType.SPENDING_PATTERN,
+            values: spendingPatterns,
+            confidenceFor: () => 0.7,
+          },
+          {
+            type: AIMemoryType.MERCHANT_CATEGORY,
+            values: merchantCategories,
+            confidenceFor: (merchant) => Math.min(1, (merchant as { frequency: number }).frequency / 4),
+          },
+          {
+            type: AIMemoryType.RECURRING_EXPENSE,
+            values: recurringExpenses,
+            confidenceFor: (recurring) => (recurring as { confidence: number }).confidence,
+          },
+          {
+            type: AIMemoryType.USER_BEHAVIOR,
+            values: userBehaviors,
+            confidenceFor: (behavior) => (behavior as { score: number }).score / 100,
+          },
+          {
+            type: AIMemoryType.INCOME_PATTERN,
+            values: incomePatterns,
+            confidenceFor: (pattern) => ((pattern as { isStable: boolean }).isStable ? 0.9 : 0.6),
+          },
+          {
+            type: AIMemoryType.TIME_PATTERN,
+            values: timePatterns,
+            confidenceFor: (pattern) => Math.min(1, (pattern as { frequency: number }).frequency / 5),
+          },
+        ],
+        saveOrUpdateMemory,
+      );
 
       // 5. Analyze financial profile
       const financialProfile = analyzeFinancialProfile(transactions);
@@ -239,25 +194,16 @@ class AIMemoryEngine {
         memoriesUpdated++;
       }
 
-      // 6. Analyze income patterns
-      const incomePatterns = analyzeIncomePatterns(transactions);
-      for (const [key, pattern] of incomePatterns) {
-        const confidence = pattern.isStable ? 0.9 : 0.6;
-        this.saveOrUpdateMemory(userId, AIMemoryType.INCOME_PATTERN, key, pattern, confidence);
-        memoriesUpdated++;
-      }
-
-      // 7. Analyze time patterns
-      const timePatterns = analyzeTimePatterns(transactions);
-      for (const [key, pattern] of timePatterns) {
-        const confidence = Math.min(1, pattern.frequency / 5);
-        this.saveOrUpdateMemory(userId, AIMemoryType.TIME_PATTERN, key, pattern, confidence);
-        memoriesUpdated++;
-      }
-
-      console.log(`[AI Memory Engine] Updated ${memoriesUpdated} memories for user ${userId}`);
+      logInfo('[AI Memory Engine] Updated memories for user', {
+        userId,
+        memoriesUpdated,
+        fallback: 'ai-memory-engine-updated-memories',
+      });
     } catch (error) {
-      console.error('[AI Memory Engine] Error updating memories:', error);
+      logWarn('[AI Memory Engine] Error updating memories; continuing without persistence', {
+        userId,
+        error,
+      });
     }
 
     return memoriesUpdated;
@@ -270,19 +216,16 @@ class AIMemoryEngine {
     userId: string,
     type: AIMemoryType,
     key: string,
-    value: any,
+    value: unknown,
     confidence: number
   ): void {
-    // Check if memory already exists
-    const existing = aiMemoryStore
-      .getMemoriesByType(userId, type)
-      .find((m) => m.key === key);
+    const memoriesOfType = aiMemoryStore.getMemoriesByType(userId, type);
+    const existing = memoriesOfType.find((m) => m.key === key);
 
     const now = Date.now();
-    const metadata = this.buildMemoryMetadata(type, key, confidence, now, existing?.metadata);
+    const metadata = buildMemoryUpdateMetadata(type, key, confidence, now, existing?.metadata);
 
     if (existing) {
-      // Update existing memory
       const newOccurrences = existing.occurrences + 1;
       const newStrength = Math.min(100, existing.strength + this.learningConfig.strengthIncrement);
       const newConfidence = Math.min(1, (existing.confidence + confidence) / 2);
@@ -297,9 +240,8 @@ class AIMemoryEngine {
         metadata,
       });
     } else {
-      // Create new memory
       const memory: AIMemoryEntry = {
-        id: this.generateMemoryId(),
+        id: generateAIMemoryId(now),
         userId,
         type,
         key,
@@ -450,9 +392,6 @@ class AIMemoryEngine {
     this.learningConfig = { ...this.learningConfig, ...config };
   }
 
-  private generateMemoryId(): string {
-    return `mem_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-  }
 }
 
 // Singleton instance

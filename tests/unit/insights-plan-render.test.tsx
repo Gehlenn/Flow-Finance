@@ -1,9 +1,9 @@
-import React from 'react';
-import { render, screen } from '@testing-library/react';
+﻿import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Insights from '../../pages/Insights';
-import { Category, TransactionType, type Transaction } from '../../types';
+import { Category, ReminderType, TransactionType, type Transaction } from '../../types';
 
 vi.mock('../../src/ai/aiOrchestrator', () => ({
   runAIPipelineSync: vi.fn(() => ({
@@ -63,6 +63,9 @@ const baseTransactions: Transaction[] = [
 
 describe('Insights plan render', () => {
   it('plano free mostra camada essencial com card de upgrade', () => {
+    const onNavigateToTab = vi.fn();
+    const onCreateReminder = vi.fn();
+
     render(
       <Insights
         activeWorkspaceName="Workspace Teste"
@@ -70,14 +73,36 @@ describe('Insights plan render', () => {
         userId="u1"
         workspacePlan="free"
         hideValues={false}
+        onNavigateToTab={onNavigateToTab}
+        onCreateReminder={onCreateReminder}
       />,
     );
 
-    expect(screen.getByText(/Insights aprofundados e comparativos/i)).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: /Contexto Avancado/i })).toBeNull();
+    expect(screen.getByText(/Leituras avan/i)).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: /Contexto avan/i })).toBeNull();
+    expect(screen.getByText(/Pr.*xima a.*o/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Abrir assistente/i }));
+    expect(onNavigateToTab).toHaveBeenCalledWith('assistant');
+    fireEvent.click(screen.getByRole('button', { name: /Criar lembrete/i }));
+    expect(onCreateReminder).toHaveBeenCalledWith(expect.objectContaining({
+      title: expect.stringMatching(/Revisar a pr.*xima a.*o do caixa/i),
+      priority: 'media',
+    }));
+    fireEvent.click(screen.getByRole('button', { name: /Acompanhar risco/i }));
+    expect(onCreateReminder).toHaveBeenLastCalledWith(expect.objectContaining({
+      title: 'Acompanhar risco do caixa',
+      priority: 'media',
+      type: ReminderType.NEGOCIO,
+      completed: false,
+    }));
+    fireEvent.click(screen.getByRole('button', { name: /Ver fluxo/i }));
+    expect(onNavigateToTab).toHaveBeenCalledWith('flow');
   });
 
   it('plano pro libera contexto avancado sem card de upgrade', () => {
+    const onNavigateToTab = vi.fn();
+    const onCreateReminder = vi.fn();
+
     render(
       <Insights
         activeWorkspaceName="Workspace Teste"
@@ -85,11 +110,36 @@ describe('Insights plan render', () => {
         userId="u1"
         workspacePlan="pro"
         hideValues={false}
+        onNavigateToTab={onNavigateToTab}
+        onCreateReminder={onCreateReminder}
       />,
     );
 
-    expect(screen.getByText(/Contexto Avancado/i)).toBeTruthy();
-    expect(screen.queryByText(/Insights aprofundados e comparativos/i)).toBeNull();
-    expect(screen.getByText(/Perfil Financeiro/i)).toBeTruthy();
+    expect(screen.getByText(/Contexto avan/i)).toBeTruthy();
+    expect(screen.queryByText(/Leituras avan/i)).toBeNull();
+    expect(screen.getByText(/Perfil de fluxo/i)).toBeTruthy();
+    expect(screen.getByText(/Pr.*xima a.*o/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Ver metas/i }));
+    expect(onNavigateToTab).toHaveBeenCalledWith('goals');
+    fireEvent.click(screen.getByRole('button', { name: /Criar lembrete/i }));
+    expect(onCreateReminder).toHaveBeenCalledWith(expect.objectContaining({
+      title: expect.stringMatching(/Revisar a pr.*xima a.*o do caixa/i),
+      priority: 'media',
+    }));
+    const riskButtons = screen.getAllByRole('button', { name: /Acompanhar risco/i });
+    fireEvent.click(riskButtons[1]);
+    expect(onCreateReminder).toHaveBeenLastCalledWith(expect.objectContaining({
+      title: 'Acompanhar risco do caixa',
+      priority: 'alta',
+      type: ReminderType.NEGOCIO,
+      completed: false,
+    }));
+    const flowButtons = screen.getAllByRole('button', { name: /Ver fluxo/i });
+    fireEvent.click(flowButtons[1]);
+    expect(onNavigateToTab).toHaveBeenCalledWith('flow');
   });
 });
+
+
+
+

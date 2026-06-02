@@ -1,6 +1,7 @@
 ﻿import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { useNavigationTabs, type NavigationRenderContext } from '../../hooks/useNavigationTabs';
+import React from 'react';
 
 const baseContext: NavigationRenderContext = {
   userId: 'u1',
@@ -15,6 +16,7 @@ const baseContext: NavigationRenderContext = {
   hideValues: false,
   theme: 'light',
   isDev: false,
+  canAccessDevTools: false,
   transactions: [],
   accounts: [],
   alerts: [],
@@ -50,7 +52,7 @@ describe('guard de render da rota openbanking desativada', () => {
     const { result } = renderHook(() => useNavigationTabs());
 
     act(() => {
-      result.current.setActiveTab('openbanking' as any);
+      result.current.setActiveTab('openbanking' as never);
     });
 
     const output = result.current.renderActiveTab({ ...baseContext, isDev: false });
@@ -62,7 +64,7 @@ describe('guard de render da rota openbanking desativada', () => {
     const { result } = renderHook(() => useNavigationTabs());
 
     act(() => {
-      result.current.setActiveTab('openbanking' as any);
+      result.current.setActiveTab('openbanking' as never);
     });
 
     const output = result.current.renderActiveTab({ ...baseContext, isDev: true });
@@ -82,6 +84,20 @@ describe('guard de render da rota openbanking desativada', () => {
     expect(output).toBeNull();
   });
 
+  it('aicontrol e performance ficam bloqueados sem conta dev mesmo em ambiente dev', () => {
+    const { result } = renderHook(() => useNavigationTabs());
+
+    act(() => {
+      result.current.setActiveTab('aicontrol');
+    });
+    expect(result.current.renderActiveTab({ ...baseContext, isDev: true, canAccessDevTools: false })).toBeNull();
+
+    act(() => {
+      result.current.setActiveTab('performance');
+    });
+    expect(result.current.renderActiveTab({ ...baseContext, isDev: true, canAccessDevTools: false })).toBeNull();
+  });
+
   it('analytics mostra upgrade suave no plano free e tela completa no plano pro', () => {
     const { result } = renderHook(() => useNavigationTabs());
 
@@ -89,13 +105,13 @@ describe('guard de render da rota openbanking desativada', () => {
       result.current.setActiveTab('analytics');
     });
 
-    const freeOutput = result.current.renderActiveTab({ ...baseContext, activeWorkspacePlan: 'free' }) as any;
-    const proOutput = result.current.renderActiveTab({ ...baseContext, activeWorkspacePlan: 'pro' }) as any;
+    const freeOutput = result.current.renderActiveTab({ ...baseContext, activeWorkspacePlan: 'free' });
+    const proOutput = result.current.renderActiveTab({ ...baseContext, activeWorkspacePlan: 'pro' });
 
     expect(freeOutput).not.toBeNull();
-    expect(freeOutput.props?.title).toBe('Relatorios completos do caixa');
+    expect(React.isValidElement(freeOutput) ? freeOutput.props.title : null).toBe('Relatorios completos do caixa');
     expect(proOutput).not.toBeNull();
-    expect(proOutput.type?.toString?.()).toContain('Symbol(react.suspense)');
+    expect(React.isValidElement(proOutput) ? proOutput.type?.toString?.() : '').toContain('Symbol(react.suspense)');
   });
 
   it('propaga o plano ativo para o AICFO no tab cfo', () => {
@@ -105,11 +121,11 @@ describe('guard de render da rota openbanking desativada', () => {
       result.current.setActiveTab('cfo');
     });
 
-    const output = result.current.renderActiveTab({ ...baseContext, activeWorkspacePlan: 'pro' }) as any;
-    const child = output?.props?.children;
+    const output = result.current.renderActiveTab({ ...baseContext, activeWorkspacePlan: 'pro' });
+    const child = React.isValidElement(output) ? output.props.children : null;
 
     expect(output).not.toBeNull();
-    expect(child?.props?.workspacePlan).toBe('pro');
+    expect(React.isValidElement(child) ? child.props.workspacePlan : null).toBe('pro');
   });
 });
 

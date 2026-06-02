@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '../../backend/src/middleware/errorHandler';
 import { featureGateOpenFinance } from '../../backend/src/middleware/featureGate';
+import type { Request, Response } from 'express';
 
 describe('featureGateOpenFinance', () => {
   beforeEach(() => {
@@ -15,7 +16,7 @@ describe('featureGateOpenFinance', () => {
     process.env.FEATURE_OPEN_FINANCE = 'true';
     const next = vi.fn();
     const middleware = featureGateOpenFinance();
-    middleware({} as any, {} as any, next);
+    middleware({} as Request, {} as Response, next);
     expect(next).toHaveBeenCalledTimes(1);
   });
 
@@ -23,8 +24,8 @@ describe('featureGateOpenFinance', () => {
     // FEATURE_OPEN_FINANCE ausente → padrão false (desativado)
     const next = vi.fn();
     const middleware = featureGateOpenFinance();
-    expect(() => middleware({} as any, {} as any, next)).toThrowError(AppError);
-    expect(() => middleware({} as any, {} as any, next)).toThrowError(/temporarily unavailable/i);
+    expect(() => middleware({} as Request, {} as Response, next)).toThrowError(AppError);
+    expect(() => middleware({} as Request, {} as Response, next)).toThrowError(/temporarily unavailable/i);
     expect(next).not.toHaveBeenCalled();
   });
 });

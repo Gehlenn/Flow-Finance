@@ -6,10 +6,10 @@ const argBaseUrl = process.argv[2];
 const baseUrl = (argBaseUrl || process.env.VERCEL_TARGET_URL || '').trim().replace(/\/$/, '');
 
 function usage() {
-  console.error('Uso:');
-  console.error('  node scripts/verify-vercel-observability.mjs https://preview-url.vercel.app');
-  console.error('  ou');
-  console.error('  VERCEL_TARGET_URL=https://preview-url.vercel.app npm run health:vercel');
+  process.stderr.write('Uso:\n');
+  process.stderr.write('  node scripts/verify-vercel-observability.mjs https://preview-url.vercel.app\n');
+  process.stderr.write('  ou\n');
+  process.stderr.write('  VERCEL_TARGET_URL=https://preview-url.vercel.app npm run health:vercel\n');
   process.exit(1);
 }
 
@@ -123,6 +123,20 @@ export function isFailedCheck(result) {
   return result.status !== 200;
 }
 
+export function isLikelyFrontendShellMismatch(results) {
+  const root = results.find((result) => result.path === '/');
+  const apiChecks = results.filter((result) => result.path !== '/');
+
+  if (!root || root.status !== 200) {
+    return false;
+  }
+
+  const rootLooksLikeHtml = typeof root.contentType === 'string' && root.contentType.includes('text/html');
+  const apiChecksAll404 = apiChecks.length > 0 && apiChecks.every((result) => result.status === 404);
+
+  return rootLooksLikeHtml && apiChecksAll404;
+}
+
 async function run() {
   const results = [];
   for (const check of checks) {
@@ -142,7 +156,7 @@ async function run() {
       'Liberar acesso temporario ao preview ou validar com URL compartilhada.',
       'Depois repetir a checagem para confirmar /health, /api/health e /api/version.',
     ];
-    console.error(JSON.stringify(output, null, 2));
+    process.stderr.write(`${JSON.stringify(output, null, 2)}\n`);
     process.exit(2);
   }
 
@@ -154,7 +168,10 @@ async function run() {
 
   if (failed.length > 0) {
     output.summary = failed.map((result) => `${result.path} retornou HTTP ${result.status}`);
-    console.error(JSON.stringify(output, null, 2));
+    if (isLikelyFrontendShellMismatch(results)) {
+      output.summary.unshift('O dominio alvo parece apontar para o shell do frontend, nao para o backend API-only esperado.');
+    }
+    process.stderr.write(`${JSON.stringify(output, null, 2)}\n`);
     process.exit(1);
   }
 
@@ -169,7 +186,7 @@ async function run() {
     output.summary.push('GET / retornou 404 esperado para backend API-only.');
   }
 
-  console.log(JSON.stringify(output, null, 2));
+  process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
 }
 
 const invokedDirectly = process.argv[1]
@@ -178,10 +195,10 @@ const invokedDirectly = process.argv[1]
 
 if (invokedDirectly) {
   run().catch((error) => {
-    console.error(JSON.stringify({
+    process.stderr.write(`${JSON.stringify({
       baseUrl,
       error: error.message,
-    }, null, 2));
+    }, null, 2)}\n`);
     process.exit(1);
   });
 }

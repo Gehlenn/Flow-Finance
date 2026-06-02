@@ -4,14 +4,23 @@
  * Coverage alvo: 98%+
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as aiConfig from '../../backend/src/config/ai';
 import { cfoController, generateInsightsController, interpretController } from '../../backend/src/controllers/aiController';
 import { loginController, logoutController, refreshController } from '../../backend/src/controllers/authController';
 import { decodeToken } from '../../backend/src/middleware/auth';
 import { getRefreshStoreSize, resetRefreshStoreForTests } from '../../backend/src/services/auth/refreshTokenStore';
 
-// ─── Mocks ───────────────────────────────────────────────────────────────────
+type ControllerReq = Parameters<typeof cfoController>[0];
+type ControllerRes = Parameters<typeof cfoController>[1];
+type MockResponse = ControllerRes & {
+  json: ReturnType<typeof vi.fn>;
+  status: ReturnType<typeof vi.fn>;
+  cookie: ReturnType<typeof vi.fn>;
+  clearCookie: ReturnType<typeof vi.fn>;
+};
+
+// ─── Mocks ─────────────────────────────────────────────────────────────────────
 
 vi.mock('../../backend/src/config/ai');
 vi.mock('../../backend/src/config/logger', () => ({
@@ -23,25 +32,25 @@ vi.mock('../../backend/src/config/logger', () => ({
   },
 }));
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ───────────────────────────────────────────────────────────────────
 
-function createMockRequest(body: any, userId: string = 'test-user') {
+function createMockRequest(body: Record<string, unknown>, userId: string = 'test-user'): ControllerReq {
   return {
     body,
     userId,
     userEmail: 'test@flow.finance',
     headers: {},
-  };
+  } as unknown as ControllerReq;
 }
 
-function createMockResponse() {
+function createMockResponse(): MockResponse {
   const res = {
     json: vi.fn(),
     status: vi.fn().mockReturnThis(),
     cookie: vi.fn().mockReturnThis(),
     clearCookie: vi.fn().mockReturnThis(),
   };
-  return res;
+  return res as unknown as MockResponse;
 }
 
 async function flushAsyncHandler() {
@@ -49,7 +58,7 @@ async function flushAsyncHandler() {
   await Promise.resolve();
 }
 
-// ─── Testes CFO Controller ──────────────────────────────────────────────────
+// ─── Testes CFO Controller ────────────────────────────────────────────────────
 
 describe('CFO Controller', () => {
   beforeEach(() => {
@@ -67,7 +76,7 @@ describe('CFO Controller', () => {
     });
     const res = createMockResponse();
 
-    cfoController(req as any, res as any, vi.fn());
+    cfoController(req, res, vi.fn());
     await flushAsyncHandler();
 
     expect(res.json).toHaveBeenCalledWith({ answer: mockAnswer });
@@ -83,7 +92,7 @@ describe('CFO Controller', () => {
     const res = createMockResponse();
     const next = vi.fn();
 
-    cfoController(req as any, res as any, next);
+    cfoController(req, res, next);
     await flushAsyncHandler();
 
     expect(next).toHaveBeenCalled();
@@ -105,7 +114,7 @@ describe('CFO Controller', () => {
     const res = createMockResponse();
     const next = vi.fn();
 
-    cfoController(req as any, res as any, next);
+    cfoController(req, res, next);
     await flushAsyncHandler();
 
     expect(next).toHaveBeenCalled();
@@ -126,7 +135,7 @@ describe('AI Fallback Controllers', () => {
     const req = createMockRequest({ text: 'gastei 50 no mercado' });
     const res = createMockResponse();
 
-    interpretController(req as any, res as any, vi.fn());
+    interpretController(req, res, vi.fn());
     await flushAsyncHandler();
 
     expect(res.json).toHaveBeenCalledWith({ intent: 'transaction', data: [] });
@@ -141,7 +150,7 @@ describe('AI Fallback Controllers', () => {
     });
     const res = createMockResponse();
 
-    generateInsightsController(req as any, res as any, vi.fn());
+    generateInsightsController(req, res, vi.fn());
     await flushAsyncHandler();
 
     expect(res.json).toHaveBeenCalledWith({ insights: [] });
@@ -169,7 +178,7 @@ describe('Auth Controller', () => {
     });
     const res = createMockResponse();
 
-    loginController(req as any, res as any, vi.fn());
+    loginController(req, res, vi.fn());
     await flushAsyncHandler();
 
     const payload = res.json.mock.calls[0][0];
@@ -186,7 +195,7 @@ describe('Auth Controller', () => {
     });
     const res = createMockResponse();
 
-    loginController(req as any, res as any, vi.fn());
+    loginController(req, res, vi.fn());
     await flushAsyncHandler();
 
     const payload = res.json.mock.calls[0][0];
@@ -205,7 +214,7 @@ describe('Auth Controller', () => {
     const loginRes = createMockResponse();
     const next = vi.fn();
 
-    loginController(loginReq as any, loginRes as any, next);
+    loginController(loginReq, loginRes, next);
     await flushAsyncHandler();
 
     const loginPayload = loginRes.json.mock.calls[0][0];
@@ -214,7 +223,7 @@ describe('Auth Controller', () => {
     const refreshReq = createMockRequest({ refreshToken: oldRefreshToken });
     const refreshRes = createMockResponse();
     const refreshNext = vi.fn();
-    refreshController(refreshReq as any, refreshRes as any, refreshNext);
+    refreshController(refreshReq, refreshRes, refreshNext);
     await flushAsyncHandler();
 
     expect(refreshNext).not.toHaveBeenCalled();
@@ -223,11 +232,10 @@ describe('Auth Controller', () => {
     expect(refreshPayload.refreshToken).toBeTruthy();
     expect(refreshPayload.refreshToken).not.toBe(oldRefreshToken);
 
-    // Reuso do refresh token antigo deve falhar.
     const reusedReq = createMockRequest({ refreshToken: oldRefreshToken });
     const reusedRes = createMockResponse();
     const reusedNext = vi.fn();
-    refreshController(reusedReq as any, reusedRes as any, reusedNext);
+    refreshController(reusedReq, reusedRes, reusedNext);
     await flushAsyncHandler();
 
     expect(reusedNext).toHaveBeenCalled();
@@ -241,7 +249,7 @@ describe('Auth Controller', () => {
       password: '123456',
     });
     const loginRes = createMockResponse();
-    loginController(loginReq as any, loginRes as any, vi.fn());
+    loginController(loginReq, loginRes, vi.fn());
     await flushAsyncHandler();
 
     const payload = loginRes.json.mock.calls[0][0];
@@ -249,7 +257,7 @@ describe('Auth Controller', () => {
 
     const logoutReq = createMockRequest({ refreshToken }, payload.user.userId);
     const logoutRes = createMockResponse();
-    logoutController(logoutReq as any, logoutRes as any, vi.fn());
+    logoutController(logoutReq, logoutRes, vi.fn());
     await flushAsyncHandler();
 
     expect(logoutRes.json).toHaveBeenCalled();
@@ -257,7 +265,7 @@ describe('Auth Controller', () => {
     const refreshReq = createMockRequest({ refreshToken });
     const refreshRes = createMockResponse();
     const refreshNext = vi.fn();
-    refreshController(refreshReq as any, refreshRes as any, refreshNext);
+    refreshController(refreshReq, refreshRes, refreshNext);
     await flushAsyncHandler();
 
     expect(refreshNext).toHaveBeenCalled();
@@ -266,17 +274,19 @@ describe('Auth Controller', () => {
   });
 });
 
-// ─── Testes de Validação de Request ─────────────────────────────────────────
-
 describe('Request Validation', () => {
   it('deve validar campos obrigatórios de CFO request', () => {
-    const validateCFORequest = (body: any): boolean => {
+    const validateCFORequest = (body: unknown): boolean => {
+      if (!body || typeof body !== 'object') {
+        return false;
+      }
+
+      const record = body as Record<string, unknown>;
       return (
-        body &&
-        typeof body.question === 'string' &&
-        body.question.trim().length > 0 &&
-        typeof body.context === 'string' &&
-        typeof body.intent === 'string'
+        typeof record.question === 'string' &&
+        record.question.trim().length > 0 &&
+        typeof record.context === 'string' &&
+        typeof record.intent === 'string'
       );
     };
 
@@ -294,13 +304,11 @@ describe('Request Validation', () => {
 
     expect(validateCFORequest({
       question: 'Posso gastar?',
-      context: 123, // wrong type
+      context: 123,
       intent: 'spending_advice',
     })).toBe(false);
   });
 });
-
-// ─── Testes de Sanitização de Entrada ──────────────────────────────────────
 
 describe('Input Sanitization', () => {
   it('deve remover caracteres especiais perigosos', () => {
@@ -324,9 +332,8 @@ describe('Input Sanitization', () => {
 
     const longString = 'a'.repeat(1000);
     const truncated = truncate(longString, 100);
-    
-    expect(truncated.length).toBeLessThanOrEqual(103); // 100 + '...'
+
+    expect(truncated.length).toBeLessThanOrEqual(103);
     expect(truncated.endsWith('...')).toBe(true);
   });
 });
-

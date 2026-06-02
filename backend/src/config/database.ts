@@ -100,7 +100,10 @@ pool.on('connect', () => {
 });
 
 pool.on('error', (err: Error) => {
-  logger.error({ error: err }, 'Unexpected error on idle client');
+  logger.error({
+    error: err,
+    fallback: 'database-idle-client-error',
+  }, 'Unexpected error on idle client');
 });
 
 // Test database connection
@@ -112,7 +115,12 @@ export const testConnection = async (): Promise<boolean> => {
     logger.info('Database connection successful');
     return true;
   } catch (error) {
-    logger.error({ error }, 'Database connection failed');
+    logger.error({
+      error,
+      fallback: 'database-connection-failed',
+      hasDatabaseUrl,
+      databaseHost: dbConfig && 'host' in dbConfig ? dbConfig.host : undefined,
+    }, 'Database connection failed');
     return false;
   }
 };
@@ -124,7 +132,7 @@ export const closePool = async (): Promise<void> => {
 };
 
 // Query helper with error handling
-export const query = async (text: string, params?: any[]) => {
+export const query = async (text: string, params?: unknown[]) => {
   const start = Date.now();
   try {
     const res = await pool.query(text, params);
@@ -133,7 +141,12 @@ export const query = async (text: string, params?: any[]) => {
     return res;
   } catch (error) {
     const duration = Date.now() - start;
-    logger.error({ error, text, duration }, 'Query failed');
+    logger.error({
+      error,
+      text,
+      duration,
+      fallback: 'database-query-failed',
+    }, 'Query failed');
     throw error;
   }
 };
@@ -149,7 +162,10 @@ export async function checkDatabaseHealth(): Promise<boolean> {
     client.release();
     return result.rows.length > 0;
   } catch (error) {
-    logger.warn({ error }, 'Database health check failed');
+    logger.warn({
+      error,
+      fallback: 'database-healthcheck-failed',
+    }, 'Database health check failed');
     return false;
   }
 }

@@ -1,25 +1,37 @@
 import { auth } from '../../services/firebase';
 import { getStoredWorkspaceId, setStoredWorkspaceId } from '../config/api.config';
 import {
+  buildDemoWorkspaceSummary,
+  canUseDemoWorkspaceFallback,
+  getDemoBootstrapIdentity,
+} from '../demo/demoBootstrap';
+import {
   addWorkspaceMember,
   createPersonalWorkspace as createPersonalWorkspaceInFirestore,
   ensureActiveWorkspaceForUser,
   listWorkspaceAuditEvents,
   listWorkspaceAuditEventsPage,
-  listWorkspaceCollectionDocuments,
   listWorkspaceMembers,
   listUserWorkspaceSummaries,
   removeWorkspaceMember,
-  upsertWorkspaceCollectionDocument,
   type AuditLogDocument,
   type AuditLogCursor,
-  type WorkspaceMemberDocument,
   type UserIdentity,
+  type WorkspaceMemberDocument,
   type WorkspaceImportDocument,
   type WorkspaceInsightDocument,
   type WorkspaceSubscriptionDocument,
   type WorkspaceSummary,
 } from './firestoreWorkspaceStore';
+import {
+  listWorkspaceCollectionDocuments,
+  upsertWorkspaceCollectionDocument,
+} from './firestoreWorkspaceEntityStore';
+import {
+  buildE2EWorkspaceSummary,
+  canUseE2EWorkspaceFallback,
+  getE2EBootstrapIdentity,
+} from './workspaceSessionE2E';
 
 export {
   addWorkspaceMember,
@@ -43,54 +55,14 @@ export type {
 
 export const WORKSPACE_CHANGED_EVENT = 'flow:workspace-changed';
 
-function getE2EBootstrapIdentity(): UserIdentity | undefined {
-  if (typeof window === 'undefined') {
-    return undefined;
-  }
-
-  const isE2EAuth = window.localStorage.getItem('flow_e2e_auth') === '1';
-  if (!isE2EAuth) {
-    return undefined;
-  }
-
-  const userId = window.localStorage.getItem('flow_e2e_user_id');
-  if (!userId) {
-    return undefined;
-  }
-
-  return {
-    userId,
-    email: window.localStorage.getItem('flow_e2e_user_email'),
-    name: window.localStorage.getItem('flow_e2e_user_name'),
-  };
-}
-
-function canUseE2EWorkspaceFallback(userId?: string | null): boolean {
-  const e2eIdentity = getE2EBootstrapIdentity();
-  if (!e2eIdentity?.userId) {
-    return false;
-  }
-
-  return !userId || userId === e2eIdentity.userId;
-}
-
-function buildE2EWorkspaceSummary(identity: UserIdentity): WorkspaceSummary {
-  const workspaceId = getStoredWorkspaceId() || `ws-e2e-${identity.userId}`;
-
-  return {
-    workspaceId,
-    tenantId: `tenant-e2e-${identity.userId}`,
-    name: 'Workspace E2E',
-    tenantName: 'Tenant E2E',
-    plan: 'free',
-    role: 'owner',
-    isDefault: true,
-  };
-}
-
 export function getCurrentWorkspaceIdentity(): UserIdentity | undefined {
   const currentUser = auth.currentUser;
   if (!currentUser?.uid) {
+    const demoIdentity = getDemoBootstrapIdentity();
+    if (demoIdentity?.userId) {
+      return demoIdentity;
+    }
+
     return getE2EBootstrapIdentity();
   }
 
@@ -125,6 +97,13 @@ export function clearActiveWorkspace(): void {
 }
 
 export async function listUserWorkspaces(userId?: string | null): Promise<WorkspaceSummary[]> {
+  if (canUseDemoWorkspaceFallback(userId)) {
+    const demoWorkspace = buildDemoWorkspaceSummary();
+    if (demoWorkspace) {
+      return [demoWorkspace];
+    }
+  }
+
   if (canUseE2EWorkspaceFallback(userId)) {
     const identity = getE2EBootstrapIdentity();
     if (identity?.userId) {
@@ -143,6 +122,14 @@ export async function createPersonalWorkspace(identity?: UserIdentity, name?: st
 
 export async function ensureActiveWorkspace(identity?: UserIdentity): Promise<WorkspaceSummary> {
   const resolvedIdentity = resolveIdentity(identity);
+
+  if (canUseDemoWorkspaceFallback(resolvedIdentity.userId)) {
+    const demoWorkspace = buildDemoWorkspaceSummary();
+    if (demoWorkspace) {
+      setActiveWorkspaceId(demoWorkspace.workspaceId);
+      return demoWorkspace;
+    }
+  }
 
   if (canUseE2EWorkspaceFallback(resolvedIdentity.userId)) {
     const e2eWorkspace = buildE2EWorkspaceSummary(resolvedIdentity);

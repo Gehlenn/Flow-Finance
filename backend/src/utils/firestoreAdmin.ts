@@ -8,8 +8,7 @@ import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin
 import { Firestore, getFirestore } from 'firebase-admin/firestore';
 import logger from '../config/logger';
 
-// ─── Settings guard ───────────────────────────────────────────────────────────
-
+// Settings guard
 let firestoreSettingsConfigured = false;
 
 export function applyFirestoreSettingsOnce(
@@ -20,13 +19,12 @@ export function applyFirestoreSettingsOnce(
   firestoreSettingsConfigured = true;
 }
 
-/** Only for use in tests — resets the settings guard between test cases. */
+/** Only for use in tests - resets the settings guard between test cases. */
 export function _resetFirestoreSettingsForTests(): void {
   firestoreSettingsConfigured = false;
 }
 
-// ─── Credential detection ────────────────────────────────────────────────────
-
+// Credential detection
 export function isServiceAccountConfigured(): boolean {
   return Boolean(
     process.env.FIREBASE_PROJECT_ID &&
@@ -39,8 +37,7 @@ export function isFirebaseConfigured(): boolean {
   return isServiceAccountConfigured() || Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS);
 }
 
-// ─── Lazy singleton initializer ──────────────────────────────────────────────
-
+// Lazy singleton initializer
 let _sharedFirestore: Firestore | null = null;
 let _initAttempted = false;
 
@@ -85,14 +82,21 @@ export async function getFirestoreOrNull(callerLabel = 'FirestoreAdmin'): Promis
     return db;
   } catch (error) {
     logger.error(
-      { error: error instanceof Error ? error.message : error },
-      `[${callerLabel}] Firestore init failed — using memory fallback`,
+      {
+        error: error instanceof Error ? error.message : error,
+        callerLabel,
+        usingServiceAccount: isServiceAccountConfigured(),
+        hasGoogleApplicationCredentials: Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS),
+        hasDatabaseUrl: Boolean(process.env.FIREBASE_DATABASE_URL),
+        fallback: 'firestore-init-failed',
+      },
+      `[${callerLabel}] Firestore init failed - using memory fallback`,
     );
     return null;
   }
 }
 
-/** Only for use in tests — resets the shared singleton between test cases. */
+/** Only for use in tests - resets the shared singleton between test cases. */
 export function _resetFirestoreInstanceForTests(): void {
   _sharedFirestore = null;
   _initAttempted = false;

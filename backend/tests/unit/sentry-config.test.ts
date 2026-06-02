@@ -31,13 +31,11 @@ describe('backend sentry config', () => {
   });
 
   it('reports configuration state and stays silent without DSN', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const { initSentry, isSentryConfigured } = await import('../../src/config/sentry');
 
     expect(isSentryConfigured()).toBe(false);
     initSentry();
 
     expect(sentryInitMock).not.toHaveBeenCalled();
-    expect(warnSpy).not.toHaveBeenCalledWith('Sentry DSN not found. Backend error tracking disabled.');
   });
 });

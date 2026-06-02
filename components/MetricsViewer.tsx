@@ -1,4 +1,4 @@
-/**
+﻿/**
  * METRICS VIEWER
  *
  * Componente de observabilidade para o AI Control Panel.
@@ -22,8 +22,8 @@ const MetricCard: React.FC<MetricCardProps> = ({ label, value, icon, color }) =>
   <div className="bg-slate-800/50 rounded p-3 flex items-center gap-3">
     <div className={`${color} shrink-0`}>{icon}</div>
     <div>
-      <p className="font-mono text-[8px] text-slate-500 uppercase tracking-wider">{label}</p>
-      <p className={`font-mono text-[13px] font-bold ${color}`}>{value}</p>
+      <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em]">{label}</p>
+      <p className={`font-mono text-[13px] font-medium ${color}`}>{value}</p>
     </div>
   </div>
 );
@@ -47,9 +47,9 @@ const MetricsViewer: React.FC = () => {
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800">
         <div className="flex items-center gap-2">
-          <BarChart2 size={11} className="text-violet-400" />
-          <span className="font-mono text-[9px] text-slate-300 uppercase tracking-widest">AI Metrics</span>
-          <span className="font-mono text-[7px] text-slate-600">auto-refresh 3s</span>
+          <BarChart2 size={11} className="text-slate-400" />
+          <span className="font-mono text-xs text-slate-300 uppercase tracking-[0.08em]">AI Metrics</span>
+          <span className="font-mono text-xs text-slate-600">auto-refresh 3s</span>
         </div>
         <button
           onClick={handleClear}
@@ -57,7 +57,7 @@ const MetricsViewer: React.FC = () => {
           title="Limpar métricas"
         >
           <RefreshCw size={8} className="text-slate-400" />
-          <span className="font-mono text-[7px] text-slate-400">clear</span>
+          <span className="font-mono text-xs text-slate-400">clear</span>
         </button>
       </div>
 
@@ -90,11 +90,11 @@ const MetricsViewer: React.FC = () => {
         </div>
 
         <div className="mt-3 bg-slate-800/50 rounded p-3">
-          <p className="font-mono text-[8px] text-slate-500 uppercase tracking-wider mb-1">Events Processed</p>
-          <p className="font-mono text-[13px] font-bold text-sky-400">{summary.events_processed}</p>
+          <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em] mb-1">Events Processed</p>
+          <p className="font-mono text-[13px] font-medium text-slate-400">{summary.events_processed}</p>
         </div>
 
-        <p className="font-mono text-[7px] text-slate-600 text-right mt-3">
+        <p className="font-mono text-xs text-slate-600 text-right mt-3">
           snapshot: {new Date(summary.recorded_at).toLocaleTimeString('pt-BR')}
         </p>
       </div>
@@ -110,3 +110,7 @@ export function formatMetricsSnapshotTime(value: unknown): string {
 }
 
 export default MetricsViewer;
+
+
+
+

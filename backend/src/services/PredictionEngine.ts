@@ -6,9 +6,7 @@
 
 import {
   CashFlowPrediction,
-  DailyPrediction,
   ShortfallRisk,
-  PredictionFactor,
   SeasonalPattern,
   TrendAnalysis,
   TransactionHistory,
@@ -18,69 +16,17 @@ import {
 } from '../types/prediction';
 import { cache as redisCache } from '../config/redis';
 import logger from '../config/logger';
-
-// Simple statistics utilities (no heavy ML deps)
-class StatisticsUtils {
-  static mean(values: number[]): number {
-    if (values.length === 0) return 0;
-    return values.reduce((a, b) => a + b, 0) / values.length;
-  }
-
-  static stdDev(values: number[]): number {
-    if (values.length < 2) return 0;
-    const mean = this.mean(values);
-    const squaredDiffs = values.map(v => Math.pow(v - mean, 2));
-    const variance = this.mean(squaredDiffs);
-    return Math.sqrt(variance);
-  }
-
-  static linearRegression(points: { x: number; y: number }[]): { slope: number; intercept: number; r2: number } {
-    if (points.length < 2) return { slope: 0, intercept: 0, r2: 0 };
-    
-    const n = points.length;
-    const sumX = points.reduce((sum, p) => sum + p.x, 0);
-    const sumY = points.reduce((sum, p) => sum + p.y, 0);
-    const sumXY = points.reduce((sum, p) => sum + p.x * p.y, 0);
-    const sumXX = points.reduce((sum, p) => sum + p.x * p.x, 0);
-
-    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-    const intercept = (sumY - slope * sumX) / n;
-
-    // Calculate R-squared
-    const yMean = sumY / n;
-    const ssTotal = points.reduce((sum, p) => sum + Math.pow(p.y - yMean, 2), 0);
-    const ssResidual = points.reduce((sum, p) => {
-      const predicted = slope * p.x + intercept;
-      return sum + Math.pow(p.y - predicted, 2);
-    }, 0);
-    const r2 = ssTotal === 0 ? 1 : 1 - ssResidual / ssTotal;
-
-    return { slope, intercept, r2 };
-  }
-
-  static exponentialSmoothing(values: number[], alpha: number = 0.3): number[] {
-    if (values.length === 0) return [];
-    const smoothed = [values[0]];
-    for (let i = 1; i < values.length; i++) {
-      smoothed[i] = alpha * values[i] + (1 - alpha) * smoothed[i - 1];
-    }
-    return smoothed;
-  }
-
-  static movingAverage(values: number[], period: number): number[] {
-    if (period <= 1) return values;
-    const result: number[] = [];
-    for (let i = 0; i < values.length; i++) {
-      if (i < period - 1) {
-        result.push(values[i]);
-      } else {
-        const window = values.slice(i - period + 1, i + 1);
-        result.push(this.mean(window));
-      }
-    }
-    return result;
-  }
-}
+import { StatisticsUtils } from './PredictionEngineHelpers';
+import {
+  calculateDailyBalances,
+  calculateOverallConfidence,
+  detectMonthlyPattern,
+  detectWeeklyPattern,
+  generateDailyPredictions,
+  generateShortfallSuggestions,
+  groupByCategory,
+  identifyPredictionFactors,
+} from './PredictionEngineAnalysis';
 
 const REDIS_CACHE_PREFIX = 'prediction:v1:';
 
@@ -117,7 +63,7 @@ export class PredictionEngine {
     );
 
     // Calculate daily balances
-    const dailyBalances = this.calculateDailyBalances(transactions);
+    const dailyBalances = calculateDailyBalances(transactions);
     
     // Detect patterns
     const seasonalPatterns = this.detectSeasonality(transactions);
@@ -125,20 +71,19 @@ export class PredictionEngine {
     
     // Generate daily predictions
     const lastBalance = dailyBalances[dailyBalances.length - 1]?.balance || 0;
-    const dailyPredictions = this.generateDailyPredictions(
+    const dailyPredictions = generateDailyPredictions(
       dailyBalances,
-      transactions,
       seasonalPatterns,
       trend,
       lastBalance,
-      days
+      days,
     );
 
     // Calculate overall confidence
-    const confidence = this.calculateOverallConfidence(dailyPredictions, trend);
+    const confidence = calculateOverallConfidence(dailyPredictions, trend);
 
     // Identify prediction factors
-    const factors = this.identifyPredictionFactors(transactions, trend, seasonalPatterns);
+    const factors = identifyPredictionFactors(transactions, trend, seasonalPatterns);
 
     const now = new Date();
     const prediction: CashFlowPrediction = {
@@ -196,8 +141,8 @@ export class PredictionEngine {
     }
 
     // Generate suggestions
-    const suggestions = this.generateShortfallSuggestions(
-      prediction,
+    const suggestions = generateShortfallSuggestions(
+      prediction.factors,
       projectedDeficit,
       daysUntil
     );
@@ -217,17 +162,13 @@ export class PredictionEngine {
    */
   detectSeasonality(transactions: TransactionHistory['transactions']): SeasonalPattern[] {
     const patterns: SeasonalPattern[] = [];
-
-    // Group by category
-    const byCategory = this.groupByCategory(transactions);
+    const byCategory = groupByCategory(transactions);
 
     for (const [category, categoryTransactions] of Object.entries(byCategory)) {
-      // Weekly patterns
-      const weeklyPattern = this.detectWeeklyPattern(category, categoryTransactions);
+      const weeklyPattern = detectWeeklyPattern(category, categoryTransactions);
       if (weeklyPattern) patterns.push(weeklyPattern);
 
-      // Monthly patterns
-      const monthlyPattern = this.detectMonthlyPattern(category, categoryTransactions);
+      const monthlyPattern = detectMonthlyPattern(category, categoryTransactions);
       if (monthlyPattern) patterns.push(monthlyPattern);
     }
 
@@ -258,7 +199,6 @@ export class PredictionEngine {
     const lastBalance = dailyBalances[dailyBalances.length - 1].balance;
     const changePercent = firstBalance === 0 ? 0 : ((lastBalance - firstBalance) / Math.abs(firstBalance)) * 100;
 
-    // Calculate confidence based on R-squared and data size
     const dataQuality = Math.min(dailyBalances.length / 30, 1); // Max at 30 days
     const confidence = regression.r2 * dataQuality;
 
@@ -313,314 +253,6 @@ export class PredictionEngine {
     });
   }
 
-  // ==================== PRIVATE METHODS ====================
-
-  private calculateDailyBalances(
-    transactions: TransactionHistory['transactions']
-  ): { date: Date; balance: number; income: number; expenses: number }[] {
-    const sorted = [...transactions].sort((a, b) => 
-      new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-
-    const dailyMap = new Map<string, { date: Date; income: number; expenses: number }>();
-
-    for (const t of sorted) {
-      const dateKey = new Date(t.date).toISOString().split('T')[0];
-      if (!dailyMap.has(dateKey)) {
-        dailyMap.set(dateKey, { date: new Date(t.date), income: 0, expenses: 0 });
-      }
-      const day = dailyMap.get(dateKey)!;
-      if (t.type === 'income') {
-        day.income += t.amount;
-      } else {
-        day.expenses += Math.abs(t.amount);
-      }
-    }
-
-    // Calculate running balance
-    const dailyBalances: { date: Date; balance: number; income: number; expenses: number }[] = [];
-    let runningBalance = 0;
-
-    for (const [, day] of dailyMap) {
-      runningBalance += day.income - day.expenses;
-      dailyBalances.push({
-        date: day.date,
-        balance: runningBalance,
-        income: day.income,
-        expenses: day.expenses,
-      });
-    }
-
-    return dailyBalances;
-  }
-
-  private generateDailyPredictions(
-    dailyBalances: { date: Date; balance: number; income: number; expenses: number }[],
-    transactions: TransactionHistory['transactions'],
-    seasonalPatterns: SeasonalPattern[],
-    trend: TrendAnalysis,
-    startingBalance: number,
-    days: number
-  ): DailyPrediction[] {
-    // Signature keeps room for future transaction-level feature extraction.
-    void transactions;
-
-    const predictions: DailyPrediction[] = [];
-    let currentBalance = startingBalance;
-    const now = new Date();
-
-    // Calculate average daily income/expense from history
-    const avgDailyIncome = StatisticsUtils.mean(
-      dailyBalances.map(d => d.income).filter(v => v > 0)
-    ) || 0;
-    const avgDailyExpense = StatisticsUtils.mean(
-      dailyBalances.map(d => d.expenses).filter(v => v > 0)
-    ) || 0;
-
-    for (let i = 1; i <= days; i++) {
-      const predictionDate = new Date(now.getTime() + i * 24 * 60 * 60 * 1000);
-      
-      // Apply trend
-      const trendAdjustment = trend.slope * i;
-      
-      // Apply seasonal adjustments
-      let seasonalIncomeAdjustment = 0;
-      let seasonalExpenseAdjustment = 0;
-      
-      for (const pattern of seasonalPatterns) {
-        if (pattern.type === 'weekly' && pattern.dayOfWeek === predictionDate.getDay()) {
-          if (pattern.averageAmount > 0) {
-            seasonalIncomeAdjustment += pattern.averageAmount * pattern.confidence;
-          } else {
-            seasonalExpenseAdjustment += Math.abs(pattern.averageAmount) * pattern.confidence;
-          }
-        }
-        if (pattern.type === 'monthly' && pattern.dayOfMonth === predictionDate.getDate()) {
-          if (pattern.averageAmount > 0) {
-            seasonalIncomeAdjustment += pattern.averageAmount * pattern.confidence;
-          } else {
-            seasonalExpenseAdjustment += Math.abs(pattern.averageAmount) * pattern.confidence;
-          }
-        }
-      }
-
-      const expectedIncome = avgDailyIncome + seasonalIncomeAdjustment;
-      const expectedExpenses = avgDailyExpense + seasonalExpenseAdjustment;
-      const netChange = expectedIncome - expectedExpenses + trendAdjustment;
-      
-      currentBalance += netChange;
-
-      // Calculate confidence interval (wider for further predictions)
-      const confidenceDecay = Math.pow(0.95, i); // 5% decay per day
-      const baseStdDev = StatisticsUtils.stdDev(dailyBalances.map(d => d.balance)) || 100;
-      const intervalWidth = baseStdDev * (1 + i / 30) * (1 - confidenceDecay + 0.1);
-
-      // Determine risk level
-      let riskLevel: 'low' | 'medium' | 'high' = 'low';
-      if (currentBalance < 0) {
-        riskLevel = 'high';
-      } else if (currentBalance < avgDailyExpense * 7) {
-        riskLevel = 'medium';
-      }
-
-      predictions.push({
-        date: predictionDate,
-        predictedBalance: Math.round(currentBalance * 100) / 100,
-        confidenceInterval: {
-          min: Math.round((currentBalance - intervalWidth) * 100) / 100,
-          max: Math.round((currentBalance + intervalWidth) * 100) / 100,
-        },
-        expectedIncome: Math.round(expectedIncome * 100) / 100,
-        expectedExpenses: Math.round(expectedExpenses * 100) / 100,
-        riskLevel,
-      });
-    }
-
-    return predictions;
-  }
-
-  private calculateOverallConfidence(
-    dailyPredictions: DailyPrediction[],
-    trend: TrendAnalysis
-  ): number {
-    // Base confidence from trend R-squared
-    let confidence = trend.r2;
-    
-    // Adjust based on prediction stability
-    const balances = dailyPredictions.map(p => p.predictedBalance);
-    const volatility = StatisticsUtils.stdDev(balances);
-    const avgBalance = StatisticsUtils.mean(balances);
-    const stabilityScore = avgBalance === 0 ? 0.5 : 1 - Math.min(volatility / Math.abs(avgBalance), 1);
-    
-    confidence = confidence * 0.6 + stabilityScore * 0.4;
-    
-    // Cap based on historical data quality
-    return Math.round(Math.min(confidence, 0.95) * 100) / 100;
-  }
-
-  private identifyPredictionFactors(
-    transactions: TransactionHistory['transactions'],
-    trend: TrendAnalysis,
-    seasonalPatterns: SeasonalPattern[]
-  ): PredictionFactor[] {
-    const factors: PredictionFactor[] = [];
-
-    // Trend factor
-    factors.push({
-      name: 'Balance Trend',
-      impact: trend.direction === 'up' ? 'positive' : trend.direction === 'down' ? 'negative' : 'neutral',
-      weight: trend.r2,
-      description: `Your balance is trending ${trend.direction} (${trend.changePercent.toFixed(1)}% change)`,
-    });
-
-    // Seasonality factor
-    if (seasonalPatterns.length > 0) {
-      const avgConfidence = StatisticsUtils.mean(seasonalPatterns.map(p => p.confidence));
-      factors.push({
-        name: 'Seasonal Patterns',
-        impact: 'positive',
-        weight: avgConfidence,
-        description: `Detected ${seasonalPatterns.length} recurring patterns in your spending`,
-      });
-    }
-
-    // Transaction consistency factor
-    const categories = this.groupByCategory(transactions);
-    const recurringCategories = Object.entries(categories).filter(([_, txs]) => txs.length >= 3);
-    if (recurringCategories.length > 0) {
-      factors.push({
-        name: 'Recurring Transactions',
-        impact: 'positive',
-        weight: Math.min(recurringCategories.length / 5, 0.8),
-        description: `${recurringCategories.length} categories show predictable patterns`,
-      });
-    }
-
-    return factors;
-  }
-
-  private groupByCategory(
-    transactions: TransactionHistory['transactions']
-  ): Record<string, TransactionHistory['transactions']> {
-    return transactions.reduce((acc, t) => {
-      if (!acc[t.category]) acc[t.category] = [];
-      acc[t.category].push(t);
-      return acc;
-    }, {} as Record<string, TransactionHistory['transactions']>);
-  }
-
-  private detectWeeklyPattern(
-    category: string,
-    transactions: TransactionHistory['transactions']
-  ): SeasonalPattern | null {
-    if (transactions.length < 4) return null;
-
-    const byDayOfWeek: Record<number, number[]> = {};
-    for (const t of transactions) {
-      const day = new Date(t.date).getDay();
-      if (!byDayOfWeek[day]) byDayOfWeek[day] = [];
-      byDayOfWeek[day].push(t.amount);
-    }
-
-    // Find day with most consistent transactions
-    let bestDay: number | null = null;
-    let bestConfidence = 0;
-
-    for (const [day, amounts] of Object.entries(byDayOfWeek)) {
-      if (amounts.length >= 3) {
-        const stdDev = StatisticsUtils.stdDev(amounts);
-        const mean = StatisticsUtils.mean(amounts);
-        const cv = mean === 0 ? Infinity : stdDev / Math.abs(mean); // Coefficient of variation
-        const confidence = Math.max(0, 1 - cv);
-        
-        if (confidence > bestConfidence && confidence > 0.5) {
-          bestConfidence = confidence;
-          bestDay = parseInt(day);
-        }
-      }
-    }
-
-    if (bestDay === null) return null;
-
-    return {
-      type: 'weekly',
-      dayOfWeek: bestDay,
-      category,
-      averageAmount: StatisticsUtils.mean(byDayOfWeek[bestDay]),
-      confidence: Math.round(bestConfidence * 100) / 100,
-      sampleSize: byDayOfWeek[bestDay].length,
-    };
-  }
-
-  private detectMonthlyPattern(
-    category: string,
-    transactions: TransactionHistory['transactions']
-  ): SeasonalPattern | null {
-    if (transactions.length < 3) return null;
-
-    const byDayOfMonth: Record<number, number[]> = {};
-    for (const t of transactions) {
-      const day = new Date(t.date).getDate();
-      if (!byDayOfMonth[day]) byDayOfMonth[day] = [];
-      byDayOfMonth[day].push(t.amount);
-    }
-
-    let bestDay: number | null = null;
-    let bestConfidence = 0;
-
-    for (const [day, amounts] of Object.entries(byDayOfMonth)) {
-      if (amounts.length >= 2) {
-        const stdDev = StatisticsUtils.stdDev(amounts);
-        const mean = StatisticsUtils.mean(amounts);
-        const cv = mean === 0 ? Infinity : stdDev / Math.abs(mean);
-        const confidence = Math.max(0, 1 - cv);
-        
-        if (confidence > bestConfidence && confidence > 0.5) {
-          bestConfidence = confidence;
-          bestDay = parseInt(day);
-        }
-      }
-    }
-
-    if (bestDay === null) return null;
-
-    return {
-      type: 'monthly',
-      dayOfMonth: bestDay,
-      category,
-      averageAmount: StatisticsUtils.mean(byDayOfMonth[bestDay]),
-      confidence: Math.round(bestConfidence * 100) / 100,
-      sampleSize: byDayOfMonth[bestDay].length,
-    };
-  }
-
-  private generateShortfallSuggestions(
-    prediction: CashFlowPrediction,
-    deficit: number,
-    daysUntil: number
-  ): string[] {
-    const suggestions: string[] = [];
-
-    if (daysUntil > 7) {
-      suggestions.push(`You have ${daysUntil} days to adjust your spending`);
-    } else {
-      suggestions.push(`Urgent: Only ${daysUntil} days until projected shortfall`);
-    }
-
-    // Find categories with highest expenses
-    const factors = prediction.factors.filter(f => f.impact === 'negative');
-    if (factors.length > 0) {
-      suggestions.push(`Consider reducing spending in: ${factors[0].name}`);
-    }
-
-    if (deficit > 500) {
-      suggestions.push(`Look for ways to increase income by $${Math.ceil(deficit / 100) * 100}`);
-    }
-
-    suggestions.push('Review upcoming scheduled payments and consider deferring non-essential ones');
-
-    return suggestions;
-  }
 
   private getCachedPrediction(userId: string): CashFlowPrediction | null {
     // Memory-only path (sync) — Redis path is async and handled separately
@@ -642,7 +274,12 @@ export class PredictionEngine {
         }
       }
     } catch (err) {
-      logger.warn({ err, userId }, 'PredictionEngine: Redis cache read failed, falling back to memory');
+      logger.warn({
+        err,
+        userId,
+        cacheKey: `${REDIS_CACHE_PREFIX}${userId}`,
+        fallback: 'prediction-engine-cache-read-failed',
+      }, 'PredictionEngine: Redis cache read failed, falling back to memory');
     }
     return this.getCachedPrediction(userId);
   }
@@ -659,7 +296,12 @@ export class PredictionEngine {
     redisCache
       .set(`${REDIS_CACHE_PREFIX}${userId}`, JSON.stringify({ prediction, expiresAt }), ttlSeconds)
       .catch((err: unknown) => {
-        logger.warn({ err, userId }, 'PredictionEngine: Redis cache write failed, memory-only cache active');
+        logger.warn({
+          err,
+          userId,
+          cacheKey: `${REDIS_CACHE_PREFIX}${userId}`,
+          fallback: 'prediction-engine-cache-write-failed',
+        }, 'PredictionEngine: Redis cache write failed, memory-only cache active');
       });
   }
 

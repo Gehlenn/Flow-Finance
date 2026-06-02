@@ -1,9 +1,15 @@
 import { makeId } from '../utils/helpers';
 import { getActiveWorkspaceScopedStorageKey } from '../utils/workspaceStorage';
+import { logWarn } from '../utils/logger';
+import {
+  buildUserMemoryProfile as buildUserMemoryProfileFromHelpers,
+  inferMemorySource,
+  parseMemoryDate,
+  type MemorySource,
+} from './aiMemoryHelpers';
+import { Transaction, TransactionType } from '../../types';
 
 const STORAGE_KEY = 'flow_ai_memory';
-
-// ─── Model ────────────────────────────────────────────────────────────────────
 
 export interface AIMemory {
   id: string;
@@ -12,14 +18,26 @@ export interface AIMemory {
   value: string;
   confidence: number;
   updated_at: string;
+  metadata?: Record<string, unknown>;
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function readAll(): AIMemory[] {
   try {
-    return JSON.parse(localStorage.getItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY)) || '[]');
-  } catch {
+    const parsed = JSON.parse(localStorage.getItem(getActiveWorkspaceScopedStorageKey(STORAGE_KEY)) || '[]');
+    if (!Array.isArray(parsed)) {
+      logWarn('[AIMemory] Memory storage has invalid shape; returning empty set', {
+        storageKey: getActiveWorkspaceScopedStorageKey(STORAGE_KEY),
+        fallback: 'ai-memory-invalid-shape',
+      });
+      return [];
+    }
+    return parsed;
+  } catch (error) {
+    logWarn('[AIMemory] Failed to parse memory storage; returning empty set', {
+      storageKey: getActiveWorkspaceScopedStorageKey(STORAGE_KEY),
+      error,
+      fallback: 'ai-memory-parse-failed',
+    });
     return [];
   }
 }
@@ -32,8 +50,6 @@ export function getAIMemorySnapshot(userId: string): AIMemory[] {
   return readAll().filter((memory) => memory.user_id === userId);
 }
 
-// ─── CRUD ─────────────────────────────────────────────────────────────────────
-
 export async function getAIMemory(userId: string): Promise<AIMemory[]> {
   return getAIMemorySnapshot(userId);
 }
@@ -45,24 +61,32 @@ export async function storeMemory(memory: AIMemory): Promise<void> {
 }
 
 export async function updateMemory(memory: AIMemory): Promise<void> {
-  const all = readAll().map(m => m.id === memory.id ? { ...memory, updated_at: new Date().toISOString() } : m);
+  const all = readAll().map((m) => (m.id === memory.id ? { ...memory, updated_at: new Date().toISOString() } : m));
   writeAll(all);
 }
 
 export async function deleteMemory(memoryId: string): Promise<void> {
-  writeAll(readAll().filter(m => m.id !== memoryId));
+  writeAll(readAll().filter((m) => m.id !== memoryId));
 }
-
-// ─── PART 3: learnMemory helper ───────────────────────────────────────────────
 
 export async function learnMemory(
   userId: string,
   key: string,
   value: string,
-  confidence: number
+  confidence: number,
+  options?: {
+    source?: MemorySource;
+    metadata?: Record<string, unknown>;
+  },
 ): Promise<void> {
   const all = readAll();
-  const existing = all.find(m => m.user_id === userId && m.key === key);
+  const existing = all.find((m) => m.user_id === userId && m.key === key);
+  const source = options?.source ?? existing?.metadata?.source ?? inferMemorySource(key);
+  const metadata = {
+    ...(existing?.metadata ?? {}),
+    ...(options?.metadata ?? {}),
+    source,
+  };
 
   if (existing) {
     const updated: AIMemory = {
@@ -70,8 +94,9 @@ export async function learnMemory(
       value,
       confidence,
       updated_at: new Date().toISOString(),
+      metadata,
     };
-    writeAll(all.map(m => m.id === existing.id ? updated : m));
+    writeAll(all.map((m) => (m.id === existing.id ? updated : m)));
   } else {
     const newEntry: AIMemory = {
       id: makeId(),
@@ -80,28 +105,21 @@ export async function learnMemory(
       value,
       confidence,
       updated_at: new Date().toISOString(),
+      metadata,
     };
     all.push(newEntry);
     writeAll(all);
   }
 }
 
-// ─── PART 9: Pattern detection helper ────────────────────────────────────────
-
-import { Transaction, TransactionType } from '../../types';
-
-export async function detectAndLearnPatterns(
-  userId: string,
-  transactions: Transaction[]
-): Promise<void> {
+export async function detectAndLearnPatterns(userId: string, transactions: Transaction[]): Promise<void> {
   if (transactions.length < 3) return;
 
-  // Detectar gastos no fim de semana
-  const weekendSpending = transactions.filter(t => {
-    const day = new Date(t.date).getDay();
+  const weekendSpending = transactions.filter((t) => {
+    const day = parseMemoryDate(t.date)?.getDay();
     return t.type === TransactionType.DESPESA && (day === 0 || day === 6);
   });
-  const totalSpending = transactions.filter(t => t.type === TransactionType.DESPESA);
+  const totalSpending = transactions.filter((t) => t.type === TransactionType.DESPESA);
   if (totalSpending.length > 0) {
     const weekendRatio = weekendSpending.length / totalSpending.length;
     if (weekendRatio > 0.3) {
@@ -109,7 +127,6 @@ export async function detectAndLearnPatterns(
     }
   }
 
-  // Detectar merchant frequente
   const merchantCount: Record<string, number> = {};
   for (const t of transactions) {
     const key = (t.merchant || t.description).toLowerCase().trim();
@@ -120,8 +137,7 @@ export async function detectAndLearnPatterns(
     await learnMemory(userId, 'frequent_merchant', topMerchant[0], Math.min(topMerchant[1] / 10, 1));
   }
 
-  // Detectar despesas recorrentes
-  const recurringCount = transactions.filter(t => t.recurring === true).length;
+  const recurringCount = transactions.filter((t) => t.recurring === true).length;
   if (recurringCount > 0) {
     await learnMemory(userId, 'recurring_expenses', String(recurringCount), Math.min(recurringCount / 5, 1));
   }
@@ -134,11 +150,5 @@ export async function getUserMemoryProfile(userId: string): Promise<{
   merchant_categories: AIMemory[];
 }> {
   const memories = await getAIMemory(userId);
-  return {
-    userId,
-    patterns: memories.filter((m) => m.key.includes('pattern') || m.key.includes('weekend')),
-    spending_profile: memories.filter((m) => m.key.includes('profile') || m.key.includes('recurring')),
-    merchant_categories: memories.filter((m) => m.key.includes('merchant')),
-  };
+  return buildUserMemoryProfileFromHelpers(memories, userId);
 }
-

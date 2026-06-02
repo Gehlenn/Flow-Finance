@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import crypto from 'crypto';
 import { externalIntegrationAuth } from '../../backend/src/middleware/externalIntegrationAuth';
+import type { Request, Response } from 'express';
 
 function buildReq(options: {
   key?: string;
@@ -18,7 +19,7 @@ function buildReq(options: {
       return headers[name.toLowerCase()];
     },
     rawBody: options.rawBody,
-  } as any;
+  } as unknown as Request & { rawBody?: string };
 }
 
 function buildRes() {
@@ -33,7 +34,7 @@ function buildRes() {
       this.body = payload;
       return this;
     },
-  } as any;
+  } as unknown as Response & { statusCode: number; body: unknown };
 }
 
 describe('externalIntegrationAuth', () => {

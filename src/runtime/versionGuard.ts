@@ -5,6 +5,7 @@
 
 import { GuardResult } from './types';
 import { isBenchmarkBrowserSession } from './benchmarkMode';
+import { logInfo, logWarn } from '../utils/logger';
 
 // Prevents DOM XSS when interpolating version strings from backend responses into innerHTML.
 function escapeHtml(value: unknown): string {
@@ -21,6 +22,7 @@ const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL ||
   import.meta.env.VITE_API_PROD_URL ||
   '';
+const IS_DEV = import.meta.env.DEV;
 const IS_AUTOMATED_BROWSER = typeof navigator !== 'undefined' && navigator.webdriver === true;
 
 function isLocalNetworkTarget(url: string): boolean {
@@ -34,7 +36,7 @@ function isLocalNetworkTarget(url: string): boolean {
   }
 }
 
-const SHOULD_SKIP_NETWORK_PROBES = IS_AUTOMATED_BROWSER && isLocalNetworkTarget(API_BASE_URL);
+const SHOULD_SKIP_NETWORK_PROBES = isLocalNetworkTarget(API_BASE_URL) && (IS_AUTOMATED_BROWSER || IS_DEV);
 
 let lastVersionCheck = 0;
 const VERSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -85,7 +87,10 @@ export async function checkAppVersion(): Promise<GuardResult> {
         };
       }
 
-      console.warn('[Version Guard] Failed to fetch backend version:', response.status);
+      logWarn('[Version Guard] Failed to fetch backend version', {
+        status: response.status,
+        fallback: 'version-guard-backend-version-fetch-failed',
+      });
       return {
         guard: 'version',
         status: 'warning',
@@ -98,16 +103,26 @@ export async function checkAppVersion(): Promise<GuardResult> {
     const backendVersion = data.version;
 
     if (backendVersion && backendVersion !== APP_VERSION) {
-      console.warn(
-        `[Version Guard] Version mismatch detected - Frontend: ${APP_VERSION}, Backend: ${backendVersion}`
-      );
+      logWarn('[Version Guard] Version mismatch detected', {
+        frontendVersion: APP_VERSION,
+        backendVersion,
+        fallback: 'version-guard-version-mismatch',
+      });
 
       // Hard reload to avoid inconsistent deploy state.
       // Skip reload during benchmark sessions to keep performance measurements stable.
       if (!isBenchmarkBrowserSession()) {
-        console.warn('[HOTFIX] reload bloqueado');
+        logWarn('[HOTFIX] reload bloqueado', {
+          frontendVersion: APP_VERSION,
+          backendVersion,
+          fallback: 'version-guard-reload-blocked',
+        });
       } else {
-        console.info('[Version Guard] Reload skipped in benchmark mode');
+        logInfo('[Version Guard] Reload skipped in benchmark mode', {
+          frontendVersion: APP_VERSION,
+          backendVersion,
+          fallback: 'version-guard-reload-skipped-benchmark',
+        });
       }
 
       return {
@@ -119,7 +134,10 @@ export async function checkAppVersion(): Promise<GuardResult> {
       };
     }
 
-    console.log('[Version Guard] Versions match:', APP_VERSION);
+    logInfo('[Version Guard] Versions match', {
+      frontendVersion: APP_VERSION,
+      fallback: 'version-guard-versions-match',
+    });
 
     return {
       guard: 'version',
@@ -128,7 +146,10 @@ export async function checkAppVersion(): Promise<GuardResult> {
       timestamp: now,
     };
   } catch (error) {
-    console.warn('[Version Guard] Version check failed:', error);
+    logWarn('[Version Guard] Version check failed', {
+      error,
+      fallback: 'version-guard-check-failed',
+    });
     return {
       guard: 'version',
       status: 'warning',

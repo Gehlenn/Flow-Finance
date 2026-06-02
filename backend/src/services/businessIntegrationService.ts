@@ -3,6 +3,7 @@ import { recordAuditEvent } from './admin/auditLog';
 import { getWorkspaceAsync } from './admin/workspaceStore';
 import { pullSyncItems, pushSyncItems } from './sync/cloudSyncStore';
 import { AppError } from '../middleware/errorHandler';
+import logger from '../config/logger';
 import type { IntegrationReminderInput, IntegrationTransactionInput } from '../validation/businessIntegration.schema';
 
 type IntegrationAction = 'created' | 'updated' | 'replayed';
@@ -140,32 +141,46 @@ export async function ingestIntegrationTransaction(
       ? 'replayed'
       : 'updated';
 
-  if (action !== 'replayed') {
-    await pushSyncItems(
-      input.workspaceId,
-      storedAs,
-      [{ id: recordId, updatedAt, payload }],
-      { userId: integrationUserId, workspaceId: input.workspaceId },
-    );
-  }
+  try {
+    if (action !== 'replayed') {
+      await pushSyncItems(
+        input.workspaceId,
+        storedAs,
+        [{ id: recordId, updatedAt, payload }],
+        { userId: integrationUserId, workspaceId: input.workspaceId },
+      );
+    }
 
-  recordAuditEvent({
-    tenantId: workspace.tenantId,
-    workspaceId: workspace.workspaceId,
-    userId: integrationUserId,
-    action: 'integration.external_event_received',
-    status: 'success',
-    resource: workspace.workspaceId,
-    resourceType: 'external_integration',
-    resourceId: input.externalRecordId,
-    metadata: {
+    recordAuditEvent({
+      tenantId: workspace.tenantId,
+      workspaceId: workspace.workspaceId,
+      userId: integrationUserId,
+      action: 'integration.external_event_received',
+      status: 'success',
+      resource: workspace.workspaceId,
+      resourceType: 'external_integration',
+      resourceId: input.externalRecordId,
+      metadata: {
+        entity,
+        storedAs,
+        action,
+        sourceSystem: input.sourceSystem,
+        externalRecordId: input.externalRecordId,
+      },
+    });
+  } catch (error) {
+    logger.error({
+      error,
+      workspaceId: input.workspaceId,
+      sourceSystem: input.sourceSystem,
+      externalRecordId: input.externalRecordId,
       entity,
       storedAs,
       action,
-      sourceSystem: input.sourceSystem,
-      externalRecordId: input.externalRecordId,
-    },
-  });
+      fallback: 'business-integration-ingest-failed',
+    }, 'Failed to persist business integration transaction');
+    throw error;
+  }
 
   return {
     ok: true,
@@ -218,32 +233,46 @@ export async function ingestIntegrationReminder(
       ? 'replayed'
       : 'updated';
 
-  if (action !== 'replayed') {
-    await pushSyncItems(
-      input.workspaceId,
-      'reminders',
-      [{ id: recordId, updatedAt, payload }],
-      { userId: integrationUserId, workspaceId: input.workspaceId },
-    );
-  }
+  try {
+    if (action !== 'replayed') {
+      await pushSyncItems(
+        input.workspaceId,
+        'reminders',
+        [{ id: recordId, updatedAt, payload }],
+        { userId: integrationUserId, workspaceId: input.workspaceId },
+      );
+    }
 
-  recordAuditEvent({
-    tenantId: workspace.tenantId,
-    workspaceId: workspace.workspaceId,
-    userId: integrationUserId,
-    action: 'integration.external_event_received',
-    status: 'success',
-    resource: workspace.workspaceId,
-    resourceType: 'external_integration',
-    resourceId: input.externalRecordId,
-    metadata: {
+    recordAuditEvent({
+      tenantId: workspace.tenantId,
+      workspaceId: workspace.workspaceId,
+      userId: integrationUserId,
+      action: 'integration.external_event_received',
+      status: 'success',
+      resource: workspace.workspaceId,
+      resourceType: 'external_integration',
+      resourceId: input.externalRecordId,
+      metadata: {
+        entity: 'reminder',
+        storedAs: 'reminders',
+        action,
+        sourceSystem: input.sourceSystem,
+        externalRecordId: input.externalRecordId,
+      },
+    });
+  } catch (error) {
+    logger.error({
+      error,
+      workspaceId: input.workspaceId,
+      sourceSystem: input.sourceSystem,
+      externalRecordId: input.externalRecordId,
       entity: 'reminder',
       storedAs: 'reminders',
       action,
-      sourceSystem: input.sourceSystem,
-      externalRecordId: input.externalRecordId,
-    },
-  });
+      fallback: 'business-integration-ingest-failed',
+    }, 'Failed to persist business integration reminder');
+    throw error;
+  }
 
   return {
     ok: true,

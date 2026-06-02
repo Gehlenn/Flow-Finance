@@ -13,12 +13,40 @@ export interface FinancialTimelineMonth {
   events: string[];
 }
 
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function parseTimelineDate(dateValue: string): Date | null {
+  const trimmed = dateValue.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const dateOnlyMatch = DATE_ONLY_PATTERN.exec(trimmed);
+  if (dateOnlyMatch) {
+    const year = Number(dateOnlyMatch[1]);
+    const month = Number(dateOnlyMatch[2]) - 1;
+    const day = Number(dateOnlyMatch[3]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() !== year
+      || localDate.getMonth() !== month
+      || localDate.getDate() !== day
+    ) {
+      return null;
+    }
+    return localDate;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export function buildFinancialTimeline(transactions: TimelineTransaction[]): FinancialTimelineMonth[] {
   const months: Record<string, TimelineTransaction[]> = {};
 
   for (const tx of transactions) {
-    const d = new Date(tx.date);
-    if (Number.isNaN(d.getTime())) continue;
+    const d = parseTimelineDate(tx.date);
+    if (!d) continue;
 
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     if (!months[key]) months[key] = [];

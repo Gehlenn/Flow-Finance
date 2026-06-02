@@ -2,15 +2,68 @@
 import { makeId } from '../utils/helpers';
 import { FinancialEventEmitter } from '../events/eventEngine';
 import { pushToCloud } from '../services/localSyncService';
+import { logWarn } from '../utils/logger';
 
 const STORAGE_KEY = 'flow_financial_goals';
+
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function parseGoalDate(dateValue: string | undefined): { date: Date; dateOnly: boolean } | null {
+  if (!dateValue) {
+    return null;
+  }
+
+  const trimmed = dateValue.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const dateOnlyMatch = DATE_ONLY_PATTERN.exec(trimmed);
+  if (dateOnlyMatch) {
+    const year = Number(dateOnlyMatch[1]);
+    const month = Number(dateOnlyMatch[2]) - 1;
+    const day = Number(dateOnlyMatch[3]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() !== year
+      || localDate.getMonth() !== month
+      || localDate.getDate() !== day
+    ) {
+      return null;
+    }
+    return { date: localDate, dateOnly: true };
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : { date: parsed, dateOnly: false };
+}
+
+function isAfterGoalDeadline(now: Date, target: Date, dateOnly: boolean): boolean {
+  if (!dateOnly) {
+    return now.getTime() > target.getTime();
+  }
+
+  return (
+    now.getFullYear() > target.getFullYear()
+    || (now.getFullYear() === target.getFullYear() && now.getMonth() > target.getMonth())
+    || (
+      now.getFullYear() === target.getFullYear()
+      && now.getMonth() === target.getMonth()
+      && now.getDate() > target.getDate()
+    )
+  );
+}
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 
 function readAll(): FinancialGoal[] {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  } catch {
+  } catch (error) {
+    logWarn('[GoalService] Failed to read goals storage; returning empty set', {
+      error,
+      storageKey: STORAGE_KEY,
+    });
     return [];
   }
 }
@@ -99,29 +152,36 @@ export function calculateGoalProgress(goal: FinancialGoal): GoalProgress {
 
   let days_remaining: number | null = null;
   let daily_savings_needed: number | null = null;
+  let status: GoalStatus = 'on_track';
 
   if (goal.target_date) {
     const now = new Date();
-    const target = new Date(goal.target_date);
-    days_remaining = Math.max(0, Math.ceil((target.getTime() - now.getTime()) / 86400000));
+    const target = parseGoalDate(goal.target_date);
+    if (!target) {
+      return { progress_percentage, remaining_amount, days_remaining, daily_savings_needed, status };
+    }
+    days_remaining = Math.max(0, Math.ceil((target.date.getTime() - now.getTime()) / 86400000));
     daily_savings_needed = days_remaining > 0
       ? parseFloat((remaining_amount / days_remaining).toFixed(2))
       : null;
   }
 
   // Status
-  let status: GoalStatus = 'on_track';
   if (progress_percentage >= 100) {
     status = 'completed';
   } else if (goal.target_date) {
     const now = new Date();
-    const target = new Date(goal.target_date);
-    if (now > target) {
+    const target = parseGoalDate(goal.target_date);
+    if (!target) {
+      return { progress_percentage, remaining_amount, days_remaining, daily_savings_needed, status };
+    }
+    if (isAfterGoalDeadline(now, target.date, target.dateOnly)) {
       status = 'overdue';
     } else if (days_remaining !== null && daily_savings_needed !== null) {
       // "At risk" se precisar guardar mais de 20% acima do ritmo atual
+      const createdAt = parseGoalDate(goal.created_at) ?? { date: new Date(goal.created_at), dateOnly: false };
       const daysPassed = Math.ceil(
-        (now.getTime() - new Date(goal.created_at).getTime()) / 86400000
+        (now.getTime() - createdAt.date.getTime()) / 86400000
       );
       const currentDailyRate = daysPassed > 0 ? goal.current_amount / daysPassed : 0;
       if (daily_savings_needed > currentDailyRate * 1.2 && currentDailyRate > 0) {

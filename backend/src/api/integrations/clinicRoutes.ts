@@ -6,6 +6,7 @@ import { validate } from '../../middleware/validate';
 import { ClinicWebhookIngestSchema } from '../../validation/clinicAutomation.schema';
 import { ClinicAutomationService } from '../../services/clinic';
 import { IntegrationMonitor } from '../../services/observability';
+import { normalizeIntegrationEnvironment } from '../../services/observability/IntegrationTelemetry';
 import { EnhancedFeatureFlagService } from '../../services/featureFlags/EnhancedFeatureFlagService';
 import logger from '../../config/logger';
 import redisClient from '../../config/redis';
@@ -51,7 +52,7 @@ export function createClinicIntegrationRoutes(
         signature,
         sourceIp,
         {
-          environment: (process.env.NODE_ENV || 'production') as any,
+          environment: normalizeIntegrationEnvironment(process.env.NODE_ENV),
           sourceSystem: 'clinic-automation'
         }
       );
@@ -115,6 +116,16 @@ export function createClinicIntegrationRoutes(
       });
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
+
+      logger.error(
+        {
+          service: 'clinic-automation',
+          error: err.message,
+          stack: err.stack,
+          fallback: 'clinic-health-failed',
+        },
+        'Clinic automation health check failed',
+      );
 
       res.status(503).json({
         service: 'clinic-automation',

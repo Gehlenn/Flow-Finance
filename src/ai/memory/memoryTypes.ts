@@ -26,14 +26,14 @@ export interface AIMemoryEntry {
   userId: string;
   type: AIMemoryType;
   key: string; // Identifier (e.g., merchant name, category, day of week)
-  value: any; // Structured data specific to memory type
+  value: unknown; // Structured data specific to memory type
   confidence: number; // 0-1, how confident the AI is about this pattern
   strength: number; // 0-100, how strong/frequent the pattern is
   occurrences: number; // Number of times pattern was observed
   createdAt: number;
   updatedAt: number;
   lastObservedAt: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // Structured value types for each memory type
@@ -146,7 +146,7 @@ export interface MemoryEvent {
   type: 'created' | 'updated' | 'strengthened' | 'weakened' | 'expired';
   memoryId: string;
   timestamp: number;
-  changes?: Record<string, any>;
+  changes?: Record<string, unknown>;
 }
 
 // Memory decay configuration

@@ -17,7 +17,13 @@ export const startGoogleOAuthController = asyncHandler(async (req: Request, res:
     recordAuditEvent({ action: 'auth.oauth_start', status: 'success', resource: 'google', ip: req.ip });
     res.json(started);
   } catch (error) {
-    logger.error({ error }, 'Failed to start Google OAuth');
+    logger.error({
+      error,
+      redirectUri: redirectUri || null,
+      path: req.path,
+      hasRedirectOverride: Boolean(redirectUri),
+      fallback: 'google-oauth-start-failed',
+    }, 'Falha ao iniciar OAuth do Google');
     const message = error instanceof Error ? error.message : 'Failed to start Google OAuth';
     if (message.toLowerCase().includes('redirect')) {
       throw new AppError(400, message);
@@ -80,7 +86,13 @@ export const googleOAuthCallbackController = asyncHandler(async (req: Request, r
       },
     });
   } catch (error) {
-    logger.error({ error }, 'Failed to complete Google OAuth callback');
+    logger.error({
+      error,
+      codeLength: code.length,
+      stateLength: state.length,
+      path: req.path,
+      fallback: 'google-oauth-callback-failed',
+    }, 'Falha ao concluir OAuth do Google');
     const message = error instanceof Error ? error.message : 'OAuth callback failed';
     recordAuditEvent({ action: 'auth.oauth_failed', status: 'failure', resource: 'google', ip: req.ip, metadata: { message } });
     if (message.toLowerCase().includes('state')) {

@@ -61,7 +61,11 @@ function loadLocalState(): EventStoreFileState {
       events: Array.isArray(parsed.events) ? parsed.events as DomainEventRecord[] : [],
     };
   } catch (error) {
-    logger.warn({ error }, 'Failed to load domain event store, starting empty');
+    logger.warn({
+      error,
+      filePath,
+      fallback: 'domain-event-store-load-failed',
+    }, 'Failed to load domain event store, starting empty');
     stateCache = cloneState(EMPTY_STATE);
   }
 
@@ -71,8 +75,18 @@ function loadLocalState(): EventStoreFileState {
 function persistLocalState(state: EventStoreFileState): void {
   stateCache = cloneState(state);
   const filePath = getStoreFilePath();
-  ensureStoreDirExists(filePath);
-  fs.writeFileSync(filePath, JSON.stringify(state, null, 2), 'utf8');
+  try {
+    ensureStoreDirExists(filePath);
+    fs.writeFileSync(filePath, JSON.stringify(state, null, 2), 'utf8');
+  } catch (error) {
+    logger.error({
+      error,
+      filePath,
+      eventCount: state.events.length,
+      fallback: 'domain-event-store-persist-failed',
+    }, 'Failed to persist domain event store');
+    throw error;
+  }
 }
 
 export async function appendDomainEvent(input: Omit<DomainEventRecord, 'id'> & { id?: string }): Promise<DomainEventRecord> {

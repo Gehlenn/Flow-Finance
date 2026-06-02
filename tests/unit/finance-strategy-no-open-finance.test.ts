@@ -59,6 +59,8 @@ describe('Estratégia sem Open Finance pago', () => {
     const result = parsePdfStatementText(text);
 
     expect(result).toHaveLength(2);
+    expect(result[0].date).toBe('2026-03-14');
+    expect(result[1].date).toBe('2026-03-15');
     expect(result[0].category).toBe('assinaturas');
     expect(result[1].category).toBe('saude');
     expect(result[0].format).toBe('pdf');
@@ -73,6 +75,7 @@ describe('Estratégia sem Open Finance pago', () => {
     });
 
     expect(normalized.amount).toBe(39.9);
+    expect(normalized.date).toBe('2026-03-14');
     expect(normalized.description).toBe('Netflix');
     expect(normalized.merchant).toBe('Netflix.com');
     expect(normalized.source).toBe('import');
@@ -156,7 +159,7 @@ describe('Estratégia sem Open Finance pago', () => {
     const receiptText = 'SUPERMERCADO XYZ\nData 14/03/2026\nTOTAL R$ 123,45';
 
     expect(detectAmount(receiptText)).toBe(123.45);
-    expect(detectDate(receiptText)).toBeTruthy();
+    expect(detectDate(receiptText)).toBe('2026-03-14');
     expect(detectMerchant(receiptText)).toBe('SUPERMERCADO XYZ');
 
     const parsed = parseReceiptText(receiptText);

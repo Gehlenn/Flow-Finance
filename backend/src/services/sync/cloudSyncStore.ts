@@ -1,32 +1,26 @@
 import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app';
 import { Firestore, getFirestore } from 'firebase-admin/firestore';
-import { randomUUID } from 'crypto';
 import logger from '../../config/logger';
 import { applyFirestoreSettingsOnce } from '../../utils/firestoreAdmin';
 import type { SyncEntity, SyncItem } from '../../validation/sync.schema';
+import {
+  assertDeleteOwnership,
+  ENTITIES,
+  createEmptyEntities,
+  filterEntitiesBySince,
+  mergeEntityItems,
+  normalizeEntities,
+  reconcileIncomingItems,
+  shouldApplyIncomingItem,
+  type StoredSyncItem,
+  type SyncConflict,
+  type SyncEntityPayload,
+  type SyncOwnershipContext,
+} from './cloudSyncStoreHelpers';
 
 export type CloudSyncStoreDriver = 'memory' | 'firebase';
 
-export type StoredSyncItem = SyncItem & {
-  serverUpdatedAt: string;
-};
-
 export type SyncConflictPolicy = 'client-updated-at-last-write-wins';
-
-export type SyncConflictReason =
-  | 'stale_client_update'
-  | 'same_timestamp_divergent_payload'
-  | 'invalid_updated_at';
-
-export type SyncConflict = {
-  id: string;
-  reason: SyncConflictReason;
-  incomingUpdatedAt: string;
-  existingUpdatedAt: string;
-  resolution: 'preserved_existing';
-};
-
-type SyncEntityPayload = Record<SyncEntity, StoredSyncItem[]>;
 
 type PushResult = {
   upserted: number;
@@ -35,11 +29,6 @@ type PushResult = {
   reconciledIds: Array<{ clientId: string; serverId: string }>;
   conflictPolicy: SyncConflictPolicy;
   conflicts: SyncConflict[];
-};
-
-type SyncOwnershipContext = {
-  userId: string;
-  workspaceId: string;
 };
 
 type PullResult = {
@@ -78,163 +67,6 @@ export interface CloudSyncStoreFactoryOptions {
   firebaseAdapter?: FirebaseCloudSyncStoreAdapter;
 }
 
-const ENTITIES: SyncEntity[] = ['accounts', 'transactions', 'goals', 'reminders', 'subscriptions'];
-
-function createEmptyEntities(): SyncEntityPayload {
-  return {
-    accounts: [],
-    transactions: [],
-    goals: [],
-    reminders: [],
-    subscriptions: [],
-  };
-}
-
-function normalizeEntities(entities?: Partial<SyncEntityPayload>): SyncEntityPayload {
-  const normalized = createEmptyEntities();
-
-  for (const entity of ENTITIES) {
-    normalized[entity] = Array.isArray(entities?.[entity]) ? [...(entities?.[entity] || [])] : [];
-  }
-
-  return normalized;
-}
-
-function parseUpdatedAt(value: string): number | null {
-  const parsed = new Date(value).getTime();
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function hasSameSyncContent(existing: StoredSyncItem, incoming: SyncItem): boolean {
-  return JSON.stringify({
-    clientId: existing.clientId ?? null,
-    updatedAt: existing.updatedAt,
-    deleted: Boolean(existing.deleted),
-    payload: existing.payload ?? null,
-  }) === JSON.stringify({
-    clientId: incoming.clientId ?? null,
-    updatedAt: incoming.updatedAt,
-    deleted: Boolean(incoming.deleted),
-    payload: incoming.payload ?? null,
-  });
-}
-
-function shouldApplyIncomingItem(
-  existing: StoredSyncItem | undefined,
-  incoming: SyncItem,
-): { apply: boolean; conflict?: SyncConflict } {
-  if (!existing) {
-    return { apply: true };
-  }
-
-  const existingUpdatedAt = parseUpdatedAt(existing.updatedAt);
-  const incomingUpdatedAt = parseUpdatedAt(incoming.updatedAt);
-
-  if (existingUpdatedAt === null || incomingUpdatedAt === null) {
-    return {
-      apply: false,
-      conflict: {
-        id: incoming.id,
-        reason: 'invalid_updated_at',
-        incomingUpdatedAt: incoming.updatedAt,
-        existingUpdatedAt: existing.updatedAt,
-        resolution: 'preserved_existing',
-      },
-    };
-  }
-
-  if (incomingUpdatedAt > existingUpdatedAt) {
-    return { apply: true };
-  }
-
-  if (incomingUpdatedAt < existingUpdatedAt) {
-    return {
-      apply: false,
-      conflict: {
-        id: incoming.id,
-        reason: 'stale_client_update',
-        incomingUpdatedAt: incoming.updatedAt,
-        existingUpdatedAt: existing.updatedAt,
-        resolution: 'preserved_existing',
-      },
-    };
-  }
-
-  if (hasSameSyncContent(existing, incoming)) {
-    return { apply: true };
-  }
-
-  return {
-    apply: false,
-    conflict: {
-      id: incoming.id,
-      reason: 'same_timestamp_divergent_payload',
-      incomingUpdatedAt: incoming.updatedAt,
-      existingUpdatedAt: existing.updatedAt,
-      resolution: 'preserved_existing',
-    },
-  };
-}
-
-function mergeEntityItems(
-  existing: StoredSyncItem[],
-  items: SyncItem[],
-  now: string,
-): { merged: StoredSyncItem[]; upserted: number; deleted: number; conflicts: SyncConflict[] } {
-  const byId = new Map(existing.map((item) => [item.id, item] as const));
-  let upserted = 0;
-  let deleted = 0;
-  const conflicts: SyncConflict[] = [];
-
-  for (const item of items) {
-    const current = byId.get(item.id);
-    const decision = shouldApplyIncomingItem(current, item);
-
-    if (!decision.apply) {
-      if (decision.conflict) {
-        conflicts.push(decision.conflict);
-      }
-      continue;
-    }
-
-    byId.set(item.id, {
-      ...item,
-      serverUpdatedAt: now,
-    });
-
-    if (item.deleted) {
-      deleted += 1;
-    } else {
-      upserted += 1;
-    }
-  }
-
-  return {
-    merged: Array.from(byId.values()).sort((a, b) => b.serverUpdatedAt.localeCompare(a.serverUpdatedAt)),
-    upserted,
-    deleted,
-    conflicts,
-  };
-}
-
-function filterEntitiesBySince(entities: SyncEntityPayload, since?: string): PullResult {
-  const sinceMs = since ? new Date(since).getTime() : null;
-  const serverTime = new Date().toISOString();
-
-  const filtered = ENTITIES.reduce<SyncEntityPayload>((acc, entity) => {
-    const items = entities[entity];
-    acc[entity] = sinceMs === null
-      ? items
-      : items.filter((item) => new Date(item.serverUpdatedAt).getTime() > sinceMs);
-    return acc;
-  }, createEmptyEntities());
-
-  return {
-    since: since || null,
-    serverTime,
-    entities: filtered,
-  };
-}
 
 class FirebaseAdminCloudSyncStoreAdapter implements FirebaseCloudSyncStoreAdapter {
   private readonly collectionName = 'cloud_sync_state';
@@ -296,7 +128,14 @@ class FirebaseAdminCloudSyncStoreAdapter implements FirebaseCloudSyncStoreAdapte
       return this.firestore;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'firebase-init-failed';
-      logger.error({ error: message }, 'Failed to initialize Firebase Cloud Sync store');
+      logger.error({
+        error: message,
+        usingServiceAccount,
+        usingApplicationDefault,
+        configured: true,
+        ready: false,
+        fallback: 'firebase-cloud-sync-store-init-failed',
+      }, 'Failed to initialize Firebase Cloud Sync store');
       this.buildStatus(true, false, message);
       return null;
     }
@@ -336,69 +175,6 @@ class FirebaseAdminCloudSyncStoreAdapter implements FirebaseCloudSyncStoreAdapte
       entities,
       updatedAt: new Date().toISOString(),
     }, { merge: true });
-  }
-}
-
-function isTemporaryEntityId(id: string): boolean {
-  return id.startsWith('tmp_') || id.startsWith('flow_');
-}
-
-function reconcileIncomingItems(
-  existing: StoredSyncItem[],
-  items: SyncItem[],
-): { normalizedItems: SyncItem[]; reconciledIds: Array<{ clientId: string; serverId: string }> } {
-  const existingByClientId = new Map<string, string>();
-
-  for (const item of existing) {
-    if (item.clientId) {
-      existingByClientId.set(item.clientId, item.id);
-    }
-  }
-
-  const reconciledIds: Array<{ clientId: string; serverId: string }> = [];
-  const normalizedItems = items.map((item) => {
-    if (item.deleted) {
-      return item;
-    }
-
-    const clientId = item.clientId || (isTemporaryEntityId(item.id) ? item.id : undefined);
-    if (!clientId) {
-      return item;
-    }
-
-    const serverId = existingByClientId.get(clientId) || randomUUID();
-    existingByClientId.set(clientId, serverId);
-    reconciledIds.push({ clientId, serverId });
-
-    return {
-      ...item,
-      id: serverId,
-      clientId,
-      payload: item.payload
-        ? {
-            ...item.payload,
-            id: serverId,
-          }
-        : item.payload,
-    };
-  });
-
-  return { normalizedItems, reconciledIds };
-}
-
-function assertDeleteOwnership(
-  existing: StoredSyncItem | undefined,
-  ownership: SyncOwnershipContext | undefined,
-): void {
-  if (!existing || !ownership) {
-    return;
-  }
-
-  const payloadUserId = typeof existing.payload?.user_id === 'string' ? existing.payload.user_id : undefined;
-  const payloadWorkspaceId = typeof existing.payload?.workspace_id === 'string' ? existing.payload.workspace_id : undefined;
-
-  if ((payloadUserId && payloadUserId !== ownership.userId) || (payloadWorkspaceId && payloadWorkspaceId !== ownership.workspaceId)) {
-    throw new Error('Cross-user delete blocked by sync ownership validation');
   }
 }
 

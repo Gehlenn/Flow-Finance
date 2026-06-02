@@ -46,5 +46,6 @@ export async function saveMerchantCategoryLearning(
     `merchant_category:${cleanMerchant.slice(0, 32)}`,
     JSON.stringify({ merchant: cleanMerchant, category: normalizedCategory }),
     confidence,
+    { source: 'categorização' },
   );
 }

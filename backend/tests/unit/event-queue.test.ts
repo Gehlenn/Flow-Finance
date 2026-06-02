@@ -1,4 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+const { loggerWarn } = vi.hoisted(() => ({
+  loggerWarn: vi.fn(),
+}));
+
+vi.mock('../../src/config/logger', () => ({
+  default: {
+    warn: loggerWarn,
+  },
+}));
 import {
   enqueueEvent,
   getPendingEvents,
@@ -13,6 +23,7 @@ import {
 
 describe('Event Queue Resilience', () => {
   beforeEach(async () => {
+    loggerWarn.mockClear();
     await resetEventQueueStore();
     await clearEventQueue();
   });
@@ -65,6 +76,15 @@ describe('Event Queue Resilience', () => {
     const deadLetter = await getDeadLetterEvents();
     expect(deadLetter).toHaveLength(1);
     expect(deadLetter[0].retries).toBe(5);
+    expect(loggerWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'evt-1',
+        retries: 5,
+        maxRetries: 5,
+        fallback: 'event-queue-dead-letter',
+      }),
+      'Event exceeded max retries, moving to dead-letter',
+    );
   });
 
   it('returns null when retrying non-existent event', async () => {

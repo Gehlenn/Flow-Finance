@@ -15,6 +15,7 @@ async function setupPipeline(queueReady: boolean) {
     processing: 2,
     completed: 3,
     failed: 0,
+    cancelled: 4,
   }));
 
   const recordMetricMock = vi.fn();
@@ -91,6 +92,7 @@ describe('financialEventPipeline', () => {
 
     expect(ctx.recordMetricMock).toHaveBeenCalledWith('autopilot.alerts.count', 1);
     expect(ctx.recordMetricMock).toHaveBeenCalledWith('ai.queue.pending', 1);
+    expect(ctx.recordMetricMock).toHaveBeenCalledWith('ai.queue.cancelled', 4);
     expect(ctx.recordDurationMock).toHaveBeenCalledWith('event.transaction_created.total_ms', expect.any(Number));
   });
 

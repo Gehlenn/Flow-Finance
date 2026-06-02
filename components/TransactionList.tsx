@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { detectMerchantCategory } from '../src/ai/categoryLearning';
 import { saveMerchantCategoryLearning } from '../src/engines/finance/categorization/aiCategorizerFallback';
@@ -6,7 +6,9 @@ import { Transaction, TransactionType, Category } from '../types';
 import { formatCurrency } from '../utils/helpers';
 import { expandTransactionsWithRecurring } from '../src/finance/recurringService';
 import { calculateSignedBalance } from '../src/engines/finance/analyticsEngine';
+import { compareMoney } from '../src/security/moneyMath';
 import { getWorkspaceScopedStorageKey } from '../src/utils/workspaceStorage';
+import { logWarn } from '../src/utils/logger';
 import { 
   Trash2, Search, Share2, Edit2, Filter, RotateCcw, History, X, 
   ShoppingBag, GraduationCap, Briefcase, TrendingUp, Download, 
@@ -29,6 +31,7 @@ interface TransactionListProps {
 type SortKey = 'date' | 'amount' | 'category' | 'description';
 type SortDirection = 'asc' | 'desc';
 export type TransactionFinancialState = 'confirmed' | 'pending' | 'overdue';
+type TransactionFinancialStateFilter = TransactionFinancialState | 'Todas';
 
 const normalizeStateLabel = (state: unknown): TransactionFinancialState | null => {
   if (typeof state !== 'string') {
@@ -105,8 +108,15 @@ const TRANSACTION_LIST_CLASSES = {
   statePending: 'bg-amber-50 text-amber-700 border-amber-200',
   stateOverdue: 'bg-rose-100 text-rose-700 border-rose-200',
   shareTypeActive: 'bg-indigo-600 text-white border-indigo-600 shadow-md',
-  shareTypeInactive: 'bg-slate-50 dark:bg-slate-900 text-slate-400 border-transparent'
+  shareTypeInactive: 'bg-slate-50 dark:bg-slate-900 text-slate-400 border-transparent',
+  primaryAction: 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900',
+  neutralShareTile: 'bg-slate-50 dark:bg-slate-900 rounded-2xl flex flex-col items-center gap-2 hover:scale-105 transition-all',
+  neutralInfoBadge: 'bg-slate-50 dark:bg-slate-900/30 text-slate-500 rounded-2xl',
 };
+
+const TRANSACTION_CATEGORY_FILTERS: Array<Category | 'Todas'> = ['Todas', ...Object.values(Category)];
+const PANEL_SURFACE = 'rounded-3xl border border-slate-200 bg-white shadow-[0_18px_45px_-24px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800';
+const MODAL_SURFACE = 'rounded-3xl bg-white shadow-[0_18px_45px_-24px_rgba(15,23,42,0.28)] dark:bg-slate-800';
 
 // Cache global para persistir entre remontagens
 const listCache = {
@@ -174,6 +184,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
   const [searchQuery, setSearchQuery] = useState(() => readStoredString(storageKeys.searchQuery, ''));
   const [showFilters, setShowFilters] = useState(() => readStoredBoolean(storageKeys.showFilters, false));
   const [categoryFilter, setCategoryFilter] = useState<Category | 'Todas'>(() => readStoredString(storageKeys.categoryFilter, 'Todas') as Category | 'Todas');
+  const [stateFilter, setStateFilter] = useState<TransactionFinancialStateFilter>('Todas');
   const [dateStart, setDateStart] = useState(() => readStoredString(storageKeys.dateStart, ''));
   const [dateEnd, setDateEnd] = useState(() => readStoredString(storageKeys.dateEnd, ''));
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection }>(() => readStoredSortConfig(storageKeys.sortConfig));
@@ -190,12 +201,15 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
   const [showCopyToast, setShowCopyToast] = useState(false);
   const [showCategorySaved, setShowCategorySaved] = useState(false);
   const [savingCategory, setSavingCategory] = useState(false);
+  const [categorySaveDiagnostic, setCategorySaveDiagnostic] = useState<{ title: string; message: string; suggestion: string } | null>(null);
+  const [shareCopyDiagnostic, setShareCopyDiagnostic] = useState<{ title: string; message: string; suggestion: string } | null>(null);
   const closeToastRef = useRef<HTMLButtonElement>(null);
   // Feedback visual ao salvar categoria
   useEffect(() => {
     setSearchQuery(readStoredString(storageKeys.searchQuery, ''));
     setShowFilters(readStoredBoolean(storageKeys.showFilters, false));
     setCategoryFilter(readStoredString(storageKeys.categoryFilter, 'Todas') as Category | 'Todas');
+    setStateFilter('Todas');
     setDateStart(readStoredString(storageKeys.dateStart, ''));
     setDateEnd(readStoredString(storageKeys.dateEnd, ''));
     setSortConfig(readStoredSortConfig(storageKeys.sortConfig));
@@ -225,6 +239,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
   // Foco automático no primeiro botão de categoria ao abrir modal
   const firstCatBtnRef = useRef<HTMLButtonElement>(null);
   const [suggestedCategory, setSuggestedCategory] = useState<Category | null>(null);
+  const [suggestionDiagnostic, setSuggestionDiagnostic] = useState<{ title: string; message: string; suggestion: string } | null>(null);
   useEffect(() => {
     let active = true;
     async function fetchSuggestion() {
@@ -232,13 +247,29 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
         setEditCategoryValue(editingTransaction.category);
         setPreviousCategory(editingTransaction.category);
         setSuggestedCategory(null);
+        setSuggestionDiagnostic(null);
         setTimeout(() => {
           firstCatBtnRef.current?.focus();
         }, 100);
         if (editingTransaction.merchant) {
           const resolvedUserId = userId || 'local';
-          const cat = await detectMerchantCategory(resolvedUserId, editingTransaction.merchant);
-          if (cat && active) setSuggestedCategory(cat as Category);
+          try {
+            const cat = await detectMerchantCategory(resolvedUserId, editingTransaction.merchant);
+            if (cat && active) setSuggestedCategory(cat as Category);
+          } catch (error) {
+            logWarn('[TransactionList] Failed to suggest category', {
+              error,
+              merchant: editingTransaction.merchant,
+              fallback: 'transaction-list-suggest-category-failed',
+            });
+            if (active) {
+              setSuggestionDiagnostic({
+                title: 'Sugestao de IA indisponivel',
+                message: 'A IA nao conseguiu sugerir uma categoria agora.',
+                suggestion: 'Escolha a categoria manualmente e salve a alteracao.',
+              });
+            }
+          }
         }
       }
     }
@@ -249,11 +280,27 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
   const handleSaveCategory = async () => {
     if (!editingTransaction || !editCategoryValue) return;
     setSavingCategory(true);
+    setCategorySaveDiagnostic(null);
     try {
       const updated = { ...editingTransaction, category: editCategoryValue };
       onUpdate(updated);
       if (updated.merchant) {
-        await saveMerchantCategoryLearning(userId || 'local', updated.merchant, editCategoryValue);
+        try {
+          await saveMerchantCategoryLearning(userId || 'local', updated.merchant, editCategoryValue);
+        } catch (learningError) {
+          logWarn('[TransactionList] Failed to learn category', {
+            error: learningError,
+            merchant: updated.merchant,
+            category: editCategoryValue,
+            fallback: 'transaction-list-learn-category-failed',
+          });
+          setCategorySaveDiagnostic({
+            title: 'Categoria salva localmente',
+            message: 'A transacao foi atualizada, mas o aprendizado da IA nao foi salvo agora.',
+            suggestion: 'Revise a categoria depois ou tente sincronizar o aprendizado mais tarde.',
+          });
+          return;
+        }
       }
       setShowCategorySaved(true);
       setEditingTransaction(null);
@@ -291,18 +338,19 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
     const end = new Date(now.getFullYear() + 1, now.getMonth(), 1);
     const expanded = expandTransactionsWithRecurring(transactions, start, end);
 
-    let result = expanded.filter(t => {
+    let result = expanded.filter((t) => {
       const matchesSearch = t.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = categoryFilter === 'Todas' || t.category === categoryFilter;
+      const matchesState = stateFilter === 'Todas' || classifyTransactionFinancialState(t) === stateFilter;
       const tDate = new Date(t.date);
       const matchesDateStart = !dateStart || tDate >= new Date(dateStart + 'T00:00:00');
       const matchesDateEnd = !dateEnd || tDate <= new Date(dateEnd + 'T23:59:59');
-      return matchesSearch && matchesCategory && matchesDateStart && matchesDateEnd;
+      return matchesSearch && matchesCategory && matchesState && matchesDateStart && matchesDateEnd;
     });
 
     result.sort((a, b) => {
       let comp = 0;
-      if (sortConfig.key === 'amount') comp = a.amount - b.amount;
+      if (sortConfig.key === 'amount') comp = compareMoney(a.amount, b.amount);
       else if (sortConfig.key === 'category') comp = a.category.localeCompare(b.category);
       else if (sortConfig.key === 'description') comp = a.description.localeCompare(b.description);
       else comp = new Date(a.date).getTime() - new Date(b.date).getTime();
@@ -315,7 +363,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
     listCache.data = result;
 
     return result;
-  }, [transactions, activeWorkspaceId, searchQuery, categoryFilter, dateStart, dateEnd, sortConfig]);
+  }, [transactions, activeWorkspaceId, searchQuery, categoryFilter, stateFilter, dateStart, dateEnd, sortConfig]);
 
   const transactionStateSummary = useMemo(() => {
     return filteredAndSorted.reduce(
@@ -327,6 +375,24 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
       { confirmed: 0, pending: 0, overdue: 0 } as Record<TransactionFinancialState, number>,
     );
   }, [filteredAndSorted]);
+
+  const activeFilterSummary = useMemo(() => {
+    const parts: string[] = [];
+
+    if (categoryFilter !== 'Todas') {
+      parts.push(`Categoria: ${categoryFilter}`);
+    }
+
+    if (stateFilter !== 'Todas') {
+      parts.push(`Estado: ${formatFinancialStateLabel(stateFilter)}`);
+    }
+
+    if (dateStart || dateEnd) {
+      parts.push('Periodo personalizado');
+    }
+
+    return parts.length > 0 ? parts.join(' · ') : 'Sem filtros aplicados';
+  }, [categoryFilter, dateEnd, dateStart, stateFilter]);
 
   const handleSort = (key: SortKey) => {
     setSortConfig(current => ({
@@ -405,21 +471,40 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
     return text;
   };
 
-  const handleShare = (method: 'whatsapp' | 'email' | 'copy' | 'csv') => {
+  const handleShare = async (method: 'whatsapp' | 'email' | 'copy' | 'csv') => {
     const text = generateReportText();
     if (method === 'whatsapp') {
       // Garantir que os emojis e caracteres especiais sejam mantidos
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+      setIsShareModalOpen(false);
+      setShowDestinations(false);
     } else if (method === 'email') {
       window.location.href = `mailto:?subject=Relatorio Financeiro Flow&body=${encodeURIComponent(text)}`;
+      setIsShareModalOpen(false);
+      setShowDestinations(false);
     } else if (method === 'copy') {
-      navigator.clipboard.writeText(text);
-      setShowCopyToast(true);
+      try {
+        await navigator.clipboard.writeText(text);
+        setShareCopyDiagnostic(null);
+        setShowCopyToast(true);
+        setIsShareModalOpen(false);
+        setShowDestinations(false);
+      } catch (error) {
+        logWarn('[TransactionList] Failed to copy summary', {
+          error,
+          fallback: 'transaction-list-copy-summary-failed',
+        });
+        setShareCopyDiagnostic({
+          title: 'Falha ao copiar resumo',
+          message: 'O navegador bloqueou a copia do texto do historico.',
+          suggestion: 'Use WhatsApp, e-mail ou copie o conteudo manualmente.',
+        });
+      }
     } else if (method === 'csv') {
       handleExportCSV();
+      setIsShareModalOpen(false);
+      setShowDestinations(false);
     }
-    setIsShareModalOpen(false);
-    setShowDestinations(false);
   };
 
   const handleExportCSV = () => {
@@ -453,15 +538,29 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
 
   return (
     <div className="w-full flex flex-col gap-6 animate-in fade-in duration-700 pb-20 relative">
-      <div className="bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] p-6 rounded-[2rem] flex justify-between items-center shadow-lg shadow-indigo-500/20 shrink-0 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-        <div className="relative z-10">
-          <p className="text-[8px] font-black text-white/80 uppercase tracking-widest mb-2">Workspace: {activeWorkspaceName || 'Carregando workspace'}</p>
-          <h2 className="text-2xl font-black text-white tracking-tight leading-none">Histórico</h2>
-          <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mt-1.5">Rastreio de Movimentações</p>
+      <div className={`${PANEL_SURFACE} p-6`}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Workspace</p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">Histórico</h2>
+            <p className="mt-1 text-sm font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-300">
+              {activeWorkspaceName || 'Carregando workspace'}
+            </p>
+          </div>
+          <div className="w-11 h-11 rounded-2xl bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-200 flex items-center justify-center shrink-0">
+            <History size={22} />
+          </div>
         </div>
-        <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center text-white relative z-10">
-          <History size={22} />
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${TRANSACTION_LIST_CLASSES.stateConfirmed}`}>
+            Confirmado {transactionStateSummary.confirmed}
+          </span>
+          <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${TRANSACTION_LIST_CLASSES.statePending}`}>
+            Pendente {transactionStateSummary.pending}
+          </span>
+          <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${TRANSACTION_LIST_CLASSES.stateOverdue}`}>
+            Vencido {transactionStateSummary.overdue}
+          </span>
         </div>
       </div>
 
@@ -474,43 +573,62 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
               placeholder="Buscar..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl py-3.5 pl-11 pr-4 text-slate-700 dark:text-white font-bold outline-none"
+              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl py-3.5 pl-11 pr-4 text-slate-700 dark:text-white font-medium outline-none"
             />
           </div>
           <button 
             onClick={() => setIsShareModalOpen(true)} 
-            className="p-3.5 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-2xl border border-indigo-100 dark:border-indigo-800 transition-all hover:bg-indigo-100"
+            aria-label="Abrir compartilhamento do historico"
+            className="p-3.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl border border-slate-200 dark:border-slate-700 transition-all hover:bg-slate-100 dark:hover:bg-slate-700"
           >
             <Share2 size={18} />
           </button>
-          <button onClick={() => setShowFilters(!showFilters)} className={`p-3.5 rounded-2xl border transition-all ${showFilters ? TRANSACTION_LIST_CLASSES.filterButtonActive : TRANSACTION_LIST_CLASSES.filterButtonInactive}`}>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            aria-label="Abrir filtros da lista"
+            className={`p-3.5 rounded-2xl border transition-all ${showFilters ? TRANSACTION_LIST_CLASSES.filterButtonActive : TRANSACTION_LIST_CLASSES.filterButtonInactive}`}
+          >
             <Filter size={18} />
           </button>
         </div>
 
         {showFilters && (
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[2.5rem] p-5 shadow-sm space-y-5 animate-in slide-in-from-top-2">
+          <div className={`${PANEL_SURFACE} p-5 space-y-5 animate-in slide-in-from-top-2`}>
              <div className="flex items-center justify-between border-b border-slate-50 dark:border-slate-700 pb-2">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Filtros</span>
-                <button onClick={() => {setCategoryFilter('Todas'); setDateStart(''); setDateEnd('');}} className="text-[8px] font-black text-indigo-500 uppercase flex items-center gap-1"><RotateCcw size={10} /> Reset</button>
+                <span className="text-sm font-semibold text-slate-400 uppercase tracking-[0.18em]">Filtros</span>
+                <button onClick={() => {setCategoryFilter('Todas'); setStateFilter('Todas'); setDateStart(''); setDateEnd('');}} className="text-sm font-semibold text-slate-500 hover:text-slate-700 uppercase flex items-center gap-1 tracking-[0.16em]"><RotateCcw size={10} /> Reset</button>
              </div>
              <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-400 uppercase tracking-[0.16em] ml-1">Categoria</label>
+                <div className="flex flex-wrap gap-1">
+                    {TRANSACTION_CATEGORY_FILTERS.map((cat) => (
+                      <button key={cat} onClick={() => setCategoryFilter(cat)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-[0.16em] transition-all ${categoryFilter === cat ? TRANSACTION_LIST_CLASSES.categoryFilterActive : TRANSACTION_LIST_CLASSES.categoryFilterInactive}`}>{cat}</button>
+                    ))}
+                  </div>
+               </div>
                <div className="space-y-2">
-                  <label className="text-[7px] font-black text-slate-400 uppercase tracking-widest ml-1">Categoria</label>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-[0.16em] ml-1">Estado financeiro</label>
                   <div className="flex flex-wrap gap-1">
-                    {['Todas', ...Object.values(Category)].map(cat => (
-                      <button key={cat} onClick={() => setCategoryFilter(cat as any)} className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${categoryFilter === cat ? TRANSACTION_LIST_CLASSES.categoryFilterActive : TRANSACTION_LIST_CLASSES.categoryFilterInactive}`}>{cat}</button>
+                    {(['Todas', 'confirmed', 'pending', 'overdue'] as TransactionFinancialStateFilter[]).map((state) => (
+                      <button
+                        key={state}
+                        onClick={() => setStateFilter(state)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-[0.16em] transition-all ${stateFilter === state ? TRANSACTION_LIST_CLASSES.categoryFilterActive : TRANSACTION_LIST_CLASSES.categoryFilterInactive}`}
+                      >
+                        {state === 'Todas' ? 'Todas' : formatFinancialStateLabel(state)}
+                      </button>
                     ))}
                   </div>
                </div>
                <div className="grid grid-cols-2 gap-3">
                  <div className="space-y-1.5">
-                    <label className="text-[7px] font-black text-slate-400 uppercase tracking-widest ml-1">Início</label>
-                    <input type="date" value={dateStart} onChange={e => setDateStart(e.target.value)} className="w-full p-2 bg-slate-50 dark:bg-slate-900 rounded-xl text-[9px] font-bold text-slate-600 dark:text-white border-none outline-none" />
+                    <label className="text-sm font-semibold text-slate-400 uppercase tracking-[0.16em] ml-1">Início</label>
+                    <input type="date" value={dateStart} onChange={e => setDateStart(e.target.value)} className="w-full p-2 bg-slate-50 dark:bg-slate-900 rounded-xl text-xs font-medium text-slate-600 dark:text-white border-none outline-none" />
                  </div>
                  <div className="space-y-1.5">
-                    <label className="text-[7px] font-black text-slate-400 uppercase tracking-widest ml-1">Fim</label>
-                    <input type="date" value={dateEnd} onChange={e => setDateEnd(e.target.value)} className="w-full p-2 bg-slate-50 dark:bg-slate-900 rounded-xl text-[9px] font-bold text-slate-600 dark:text-white border-none outline-none" />
+                    <label className="text-sm font-semibold text-slate-400 uppercase tracking-[0.16em] ml-1">Fim</label>
+                    <input type="date" value={dateEnd} onChange={e => setDateEnd(e.target.value)} className="w-full p-2 bg-slate-50 dark:bg-slate-900 rounded-xl text-xs font-medium text-slate-600 dark:text-white border-none outline-none" />
                  </div>
                </div>
              </div>
@@ -519,45 +637,60 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
       </div>
 
       <div className="flex flex-wrap items-center gap-2 px-1">
-        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Leitura rapida:</span>
-        <span className={`rounded-full border px-3 py-1 text-[8px] font-black uppercase tracking-widest ${TRANSACTION_LIST_CLASSES.stateConfirmed}`}>
-          Confirmado {transactionStateSummary.confirmed}
-        </span>
-        <span className={`rounded-full border px-3 py-1 text-[8px] font-black uppercase tracking-widest ${TRANSACTION_LIST_CLASSES.statePending}`}>
-          Pendente {transactionStateSummary.pending}
-        </span>
-        <span className={`rounded-full border px-3 py-1 text-[8px] font-black uppercase tracking-widest ${TRANSACTION_LIST_CLASSES.stateOverdue}`}>
-          Vencido {transactionStateSummary.overdue}
+        <span className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Filtros ativos:</span>
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          {activeFilterSummary}
         </span>
       </div>
 
       {/* Header de Ordenação e Seleção */}
-      <div className="flex items-center gap-4 px-5 py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest">
-        <button onClick={selectAll} className="shrink-0 hover:text-indigo-500 transition-colors">
-          {selectedIds.size === filteredAndSorted.length && filteredAndSorted.length > 0 ? <CheckSquare size={16} className="text-indigo-600" /> : <Square size={16} />}
+      <div className="flex items-center gap-4 px-5 py-2 text-sm font-semibold text-slate-400 uppercase tracking-[0.18em]">
+        <button onClick={selectAll} className="shrink-0 hover:text-slate-700 transition-colors">
+          {selectedIds.size === filteredAndSorted.length && filteredAndSorted.length > 0 ? <CheckSquare size={16} className="text-slate-700" /> : <Square size={16} />}
         </button>
-        <button onClick={() => handleSort('category')} className="w-8 shrink-0 text-center hover:text-indigo-500 transition-colors flex justify-center group">
+        <button onClick={() => handleSort('category')} className="w-8 shrink-0 text-center hover:text-slate-700 transition-colors flex justify-center group">
           <SortIcon column="category" />
         </button>
-        <button onClick={() => handleSort('description')} className="flex-1 text-left flex items-center gap-1 hover:text-indigo-500 transition-colors group">
+        <button onClick={() => handleSort('description')} className="flex-1 text-left flex items-center gap-1 hover:text-slate-700 transition-colors group">
           Descrição <SortIcon column="description" />
         </button>
-        <button onClick={() => handleSort('date')} className="flex items-center gap-1 hover:text-indigo-500 transition-colors group">
+        <button onClick={() => handleSort('date')} className="flex items-center gap-1 hover:text-slate-700 transition-colors group">
           Data <SortIcon column="date" />
         </button>
-        <button onClick={() => handleSort('amount')} className="flex items-center gap-1 hover:text-indigo-500 transition-colors group">
+        <button onClick={() => handleSort('amount')} className="flex items-center gap-1 hover:text-slate-700 transition-colors group">
           Valor <SortIcon column="amount" />
         </button>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden divide-y divide-slate-50 dark:divide-slate-700">
+      <div className={`${PANEL_SURFACE} overflow-hidden divide-y divide-slate-50 dark:divide-slate-700`}>
         {filteredAndSorted.length === 0 && (
-          <div className="px-6 py-10 text-center">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nenhum lancamento encontrado</p>
+          <div className="px-6 py-12 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+              <History size={22} />
+            </div>
+            <p className="mt-4 text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              {transactions.length === 0 ? 'Nenhum lançamento ainda' : 'Nenhum lançamento encontrado'}
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              {transactions.length === 0
+                ? 'Comece pelo botão + no Dashboard. Depois os lançamentos aparecem aqui para revisão.'
+                : 'Tente limpar os filtros ou volte ao Dashboard para conferir se o lançamento foi feito em outro recorte.'}
+            </p>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                Dashboard
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                +
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                Transações
+              </span>
+            </div>
           </div>
         )}
 
-        {filteredAndSorted.map(t => {
+        {filteredAndSorted.map((t) => {
           const transactionState = classifyTransactionFinancialState(t);
           const transactionStateClass = transactionState === 'pending'
             ? TRANSACTION_LIST_CLASSES.statePending
@@ -582,29 +715,29 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h4 className="font-bold text-slate-800 dark:text-white text-sm tracking-tight truncate">{t.description}</h4>
-                <span className={`rounded-full border px-2 py-0.5 text-[7px] font-black uppercase tracking-widest ${t.type === TransactionType.RECEITA ? TRANSACTION_LIST_CLASSES.typeIncomeBadge : TRANSACTION_LIST_CLASSES.typeExpenseBadge}`}>
+                <h4 className="font-medium text-slate-800 dark:text-white text-sm tracking-tight truncate">{t.description}</h4>
+                <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] ${t.type === TransactionType.RECEITA ? TRANSACTION_LIST_CLASSES.typeIncomeBadge : TRANSACTION_LIST_CLASSES.typeExpenseBadge}`}>
                   {t.type}
                 </span>
-                <span className={`rounded-full border px-2 py-0.5 text-[7px] font-black uppercase tracking-widest inline-flex items-center gap-1 ${transactionStateClass}`}>
+                <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] inline-flex items-center gap-1 ${transactionStateClass}`}>
                   {transactionState === 'overdue' && <AlertTriangle size={8} className="shrink-0" />}
                   {formatFinancialStateLabel(transactionState)}
                 </span>
                 {t.generated && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-full text-[7px] font-black uppercase tracking-widest shrink-0">
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-full text-[11px] font-semibold uppercase tracking-[0.14em] shrink-0">
                     <RefreshCw size={8} /> Recorrente
                   </span>
                 )}
                 {t.recurring && !t.generated && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 bg-violet-50 dark:bg-violet-500/10 text-violet-500 rounded-full text-[7px] font-black uppercase tracking-widest shrink-0">
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-violet-50 dark:bg-violet-500/10 text-violet-500 rounded-full text-[11px] font-semibold uppercase tracking-[0.14em] shrink-0">
                     <RefreshCw size={8} /> Base
                   </span>
                 )}
               </div>
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">{new Date(t.date).toLocaleDateString('pt-BR')} • {t.category}</p>
+              <p className="text-sm font-semibold text-slate-400 uppercase tracking-[0.16em] mt-1">{new Date(t.date).toLocaleDateString('pt-BR')} • {t.category}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className={`text-sm font-black ${t.type === TransactionType.RECEITA ? TRANSACTION_LIST_CLASSES.amountIncome : TRANSACTION_LIST_CLASSES.amountExpense}`}>{hideValues ? '••••' : formatVal(t.amount)}</span>
+              <span className={`text-sm font-semibold ${t.type === TransactionType.RECEITA ? TRANSACTION_LIST_CLASSES.amountIncome : TRANSACTION_LIST_CLASSES.amountExpense}`}>{hideValues ? '••••' : formatVal(t.amount)}</span>
             </div>
           </div>
           );
@@ -613,21 +746,21 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
 
       {/* Toast de Cópia */}
       <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[300] transition-all duration-300 transform ${showCopyToast ? 'translate-y-0 opacity-100' : '-translate-y-12 opacity-0 pointer-events-none'}`}>
-        <div className="bg-emerald-600 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 font-black text-[10px] uppercase tracking-widest border border-white/20">
+        <div className="bg-emerald-600 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 font-semibold text-xs uppercase tracking-[0.08em] border border-white/20">
           <Check size={16} strokeWidth={3} /> Relatório copiado com sucesso!
         </div>
       </div>
 
       {selectedIds.size > 0 && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-slate-950 text-white p-2 pr-6 rounded-[2rem] flex items-center gap-4 shadow-2xl z-[150] transition-all animate-in slide-in-from-bottom-4 border border-slate-800">
-           <div className="bg-indigo-600 text-white px-4 py-3 rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg">
+           <div className="bg-slate-800 text-white px-4 py-3 rounded-[1.5rem] font-semibold text-xs uppercase tracking-[0.08em] flex items-center gap-2 shadow-sm">
              <CheckSquare size={14} /> {selectedIds.size} Selecionados
            </div>
            
            <div className="flex items-center gap-3">
                 <button onClick={(e) => { e.stopPropagation(); setIsShareModalOpen(true); }} className="p-2 hover:bg-white/10 rounded-xl transition-colors text-emerald-400 flex flex-col items-center gap-0.5">
                 <Share2 size={18} />
-                <span className="text-[6px] font-black uppercase">Relatório</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.08em]">Relatório</span>
               </button>
               
               {canEdit && <button 
@@ -635,7 +768,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
                 className="p-2 hover:bg-white/10 rounded-xl transition-colors text-rose-400 flex flex-col items-center gap-0.5"
               >
                 <Trash2 size={18} />
-                <span className="text-[6px] font-black uppercase">Excluir</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.08em]">Excluir</span>
               </button>}
 
               <div className="w-px h-8 bg-white/10 mx-1"></div>
@@ -645,7 +778,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
                 className="flex items-center gap-1.5 px-3 py-2 hover:bg-white/10 rounded-xl transition-colors text-slate-400 hover:text-white"
               >
                 <X size={14} />
-                <span className="text-[8px] font-black uppercase tracking-widest">Limpar Seleção</span>
+                <span className="text-sm font-semibold uppercase tracking-[0.16em]">Limpar Seleção</span>
               </button>
            </div>
         </div>
@@ -653,21 +786,21 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
 
       {isShareModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-[3rem] p-8 shadow-2xl space-y-6 animate-in zoom-in-95">
+          <div className={`${MODAL_SURFACE} w-full max-w-sm p-8 space-y-6 animate-in zoom-in-95`}>
             <div className="flex justify-between items-center">
-              <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Gerar Relatório</h3>
+              <h3 className="text-xl font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Gerar Relatório</h3>
               <button onClick={() => { setIsShareModalOpen(false); setShowDestinations(false); }} className="p-1 text-slate-400"><X size={20} /></button>
             </div>
             {!showDestinations ? (
               <div className="space-y-6">
                 <div className="space-y-3">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Tipo de Registro</label>
+                  <label className="text-sm font-semibold text-slate-400 uppercase tracking-[0.16em] ml-1">Tipo de Registro</label>
                   <div className="flex flex-wrap gap-2">
                     {['tudo', 'ganhos', 'gastos'].map(type => (
                       <button
                         key={type}
                         onClick={() => toggleShareFilter(shareTypes, setShareTypes, type)}
-                        className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${shareTypes.has(type) ? TRANSACTION_LIST_CLASSES.shareTypeActive : TRANSACTION_LIST_CLASSES.shareTypeInactive}`}
+                        className={`px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-[0.08em] transition-all border ${shareTypes.has(type) ? TRANSACTION_LIST_CLASSES.shareTypeActive : TRANSACTION_LIST_CLASSES.shareTypeInactive}`}
                       >
                         {type}
                       </button>
@@ -675,11 +808,11 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Categorias</label>
+                  <label className="text-sm font-semibold text-slate-400 uppercase tracking-[0.16em] ml-1">Categorias</label>
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => toggleShareFilter(shareCategories, setShareCategories, 'tudo')}
-                      className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${shareCategories.has('tudo') ? TRANSACTION_LIST_CLASSES.shareTypeActive : TRANSACTION_LIST_CLASSES.shareTypeInactive}`}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-[0.08em] transition-all border ${shareCategories.has('tudo') ? TRANSACTION_LIST_CLASSES.shareTypeActive : TRANSACTION_LIST_CLASSES.shareTypeInactive}`}
                     >
                       Tudo
                     </button>
@@ -687,7 +820,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
                       <button
                         key={cat}
                         onClick={() => toggleShareFilter(shareCategories, setShareCategories, cat.toLowerCase())}
-                        className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${shareCategories.has(cat.toLowerCase()) ? TRANSACTION_LIST_CLASSES.shareTypeActive : TRANSACTION_LIST_CLASSES.shareTypeInactive}`}
+                        className={`px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-[0.08em] transition-all border ${shareCategories.has(cat.toLowerCase()) ? TRANSACTION_LIST_CLASSES.shareTypeActive : TRANSACTION_LIST_CLASSES.shareTypeInactive}`}
                       >
                         {cat}
                       </button>
@@ -696,32 +829,39 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
                 </div>
                 <button 
                   onClick={() => setShowDestinations(true)}
-                  className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 transition-all active:scale-95"
+                  className={`w-full py-5 ${TRANSACTION_LIST_CLASSES.primaryAction} rounded-2xl font-semibold text-xs uppercase tracking-[0.08em] shadow-sm flex items-center justify-center gap-3 transition-all active:scale-95`}
                 >
                   <Share2 size={18} strokeWidth={3} /> Compartilhar Agora
                 </button>
               </div>
-            ) : (
+          ) : (
               <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-bottom-2">
-                <button onClick={() => handleShare('whatsapp')} className="p-4 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex flex-col items-center gap-2 hover:scale-105 transition-all">
+                {shareCopyDiagnostic && (
+                  <div role="status" className="col-span-2 rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-500/10 p-4 space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-700 dark:text-amber-300">{shareCopyDiagnostic.title}</p>
+                    <p className="text-xs font-medium text-amber-800 dark:text-amber-100">{shareCopyDiagnostic.message}</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-600 dark:text-amber-300">Proximo passo: {shareCopyDiagnostic.suggestion}</p>
+                  </div>
+                )}
+                <button onClick={() => void handleShare('whatsapp')} className="p-4 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex flex-col items-center gap-2 hover:scale-105 transition-all">
                   <MessageCircle className="text-emerald-500" size={24} />
-                  <span className="text-[8px] font-black text-emerald-600 uppercase">WhatsApp</span>
+                  <span className="text-sm font-semibold text-emerald-600 uppercase tracking-[0.08em]">WhatsApp</span>
                 </button>
-                <button onClick={() => handleShare('copy')} className="p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl flex flex-col items-center gap-2 hover:scale-105 transition-all">
-                  <FileText className="text-indigo-500" size={24} />
-                  <span className="text-[8px] font-black text-indigo-600 uppercase">Copiar Texto</span>
+                <button onClick={() => void handleShare('copy')} aria-label="Copiar texto do historico" className={`p-4 ${TRANSACTION_LIST_CLASSES.neutralShareTile}`}>
+                  <FileText className="text-slate-500" size={24} />
+                  <span className="text-sm font-semibold text-slate-600 uppercase tracking-[0.08em]">Copiar Texto</span>
                 </button>
-                <button onClick={() => handleShare('csv')} className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl flex flex-col items-center gap-2 hover:scale-105 transition-all">
+                <button onClick={() => void handleShare('csv')} className={`p-4 ${TRANSACTION_LIST_CLASSES.neutralShareTile}`}>
                   <Download className="text-slate-500" size={24} />
-                  <span className="text-[8px] font-black text-slate-500 uppercase">Tabela CSV</span>
+                  <span className="text-sm font-semibold text-slate-500 uppercase tracking-[0.08em]">Tabela CSV</span>
                 </button>
-                <button onClick={() => handleShare('email')} className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl flex flex-col items-center gap-2 hover:scale-105 transition-all">
+                <button onClick={() => void handleShare('email')} className={`p-4 ${TRANSACTION_LIST_CLASSES.neutralShareTile}`}>
                   <Mail className="text-slate-500" size={24} />
-                  <span className="text-[8px] font-black text-slate-500 uppercase">E-mail</span>
+                  <span className="text-sm font-semibold text-slate-500 uppercase tracking-[0.08em]">E-mail</span>
                 </button>
                 <button 
                   onClick={() => setShowDestinations(false)} 
-                  className="col-span-2 py-3 text-[8px] font-black text-slate-400 uppercase tracking-widest mt-2"
+                  className="col-span-2 py-3 text-sm font-semibold text-slate-400 uppercase tracking-[0.16em] mt-2"
                 >
                   Voltar para filtros
                 </button>
@@ -733,17 +873,24 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
 
       {editingTransaction && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[300] flex items-center justify-center p-4 animate-in fade-in duration-300" role="dialog" aria-modal="true" aria-label="Editar Categoria">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl space-y-6 animate-in zoom-in-95">
+          <div className={`${MODAL_SURFACE} w-full max-w-xs p-8 space-y-6 animate-in zoom-in-95`}>
             <div className="flex justify-between items-center mb-2">
-              <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight" id="modal-title">Editar Categoria</h3>
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-white uppercase tracking-tight" id="modal-title">Editar Categoria</h3>
               <button onClick={() => setEditingTransaction(null)} className="p-1 text-slate-400" aria-label="Fechar modal de edição de categoria"><X size={20} /></button>
             </div>
             <div className="space-y-4">
               <div>
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Categoria</p>
+                <p className="text-sm font-semibold text-slate-400 uppercase tracking-[0.16em] mb-1">Categoria</p>
                 {suggestedCategory && (
                   <div className="mb-2 flex items-center gap-2">
-                    <span className="text-[8px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 rounded-full px-2 py-0.5">Sugestão IA: {suggestedCategory}</span>
+                    <span className="text-xs font-medium text-slate-500 bg-slate-50 dark:bg-slate-900/50 rounded-full px-2 py-0.5">Sugestão IA: {suggestedCategory}</span>
+                  </div>
+                )}
+                {suggestionDiagnostic && (
+                  <div role="status" className="mb-2 rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-500/10 p-3 space-y-1">
+                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">{suggestionDiagnostic.title}</p>
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-100">{suggestionDiagnostic.message}</p>
+                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-600 dark:text-amber-300">Próximo passo: {suggestionDiagnostic.suggestion}</p>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-2">
@@ -753,12 +900,12 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
                       type="button"
                       ref={idx === 0 ? firstCatBtnRef : undefined}
                       onClick={() => setEditCategoryValue(cat)}
-                      className={`p-3 rounded-2xl border flex items-center gap-2 transition-all ${editCategoryValue === cat ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg' : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-400'}`}
+                      className={`p-3 rounded-2xl border flex items-center gap-2 transition-all ${editCategoryValue === cat ? 'bg-slate-800 text-white border-slate-800 shadow-sm dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100' : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-400'}`}
                       aria-label={`Selecionar categoria ${cat}`}
                     >
-                      <span className="text-[8px] font-black uppercase tracking-tight truncate">{cat}</span>
+                      <span className="text-sm font-semibold uppercase tracking-tight truncate">{cat}</span>
                       {suggestedCategory === cat && (
-                        <span className="ml-1 text-[7px] font-bold text-indigo-400">(IA)</span>
+                        <span className="ml-1 text-xs font-medium text-slate-400">(IA)</span>
                       )}
                     </button>
                   ))}
@@ -768,13 +915,13 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
             <div className="flex gap-2 pt-2">
               <button
                 onClick={handleSaveCategory}
-                className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all disabled:opacity-60"
+                className={`flex-1 py-4 ${TRANSACTION_LIST_CLASSES.primaryAction} rounded-2xl font-semibold text-xs uppercase shadow-sm active:scale-95 transition-all disabled:opacity-60`}
                 disabled={savingCategory || !editCategoryValue || editCategoryValue === editingTransaction.category}
                 aria-label="Salvar categoria"
               >
                 {savingCategory ? 'Salvando...' : 'Salvar'}
               </button>
-              <button onClick={() => setEditingTransaction(null)} className="flex-1 py-4 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all" aria-label="Cancelar edição">Cancelar</button>
+              <button onClick={() => setEditingTransaction(null)} className="flex-1 py-4 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-2xl font-semibold text-xs uppercase active:scale-95 transition-all" aria-label="Cancelar edição">Cancelar</button>
               {previousCategory && editCategoryValue !== previousCategory && (
                 <button
                   onClick={() => {
@@ -785,7 +932,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
                       btn?.focus();
                     }, 50);
                   }}
-                  className="flex-1 py-4 bg-yellow-100 dark:bg-yellow-700 text-yellow-700 dark:text-yellow-100 rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all border border-yellow-300 dark:border-yellow-600"
+                  className="flex-1 py-4 bg-yellow-100 dark:bg-yellow-700 text-yellow-700 dark:text-yellow-100 rounded-2xl font-semibold text-xs uppercase active:scale-95 transition-all border border-yellow-300 dark:border-yellow-600"
                   aria-label="Desfazer alteração de categoria"
                 >
                   Desfazer
@@ -798,32 +945,42 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
 
       {/* Toast de categoria salva com botão de fechar manual */}
       <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[350] transition-all duration-300 transform ${showCategorySaved ? 'translate-y-0 opacity-100' : '-translate-y-12 opacity-0 pointer-events-none'}`} role="status" aria-live="polite">
-        <div className="bg-indigo-600 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 font-black text-[10px] uppercase tracking-widest border border-white/20">
+        <div className="bg-indigo-600 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 font-semibold text-xs uppercase tracking-[0.08em] border border-white/20">
           <Check size={16} strokeWidth={3} /> Categoria atualizada e IA treinada!
           <button ref={closeToastRef} onClick={() => setShowCategorySaved(false)} className="ml-2 p-1 rounded-full bg-white/20 hover:bg-white/40 transition-colors" aria-label="Fechar aviso de categoria salva"><X size={14} /></button>
         </div>
       </div>
 
+      {categorySaveDiagnostic && (
+        <div className="fixed top-36 left-1/2 -translate-x-1/2 z-[340] w-[min(92vw,34rem)]">
+          <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-500/10 p-4 space-y-1 shadow-xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-700 dark:text-amber-300">{categorySaveDiagnostic.title}</p>
+            <p className="text-xs font-medium text-amber-800 dark:text-amber-100">{categorySaveDiagnostic.message}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-600 dark:text-amber-300">Proximo passo: {categorySaveDiagnostic.suggestion}</p>
+          </div>
+        </div>
+      )}
+
       {viewingTransaction && !isShareModalOpen && !transactionToDelete && !editingTransaction && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 w-full max-sm:rounded-[2.5rem] p-8 shadow-2xl space-y-6 animate-in zoom-in-95">
+          <div className={`${MODAL_SURFACE} w-full max-sm:rounded-3xl p-8 space-y-6 animate-in zoom-in-95`}>
             <div className="flex justify-between items-center">
-              <div className="p-2.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-2xl"><Info size={20} /></div>
+              <div className={`p-2.5 ${TRANSACTION_LIST_CLASSES.neutralInfoBadge}`}><Info size={20} /></div>
               <button onClick={() => setViewingTransaction(null)} className="p-2 text-slate-400"><X size={20} /></button>
             </div>
             <div>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detalhes do Lançamento</p>
-              <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">{viewingTransaction.description}</h3>
-              <p className={`text-2xl font-black mt-2 ${viewingTransaction.type === TransactionType.RECEITA ? 'text-emerald-600' : 'text-rose-600'}`}>{formatVal(viewingTransaction.amount)}</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">Detalhes do Lançamento</p>
+              <h3 className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight mt-1">{viewingTransaction.description}</h3>
+              <p className={`text-2xl font-semibold mt-2 ${viewingTransaction.type === TransactionType.RECEITA ? 'text-emerald-600' : 'text-rose-600'}`}>{formatVal(viewingTransaction.amount)}</p>
             </div>
             <div className="space-y-3 bg-slate-50 dark:bg-slate-900/50 p-5 rounded-3xl border border-slate-100 dark:border-slate-700">
-               <div className="flex justify-between"><span className="text-[8px] font-black text-slate-400 uppercase">Categoria</span><span className="text-[9px] font-bold dark:text-white">{viewingTransaction.category}</span></div>
-               <div className="flex justify-between"><span className="text-[8px] font-black text-slate-400 uppercase">Data</span><span className="text-[9px] font-bold dark:text-white">{new Date(viewingTransaction.date).toLocaleString('pt-BR')}</span></div>
-               <div className="flex justify-between"><span className="text-[8px] font-black text-slate-400 uppercase">Tipo</span><span className="text-[9px] font-bold dark:text-white">{viewingTransaction.type}</span></div>
+               <div className="flex justify-between"><span className="text-xs font-semibold text-slate-400 uppercase">Categoria</span><span className="text-xs font-medium dark:text-white">{viewingTransaction.category}</span></div>
+               <div className="flex justify-between"><span className="text-xs font-semibold text-slate-400 uppercase">Data</span><span className="text-xs font-medium dark:text-white">{new Date(viewingTransaction.date).toLocaleString('pt-BR')}</span></div>
+               <div className="flex justify-between"><span className="text-xs font-semibold text-slate-400 uppercase">Tipo</span><span className="text-xs font-medium dark:text-white">{viewingTransaction.type}</span></div>
             </div>
             <div className="flex gap-2 pt-2">
-               {canEdit && <button onClick={() => { setEditingTransaction(viewingTransaction); setViewingTransaction(null); }} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all">Editar</button>}
-               {canEdit && <button onClick={() => setTransactionToDelete(viewingTransaction)} className="flex-1 py-4 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all">Excluir</button>}
+               {canEdit && <button onClick={() => { setEditingTransaction(viewingTransaction); setViewingTransaction(null); }} className={`flex-1 py-4 ${TRANSACTION_LIST_CLASSES.primaryAction} rounded-2xl font-semibold text-xs uppercase shadow-sm active:scale-95 transition-all`}>Editar</button>}
+               {canEdit && <button onClick={() => setTransactionToDelete(viewingTransaction)} className="flex-1 py-4 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-2xl font-semibold text-xs uppercase active:scale-95 transition-all">Excluir</button>}
             </div>
           </div>
         </div>
@@ -832,17 +989,17 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
       {/* Modal de Confirmação de Exclusão Individual */}
       {transactionToDelete && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[250] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-[340px] rounded-[2.5rem] p-8 shadow-2xl space-y-6 animate-in zoom-in-95 text-center">
+          <div className={`${MODAL_SURFACE} w-full max-w-[340px] p-8 space-y-6 animate-in zoom-in-95 text-center`}>
             <div className="w-16 h-16 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mx-auto">
               <AlertTriangle size={32} />
             </div>
             <div className="space-y-2">
-              <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Confirmar Exclusão</h3>
+              <h3 className="text-xl font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Confirmar Exclusão</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Você tem certeza que deseja excluir permanentemente o lançamento "<strong>{transactionToDelete.description}</strong>"?</p>
             </div>
             <div className="flex flex-col gap-2 pt-2">
-               <button onClick={confirmDelete} className="w-full py-4 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-rose-200 dark:shadow-rose-900/20 active:scale-95 transition-all">Sim, Excluir</button>
-               <button onClick={() => setTransactionToDelete(null)} className="w-full py-4 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all">Cancelar</button>
+               <button onClick={confirmDelete} className="w-full py-4 bg-rose-600 text-white rounded-2xl font-semibold text-xs uppercase shadow-lg shadow-rose-200 dark:shadow-rose-900/20 active:scale-95 transition-all">Sim, Excluir</button>
+               <button onClick={() => setTransactionToDelete(null)} className="w-full py-4 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-2xl font-semibold text-xs uppercase active:scale-95 transition-all">Cancelar</button>
             </div>
           </div>
         </div>
@@ -852,3 +1009,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
 };
 
 export default TransactionList;
+
+
+
+
+

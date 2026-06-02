@@ -1,6 +1,7 @@
 ﻿import request from 'supertest';
 import type { Express } from 'express';
 import { beforeAll, vi } from 'vitest';
+import { createTestAuthorizationHeader } from '../helpers/auth';
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
 import { resetCloudSyncStoreForTests } from '../../src/services/sync/cloudSyncStore';
 import { getAuditEvents, resetAuditLogForTests } from '../../src/services/admin/auditLog';
@@ -88,17 +89,17 @@ describe('Workspace storage isolation', () => {
 
     const firstWorkspace = await request(app)
       .post('/api/tenant')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .send({ name: 'Workspace One' });
 
     const secondWorkspace = await request(app)
       .post('/api/tenant')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .send({ name: 'Workspace Two' });
 
     await request(app)
       .post('/api/sync/push')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', firstWorkspace.body.workspaceId)
       .send({
         entity: 'goals',
@@ -107,7 +108,7 @@ describe('Workspace storage isolation', () => {
 
     await request(app)
       .post('/api/sync/push')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', secondWorkspace.body.workspaceId)
       .send({
         entity: 'goals',
@@ -116,12 +117,12 @@ describe('Workspace storage isolation', () => {
 
     const firstPull = await request(app)
       .get('/api/sync/pull')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', firstWorkspace.body.workspaceId);
 
     const secondPull = await request(app)
       .get('/api/sync/pull')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', secondWorkspace.body.workspaceId);
 
     expect(firstPull.status).toBe(200);
@@ -147,17 +148,17 @@ describe('Workspace storage isolation', () => {
 
     const firstWorkspace = await request(app)
       .post('/api/tenant')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .send({ name: 'Usage Workspace One' });
 
     const secondWorkspace = await request(app)
       .post('/api/tenant')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .send({ name: 'Usage Workspace Two' });
 
     const firstUpdate = await request(app)
       .put('/api/saas/usage')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', firstWorkspace.body.workspaceId)
       .send({
         usage: {
@@ -171,7 +172,7 @@ describe('Workspace storage isolation', () => {
 
     const secondUpdate = await request(app)
       .put('/api/saas/usage')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', secondWorkspace.body.workspaceId)
       .send({
         usage: {
@@ -188,12 +189,12 @@ describe('Workspace storage isolation', () => {
 
     const firstRead = await request(app)
       .get('/api/saas/usage')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', firstWorkspace.body.workspaceId);
 
     const secondRead = await request(app)
       .get('/api/saas/usage')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', secondWorkspace.body.workspaceId);
 
     expect(firstRead.status).toBe(200);

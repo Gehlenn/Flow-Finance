@@ -47,7 +47,10 @@ export class AIServiceFactory {
         });
       } catch (error) {
         logger.error('Failed to initialize OpenAI provider', {
-          error: (error as any)?.message,
+          provider: 'openai',
+          error: error instanceof Error ? error.message : String(error),
+          errorType: error instanceof Error ? error.constructor.name : typeof error,
+          fallback: 'openai-provider-unavailable',
         });
       }
     }
@@ -78,7 +81,10 @@ export class AIServiceFactory {
         });
       } catch (error) {
         logger.error('Failed to initialize Gemini provider', {
-          error: (error as any)?.message,
+          provider: 'gemini',
+          error: error instanceof Error ? error.message : String(error),
+          errorType: error instanceof Error ? error.constructor.name : typeof error,
+          fallback: 'gemini-provider-unavailable',
         });
       }
     }

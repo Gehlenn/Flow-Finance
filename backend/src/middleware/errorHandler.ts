@@ -6,9 +6,9 @@ export { AppError } from '../shared/AppError';
 
 export function asyncHandler(
   fn: (req: Request, res: Response, next: NextFunction) => Promise<void>
-): (req: Request, res: Response, next: NextFunction) => void {
+) : (req: Request, res: Response, next: NextFunction) => Promise<void> {
   return (req: Request, res: Response, next: NextFunction) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
+    return Promise.resolve(fn(req, res, next)).catch(next);
   };
 }
 
@@ -29,7 +29,11 @@ export function errorHandler(
     return;
   }
 
-  logger.error({ err }, 'Unhandled error');
+  logger.error({
+    err,
+    errorType: err instanceof Error ? err.name : typeof err,
+    fallback: 'unhandled-error',
+  }, 'Unhandled error');
   const contextReq = req as Request & { requestId?: string; routeScope?: string };
   res.status(500).json({
     message: 'Internal Server Error',

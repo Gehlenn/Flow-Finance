@@ -1,4 +1,15 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import crypto from 'crypto';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const { mockWarn } = vi.hoisted(() => ({
+  mockWarn: vi.fn(),
+}));
+
+vi.mock('../../src/config/logger', () => ({
+  default: {
+    warn: mockWarn,
+  },
+}));
 
 import {
   generateIntegrationKey,
@@ -9,8 +20,9 @@ import {
 } from '../../src/services/workspaceIntegrationKeyStore';
 
 afterEach(() => {
-  resetIntegrationKeyStoreForTests();
-});
+    resetIntegrationKeyStoreForTests();
+    mockWarn.mockClear();
+  });
 
 describe('workspaceIntegrationKeyStore', () => {
   it('generates a key with the flw_ prefix', async () => {
@@ -56,6 +68,27 @@ describe('workspaceIntegrationKeyStore', () => {
     const oldKey = await generateIntegrationKey('ws-1');
     await generateIntegrationKey('ws-1');
     expect(await verifyIntegrationKey('ws-1', oldKey)).toBe(false);
+  });
+
+  it('registra aviso quando a comparacao segura falha e rejeita a chave', async () => {
+    const timingSafeEqualSpy = vi.spyOn(crypto, 'timingSafeEqual').mockImplementation(() => {
+      throw new Error('timing-safe failure');
+    });
+
+    await generateIntegrationKey('ws-1');
+
+    await expect(verifyIntegrationKey('ws-1', 'flw_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).resolves.toBe(false);
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.any(Error),
+        providedLength: expect.any(Number),
+        storedLength: expect.any(Number),
+        fallback: 'workspace-integration-key-compare-failed',
+      }),
+      '[workspaceIntegrationKeyStore] timingSafeEqual failed; rejecting key comparison',
+    );
+
+    timingSafeEqualSpy.mockRestore();
   });
 
   it('does not leak keys across workspaces after reset', async () => {

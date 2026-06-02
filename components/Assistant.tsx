@@ -1,4 +1,4 @@
-
+﻿
 import React, { useEffect, useMemo, useState } from 'react';
 import { Reminder, ReminderType, Alert, Transaction, TransactionType, Category, Goal } from '../types';
 import { 
@@ -7,11 +7,12 @@ import {
   Briefcase, GraduationCap, TrendingUp, Wallet, Check,
   ChevronDown, ChevronUp, AlertTriangle, Sparkles, Loader2
 } from 'lucide-react';
-import { runFinancialAutopilot } from '../src/ai/financialAutopilot';
 import { buildCashflowPrediction } from '../src/ai/riskAnalyzer';
+import { computeFinancialSignals } from '../src/ai/signalEngine';
 import { calculateAlertProgress } from '../src/engines/finance/analyticsEngine';
 import { ASSISTANT_COPY } from '../src/app/assistantCopy';
 import { canAccessFeature } from '../src/app/monetizationPlan';
+import { logWarn } from '../src/utils/logger';
 
 export type ReminderOperationalState = 'active' | 'overdue' | 'completed' | 'canceled';
 
@@ -50,6 +51,13 @@ export const isFinancialReminder = (reminder: Reminder): boolean => {
   const metadata = reminder as unknown as Record<string, unknown>;
   return Boolean((reminder.amount && reminder.amount > 0) || metadata.kind === 'financial');
 };
+
+const ASSISTANT_CLASSES = {
+  primaryAction: 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900',
+  neutralPanel: 'bg-slate-50 dark:bg-slate-900/50',
+  neutralField: 'bg-slate-50 dark:bg-slate-900 rounded-2xl',
+  selectedControl: 'bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100',
+} as const;
 
 interface AssistantProps {
   reminders: Reminder[];
@@ -182,6 +190,68 @@ const Assistant: React.FC<AssistantProps> = ({
     [filteredActiveReminders],
   );
 
+  const reminderBoardSummary = useMemo(() => {
+    const activeCount = reminders.filter((reminder) => classifyReminderOperationalState(reminder) === 'active').length;
+    const overdueCount = reminders.filter((reminder) => classifyReminderOperationalState(reminder) === 'overdue').length;
+    const closedCount = reminders.filter((reminder) => {
+      const state = classifyReminderOperationalState(reminder);
+      return state === 'completed' || state === 'canceled';
+    }).length;
+    const financialCount = reminders.filter((reminder) => isFinancialReminder(reminder)).length;
+    const operationalCount = reminders.length - financialCount;
+
+    return {
+      activeCount,
+      overdueCount,
+      closedCount,
+      financialCount,
+      operationalCount,
+    };
+  }, [reminders]);
+
+  const activeFilterSummary = useMemo(() => {
+    const labels: Record<typeof reminderFilter, string> = {
+      all: 'Sem filtros aplicados',
+      alta: 'Prioridade: Alta',
+      media: 'Prioridade: Média',
+      baixa: 'Prioridade: Baixa',
+      pessoal: 'Tipo: Pessoal',
+      trabalho: 'Tipo: Trabalho',
+      negocio: 'Tipo: Negócio',
+      investimento: 'Tipo: Investimento',
+      saude: 'Tipo: Saúde',
+    };
+
+    return labels[reminderFilter];
+  }, [reminderFilter]);
+
+  const goalBoardSummary = useMemo(() => {
+    const totalGoals = goals.length;
+    const achievedGoals = goals.filter((goal) => goal.targetAmount > 0 && goal.currentAmount >= goal.targetAmount).length;
+    const inProgressGoals = totalGoals - achievedGoals;
+
+    return {
+      totalGoals,
+      achievedGoals,
+      inProgressGoals,
+    };
+  }, [goals]);
+
+  const alertBoardSummary = useMemo(() => {
+    const totalAlerts = alerts.length;
+    const criticalAlerts = alerts.filter((alert) => calculateAlertProgress(transactions, alert).percent >= 100).length;
+    const riskAlerts = alerts.filter((alert) => {
+      const percent = calculateAlertProgress(transactions, alert).percent;
+      return percent >= 80 && percent < 100;
+    }).length;
+
+    return {
+      totalAlerts,
+      criticalAlerts,
+      riskAlerts,
+    };
+  }, [alerts, transactions]);
+
   const openReminderEditor = (reminder: Reminder) => {
     setEditingReminder(reminder);
     setNewReminder({
@@ -223,17 +293,28 @@ const Assistant: React.FC<AssistantProps> = ({
 
     try {
       const prediction = buildCashflowPrediction(transactions);
-      const actions = runFinancialAutopilot([], transactions, prediction, []);
-      const suggestions = actions.map(a => ({
-        category: a.category ?? 'Geral',
-        threshold: a.value ?? 0,
-        reason: a.description ?? '',
-        title: a.title,
-        description: a.description,
+      const signals = computeFinancialSignals({
+        transactions,
+        prediction,
+      });
+      const suggestions = signals.map((signal) => ({
+        category: typeof signal.evidence.category === 'string' ? signal.evidence.category : 'Geral',
+        threshold:
+          typeof signal.evidence.amount === 'number'
+            ? signal.evidence.amount
+            : typeof signal.evidence.recurring_total === 'number'
+              ? signal.evidence.recurring_total
+              : 0,
+        reason: signal.description ?? '',
+        title: signal.title,
+        description: signal.description,
       }));
       setSmartAlerts(suggestions);
     } catch (error) {
-      console.error("Erro ao gerar alertas inteligentes:", error);
+      logWarn('[Assistant] Failed to generate smart alerts', {
+        error,
+        fallback: 'assistant-smart-alerts-failed',
+      });
       setSmartAlerts([]);
     } finally {
       setIsGeneratingAlerts(false);
@@ -280,7 +361,7 @@ const Assistant: React.FC<AssistantProps> = ({
     switch (type) {
       case ReminderType.PESSOAL: return <UserCircle size={18} className="text-blue-500" />;
       case ReminderType.TRABALHO: return <GraduationCap size={18} className="text-purple-500" />;
-      case ReminderType.NEGOCIO: return <Briefcase size={18} className="text-indigo-500" />;
+      case ReminderType.NEGOCIO: return <Briefcase size={18} className="text-slate-500" />;
       case ReminderType.INVESTIMENTO: return <TrendingUp size={18} className="text-emerald-500" />;
       case ReminderType.SAUDE: return <HeartPulse size={18} className="text-rose-500" />;
       default: return <Clock size={18} className="text-slate-500" />;
@@ -300,19 +381,19 @@ const Assistant: React.FC<AssistantProps> = ({
   const getAlertColor = (percent: number) => {
     if (percent >= 100) return 'text-rose-600 bg-rose-500';
     if (percent >= 80) return 'text-amber-600 bg-amber-500';
-    if (percent >= 50) return 'text-indigo-600 bg-indigo-500';
-    return 'text-emerald-600 bg-emerald-500';
+    if (percent >= 50) return 'text-slate-600 bg-slate-500';
+    return 'text-slate-600 bg-slate-500';
   };
 
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-700 pb-20">
-      <div className="bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] p-6 rounded-[2rem] flex justify-between items-center shadow-lg shadow-indigo-500/20 shrink-0">
-        <div>
-          <h2 className="text-2xl font-black text-white tracking-tight leading-none">{ASSISTANT_COPY.headerTitle}</h2>
-          <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mt-1.5">{ASSISTANT_COPY.headerSubtitle}</p>
+      <div className="flex items-center justify-between gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 shrink-0">
+        <div className="min-w-0">
+          <h2 className="text-2xl font-semibold tracking-tight leading-none text-slate-900 dark:text-white">{ASSISTANT_COPY.headerTitle}</h2>
+          <p className="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">{ASSISTANT_COPY.headerSubtitle}</p>
         </div>
-        <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center text-white">
-          <BrainCircuit size={22} />
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          <BrainCircuit size={20} />
         </div>
       </div>
 
@@ -325,40 +406,40 @@ const Assistant: React.FC<AssistantProps> = ({
           }} 
           className="flex flex-col items-center justify-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-[1.8rem] border border-slate-100 dark:border-slate-700 shadow-sm transition-all hover:scale-105 active:scale-95 group"
         >
-          <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all">
+          <div className={`p-2 ${ASSISTANT_CLASSES.neutralPanel} text-slate-500 rounded-xl group-hover:bg-slate-900 group-hover:text-white transition-all`}>
             <Calendar size={18} />
           </div>
-          <span className="text-[8px] font-black uppercase text-slate-500 tracking-widest">Evento</span>
+          <span className="text-xs font-semibold uppercase text-slate-500 tracking-[0.08em]">Evento</span>
         </button>
 
         <button 
           onClick={() => setIsAddingGoal(true)} 
           className="flex flex-col items-center justify-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-[1.8rem] border border-slate-100 dark:border-slate-700 shadow-sm transition-all hover:scale-105 active:scale-95 group"
         >
-          <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-all">
+          <div className={`p-2 ${ASSISTANT_CLASSES.neutralPanel} text-slate-500 rounded-xl group-hover:bg-slate-900 group-hover:text-white transition-all`}>
             <Target size={18} />
           </div>
-          <span className="text-[8px] font-black uppercase text-slate-500 tracking-widest">Meta</span>
+          <span className="text-xs font-semibold uppercase text-slate-500 tracking-[0.08em]">Meta</span>
         </button>
 
         <button 
           onClick={() => setIsAddingAlert(true)} 
           className="flex flex-col items-center justify-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-[1.8rem] border border-slate-100 dark:border-slate-700 shadow-sm transition-all hover:scale-105 active:scale-95 group"
         >
-          <div className="p-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 rounded-xl group-hover:bg-rose-600 group-hover:text-white transition-all">
+          <div className={`p-2 ${ASSISTANT_CLASSES.neutralPanel} text-slate-500 rounded-xl group-hover:bg-slate-900 group-hover:text-white transition-all`}>
             <Bell size={18} />
           </div>
-          <span className="text-[8px] font-black uppercase text-slate-500 tracking-widest">Limite</span>
+          <span className="text-xs font-semibold uppercase text-slate-500 tracking-[0.08em]">Limite</span>
         </button>
       </div>
 
       <div className="px-1">
         <button 
           onClick={generateSmartAlerts}
-          className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[1.8rem] flex items-center justify-center gap-3 active:scale-95 transition-all group"
+          className="w-full rounded-[1.8rem] border border-slate-200 bg-white p-4 flex items-center justify-center gap-3 active:scale-95 transition-all group dark:border-slate-700 dark:bg-slate-800"
         >
-          <Sparkles size={16} className="text-indigo-500" />
-          <span className="text-[9px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">{ASSISTANT_COPY.smartAlertsCta}</span>
+          <Sparkles size={16} className="text-slate-500" />
+          <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-[0.08em]">{ASSISTANT_COPY.smartAlertsCta}</span>
         </button>
       </div>
 
@@ -375,7 +456,7 @@ const Assistant: React.FC<AssistantProps> = ({
                 <Trash2 size={20} />
               </div>
               <div>
-                <h3 id="bulk-delete-reminders-title" className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Confirmar exclusao</h3>
+                <h3 id="bulk-delete-reminders-title" className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">Confirmar exclusao</h3>
                 <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-300">
                   Excluir {selectedReminders.length} lembrete{selectedReminders.length === 1 ? "" : "s"} selecionado{selectedReminders.length === 1 ? "" : "s"} remove esse bloco da agenda e nao pode ser desfeito.
                 </p>
@@ -386,14 +467,14 @@ const Assistant: React.FC<AssistantProps> = ({
               <button
                 type="button"
                 onClick={() => setShowBulkDeleteConfirm(false)}
-                className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black uppercase tracking-[0.22em] text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200 dark:hover:bg-slate-900"
+                className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold uppercase tracking-[0.22em] text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200 dark:hover:bg-slate-900"
               >
                 Manter agenda
               </button>
               <button
                 type="button"
                 onClick={confirmDeleteSelectedReminders}
-                className="flex-1 rounded-2xl bg-rose-600 px-4 py-3 text-sm font-black uppercase tracking-[0.22em] text-white shadow-lg shadow-rose-600/30 transition-colors hover:bg-rose-500"
+                className="flex-1 rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold uppercase tracking-[0.22em] text-white shadow-lg shadow-rose-600/30 transition-colors hover:bg-rose-500"
               >
                 Confirmar exclusao
               </button>
@@ -404,7 +485,7 @@ const Assistant: React.FC<AssistantProps> = ({
 
       <section className="space-y-4">
         <div className="flex items-center justify-between px-2">
-          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{ASSISTANT_COPY.timelineTitle}</h3>
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-[0.08em]">{ASSISTANT_COPY.timelineTitle}</h3>
         </div>
 
         <div className="space-y-5">
@@ -412,16 +493,16 @@ const Assistant: React.FC<AssistantProps> = ({
           
           {/* 1. AGENDAS */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between px-2">
-              <div className="flex items-center gap-2">
-                <Calendar size={12} className="text-indigo-400" />
-                <span className="text-[7px] font-black text-slate-400 uppercase tracking-[0.2em]">Agenda Financeira</span>
-              </div>
-              <div className="flex gap-2">
+          <div className="flex items-center justify-between gap-3 px-2">
+            <div className="flex items-center gap-2">
+              <Calendar size={12} className="text-slate-400" />
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-[0.1em]">Lembretes operacionais</span>
+            </div>
+            <div className="flex gap-2">
                 <select 
                   value={reminderFilter} 
                   onChange={(e) => setReminderFilter(e.target.value as typeof reminderFilter)}
-                  className="bg-transparent text-[8px] font-black uppercase tracking-widest text-slate-400 outline-none border-none"
+                  className="bg-transparent text-xs font-semibold uppercase tracking-[0.08em] text-slate-400 outline-none border-none"
                 >
                   <option value="all">Todos</option>
                   <option value="alta">Alta Prioridade</option>
@@ -433,30 +514,38 @@ const Assistant: React.FC<AssistantProps> = ({
                   <option value="investimento">Investimento</option>
                   <option value="saude">Saúde</option>
                 </select>
-                {selectedReminders.length > 0 && (
-                  <button 
-                    onClick={deleteSelectedReminders}
-                    className="flex items-center gap-1 px-2 py-1 bg-rose-500 text-white rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-rose-600 transition-colors animate-in fade-in slide-in-from-right-2"
-                  >
-                    <Trash2 size={10} /> Excluir ({selectedReminders.length})
-                  </button>
-                )}
-              </div>
+              {selectedReminders.length > 0 && (
+                <button 
+                  onClick={deleteSelectedReminders}
+                  className="flex items-center gap-1 px-2 py-1 bg-rose-500 text-white rounded-lg text-xs font-semibold uppercase tracking-[0.08em] hover:bg-rose-600 transition-colors animate-in fade-in slide-in-from-right-2"
+                >
+                  <Trash2 size={10} /> Excluir ({selectedReminders.length})
+                </button>
+              )}
             </div>
+          </div>
 
-            <div className="flex flex-col gap-1.5 px-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">Tipo:</span>
-                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[7px] font-black uppercase tracking-widest text-emerald-700">Financeiro {reminderSummary.financial}</span>
-                <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[7px] font-black uppercase tracking-widest text-indigo-700">Operacional {reminderSummary.operational}</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">Estado:</span>
-                <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[7px] font-black uppercase tracking-widest text-rose-700 inline-flex items-center gap-1">
-                  <AlertTriangle size={8} className="shrink-0" /> Vencido {reminderSummary.overdue}
-                </span>
-              </div>
-            </div>
+          <div className="flex flex-wrap items-center gap-2 px-2">
+            <span className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Resumo:</span>
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-emerald-700">
+              Ativos {reminderBoardSummary.activeCount}
+            </span>
+            <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-rose-700 inline-flex items-center gap-1">
+              <AlertTriangle size={8} className="shrink-0" /> Vencidos {reminderBoardSummary.overdueCount}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+              Encerrados {reminderBoardSummary.closedCount}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+              Financeiros {reminderBoardSummary.financialCount}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+              Operacionais {reminderBoardSummary.operationalCount}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              {activeFilterSummary}
+            </span>
+          </div>
             
             {filteredActiveReminders.length > 0 ? (
               filteredActiveReminders.map(r => {
@@ -464,7 +553,7 @@ const Assistant: React.FC<AssistantProps> = ({
                 const reminderTone = reminderState === 'overdue'
                   ? 'border-rose-200 bg-rose-50/60 dark:bg-rose-900/20'
                   : selectedReminders.includes(r.id)
-                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                    ? 'border-slate-400 bg-slate-50 dark:bg-slate-900/20'
                     : 'border-slate-100 dark:border-slate-700';
 
                 return (
@@ -475,18 +564,18 @@ const Assistant: React.FC<AssistantProps> = ({
                     <div className="flex items-center gap-4 flex-1">
                       <button 
                         onClick={() => toggleSelectReminder(r.id)}
-                        className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${selectedReminders.includes(r.id) ? 'bg-indigo-500 text-white' : reminderState === 'overdue' ? 'bg-rose-100 text-rose-600' : 'bg-slate-50 dark:bg-slate-900/50 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                        className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${selectedReminders.includes(r.id) ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : reminderState === 'overdue' ? 'bg-rose-100 text-rose-600' : 'bg-slate-50 dark:bg-slate-900/50 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                         aria-label="Selecionar lembrete"
                       >
                         {selectedReminders.includes(r.id) ? <Check size={18} /> : getReminderIcon(r.type)}
                       </button>
                       <button className="flex-1 text-left" onClick={() => openReminderEditor(r)} aria-label={`Editar lembrete ${r.title}`}>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="font-black text-sm text-slate-800 dark:text-white tracking-tight">{r.title}</h4>
-                          <span className={`rounded-full border px-2 py-0.5 text-[7px] font-black uppercase tracking-widest ${isFinancialReminder(r) ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-indigo-200 bg-indigo-50 text-indigo-700'}`}>
+                          <h4 className="font-semibold text-sm text-slate-800 dark:text-white tracking-tight">{r.title}</h4>
+                          <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.08em] ${isFinancialReminder(r) ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'}`}>
                             {isFinancialReminder(r) ? 'Financeiro' : 'Operacional'}
                           </span>
-                          <span className={`rounded-full border px-2 py-0.5 text-[7px] font-black uppercase tracking-widest inline-flex items-center gap-1 ${reminderState === 'overdue' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
+                          <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.08em] inline-flex items-center gap-1 ${reminderState === 'overdue' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
                             {reminderState === 'overdue' && <AlertTriangle size={8} className="shrink-0" />}
                             {reminderState === 'overdue' ? 'Vencido' : 'Ativo'}
                           </span>
@@ -495,11 +584,11 @@ const Assistant: React.FC<AssistantProps> = ({
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <p className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 tracking-widest">
+                          <p className="text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 tracking-[0.08em]">
                           {new Date(r.date).toLocaleDateString('pt-BR')} • {new Date(r.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         </p>
                           <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                          <p className="text-[8px] font-bold text-slate-400 uppercase">{r.type}</p>
+                          <p className="text-xs text-slate-400 uppercase">{r.type}</p>
                         </div>
                       </button>
                     </div>
@@ -507,7 +596,7 @@ const Assistant: React.FC<AssistantProps> = ({
                       <button onClick={() => onToggleComplete(r.id)} className="p-2 text-slate-300 hover:text-emerald-600 transition-colors" aria-label={`Concluir lembrete ${r.title}`}>
                         <Check size={16} />
                       </button>
-                      <button onClick={() => openReminderEditor(r)} className="p-2 text-slate-300 hover:text-indigo-600 transition-colors" aria-label={`Abrir edicao do lembrete ${r.title}`}>
+                      <button onClick={() => openReminderEditor(r)} className="p-2 text-slate-300 hover:text-slate-700 transition-colors" aria-label={`Abrir edicao do lembrete ${r.title}`}>
                         <Edit2 size={15} />
                       </button>
                       <button onClick={() => onDeleteReminder(r.id)} className="p-2 text-slate-200 hover:text-rose-500 transition-colors" aria-label={`Excluir lembrete ${r.title}`}><Trash2 size={16} /></button>
@@ -517,7 +606,7 @@ const Assistant: React.FC<AssistantProps> = ({
               })
             ) : (
               <div className="text-center py-8 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[2rem]">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Nenhum evento encontrado</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">Nenhum evento encontrado</p>
               </div>
             )}
 
@@ -527,7 +616,7 @@ const Assistant: React.FC<AssistantProps> = ({
                   onClick={() => setShowInactiveReminders((current) => !current)}
                   className="w-full flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left dark:border-slate-700 dark:bg-slate-900/40"
                 >
-                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Concluidos e cancelados ({inactiveReminders.length})</span>
+                  <span className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">Concluidos e cancelados ({inactiveReminders.length})</span>
                   {showInactiveReminders ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
                 </button>
 
@@ -537,8 +626,8 @@ const Assistant: React.FC<AssistantProps> = ({
                   return (
                     <div key={reminder.id} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/30">
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-tight text-slate-500">{reminder.title}</p>
-                        <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">
+                        <p className="text-xs font-semibold uppercase tracking-tight text-slate-500">{reminder.title}</p>
+                        <p className="text-xs uppercase tracking-[0.08em] text-slate-400">
                           {new Date(reminder.date).toLocaleDateString('pt-BR')} • {reminderState === 'canceled' ? 'Cancelado' : 'Concluido'}
                         </p>
                       </div>
@@ -557,7 +646,19 @@ const Assistant: React.FC<AssistantProps> = ({
             <div className="space-y-3">
               <div className="flex items-center gap-2 px-2">
                 <Target size={12} className="text-emerald-400" />
-                <span className="text-[7px] font-black text-slate-400 uppercase tracking-[0.2em]">Metas de Acúmulo</span>
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-[0.1em]">Metas do caixa</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 px-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Resumo:</span>
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-emerald-700">
+                  Em andamento {goalBoardSummary.inProgressGoals}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                  Concluídas {goalBoardSummary.achievedGoals}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  Total {goalBoardSummary.totalGoals}
+                </span>
               </div>
               {goals.map(goal => {
                 const progress = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
@@ -569,8 +670,8 @@ const Assistant: React.FC<AssistantProps> = ({
                           <Target size={20} />
                         </div>
                         <div>
-                          <h4 className="font-black text-slate-800 dark:text-white text-sm uppercase tracking-tight">{goal.title}</h4>
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{goal.category}</p>
+                          <h4 className="font-semibold text-slate-800 dark:text-white text-sm uppercase tracking-tight">{goal.title}</h4>
+                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">{goal.category}</p>
                         </div>
                       </div>
                       <button onClick={() => onDeleteGoal(goal.id)} className="p-2 text-slate-200 hover:text-rose-500 transition-colors"><Trash2 size={16} /></button>
@@ -578,30 +679,30 @@ const Assistant: React.FC<AssistantProps> = ({
                     <div className="space-y-3 relative">
                       <div className="flex justify-between items-end relative z-10">
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Progresso Atual</p>
-                          <p className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">{hideValues ? '••••' : formatVal(goal.currentAmount)}</p>
+                          <p className="text-xs text-slate-400 uppercase tracking-[0.08em] mb-1">Progresso Atual</p>
+                          <p className="text-xl font-semibold text-slate-900 dark:text-white tracking-tighter">{hideValues ? '••••' : formatVal(goal.currentAmount)}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Alvo</p>
-                          <p className="text-xs font-black text-emerald-600 uppercase tracking-widest">{hideValues ? '••••' : formatVal(goal.targetAmount)}</p>
+                          <p className="text-xs text-slate-400 uppercase tracking-[0.08em] mb-1">Alvo</p>
+                          <p className="text-xs font-semibold text-emerald-600 uppercase tracking-[0.08em]">{hideValues ? '••••' : formatVal(goal.targetAmount)}</p>
                         </div>
                       </div>
                       
                       <div className="relative h-4 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden shadow-inner border border-slate-50 dark:border-slate-800">
                         <div 
-                          className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-1000 ease-out flex items-center justify-end pr-2" 
+                          className="absolute top-0 left-0 h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-out flex items-center justify-end pr-2" 
                           style={{ width: `${progress}%` }}
                         >
-                          {progress > 15 && <span className="text-[8px] font-black text-white drop-shadow-md">{Math.round(progress)}%</span>}
+                          {progress > 15 && <span className="text-xs font-semibold text-white drop-shadow-md">{Math.round(progress)}%</span>}
                         </div>
                         {progress <= 15 && (
                           <div className="absolute top-0 left-0 h-full w-full flex items-center justify-start pl-2">
-                             <span className="text-[8px] font-black text-emerald-600">{Math.round(progress)}%</span>
+                             <span className="text-xs font-semibold text-emerald-600">{Math.round(progress)}%</span>
                           </div>
                         )}
                       </div>
                       
-                      <div className="flex justify-between text-[8px] font-bold text-slate-300 uppercase tracking-widest px-1">
+                      <div className="flex justify-between text-xs text-slate-300 uppercase tracking-[0.08em] px-1">
                         <span>0%</span>
                         <span>50%</span>
                         <span>100%</span>
@@ -618,7 +719,19 @@ const Assistant: React.FC<AssistantProps> = ({
             <div className="space-y-3">
               <div className="flex items-center gap-2 px-2">
                 <Bell size={12} className="text-rose-400" />
-                <span className="text-[7px] font-black text-slate-400 uppercase tracking-[0.2em]">Limites & Orçamentos</span>
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-[0.1em]">Limites do caixa</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 px-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Resumo:</span>
+                <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-rose-700">
+                  Em risco {alertBoardSummary.riskAlerts}
+                </span>
+                <span className="rounded-full border border-rose-200 bg-white px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-rose-700 dark:border-slate-700 dark:bg-slate-800 dark:text-rose-300">
+                  Estourados {alertBoardSummary.criticalAlerts}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                  Ativos {alertBoardSummary.totalAlerts}
+                </span>
               </div>
               {alerts.map(alert => {
                 const { spent, percent } = calculateAlertProgress(transactions, alert);
@@ -632,12 +745,12 @@ const Assistant: React.FC<AssistantProps> = ({
                     <div className="flex-1">
                       <div className="flex justify-between mb-1.5 items-end">
                         <div>
-                          <span className="text-[9px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">{alert.category}</span>
-                          <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">Teto: {formatVal(alert.threshold)}</p>
+                          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-[0.08em]">{alert.category}</span>
+                          <p className="text-xs text-slate-400 uppercase mt-0.5">Teto: {formatVal(alert.threshold)}</p>
                         </div>
                         <div className="flex items-center gap-1.5">
                           {percent >= 100 && <AlertTriangle size={10} className="text-rose-500 animate-pulse" />}
-                          <span className={`text-[10px] font-black ${percent >= 100 ? 'text-rose-500' : 'text-slate-500'}`}>{Math.round(percent)}%</span>
+                          <span className={`text-xs font-semibold ${percent >= 100 ? 'text-rose-500' : 'text-slate-500'}`}>{Math.round(percent)}%</span>
                         </div>
                       </div>
                       <div className="h-2 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
@@ -654,7 +767,7 @@ const Assistant: React.FC<AssistantProps> = ({
           {reminders.length === 0 && goals.length === 0 && alerts.length === 0 && (
             <div className="py-24 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[3rem]">
                <BrainCircuit size={40} className="mx-auto text-slate-200 mb-4" />
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Painel de apoio pronto para sua rotina.</p>
+               <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">Painel de apoio pronto para sua rotina.</p>
             </div>
           )}
         </div>
@@ -665,24 +778,24 @@ const Assistant: React.FC<AssistantProps> = ({
           <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-[3rem] p-8 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-md"><Sparkles size={16} /></div>
-                <h3 className="text-base font-black text-slate-800 dark:text-white uppercase tracking-tight">Sugestoes de limite</h3>
+                <div className="p-2 bg-slate-900 text-white rounded-xl shadow-md dark:bg-slate-100 dark:text-slate-900"><Sparkles size={16} /></div>
+                <h3 className="text-base font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Alertas do caixa</h3>
               </div>
               <button onClick={() => setShowSmartAlertsModal(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full"><X size={20} /></button>
             </div>
 
             {isGeneratingAlerts ? (
               <div className="py-20 flex flex-col items-center gap-4 text-center">
-                <Loader2 size={40} className="animate-spin text-indigo-600" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 animate-pulse">Lendo dados para sugestoes...</p>
+                <Loader2 size={40} className="animate-spin text-slate-600" />
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 animate-pulse">Lendo dados para sugestoes...</p>
               </div>
             ) : smartAlertsUpgradeOnly ? (
               <div className="space-y-4">
                 <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
                   O Free continua com criacao manual de alertas. No Pro, voce recebe sugestoes prontas com base no seu padrao de caixa.
                 </p>
-                <div className="space-y-2 rounded-2xl border border-indigo-100 bg-indigo-50/80 p-4 dark:border-indigo-500/20 dark:bg-indigo-500/10">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-indigo-600">No Pro voce destrava</p>
+                <div className={`space-y-2 rounded-2xl border border-slate-200 ${ASSISTANT_CLASSES.neutralPanel} p-4 dark:border-slate-700`}>
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">No Pro voce destrava</p>
                   <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Sugestoes inteligentes por categoria.</p>
                   <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Recomendacoes de teto com justificativa objetiva.</p>
                   <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Mais rapidez para ajustar limites sem tentativa e erro.</p>
@@ -698,8 +811,8 @@ const Assistant: React.FC<AssistantProps> = ({
                     <div key={idx} className="bg-slate-50 dark:bg-slate-900 p-5 rounded-[2rem] border border-slate-100 dark:border-slate-700 space-y-3">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="font-black text-slate-800 dark:text-white text-sm uppercase tracking-tight">{alert.title ?? alert.category}</h4>
-                          <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mt-1">Sugestão: {formatVal(alert.threshold)}</p>
+                          <h4 className="font-semibold text-slate-800 dark:text-white text-sm uppercase tracking-tight">{alert.title ?? alert.category}</h4>
+                          <p className="text-xs text-slate-500 uppercase tracking-[0.08em] mt-1">Sugestão: {formatVal(alert.threshold)}</p>
                         </div>
                         <button 
                           onClick={() => {
@@ -710,13 +823,13 @@ const Assistant: React.FC<AssistantProps> = ({
                             });
                             setShowSmartAlertsModal(false);
                           }}
-                          className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/20"
+                          className={`px-4 py-2 ${ASSISTANT_CLASSES.primaryAction} rounded-xl text-xs font-semibold uppercase tracking-[0.08em] hover:bg-slate-800 transition-colors shadow-lg dark:hover:bg-white`}
                         >
                           Aplicar
                         </button>
                       </div>
                       <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 italic">"{alert.description ?? alert.reason}"</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 italic">"{alert.description ?? alert.reason}"</p>
                       </div>
                     </div>
                   ))
@@ -736,39 +849,39 @@ const Assistant: React.FC<AssistantProps> = ({
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-[3rem] p-8 shadow-2xl">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-base font-black text-slate-800 dark:text-white uppercase tracking-tight">{editingReminder ? 'Editar Evento' : 'Novo Evento'}</h3>
+              <h3 className="text-base font-semibold text-slate-800 dark:text-white uppercase tracking-tight">{editingReminder ? 'Editar Evento' : 'Novo Evento'}</h3>
               <button onClick={closeReminderModal} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full"><X size={20} /></button>
             </div>
             <div className="space-y-5">
               <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Descrição</label>
-                <input type="text" value={newReminder.title} onChange={e => setNewReminder({...newReminder, title: e.target.value})} placeholder="Ex: Pagar fatura do cartão" className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl outline-none font-bold text-sm text-slate-800 dark:text-white" />
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">Descrição</label>
+                <input type="text" value={newReminder.title} onChange={e => setNewReminder({...newReminder, title: e.target.value})} placeholder="Ex: Pagar fatura do cartão" className={`w-full p-4 ${ASSISTANT_CLASSES.neutralField} outline-none font-medium text-sm text-slate-800 dark:text-white`} />
               </div>
 
               <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Tipo de Compromisso</label>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">Tipo de Compromisso</label>
                 <div className="grid grid-cols-3 gap-2">
                    {Object.values(ReminderType).map(type => (
                      <button 
                        key={type}
                        onClick={() => setNewReminder({...newReminder, type})}
-                       className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all active:scale-95 ${newReminder.type === type ? 'bg-indigo-600 text-white border-indigo-600 shadow-md scale-105' : 'bg-slate-50 dark:bg-slate-900 border-transparent text-slate-400 hover:border-slate-200'}`}
+                       className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all active:scale-95 ${newReminder.type === type ? `${ASSISTANT_CLASSES.selectedControl} shadow-md scale-105` : 'bg-slate-50 dark:bg-slate-900 border-transparent text-slate-400 hover:border-slate-200'}`}
                      >
                        {getReminderIcon(type)}
-                       <span className="text-[7px] font-black uppercase tracking-tight truncate w-full text-center">{type}</span>
+                       <span className="text-xs font-semibold uppercase tracking-tight truncate w-full text-center">{type}</span>
                      </button>
                    ))}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Prioridade</label>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">Prioridade</label>
                 <div className="flex gap-2">
                   {['baixa', 'media', 'alta'].map(p => (
                     <button
                       key={p}
                       onClick={() => setNewReminder({...newReminder, priority: p as Reminder['priority']})}
-                      className={`flex-1 p-3 rounded-2xl border text-[9px] font-black uppercase tracking-widest transition-all ${newReminder.priority === p ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 dark:bg-slate-900 border-transparent text-slate-400'}`}
+                      className={`flex-1 p-3 rounded-2xl border text-xs font-semibold uppercase tracking-[0.08em] transition-all ${newReminder.priority === p ? ASSISTANT_CLASSES.selectedControl : 'bg-slate-50 dark:bg-slate-900 border-transparent text-slate-400'}`}
                     >
                       {p}
                     </button>
@@ -778,15 +891,15 @@ const Assistant: React.FC<AssistantProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Data</label>
-                  <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl text-[10px] font-bold dark:text-white border-none" />
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">Data</label>
+                  <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className={`w-full p-4 ${ASSISTANT_CLASSES.neutralField} text-xs dark:text-white border-none`} />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Hora</label>
-                  <input type="time" value={selectedTime} onChange={e => setSelectedTime(e.target.value)} className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl text-[10px] font-bold dark:text-white border-none" />
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">Hora</label>
+                  <input type="time" value={selectedTime} onChange={e => setSelectedTime(e.target.value)} className={`w-full p-4 ${ASSISTANT_CLASSES.neutralField} text-xs dark:text-white border-none`} />
                 </div>
               </div>
-              <button onClick={handleSaveReminder} className="w-full py-5 bg-indigo-600 text-white rounded-[1.8rem] font-black text-[10px] uppercase shadow-xl hover:bg-indigo-700 active:scale-95 transition-all">{editingReminder ? 'Salvar Edicao' : 'Criar Evento'}</button>
+              <button onClick={handleSaveReminder} className={`w-full py-5 ${ASSISTANT_CLASSES.primaryAction} rounded-[1.8rem] font-semibold text-xs uppercase shadow-xl hover:bg-slate-800 active:scale-95 transition-all dark:hover:bg-white`}>{editingReminder ? 'Salvar Edicao' : 'Criar Evento'}</button>
             </div>
           </div>
         </div>
@@ -796,13 +909,13 @@ const Assistant: React.FC<AssistantProps> = ({
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-[3rem] p-8 shadow-2xl">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-base font-black text-slate-800 dark:text-white uppercase tracking-tight">Nova Meta</h3>
+              <h3 className="text-base font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Nova Meta</h3>
               <button onClick={() => setIsAddingGoal(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full"><X size={20} /></button>
             </div>
             <div className="space-y-4">
-              <input type="text" value={newGoal.title} onChange={e => setNewGoal({...newGoal, title: e.target.value})} placeholder="Ex: Viagem de Férias" className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl outline-none font-bold text-sm text-slate-800 dark:text-white" />
-              <input type="number" value={newGoal.targetAmount || ''} onChange={e => setNewGoal({...newGoal, targetAmount: parseFloat(e.target.value)})} placeholder="Valor Alvo (R$)" className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl outline-none font-black text-lg text-slate-800 dark:text-white" />
-              <button onClick={handleSaveGoal} className="w-full py-5 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all hover:bg-emerald-700">Criar Meta</button>
+              <input type="text" value={newGoal.title} onChange={e => setNewGoal({...newGoal, title: e.target.value})} placeholder="Ex: Viagem de Férias" className={`w-full p-4 ${ASSISTANT_CLASSES.neutralField} outline-none font-medium text-sm text-slate-800 dark:text-white`} />
+              <input type="number" value={newGoal.targetAmount || ''} onChange={e => setNewGoal({...newGoal, targetAmount: parseFloat(e.target.value)})} placeholder="Valor Alvo (R$)" className={`w-full p-4 ${ASSISTANT_CLASSES.neutralField} outline-none font-semibold text-lg text-slate-800 dark:text-white`} />
+              <button onClick={handleSaveGoal} className="w-full py-5 bg-emerald-600 text-white rounded-2xl font-semibold text-xs uppercase shadow-lg active:scale-95 transition-all hover:bg-emerald-700">Criar Meta</button>
             </div>
           </div>
         </div>
@@ -812,16 +925,16 @@ const Assistant: React.FC<AssistantProps> = ({
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-[3rem] p-8 shadow-2xl">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-base font-black text-slate-800 dark:text-white uppercase tracking-tight">Novo Limite</h3>
+              <h3 className="text-base font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Novo Limite</h3>
               <button onClick={() => setIsAddingAlert(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full"><X size={20} /></button>
             </div>
             <div className="space-y-5">
-              <select value={newAlert.category} onChange={e => setNewAlert({...newAlert, category: e.target.value as Alert['category']})} className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl outline-none font-bold text-sm text-slate-800 dark:text-white border-none appearance-none">
+              <select value={newAlert.category} onChange={e => setNewAlert({...newAlert, category: e.target.value as Alert['category']})} className={`w-full p-4 ${ASSISTANT_CLASSES.neutralField} outline-none font-medium text-sm text-slate-800 dark:text-white border-none appearance-none`}>
                 <option value="Geral">Todas as Categorias</option>
                 {Object.values(Category).map(cat => <option key={cat} value={cat}>{cat}</option>)}
               </select>
-              <input type="number" value={newAlert.threshold || ''} onChange={e => setNewAlert({...newAlert, threshold: parseFloat(e.target.value)})} placeholder="Valor Máximo (R$)" className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl outline-none font-black text-lg text-slate-800 dark:text-white border-none" />
-              <button onClick={() => { if(newAlert.threshold) onSaveAlert(newAlert as Omit<Alert, 'id'>); setIsAddingAlert(false); }} className="w-full py-5 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all hover:bg-rose-700">Definir Limite</button>
+              <input type="number" value={newAlert.threshold || ''} onChange={e => setNewAlert({...newAlert, threshold: parseFloat(e.target.value)})} placeholder="Valor Máximo (R$)" className={`w-full p-4 ${ASSISTANT_CLASSES.neutralField} outline-none font-semibold text-lg text-slate-800 dark:text-white border-none`} />
+              <button onClick={() => { if(newAlert.threshold) onSaveAlert(newAlert as Omit<Alert, 'id'>); setIsAddingAlert(false); }} className="w-full py-5 bg-rose-600 text-white rounded-2xl font-semibold text-xs uppercase shadow-lg active:scale-95 transition-all hover:bg-rose-700">Definir Limite</button>
             </div>
           </div>
         </div>
@@ -831,3 +944,7 @@ const Assistant: React.FC<AssistantProps> = ({
 };
 
 export default Assistant;
+
+
+
+

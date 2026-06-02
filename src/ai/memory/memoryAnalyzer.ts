@@ -3,7 +3,7 @@
  * Analyzes transactions to extract financial patterns
  */
 
-import { Transaction, TransactionType, Category } from '../../../types';
+import { Transaction, Category } from '../../../types';
 import {
   AIMemoryType,
   SpendingPatternValue,
@@ -15,6 +15,17 @@ import {
   SavingsBehaviorValue,
   TimePatternValue,
 } from './memoryTypes';
+import {
+  formatMemoryAnalyzerDate,
+  groupBy,
+  average,
+  getExpenseTransactions,
+  getIncomeTransactions,
+  getMemoryAnalyzerDayOfWeek,
+  normalizeMemoryAnalyzerMerchant,
+  standardDeviation,
+  parseMemoryAnalyzerDate,
+} from './memoryAnalyzerHelpers';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PATTERN DETECTION
@@ -22,16 +33,16 @@ import {
 
 export function analyzeSpendingPatterns(transactions: Transaction[]): Map<string, SpendingPatternValue> {
   const patterns = new Map<string, SpendingPatternValue>();
-  const expenses = transactions.filter((t) => t.type === TransactionType.DESPESA && !t.generated);
+  const expenses = getExpenseTransactions(transactions);
 
   // Weekend pattern
-  const weekendExpenses = expenses.filter((t) => {
-    const day = new Date(t.date).getDay();
+  const weekendExpenses = expenses.filter((transaction) => {
+    const day = getMemoryAnalyzerDayOfWeek(transaction);
     return day === 0 || day === 6;
   });
 
   if (weekendExpenses.length > 0) {
-    const avgAmount = weekendExpenses.reduce((sum, t) => sum + t.amount, 0) / weekendExpenses.length;
+    const avgAmount = average(weekendExpenses.map((t) => t.amount));
     const frequency = (weekendExpenses.length / expenses.length) * 100;
     const categories = [...new Set(weekendExpenses.map((t) => t.category))];
 
@@ -45,13 +56,13 @@ export function analyzeSpendingPatterns(transactions: Transaction[]): Map<string
   }
 
   // Weekday pattern
-  const weekdayExpenses = expenses.filter((t) => {
-    const day = new Date(t.date).getDay();
-    return day >= 1 && day <= 5;
+  const weekdayExpenses = expenses.filter((transaction) => {
+    const day = getMemoryAnalyzerDayOfWeek(transaction);
+    return day !== null && day >= 1 && day <= 5;
   });
 
   if (weekdayExpenses.length > 0) {
-    const avgAmount = weekdayExpenses.reduce((sum, t) => sum + t.amount, 0) / weekdayExpenses.length;
+    const avgAmount = average(weekdayExpenses.map((t) => t.amount));
     const frequency = (weekdayExpenses.length / expenses.length) * 100;
     const categories = [...new Set(weekdayExpenses.map((t) => t.category))];
 
@@ -65,13 +76,13 @@ export function analyzeSpendingPatterns(transactions: Transaction[]): Map<string
   }
 
   // Monthly pattern (beginning vs end of month)
-  const beginningMonth = expenses.filter((t) => new Date(t.date).getDate() <= 10);
-  const endMonth = expenses.filter((t) => new Date(t.date).getDate() >= 20);
+  const beginningMonth = expenses.filter((transaction) => (parseMemoryAnalyzerDate(transaction.date)?.getDate() ?? 0) <= 10);
+  const endMonth = expenses.filter((transaction) => (parseMemoryAnalyzerDate(transaction.date)?.getDate() ?? 0) >= 20);
 
   if (beginningMonth.length > endMonth.length * 1.5) {
     patterns.set('monthly_beginning', {
       pattern: 'monthly',
-      avgAmount: beginningMonth.reduce((s, t) => s + t.amount, 0) / beginningMonth.length,
+      avgAmount: average(beginningMonth.map((t) => t.amount)),
       frequency: (beginningMonth.length / expenses.length) * 100,
       categories: [...new Set(beginningMonth.map((t) => t.category))],
       description: 'Você tende a gastar mais no início do mês',
@@ -79,7 +90,7 @@ export function analyzeSpendingPatterns(transactions: Transaction[]): Map<string
   } else if (endMonth.length > beginningMonth.length * 1.5) {
     patterns.set('monthly_end', {
       pattern: 'monthly',
-      avgAmount: endMonth.reduce((s, t) => s + t.amount, 0) / endMonth.length,
+      avgAmount: average(endMonth.map((t) => t.amount)),
       frequency: (endMonth.length / expenses.length) * 100,
       categories: [...new Set(endMonth.map((t) => t.category))],
       description: 'Você tende a gastar mais no final do mês',
@@ -91,28 +102,26 @@ export function analyzeSpendingPatterns(transactions: Transaction[]): Map<string
 
 export function analyzeMerchantCategories(transactions: Transaction[]): Map<string, MerchantCategoryValue> {
   const merchantData = new Map<string, MerchantCategoryValue>();
-  const expenses = transactions.filter((t) => t.type === TransactionType.DESPESA && !t.generated);
+  const expenses = getExpenseTransactions(transactions);
 
-  const merchantGroups = new Map<string, Transaction[]>();
-  for (const tx of expenses) {
-    const merchant = (tx.merchant || tx.description).trim().toLowerCase();
-    if (!merchantGroups.has(merchant)) {
-      merchantGroups.set(merchant, []);
-    }
-    merchantGroups.get(merchant)!.push(tx);
-  }
+  const merchantGroups = groupBy(expenses, (tx) => normalizeMemoryAnalyzerMerchant(tx));
 
   // Analyze each merchant
   for (const [merchant, txs] of merchantGroups) {
     if (txs.length >= 2) {
       // At least 2 transactions to establish pattern
       const totalSpent = txs.reduce((sum, t) => sum + t.amount, 0);
-      const avgAmount = totalSpent / txs.length;
+      const avgAmount = average(txs.map((t) => t.amount));
       const category = txs[0].category || Category.PESSOAL;
-      
+
       // Calculate monthly frequency
-      const firstDate = Math.min(...txs.map((t) => new Date(t.date).getTime()));
-      const lastDate = Math.max(...txs.map((t) => new Date(t.date).getTime()));
+      const parsedDates = txs
+        .map((t) => parseMemoryAnalyzerDate(t.date))
+        .filter((d): d is Date => d !== null)
+        .map((d) => d.getTime());
+      if (parsedDates.length === 0) continue;
+      const firstDate = Math.min(...parsedDates);
+      const lastDate = Math.max(...parsedDates);
       const monthsSpan = Math.max(1, (lastDate - firstDate) / (30 * 24 * 60 * 60 * 1000));
       const frequency = txs.length / monthsSpan;
 
@@ -132,12 +141,12 @@ export function analyzeMerchantCategories(transactions: Transaction[]): Map<stri
 
 export function analyzeRecurringExpenses(transactions: Transaction[]): Map<string, RecurringExpenseValue> {
   const recurring = new Map<string, RecurringExpenseValue>();
-  const expenses = transactions.filter((t) => t.type === TransactionType.DESPESA && !t.generated);
+  const expenses = getExpenseTransactions(transactions);
 
   // Group by merchant/description
   const merchantGroups = new Map<string, Transaction[]>();
   for (const tx of expenses) {
-    const key = (tx.merchant || tx.description).trim().toLowerCase();
+    const key = normalizeMemoryAnalyzerMerchant(tx);
     if (!merchantGroups.has(key)) {
       merchantGroups.set(key, []);
     }
@@ -148,19 +157,24 @@ export function analyzeRecurringExpenses(transactions: Transaction[]): Map<strin
   for (const [merchant, txs] of merchantGroups) {
     if (txs.length >= 3) {
       // Need at least 3 occurrences
-      txs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      txs.sort((a, b) => {
+        const left = parseMemoryAnalyzerDate(a.date)?.getTime() ?? 0;
+        const right = parseMemoryAnalyzerDate(b.date)?.getTime() ?? 0;
+        return left - right;
+      });
 
       // Calculate intervals between transactions
       const intervals: number[] = [];
       for (let i = 1; i < txs.length; i++) {
-        const days = (new Date(txs[i].date).getTime() - new Date(txs[i - 1].date).getTime()) / (24 * 60 * 60 * 1000);
+        const current = parseMemoryAnalyzerDate(txs[i].date)?.getTime();
+        const previous = parseMemoryAnalyzerDate(txs[i - 1].date)?.getTime();
+        if (current == null || previous == null) continue;
+        const days = (current - previous) / (24 * 60 * 60 * 1000);
         intervals.push(days);
       }
 
-      const avgInterval = intervals.reduce((sum, d) => sum + d, 0) / intervals.length;
-      const intervalStdDev = Math.sqrt(
-        intervals.reduce((sum, d) => sum + Math.pow(d - avgInterval, 2), 0) / intervals.length
-      );
+      const avgInterval = average(intervals);
+      const intervalStdDev = standardDeviation(intervals);
 
       // If intervals are consistent (low std dev), it's likely recurring
       const isRecurring = intervalStdDev < avgInterval * 0.3; // Within 30% variance
@@ -172,13 +186,14 @@ export function analyzeRecurringExpenses(transactions: Transaction[]): Map<strin
         else frequency = 'yearly';
 
         const amounts = txs.map((t) => t.amount);
-        const avgAmount = amounts.reduce((s, a) => s + a, 0) / amounts.length;
-        const amountStdDev = Math.sqrt(amounts.reduce((s, a) => s + Math.pow(a - avgAmount, 2), 0) / amounts.length);
+        const avgAmount = average(amounts);
+        const amountStdDev = standardDeviation(amounts);
 
         const isSubscription = amountStdDev < avgAmount * 0.1; // Amount varies less than 10%
 
         // Predict next date
-        const lastDate = new Date(txs[txs.length - 1].date);
+        const lastDate = parseMemoryAnalyzerDate(txs[txs.length - 1].date);
+        if (!lastDate) continue;
         const nextDate = new Date(lastDate.getTime() + avgInterval * 24 * 60 * 60 * 1000);
 
         const confidence = Math.max(0.5, Math.min(1, 1 - intervalStdDev / avgInterval));
@@ -188,7 +203,7 @@ export function analyzeRecurringExpenses(transactions: Transaction[]): Map<strin
           category: txs[0].category || Category.PESSOAL,
           amount: avgAmount,
           frequency,
-          nextExpectedDate: nextDate.toISOString(),
+          nextExpectedDate: formatMemoryAnalyzerDate(nextDate),
           isSubscription,
           confidence,
         });
@@ -201,8 +216,8 @@ export function analyzeRecurringExpenses(transactions: Transaction[]): Map<strin
 
 export function analyzeUserBehavior(transactions: Transaction[]): Map<string, UserBehaviorValue> {
   const behaviors = new Map<string, UserBehaviorValue>();
-  const expenses = transactions.filter((t) => t.type === TransactionType.DESPESA && !t.generated);
-  const income = transactions.filter((t) => t.type === TransactionType.RECEITA && !t.generated);
+  const expenses = getExpenseTransactions(transactions);
+  const income = getIncomeTransactions(transactions);
 
   if (expenses.length === 0) return behaviors;
 
@@ -219,9 +234,14 @@ export function analyzeUserBehavior(transactions: Transaction[]): Map<string, Us
   }
 
   // Budget conscious (consistent spending, tracks expenses)
-  const uniqueDays = new Set(expenses.map((t) => new Date(t.date).toDateString())).size;
+  const uniqueDays = new Set(
+    expenses
+      .map((t) => parseMemoryAnalyzerDate(t.date))
+      .filter((d): d is Date => d !== null)
+      .map((d) => d.toDateString()),
+  ).size;
   const avgPerDay = expenses.length / Math.max(1, uniqueDays);
-  
+
   if (avgPerDay < 3 && expenses.length > 10) {
     behaviors.set('budget_conscious', {
       behavior: 'budget_conscious',
@@ -232,7 +252,7 @@ export function analyzeUserBehavior(transactions: Transaction[]): Map<string, Us
 
   // Weekend spender
   const weekendCount = expenses.filter((t) => {
-    const day = new Date(t.date).getDay();
+    const day = getMemoryAnalyzerDayOfWeek(t) ?? -1;
     return day === 0 || day === 6;
   }).length;
   const weekendRatio = (weekendCount / expenses.length) * 100;
@@ -248,10 +268,10 @@ export function analyzeUserBehavior(transactions: Transaction[]): Map<string, Us
   // Savings behavior
   const totalIncome = income.reduce((s, t) => s + t.amount, 0);
   const totalExpenses = expenses.reduce((s, t) => s + t.amount, 0);
-  
+
   if (totalIncome > 0) {
     const savingsRate = ((totalIncome - totalExpenses) / totalIncome) * 100;
-    
+
     if (savingsRate > 20) {
       behaviors.set('budget_conscious', {
         behavior: 'budget_conscious',
@@ -265,8 +285,8 @@ export function analyzeUserBehavior(transactions: Transaction[]): Map<string, Us
 }
 
 export function analyzeFinancialProfile(transactions: Transaction[]): FinancialProfileValue | null {
-  const expenses = transactions.filter((t) => t.type === TransactionType.DESPESA && !t.generated);
-  const income = transactions.filter((t) => t.type === TransactionType.RECEITA && !t.generated);
+  const expenses = getExpenseTransactions(transactions);
+  const income = getIncomeTransactions(transactions);
 
   if (income.length === 0 || expenses.length === 0) return null;
 
@@ -299,29 +319,29 @@ export function analyzeFinancialProfile(transactions: Transaction[]): FinancialP
 
 export function analyzeIncomePatterns(transactions: Transaction[]): Map<string, IncomePatternValue> {
   const patterns = new Map<string, IncomePatternValue>();
-  const income = transactions.filter((t) => t.type === TransactionType.RECEITA && !t.generated);
+  const income = getIncomeTransactions(transactions);
 
-  const sourceGroups = new Map<string, Transaction[]>();
-  for (const tx of income) {
-    const source = (tx.merchant || tx.description).trim().toLowerCase();
-    if (!sourceGroups.has(source)) {
-      sourceGroups.set(source, []);
-    }
-    sourceGroups.get(source)!.push(tx);
-  }
+  const sourceGroups = groupBy(income, (tx) => normalizeMemoryAnalyzerMerchant(tx));
 
   for (const [source, txs] of sourceGroups) {
     if (txs.length >= 2) {
-      txs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      txs.sort((a, b) => {
+        const left = parseMemoryAnalyzerDate(a.date)?.getTime() ?? 0;
+        const right = parseMemoryAnalyzerDate(b.date)?.getTime() ?? 0;
+        return left - right;
+      });
 
       const intervals: number[] = [];
       for (let i = 1; i < txs.length; i++) {
-        const days = (new Date(txs[i].date).getTime() - new Date(txs[i - 1].date).getTime()) / (24 * 60 * 60 * 1000);
+        const current = parseMemoryAnalyzerDate(txs[i].date)?.getTime();
+        const previous = parseMemoryAnalyzerDate(txs[i - 1].date)?.getTime();
+        if (current == null || previous == null) continue;
+        const days = (current - previous) / (24 * 60 * 60 * 1000);
         intervals.push(days);
       }
 
-      const avgInterval = intervals.reduce((sum, d) => sum + d, 0) / intervals.length;
-      const intervalStdDev = Math.sqrt(intervals.reduce((sum, d) => sum + Math.pow(d - avgInterval, 2), 0) / intervals.length);
+      const avgInterval = average(intervals);
+      const intervalStdDev = standardDeviation(intervals);
 
       const isStable = intervalStdDev < avgInterval * 0.2;
 
@@ -329,11 +349,11 @@ export function analyzeIncomePatterns(transactions: Transaction[]): Map<string, 
       if (avgInterval <= 10) frequency = 'weekly';
       else if (avgInterval <= 17) frequency = 'biweekly';
 
-      const avgAmount = txs.reduce((s, t) => s + t.amount, 0) / txs.length;
+      const avgAmount = average(txs.map((t) => t.amount));
 
       // Determine if it's salary (regular + stable amount)
       const amounts = txs.map((t) => t.amount);
-      const amountStdDev = Math.sqrt(amounts.reduce((s, a) => s + Math.pow(a - avgAmount, 2), 0) / amounts.length);
+      const amountStdDev = standardDeviation(amounts);
       const isSalary = isStable && amountStdDev < avgAmount * 0.1;
 
       patterns.set(source, {
@@ -351,24 +371,20 @@ export function analyzeIncomePatterns(transactions: Transaction[]): Map<string, 
 
 export function analyzeTimePatterns(transactions: Transaction[]): Map<string, TimePatternValue> {
   const patterns = new Map<string, TimePatternValue>();
-  const expenses = transactions.filter((t) => t.type === TransactionType.DESPESA && !t.generated);
+  const expenses = getExpenseTransactions(transactions);
 
   // Group by day of week
-  const dayGroups = new Map<number, Transaction[]>();
-  for (const tx of expenses) {
-    const day = new Date(tx.date).getDay();
-    if (!dayGroups.has(day)) {
-      dayGroups.set(day, []);
-    }
-    dayGroups.get(day)!.push(tx);
-  }
+  const dayGroups = groupBy(
+    expenses.filter((tx) => getMemoryAnalyzerDayOfWeek(tx) !== null),
+    (tx) => getMemoryAnalyzerDayOfWeek(tx) ?? -1,
+  );
 
   for (const [day, txs] of dayGroups) {
     if (txs.length >= 3) {
-      const avgAmount = txs.reduce((s, t) => s + t.amount, 0) / txs.length;
+      const avgAmount = average(txs.map((t) => t.amount));
       const frequency = txs.length;
       const categories = [...new Set(txs.map((t) => t.category))];
-      const avgHour = txs.reduce((sum, t) => sum + new Date(t.date).getHours(), 0) / txs.length;
+      const avgHour = average(txs.map((t) => parseMemoryAnalyzerDate(t.date)?.getHours() ?? 0));
       const timeframe: TimePatternValue['timeframe'] = avgHour < 12
         ? 'morning'
         : avgHour < 18
@@ -376,8 +392,6 @@ export function analyzeTimePatterns(transactions: Transaction[]): Map<string, Ti
           : avgHour < 22
             ? 'evening'
             : 'night';
-
-      const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
       patterns.set(`day_${day}`, {
         timeframe,

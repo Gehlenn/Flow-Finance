@@ -1,4 +1,4 @@
-import fs from 'node:fs/promises';
+﻿import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const repoRoot = process.cwd();
@@ -43,11 +43,12 @@ async function main() {
   }
 
   for (const result of results) {
-    console.log(`${result.status.toUpperCase()}: ${path.relative(repoRoot, result.sourcePath)} -> ${path.relative(repoRoot, result.targetPath)}`);
+    process.stdout.write(`${result.status.toUpperCase()}: ${path.relative(repoRoot, result.sourcePath)} -> ${path.relative(repoRoot, result.targetPath)}\n`);
   }
 }
 
 main().catch((error) => {
-  console.error(error);
+  process.stderr.write(`${error instanceof Error ? error.stack || error.message : String(error)}\n`);
   process.exitCode = 1;
 });
+

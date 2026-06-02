@@ -101,13 +101,13 @@ const taskId = aiTaskQueue.enqueueInsightGeneration(userId, accounts, transactio
 // Via eventos
 window.addEventListener('ai-task-progress', (e: CustomEvent) => {
   const { taskId, status, progress, message } = e.detail;
-  console.log(`Task ${taskId}: ${message} (${progress}%)`);
+  // Atualize a UI de progresso com taskId, mensagem e percentuais
 });
 
 window.addEventListener('ai-task-result', (e: CustomEvent) => {
   const { taskId, success, data, error, executionTime } = e.detail;
   if (success) {
-    console.log('Resultado:', data);
+    // Renderize o resultado da tarefa na interface
   }
 });
 
@@ -176,14 +176,14 @@ aiTaskQueue.enqueueTask(type, payload, userId, options?): string
 // Consultar
 aiTaskQueue.getTask(taskId): AITask | undefined
 aiTaskQueue.getTaskStatus(taskId): AITaskStatus | null
-aiTaskQueue.getTaskResult(taskId): any | null
+aiTaskQueue.getTaskResult(taskId): unknown | null
 
 // Gerenciar
 aiTaskQueue.cancelTask(taskId): boolean
 aiTaskQueue.clearCompletedTasks(userId?): void
 
 // Estatísticas
-aiTaskQueue.getQueueStats(): { pending, processing, completed, failed }
+aiTaskQueue.getQueueStats(): { pending, processing, completed, failed, cancelled }
 aiTaskQueue.getUserTasks(userId): AITask[]
 
 // Métodos de conveniência
@@ -199,7 +199,13 @@ aiTaskQueue.enqueueRiskAnalysis(userId, accounts, transactions): string
 
 ```typescript
 // Tarefa enfileirada
-'ai-task-enqueued': { taskId, type, priority }
+'ai-task-enqueued': { taskId, type, status, priority, userId }
+
+// Tarefa atualizada
+'ai-task-updated': { taskId, status, userId }
+
+// Fila limpa
+'ai-task-queue-cleared': { userId, scope }
 
 // Progresso da tarefa
 'ai-task-progress': { taskId, status, progress, message, timestamp }
@@ -284,10 +290,10 @@ aiTaskQueue.initialize(); // Inicia worker automaticamente
 
 ```typescript
 // Ver todas as tarefas
-console.log(taskStore.getAllTasks());
+taskStore.getAllTasks();
 
 // Ver estatísticas
-console.log(aiTaskQueue.getQueueStats());
+aiTaskQueue.getQueueStats();
 
 // Limpar fila
 taskStore.clear();

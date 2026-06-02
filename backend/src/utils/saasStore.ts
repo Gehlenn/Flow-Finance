@@ -8,6 +8,23 @@ import {
   saveJsonState,
   saveWorkspaceSaasState,
 } from '../services/persistence/postgresStateStore';
+import {
+  appendScopedBillingHook,
+  areLegacyStateBlobsDisabled,
+  cloneState,
+  cloneUsageSnapshot,
+  currentMonthKey,
+  EMPTY_STATE,
+  getMonthlyUsage,
+  getStoreFilePath,
+  incrementScopedUsage,
+  normalizeBillingHookMap,
+  normalizeUsageEventMap,
+  normalizeUsageMap,
+  persistLegacyState,
+  setScopedUsage,
+  logLegacyStoreLoadFailure,
+} from './saasStoreHelpers';
 
 export type ResourceKind = 'transactions' | 'aiQueries' | 'bankConnections';
 
@@ -58,115 +75,15 @@ type SaasStoreState = {
   userPlans: Record<string, PlanId>;
 };
 
-const EMPTY_USAGE: UsageSnapshot = {
-  transactions: 0,
-  aiQueries: 0,
-  bankConnections: 0,
-};
-
-const EMPTY_STATE: SaasStoreState = {
-  usageByWorkspace: {},
-  usageByUser: {},
-  billingHooksByWorkspace: {},
-  billingHooksByUser: {},
-  usageEventsByWorkspace: {},
-  userPlans: {},
-};
-
 const DEFAULT_STORE_FILE = path.resolve(__dirname, '../../data/saas-store.json');
 const POSTGRES_STATE_KEY = 'saas_store_state';
 
 let stateCache: SaasStoreState | null = null;
 
-function areLegacyStateBlobsDisabled(): boolean {
-  return String(process.env.DISABLE_LEGACY_STATE_BLOBS || '').toLowerCase() === 'true';
-}
-
 export const PLAN_LIMITS: Record<PlanId, UsageSnapshot> = {
   free: { transactions: 500, aiQueries: 100, bankConnections: 1 },
   pro: { transactions: 10000, aiQueries: 5000, bankConnections: 20 },
 };
-
-function cloneUsageSnapshot(snapshot?: Partial<UsageSnapshot>): UsageSnapshot {
-  return {
-    transactions: snapshot?.transactions ?? 0,
-    aiQueries: snapshot?.aiQueries ?? 0,
-    bankConnections: snapshot?.bankConnections ?? 0,
-  };
-}
-
-function cloneUsageMap(input: ScopedUsageMap): ScopedUsageMap {
-  return Object.fromEntries(
-    Object.entries(input).map(([scopeId, usageByMonth]) => [
-      scopeId,
-      Object.fromEntries(
-        Object.entries(usageByMonth).map(([month, snapshot]) => [month, cloneUsageSnapshot(snapshot)]),
-      ),
-    ]),
-  );
-}
-
-function cloneBillingHookMap(input: ScopedBillingHookMap): ScopedBillingHookMap {
-  return Object.fromEntries(
-    Object.entries(input).map(([scopeId, hooks]) => [
-      scopeId,
-      hooks.map((hook) => ({ ...hook, metadata: hook.metadata ? { ...hook.metadata } : undefined })),
-    ]),
-  );
-}
-
-function cloneState(state: SaasStoreState): SaasStoreState {
-  return {
-    usageByWorkspace: cloneUsageMap(state.usageByWorkspace),
-    usageByUser: cloneUsageMap(state.usageByUser),
-    billingHooksByWorkspace: cloneBillingHookMap(state.billingHooksByWorkspace),
-    billingHooksByUser: cloneBillingHookMap(state.billingHooksByUser),
-    usageEventsByWorkspace: Object.fromEntries(
-      Object.entries(state.usageEventsByWorkspace).map(([workspaceId, events]) => [
-        workspaceId,
-        events.map((event) => ({ ...event, metadata: event.metadata ? { ...event.metadata } : undefined })),
-      ]),
-    ),
-    userPlans: { ...state.userPlans },
-  };
-}
-
-function getStoreFilePath(): string {
-  return process.env.SAAS_STORE_FILE || DEFAULT_STORE_FILE;
-}
-
-function ensureStoreDirExists(filePath: string): void {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-}
-
-function normalizeUsageMap(input?: ScopedUsageMap): ScopedUsageMap {
-  return Object.fromEntries(
-    Object.entries(input ?? {}).map(([scopeId, usageByMonth]) => [
-      scopeId,
-      Object.fromEntries(
-        Object.entries(usageByMonth ?? {}).map(([month, snapshot]) => [month, cloneUsageSnapshot(snapshot)]),
-      ),
-    ]),
-  );
-}
-
-function normalizeBillingHookMap(input?: ScopedBillingHookMap): ScopedBillingHookMap {
-  return Object.fromEntries(
-    Object.entries(input ?? {}).map(([scopeId, hooks]) => [
-      scopeId,
-      Array.isArray(hooks) ? hooks.map((hook) => ({ ...hook })) : [],
-    ]),
-  );
-}
-
-function normalizeUsageEventMap(input?: Record<string, WorkspaceUsageEvent[]>): Record<string, WorkspaceUsageEvent[]> {
-  return Object.fromEntries(
-    Object.entries(input ?? {}).map(([workspaceId, events]) => [
-      workspaceId,
-      Array.isArray(events) ? events.map((event) => ({ ...event })) : [],
-    ]),
-  );
-}
 
 function loadState(): SaasStoreState {
   if (stateCache) {
@@ -178,11 +95,10 @@ function loadState(): SaasStoreState {
     return stateCache;
   }
 
-  const filePath = getStoreFilePath();
+  const filePath = getStoreFilePath(DEFAULT_STORE_FILE);
 
   try {
     if (!fs.existsSync(filePath)) {
-      ensureStoreDirExists(filePath);
       stateCache = cloneState(EMPTY_STATE);
       return stateCache;
     }
@@ -204,7 +120,8 @@ function loadState(): SaasStoreState {
         Object.entries(parsed.userPlans ?? {}).filter(([, plan]) => plan === 'free' || plan === 'pro'),
       ) as Record<string, PlanId>,
     };
-  } catch {
+  } catch (error) {
+    logLegacyStoreLoadFailure(error, filePath);
     stateCache = cloneState(EMPTY_STATE);
   }
 
@@ -214,9 +131,8 @@ function loadState(): SaasStoreState {
 async function persistState(state: SaasStoreState): Promise<void> {
   stateCache = cloneState(state);
   if (!areLegacyStateBlobsDisabled()) {
-    const filePath = getStoreFilePath();
-    ensureStoreDirExists(filePath);
-    fs.writeFileSync(filePath, JSON.stringify(state, null, 2), 'utf8');
+    const filePath = getStoreFilePath(DEFAULT_STORE_FILE);
+    persistLegacyState(filePath, state);
   }
   // Postgres is the source of truth for billing — this write is blocking and must succeed.
   await saveWorkspaceSaasState({
@@ -242,56 +158,17 @@ async function persistState(state: SaasStoreState): Promise<void> {
   // Legacy JSON blob — best-effort backup only, not source of truth.
   if (!areLegacyStateBlobsDisabled()) {
     void saveJsonState(POSTGRES_STATE_KEY, state as unknown as Record<string, unknown>).catch((error) => {
-      logger.warn({ error }, 'Failed to persist legacy SaaS blob to Postgres');
+      logger.warn({
+        error,
+        key: POSTGRES_STATE_KEY,
+        workspaceCount: Object.keys(state.usageByWorkspace).length,
+        userCount: Object.keys(state.usageByUser).length,
+        billingHookWorkspaceCount: Object.keys(state.billingHooksByWorkspace).length,
+        usageEventWorkspaceCount: Object.keys(state.usageEventsByWorkspace).length,
+        fallback: 'saas-legacy-json-backup-failed',
+      }, 'Failed to persist legacy SaaS blob to Postgres');
     });
   }
-}
-
-function currentMonthKey(): string {
-  const currentDate = new Date();
-  return `${currentDate.getUTCFullYear()}-${String(currentDate.getUTCMonth() + 1).padStart(2, '0')}`;
-}
-
-function getMonthlyUsage(scopedUsage: ScopedUsageMap, scopeId: string, monthKey: string): UsageSnapshot {
-  return cloneUsageSnapshot(scopedUsage[scopeId]?.[monthKey] ?? EMPTY_USAGE);
-}
-
-function setScopedUsage(scopedUsage: ScopedUsageMap, scopeId: string, usage: Record<string, UsageSnapshot>): ScopedUsageMap {
-  return {
-    ...scopedUsage,
-    [scopeId]: Object.fromEntries(
-      Object.entries(usage).map(([month, snapshot]) => [month, cloneUsageSnapshot(snapshot)]),
-    ),
-  };
-}
-
-function incrementScopedUsage(scopedUsage: ScopedUsageMap, scopeId: string, resource: ResourceKind, amount = 1): {
-  nextUsageByScope: ScopedUsageMap;
-  total: number;
-} {
-  const monthKey = currentMonthKey();
-  const existingUsage = scopedUsage[scopeId] ?? {};
-  const nextSnapshot = cloneUsageSnapshot(existingUsage[monthKey] ?? EMPTY_USAGE);
-  nextSnapshot[resource] += amount;
-
-  return {
-    nextUsageByScope: {
-      ...scopedUsage,
-      [scopeId]: {
-        ...existingUsage,
-        [monthKey]: nextSnapshot,
-      },
-    },
-    total: nextSnapshot[resource],
-  };
-}
-
-function appendScopedBillingHook(scopedHooks: ScopedBillingHookMap, scopeId: string, payload: BillingHookPayload): ScopedBillingHookMap {
-  const currentHooks = scopedHooks[scopeId] ?? [];
-  return {
-    ...scopedHooks,
-    [scopeId]: [...currentHooks, payload].slice(-1000),
-  };
 }
 
 export function getUserPlan(userId: string): PlanId {
@@ -475,7 +352,7 @@ export function isWorkspaceWithinLimit(workspaceId: string, resource: ResourceKi
 export function resetSaasStoreForTests(): void {
   stateCache = cloneState(EMPTY_STATE);
 
-  const filePath = getStoreFilePath();
+  const filePath = getStoreFilePath(DEFAULT_STORE_FILE);
   if (fs.existsSync(filePath)) {
     fs.rmSync(filePath, { force: true });
   }
@@ -652,6 +529,13 @@ export async function initializeSaasStorePersistence(): Promise<void> {
       ]),
     ),
   }).catch((error) => {
-    logger.warn({ error }, 'Failed to backfill normalized SaaS store to Postgres');
+    logger.warn({
+      error,
+      key: POSTGRES_STATE_KEY,
+      workspaceCount: Object.keys(stateCache?.usageByWorkspace ?? {}).length,
+      billingHookWorkspaceCount: Object.keys(stateCache?.billingHooksByWorkspace ?? {}).length,
+      usageEventWorkspaceCount: Object.keys(stateCache?.usageEventsByWorkspace ?? {}).length,
+      fallback: 'saas-backfill-to-postgres-failed',
+    }, 'Failed to backfill normalized SaaS store to Postgres');
   });
 }

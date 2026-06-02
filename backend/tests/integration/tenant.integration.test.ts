@@ -1,5 +1,6 @@
 ﻿import request from 'supertest';
 import app from '../../src/index';
+import { createTestAuthorizationHeader } from '../helpers/auth';
 import { getLastWorkspaceForUser, resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
 
 describe('Tenant API', () => {
@@ -19,7 +20,7 @@ describe('Tenant API', () => {
     const ownerUserId = 'owner-1';
     const res = await request(app)
       .post('/api/tenant')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .send({ name: 'Empresa Teste' });
 
     expect(res.status).toBe(201);
@@ -30,12 +31,12 @@ describe('Tenant API', () => {
     const ownerUserId = 'owner-1';
     const created = await request(app)
       .post('/api/tenant')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .send({ name: 'Empresa Teste' });
 
     const res = await request(app)
       .post('/api/tenant/select')
-      .set('Authorization', `Bearer mock-token-for-${ownerUserId}`)
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .send({ tenantId: created.body.workspaceId });
 
     expect(res.status).toBe(200);

@@ -14,6 +14,17 @@ interface TransactionLike {
   date: string;
 }
 
+function parseForecastDate(value: string): Date | null {
+  const trimmed = value.trim();
+  const dateOnlyMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const parsed = new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export function buildMonthlyForecast(transactions: TransactionLike[], months = 6, _userContext?: UserContext): ForecastPoint[] {
   const now = new Date();
   const points: ForecastPoint[] = [];
@@ -24,7 +35,8 @@ export function buildMonthlyForecast(transactions: TransactionLike[], months = 6
     const m = d.getMonth();
 
     const monthTransactions = transactions.filter((t) => {
-      const td = new Date(t.date);
+      const td = parseForecastDate(t.date);
+      if (!td) return false;
       return td.getFullYear() === y && td.getMonth() === m;
     });
 

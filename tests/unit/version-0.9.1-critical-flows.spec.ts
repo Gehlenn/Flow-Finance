@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { GeminiService } from '../../services/geminiService';
+import type { InterpretResponse } from '../../types';
 
 type LocalRef = { collection: string; id: string };
 
@@ -35,21 +36,22 @@ describe('v0.9.1 critical flows', () => {
     const ref = doc({}, 'users', 'u1');
     await setDoc(ref, { transactions: [{ id: 't1', amount: 10 }] }, { merge: true });
 
-    let payload: any;
-    onSnapshot(ref, (snap: any) => {
+    let payload: Record<string, unknown> | undefined;
+    onSnapshot(ref, (snap) => {
       payload = snap.data();
     });
 
-    expect(payload.transactions).toHaveLength(1);
-    expect(payload.transactions[0].amount).toBe(10);
+    const transactions = payload?.transactions as Array<{ amount: number }> | undefined;
+    expect(transactions).toHaveLength(1);
+    expect(transactions?.[0].amount).toBe(10);
   });
 
   it('faz roteamento de intencao de IA para transacoes', async () => {
     const svc = new GeminiService();
-    const spy = vi.spyOn<any, any>(svc as any, 'processSmartInput').mockResolvedValue({
+    const spy = vi.spyOn(GeminiService.prototype, 'processSmartInput').mockResolvedValue({
       intent: 'transaction',
       data: [{ amount: 150, description: 'mercado', category: 'Pessoal', type: 'Despesa' }],
-    });
+    } as InterpretResponse);
 
     const result = await svc.processSmartInput('gastei 150 no mercado');
     expect(result.intent).toBe('transaction');
@@ -63,11 +65,11 @@ describe('v0.9.1 critical flows', () => {
     await setDoc(ref, { balance: 1000 }, { merge: true });
     await setDoc(ref, { balance: 1200 }, { merge: true });
 
-    let payload: any;
-    onSnapshot(ref, (snap: any) => {
+    let payload: Record<string, unknown> | undefined;
+    onSnapshot(ref, (snap) => {
       payload = snap.data();
     });
 
-    expect(payload.balance).toBe(1200);
+    expect((payload?.balance as number) ?? 0).toBe(1200);
   });
 });

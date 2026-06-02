@@ -2,14 +2,23 @@ import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import type { UserConfig } from 'vite';
+import type { InlineConfig } from 'vitest';
 import { resolveManualChunk } from './build/manualChunks';
 
-interface VitestConfigExport extends UserConfig {
-  test: any;
-}
+type VitestConfigExport = UserConfig & { test: NonNullable<InlineConfig['test']> };
+const HTML_MODULE_PRELOAD_ALLOWLIST = [
+  /^assets\/rolldown-runtime-/,
+  /^assets\/vendor-react-/,
+  /^assets\/vendor-react-dom-/,
+  /^assets\/vendor-firebase-/,
+  /^assets\/vendor-icons-/,
+  /^assets\/firebase-/,
+  /^assets\/api\.config-/,
+  /^assets\/types-/,
+];
 
 export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
+  const env = loadEnv(mode, '.', '');
   const appVersion = env.VITE_APP_VERSION || process.env.npm_package_version || '0.9.7';
     const config: VitestConfigExport = {
       server: {
@@ -21,6 +30,15 @@ export default defineConfig(({ mode }) => {
         outDir: 'dist',
         emptyOutDir: true,
         sourcemap: mode === 'development',
+        modulePreload: {
+          resolveDependencies: (_url, deps, context) => {
+            if (context.hostType !== 'html') {
+              return deps;
+            }
+
+            return deps.filter((dep) => HTML_MODULE_PRELOAD_ALLOWLIST.some((pattern) => pattern.test(dep)));
+          },
+        },
         // Chunking para melhor performance mobile
         rollupOptions: {
           output: {
@@ -65,6 +83,7 @@ export default defineConfig(({ mode }) => {
           exclude: [
           '**/node_modules/**',
           '**/dist/**',
+          'qa-exhaustive.spec.mjs',
           '**/tests/e2e/**',
           '**/tests/integration/**',
           '**/backend/tests/integration/**',
@@ -75,5 +94,6 @@ export default defineConfig(({ mode }) => {
     };
     return config;
 });
+
 
 

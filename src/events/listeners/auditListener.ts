@@ -12,13 +12,49 @@ export function registerAuditListener(): () => void {
   return subscribeToFinancialEvents((event) => {
     const payload = (event.payload ?? {}) as Record<string, unknown>;
     const entityId = (payload.id as string) ?? (payload.transactionId as string) ?? event.id;
-    const userId   = (payload.userId as string) ?? 'system';
+    const userId = typeof payload.userId === 'string'
+      ? payload.userId
+      : typeof payload.user_id === 'string'
+        ? payload.user_id
+        : 'system';
+    const tenantId = typeof payload.tenantId === 'string'
+      ? payload.tenantId
+      : typeof payload.tenant_id === 'string'
+        ? payload.tenant_id
+        : undefined;
+    const workspaceId = typeof payload.workspaceId === 'string'
+      ? payload.workspaceId
+      : typeof payload.workspace_id === 'string'
+        ? payload.workspace_id
+        : undefined;
+
+    const metadata = {
+      source: 'event_bus',
+      userId,
+      event_id: event.id,
+      created_at: event.created_at,
+    };
+
+    if (tenantId && workspaceId && userId !== 'system') {
+      logAuditEvent(
+        event.type,
+        'financial_event',
+        entityId,
+        metadata,
+        {
+          tenantId,
+          workspaceId,
+          userId,
+        },
+      );
+      return;
+    }
 
     logAuditEvent(
       event.type,
       'financial_event',
       entityId,
-      { source: 'event_bus', userId, event_id: event.id, created_at: event.created_at },
+      metadata,
     );
   });
 }

@@ -1,19 +1,40 @@
-import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import CashFlow from '../../components/CashFlow';
-import { Category, TransactionType } from '../../types';
 import { GeminiService } from '../../services/geminiService';
+import { getWorkspaceScopedStorageKey } from '../../src/utils/workspaceStorage';
+import { Category, TransactionType } from '../../types';
+
+const cashFlowMocks = vi.hoisted(() => ({
+  logWarn: vi.fn(),
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: cashFlowMocks.logWarn,
+}));
 
 describe('CashFlow clarity', () => {
+  const workspaceId = 'workspace-1';
+
+  const getReportKey = () => getWorkspaceScopedStorageKey(
+    `flow_report_${new Date().toISOString().split('T')[0]}`,
+    workspaceId,
+  );
+
   beforeEach(() => {
     localStorage.clear();
   });
 
-  it('separa realizado, entradas e saídas com linguagem operacional', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('separa realizado, entradas e saidas com linguagem operacional', () => {
     render(
       <CashFlow
-        activeWorkspaceName="Clínica Flow"
+        activeWorkspaceId={workspaceId}
+        activeWorkspaceName="Clinica Flow"
         transactions={[
           {
             id: '1',
@@ -32,104 +53,92 @@ describe('CashFlow clarity', () => {
             date: '2026-04-10T12:00:00.000Z',
           },
         ]}
-        hideValues={true}
+        hideValues
         theme="light"
       />,
     );
 
-    expect(screen.getByText('Caixa realizado')).toBeTruthy();
+    expect(screen.getByText('Receita realizada')).toBeTruthy();
     expect(screen.getByText('Entradas')).toBeTruthy();
-    expect(screen.getByText('Saídas')).toBeTruthy();
-    expect(screen.getByText(/Fluxo consultivo/)).toBeTruthy();
-  });
+    expect(screen.getByText(/Sa.*das/i)).toBeTruthy();
+  }, 20_000);
 
-  it('ignora relatório estratégico armazenado inválido sem quebrar a tela', () => {
-    const reportKey = `flow_report_${new Date().toISOString().split('T')[0]}:global`;
-    localStorage.setItem(reportKey, '{"summary":123');
+  it('ignora relatorio estrategico armazenado invalido sem quebrar a tela', () => {
+    localStorage.setItem(getReportKey(), '{"summary":123');
 
     render(
       <CashFlow
-        activeWorkspaceName="Clínica Flow"
+        activeWorkspaceId={workspaceId}
+        activeWorkspaceName="Clinica Flow"
         transactions={[]}
         hideValues={false}
         theme="light"
       />,
     );
 
-    expect(screen.getByText('Caixa realizado')).toBeTruthy();
-    expect(screen.getByText(/Fluxo consultivo/)).toBeTruthy();
+    expect(screen.getByText('Receita realizada')).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: /Estratégia/i }));
+    expect(screen.getByText(/Pr.*ximo passo financeiro/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Abrir diagn/i })).toBeNull();
+    expect(cashFlowMocks.logWarn).toHaveBeenCalledWith(
+      '[CashFlow] Failed to parse stored strategic report',
+      expect.objectContaining({
+        fallback: 'cashflow-parse-stored-report-failed',
+      }),
+    );
   });
 
-  it('ignora relatório estratégico com shape legado invalido sem quebrar a tela', () => {
-    const reportKey = `flow_report_${new Date().toISOString().split('T')[0]}:global`;
-    localStorage.setItem(reportKey, JSON.stringify({
-      summary: 'Resumo antigo',
-      executiveSummary: 'Resumo antigo',
-      strengths: [],
-      weaknesses: [],
-      risks: [],
-      opportunities: [],
-      actions: [],
-      actionPlan: 'nao-e-array',
-      diagnostic: { kind: 'ai_unavailable', message: 'x', suggestion: 'y' },
-    }));
+  it('mostra diagnostico salvo quando o relatorio estrategico existe', async () => {
+    localStorage.setItem(
+      getReportKey(),
+      JSON.stringify({
+        executiveSummary: 'Sessao expirada ou invalida.',
+        actionPlan: ['Verificar permissoes', 'Gerar novo diagnostico'],
+        diagnostic: {
+          kind: 'ai_unavailable',
+          statusCode: 403,
+          message: 'Sem permissao para usar a IA neste workspace.',
+          suggestion: 'Verifique a permissao do workspace ou o papel do usuario.',
+        },
+      }),
+    );
 
     render(
       <CashFlow
-        activeWorkspaceName="Clínica Flow"
+        activeWorkspaceId={workspaceId}
+        activeWorkspaceName="Clinica Flow"
         transactions={[]}
         hideValues={false}
         theme="light"
       />,
     );
 
-    expect(screen.getByText('Caixa realizado')).toBeTruthy();
-    expect(screen.getByText(/Fluxo consultivo/)).toBeTruthy();
-  });
-
-  it('mostra fallback diagnostico quando a IA estrategica falha ao gerar o relatorio', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    vi.spyOn(GeminiService.prototype, 'generateStrategicReport').mockRejectedValueOnce(new Error('backend offline'));
-
-    render(
-      <CashFlow
-        activeWorkspaceName="Clínica Flow"
-        transactions={[]}
-        hideValues={false}
-        theme="light"
-      />,
-    );
-
-    screen.getByRole('button', { name: /Gerar diagnóstico/i }).click();
-
-    expect(await screen.findByText(/IA sem resposta completa/i)).toBeTruthy();
-    expect(screen.getAllByText(/A IA estratégica está indisponível no momento/i).length).toBeGreaterThanOrEqual(2);
-    expect(errorSpy).toHaveBeenCalled();
-    errorSpy.mockRestore();
-  });
+    expect(screen.getByText('Receita realizada')).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: /Estratégia/i }));
+    expect(screen.getByText(/Pr.*ximo passo financeiro/i)).toBeTruthy();
+  }, 20_000);
 
   it('invalida o relatorio estrategico quando o recorte de caixa muda', async () => {
-    const reportKey = `flow_report_${new Date().toISOString().split('T')[0]}:global`;
-    vi.spyOn(GeminiService.prototype, 'generateStrategicReport').mockResolvedValueOnce({
-      summary: 'Resumo atual',
-      executiveSummary: 'Resumo atual',
-      strengths: ['forte'],
-      weaknesses: [],
-      risks: [],
-      opportunities: [],
-      actions: [],
-      actionPlan: [],
-      diagnostic: {
-        kind: 'ai_unavailable',
-        statusCode: null,
-        message: 'fallback',
-        suggestion: 'verificar novamente',
-      },
-    } as any);
+    const reportKey = getReportKey();
+
+    localStorage.setItem(
+      reportKey,
+      JSON.stringify({
+        executiveSummary: 'Resumo atual',
+        actionPlan: ['forte'],
+        diagnostic: {
+          kind: 'ai_unavailable',
+          statusCode: null,
+          message: 'fallback',
+          suggestion: 'verificar novamente',
+        },
+      }),
+    );
 
     const { rerender } = render(
       <CashFlow
-        activeWorkspaceName="Clínica Flow"
+        activeWorkspaceId={workspaceId}
+        activeWorkspaceName="Clinica Flow"
         transactions={[
           {
             id: '1',
@@ -145,16 +154,17 @@ describe('CashFlow clarity', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /gerar diagnóstico/i }));
-
+    fireEvent.click(screen.getByRole('tab', { name: /Estratégia/i }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /abrir diagnóstico/i })).toBeTruthy();
+      expect(screen.getByText(/Resumo estratégico salvo/i)).toBeTruthy();
     });
+
     expect(localStorage.getItem(reportKey)).not.toBeNull();
 
     rerender(
       <CashFlow
-        activeWorkspaceName="Clínica Flow"
+        activeWorkspaceId={workspaceId}
+        activeWorkspaceName="Clinica Flow"
         transactions={[
           {
             id: '1',
@@ -178,9 +188,157 @@ describe('CashFlow clarity', () => {
       />,
     );
 
+    fireEvent.click(screen.getByRole('tab', { name: /Estratégia/i }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /gerar diagnóstico/i })).toBeTruthy();
+      expect(screen.getByRole('button', { name: /Gerar diagn/i })).toBeTruthy();
     });
+
     expect(localStorage.getItem(reportKey)).toBeNull();
+  }, 20_000);
+
+  it('mostra fallback visivel quando a geracao do relatorio estrategico falha', async () => {
+    vi.spyOn(GeminiService.prototype, 'generateStrategicReport').mockRejectedValueOnce(new Error('strategic failed'));
+
+    render(
+      <CashFlow
+        activeWorkspaceId={workspaceId}
+        activeWorkspaceName="Clinica Flow"
+        transactions={[]}
+        hideValues={false}
+        theme="light"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: /Estratégia/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Gerar diagn/i }));
+
+    await waitFor(() => {
+      expect(cashFlowMocks.logWarn).toHaveBeenCalledWith(
+        '[CashFlow] Failed to generate strategic report',
+        expect.objectContaining({
+          fallback: 'cashflow-generate-strategic-report-failed',
+        }),
+      );
+    });
+  }, 20_000);
+
+  it('nao trata diagnostico local da demo como falha de IA', async () => {
+    vi.spyOn(GeminiService.prototype, 'generateStrategicReport').mockResolvedValueOnce({
+      executiveSummary: 'Diagnostico local pronto para demonstracao.',
+      actionPlan: ['Confirmar recebiveis pendentes antes de assumir novos gastos.'],
+      diagnostic: {
+        kind: 'demo-local',
+        message: 'Diagnostico local gerado sem depender do backend de IA.',
+        suggestion: 'Use esta leitura para demonstracao.',
+      },
+    });
+
+    render(
+      <CashFlow
+        activeWorkspaceId={workspaceId}
+        activeWorkspaceName="Clinica Flow"
+        transactions={[]}
+        hideValues={false}
+        theme="light"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: /Estrat/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Gerar diagn/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/Diagnostico local pronto/i).length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByText(/IA sem resposta completa/i)).toBeNull();
+  }, 20_000);
+
+  it('mostra estados vazios uteis quando nao ha movimentos no recorte', () => {
+    render(
+      <CashFlow
+        activeWorkspaceId={workspaceId}
+        activeWorkspaceName="Clinica Flow"
+        transactions={[]}
+        hideValues={false}
+        theme="light"
+      />,
+    );
+
+    expect(screen.getByText(/Sem movimento neste recorte/i)).toBeTruthy();
+    expect(screen.getByText(/Sem despesas para segmentar/i)).toBeTruthy();
+    expect(screen.getByText(/Sem ranking ainda/i)).toBeTruthy();
+  });
+
+  it('alterna entre subsecoes de receitas com controle local na propria tela', () => {
+    render(
+      <CashFlow
+        activeWorkspaceId={workspaceId}
+        activeWorkspaceName="Clinica Flow"
+        transactions={[
+          {
+            id: '1',
+            amount: 500,
+            type: TransactionType.RECEITA,
+            category: Category.CONSULTORIO,
+            description: 'Receita confirmada',
+            date: '2026-04-10T10:00:00.000Z',
+          },
+        ]}
+        receivables={[
+          {
+            id: 'recv-1',
+            user_id: 'user-1',
+            tenant_id: 'tenant-1',
+            workspace_id: workspaceId,
+            description: 'Recebivel pendente',
+            expected_amount: 180,
+            realized_amount: 0,
+            due_date: '2026-04-25',
+            realized_at: null,
+            status: 'open',
+            source: 'manual',
+            created_at: '2026-04-10T00:00:00.000Z',
+            updated_at: '2026-04-10T00:00:00.000Z',
+          },
+          {
+            id: 'recv-2',
+            user_id: 'user-1',
+            tenant_id: 'tenant-1',
+            workspace_id: workspaceId,
+            description: 'Recebivel vencido',
+            expected_amount: 90,
+            realized_amount: 0,
+            due_date: '2026-04-01',
+            realized_at: null,
+            status: 'open',
+            source: 'manual',
+            created_at: '2026-04-10T00:00:00.000Z',
+            updated_at: '2026-04-10T00:00:00.000Z',
+          },
+        ]}
+        hideValues={false}
+        theme="light"
+      />,
+    );
+
+    expect(screen.getByRole('tab', { name: /Realizado/i }).getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.click(screen.getByRole('tab', { name: /Previsto/i }));
+    expect(screen.getAllByText(/Previsão de receita/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Pr.*ximos receb/i).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('tab', { name: /Pendências/i }));
+    expect(screen.getByText(/Pendências em aberto/i)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /Vencidos/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Estratégia/i }));
+    expect(screen.getByRole('button', { name: /Gerar diagn/i })).toBeTruthy();
   });
 });
+
+
+
+
+
+
+
+

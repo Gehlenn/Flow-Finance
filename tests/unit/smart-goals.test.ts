@@ -67,6 +67,25 @@ describe('assessGoalFeasibility', () => {
     expect(result.feasibility).toBe('inviavel');
     expect(result.shortfallPerMonth).toBe(500);
   });
+
+  it('trata targetDate date-only como data valida e data quebrada como sem targetDate', () => {
+    const dateOnlyGoal: SmartGoal = {
+      targetAmount: 6000,
+      currentAmount: 0,
+      targetDate: '2026-04-10',
+    };
+    const invalidGoal: SmartGoal = {
+      targetAmount: 6000,
+      currentAmount: 0,
+      targetDate: 'invalid-date',
+    };
+
+    const dateOnlyResult = assessGoalFeasibility(dateOnlyGoal, 600);
+    const invalidResult = assessGoalFeasibility(invalidGoal, 600);
+
+    expect(dateOnlyResult.recommendedMonthlySavings).not.toBeNull();
+    expect(invalidResult.recommendedMonthlySavings).toBeNull();
+  });
 });
 
 // ─── recommendGoal ───────────────────────────────────────────────────────────

@@ -45,9 +45,13 @@ vi.mock('firebase/firestore', () => ({
 }));
 
 import {
+  getCurrentMonthKey,
   getWorkspaceBillingOverview,
+  incrementWorkspaceUsage,
   listWorkspaceBillingHooks,
   readWorkspaceUsage,
+  resetWorkspaceUsage,
+  recordWorkspaceBillingHook,
   updateWorkspacePlan,
 } from '../../src/services/firestoreBillingStore';
 
@@ -105,6 +109,34 @@ describe('firestoreBillingStore', () => {
     expect(billingMocks.writeAuditLogEventMock).toHaveBeenCalled();
   });
 
+  it('keeps billing hook context fields stable even when payload carries conflicting workspace data', async () => {
+    const hook = await recordWorkspaceBillingHook({
+      tenantId: 'tenant-1',
+      workspaceId: 'ws-1',
+      payload: {
+        userId: 'user-1',
+        workspaceId: 'ws-legacy',
+        plan: 'pro',
+        event: 'plan_changed',
+        resource: 'transactions',
+        amount: 0,
+        at: '2026-04-02T00:00:00.000Z',
+      },
+    });
+
+    expect(hook.workspaceId).toBe('ws-1');
+    expect(hook.tenantId).toBe('tenant-1');
+    expect(billingMocks.setDocMock).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'workspaces/ws-1/billing_hooks/generated-1' }),
+      expect.objectContaining({
+        workspaceId: 'ws-1',
+        tenantId: 'tenant-1',
+        plan: 'pro',
+      }),
+      { merge: true },
+    );
+  });
+
   it('returns safe defaults when Firebase billing is not configured', async () => {
     billingMocks.isFirebaseConfigured.value = false;
 
@@ -114,8 +146,49 @@ describe('firestoreBillingStore', () => {
       expect.objectContaining({
         currentPlan: 'free',
         currentMonthUsage: { transactions: 0, aiQueries: 0, bankConnections: 0 },
+        billingHooks: [], 
+      }),
+    );
+  });
+
+  it('uses the local calendar month for usage aggregation', () => {
+    expect(getCurrentMonthKey(new Date(2026, 3, 30, 23, 59))).toBe('2026-04');
+    expect(getCurrentMonthKey(new Date(2026, 4, 1, 0, 0))).toBe('2026-05');
+  });
+
+  it('returns safe defaults when billing context is incomplete and rejects write operations', async () => {
+    await expect(getWorkspaceBillingOverview({ tenantId: '', workspaceId: 'ws-1' })).resolves.toEqual(
+      expect.objectContaining({
+        currentPlan: 'free',
+        currentMonthUsage: { transactions: 0, aiQueries: 0, bankConnections: 0 },
         billingHooks: [],
       }),
     );
+
+    await expect(readWorkspaceUsage('')).resolves.toEqual({});
+    await expect(listWorkspaceBillingHooks({ workspaceId: '' })).resolves.toEqual([]);
+    await expect(incrementWorkspaceUsage({ workspaceId: '', resource: 'transactions', amount: 1 })).resolves.toBe(0);
+    await expect(resetWorkspaceUsage('')).resolves.toBeUndefined();
+
+    await expect(updateWorkspacePlan({
+      tenantId: '',
+      workspaceId: 'ws-1',
+      userId: 'user-1',
+      plan: 'pro',
+    })).rejects.toThrow(/workspaceId and tenantId/i);
+
+    await expect(recordWorkspaceBillingHook({
+      tenantId: 'tenant-1',
+      workspaceId: '',
+      payload: {
+        userId: 'user-1',
+        workspaceId: '',
+        plan: 'pro',
+        event: 'plan_changed',
+        resource: 'transactions',
+        amount: 0,
+        at: '2026-04-02T00:00:00.000Z',
+      },
+    })).rejects.toThrow(/workspaceId and tenantId/i);
   });
 });

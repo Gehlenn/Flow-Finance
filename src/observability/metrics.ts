@@ -1,14 +1,25 @@
+import { logInfo } from '../utils/logger';
+
 const counters = new Map<string, number>();
 
 export function recordMetric(name: string, value: number): void {
   counters.set(name, value);
-  console.log(`[METRIC] ${name}: ${value}`);
+  logInfo('[Metric] recorded', {
+    name,
+    value,
+    fallback: 'metric-recorded',
+  });
 }
 
 export function incrementMetric(name: string, by = 1): number {
   const nextValue = (counters.get(name) || 0) + by;
   counters.set(name, nextValue);
-  console.log(`[METRIC] ${name}: ${nextValue}`);
+  logInfo('[Metric] incremented', {
+    name,
+    value: nextValue,
+    incrementBy: by,
+    fallback: 'metric-incremented',
+  });
   return nextValue;
 }
 

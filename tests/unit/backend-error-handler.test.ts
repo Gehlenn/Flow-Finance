@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { AppError, errorHandler } from '../../backend/src/middleware/errorHandler';
+import type { Request, Response } from 'express';
 
 vi.mock('../../backend/src/config/logger', () => ({
   default: {
@@ -20,12 +21,12 @@ describe('backend errorHandler sanitization', () => {
       path: '/api/auth/login',
       requestId: 'req-auth-1',
       routeScope: 'auth',
-    } as any;
+    } satisfies Partial<Request>;
 
     const res = {
       status: vi.fn().mockReturnThis(),
       json: vi.fn(),
-    } as any;
+    } satisfies Partial<Response> & { status: ReturnType<typeof vi.fn> };
 
     const error = new AppError(400, 'Invalid credentials', {
       field: 'password',
@@ -37,7 +38,7 @@ describe('backend errorHandler sanitization', () => {
       },
     });
 
-    errorHandler(error, req, res, vi.fn());
+    errorHandler(error, req as Request, res as Response, vi.fn());
 
     expect(res.status).toHaveBeenCalledWith(400);
     const response = res.json.mock.calls[0][0] as {
@@ -60,19 +61,19 @@ describe('backend errorHandler sanitization', () => {
       path: '/api/auth/login',
       requestId: 'req-auth-2',
       routeScope: 'auth',
-    } as any;
+    } satisfies Partial<Request>;
 
     const res = {
       status: vi.fn().mockReturnThis(),
       json: vi.fn(),
-    } as any;
+    } satisfies Partial<Response> & { status: ReturnType<typeof vi.fn> };
 
     const error = new AppError(500, 'Internal Error', {
       token: 'jwt',
       secret: 'x',
     });
 
-    errorHandler(error, req, res, vi.fn());
+    errorHandler(error, req as Request, res as Response, vi.fn());
 
     expect(res.status).toHaveBeenCalledWith(500);
     const response = res.json.mock.calls[0][0] as {

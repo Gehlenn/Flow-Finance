@@ -65,7 +65,12 @@ function safeReturnUrl() {
           try {
             if (parsed.origin === new URL(frontendUrl).origin) return true;
           } catch (err) {
-            logger.warn({ err, frontendUrl }, 'Malformed FRONTEND_URL in CORS validation');
+            logger.warn({
+              err,
+              frontendUrl,
+              frontendUrlLength: frontendUrl.length,
+              fallback: 'saas-schema-malformed-frontend-url',
+            }, 'Malformed FRONTEND_URL in CORS validation');
           }
         }
 
@@ -73,12 +78,21 @@ function safeReturnUrl() {
           try {
             return parsed.origin === new URL(origin).origin;
           } catch (err) {
-            logger.debug({ err, origin }, 'Malformed origin in CORS allowlist');
+            logger.debug({
+              err,
+              origin,
+              originLength: origin.length,
+              fallback: 'saas-schema-malformed-allowlist-origin',
+            }, 'Malformed origin in CORS allowlist');
             return false;
           }
         });
       } catch (err) {
-        logger.warn({ err, urlLength: url.length }, 'CORS origin validation exception — URL may be invalid');
+        logger.warn({
+          err,
+          urlLength: url.length,
+          fallback: 'saas-schema-invalid-return-url',
+        }, 'CORS origin validation exception — URL may be invalid');
         return false;
       }
     },

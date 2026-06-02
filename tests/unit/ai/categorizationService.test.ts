@@ -5,6 +5,7 @@ import {
   classifyTransactionsWithAI,
   sugerirCategoriaIA,
 } from '../../../src/services/ai/categorizationService';
+import { logWarn } from '../../../src/utils/logger';
 import {
   buildCanonicalCategorizationResult,
   normalizeToFinanceCategory,
@@ -20,11 +21,16 @@ vi.mock('../../../src/config/api.config', () => ({
   apiRequest: vi.fn(),
 }));
 
+vi.mock('../../../src/utils/logger', () => ({
+  logWarn: vi.fn(),
+}));
+
 const { apiRequest } = await import('../../../src/config/api.config');
 
 describe('categorizationService', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(logWarn).mockClear();
   });
 
   it('normaliza categorias de produto e do motor financeiro no mesmo contrato', () => {
@@ -74,6 +80,14 @@ describe('categorizationService', () => {
     expect(result.financeCategory).toBe('outros');
     expect(result.source).toBe('fallback');
     expect(result.erro).toContain('provider_down');
+    expect(vi.mocked(logWarn)).toHaveBeenCalledWith(
+      '[CategorizationService] classifyTransactionsWithAI failed; using deterministic fallback',
+      expect.objectContaining({
+        error: expect.any(Error),
+        transactionCount: 1,
+        fallback: 'categorization-classification-failed',
+      }),
+    );
   });
 
   it('sugerirCategoriaIA usa o serviço canônico e não retorna stub', async () => {

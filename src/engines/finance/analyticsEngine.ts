@@ -3,6 +3,33 @@ import { UserContext } from '../../context/UserContext';
 
 export type CashflowTimeframe = '7d' | '30d' | '12m' | 'custom';
 
+function parseAnalyticsDate(value: string): Date | null {
+  const trimmed = value.trim();
+  const dateOnlyMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const parsed = new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatAnalyticsDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseAnalyticsDateKey(value?: string): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = parseAnalyticsDate(value);
+  return parsed ? formatAnalyticsDateKey(parsed) : null;
+}
+
 export function filterTransactionsByTimeframe(
   transactions: Transaction[],
   timeframe: CashflowTimeframe,
@@ -13,15 +40,15 @@ export function filterTransactionsByTimeframe(
   const now = new Date();
 
   return transactions.filter((t) => {
-    const d = new Date(t.date);
+    const d = parseAnalyticsDate(t.date);
+    if (!d) return false;
     if (timeframe === '7d') return (now.getTime() - d.getTime()) / 86400000 <= 7;
     if (timeframe === '30d') return (now.getTime() - d.getTime()) / 86400000 <= 30;
     if (timeframe === '12m') return d.getFullYear() === now.getFullYear();
     if (timeframe === 'custom') {
-      // Comparar apenas a data (YYYY-MM-DD)
-      const dStr = d.toISOString().slice(0, 10);
-      const startStr = dateStart || '0000-01-01';
-      const endStr = dateEnd || now.toISOString().slice(0, 10);
+      const dStr = formatAnalyticsDateKey(d);
+      const startStr = parseAnalyticsDateKey(dateStart) ?? '0000-01-01';
+      const endStr = parseAnalyticsDateKey(dateEnd) ?? formatAnalyticsDateKey(now);
       return dStr >= startStr && dStr <= endStr;
     }
     return true;
@@ -37,9 +64,10 @@ export function buildCashflowTimeline(transactions: Transaction[], _userContext?
   const dataMap: Record<string, { date: string; rawDate: string; incoming: number; outgoing: number }> = {};
 
   transactions.forEach((t) => {
-    const date = new Date(t.date);
+    const date = parseAnalyticsDate(t.date);
+    if (!date) return;
     const key = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-    const rawKey = date.toISOString().split('T')[0];
+    const rawKey = formatAnalyticsDateKey(date);
 
     if (!dataMap[key]) {
       dataMap[key] = { date: key, rawDate: rawKey, incoming: 0, outgoing: 0 };

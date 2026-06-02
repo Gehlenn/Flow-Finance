@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+﻿import React, { useState, useRef, useCallback } from 'react';
 import { Transaction, TransactionType, Category } from '../types';
 import {
   runImportPipeline,
@@ -7,6 +7,7 @@ import {
 import { normalizeFromFileImport, draftToTransaction } from '../src/domain/intakeNormalizer';
 import { saveMerchantCategoryLearning } from '../src/engines/finance/categorization/aiCategorizerFallback';
 import { FinancialEventEmitter } from '../src/events/eventEngine';
+import { logWarn } from '../src/utils/logger';
 import {
   Upload, FileText, FileSpreadsheet, FileScan, X, Check,
   AlertTriangle, Loader2, ChevronDown, ChevronUp, RefreshCw,
@@ -131,20 +132,20 @@ const TxRow: React.FC<{
 
         {/* Description + date */}
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-bold text-slate-800 dark:text-white truncate">
+          <p className="text-[11px] font-medium text-slate-800 dark:text-white truncate">
             {item.merchant || item.raw_description}
           </p>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[8px] text-slate-400 font-bold">
+            <span className="text-xs text-slate-400 font-medium">
               {formatImportedDateLabel(item.raw_date)}
             </span>
             {item.category && (
-              <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-widest ${catMeta}`}>
+              <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-md uppercase tracking-[0.08em] ${catMeta}`}>
                 {item.category}
               </span>
             )}
             {item.duplicate && (
-              <span className="flex items-center gap-0.5 text-[7px] font-black text-amber-500 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-md">
+              <span className="flex items-center gap-0.5 text-xs font-semibold text-amber-500 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-md">
                 <ShieldAlert size={8} /> Duplicata
               </span>
             )}
@@ -153,11 +154,11 @@ const TxRow: React.FC<{
 
         {/* Amount */}
         <div className="text-right shrink-0">
-          <p className={`text-sm font-black ${isDespesa ? 'text-rose-500' : 'text-emerald-500'}`}>
+          <p className={`text-sm font-semibold ${isDespesa ? 'text-rose-500' : 'text-emerald-500'}`}>
             {hideValues ? '••••' : (isDespesa ? '-' : '+') + fmt(item.raw_amount)}
           </p>
           {item.confidence !== undefined && (
-            <p className="text-[7px] font-bold text-slate-300 dark:text-slate-600">
+            <p className="text-xs font-medium text-slate-300 dark:text-slate-600">
               {Math.round(item.confidence * 100)}%
             </p>
           )}
@@ -177,21 +178,21 @@ const TxRow: React.FC<{
       {expanded && (
         <div className="px-4 pb-3 pt-1 flex gap-3 border-t border-slate-50 dark:border-slate-700/50 animate-in slide-in-from-top-2 duration-200">
           <div className="flex-1">
-            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">Categoria</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em] mb-1">Categoria</p>
             <select
               value={item.category ?? Category.PESSOAL}
               onChange={e => onChangeCategory(index, e.target.value as Category)}
-              className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-2 py-1.5 text-[10px] font-bold text-slate-800 dark:text-white outline-none"
+              className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-2 py-1.5 text-xs font-medium text-slate-800 dark:text-white outline-none"
             >
               {Object.values(Category).map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div className="flex-1">
-            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">Tipo</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em] mb-1">Tipo</p>
             <select
               value={item.type ?? item.raw_type ?? TransactionType.DESPESA}
               onChange={e => onChangeType(index, e.target.value as TransactionType)}
-              className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-2 py-1.5 text-[10px] font-bold text-slate-800 dark:text-white outline-none"
+              className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-2 py-1.5 text-xs font-medium text-slate-800 dark:text-white outline-none"
             >
               <option value={TransactionType.DESPESA}>Despesa</option>
               <option value={TransactionType.RECEITA}>Receita</option>
@@ -217,6 +218,8 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
   const [items, setItems]           = useState<ImportedTransaction[]>([]);
   const [progress, setProgress]     = useState<{ step: string; pct: number }>({ step: '', pct: 0 });
   const [errorMsg, setErrorMsg]     = useState('');
+  const [errorDiagnostic, setErrorDiagnostic] = useState<{ title: string; message: string; suggestion: string } | null>(null);
+  const [learningDiagnostic, setLearningDiagnostic] = useState<{ title: string; message: string; suggestion: string } | null>(null);
   const [importedCount, setImportedCount] = useState(0);
   const [filterDuplicates, setFilterDuplicates] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -226,6 +229,8 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
   const handleFile = useCallback(async (file: File) => {
     setPhase('detecting');
     setErrorMsg('');
+    setErrorDiagnostic(null);
+    setLearningDiagnostic(null);
     setProgress({ step: 'Iniciando…', pct: 0 });
 
     try {
@@ -241,9 +246,26 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
       setPhase(res.errors.length > 0 && res.transactions.length === 0 ? 'error' : 'preview');
       if (res.errors.length > 0 && res.transactions.length === 0) {
         setErrorMsg(res.errors.join(' '));
+        setErrorDiagnostic({
+          title: 'Nenhuma transacao foi identificada',
+          message: /pdf|ocr|imagem/i.test(res.errors.join(' '))
+            ? 'O arquivo parece ser PDF/imagem, mas a extração nao conseguiu obter transacoes aproveitaveis.'
+            : 'O arquivo nao trouxe transacoes aproveitaveis no formato esperado.',
+          suggestion: /csv|ofx|qfx|separador|cabecalho|coluna/i.test(res.errors.join(' '))
+            ? 'Revise o formato, o cabecalho e o separador do arquivo antes de tentar novamente.'
+            : 'Tente outro arquivo ou ajuste a exportacao do extrato para um formato suportado.',
+        });
       }
-    } catch (err: any) {
-      setErrorMsg(err?.message ?? 'Erro inesperado.');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro inesperado.';
+      setErrorMsg(message);
+      setErrorDiagnostic({
+        title: 'Falha ao importar arquivo',
+        message: 'O pipeline de importacao interrompeu a leitura antes de concluir.',
+        suggestion: /pdf|ocr|imagem/i.test(message)
+          ? 'Use uma imagem/PDF mais nítida ou tente um arquivo CSV/OFX direto do banco.'
+          : 'Verifique o tipo do arquivo e tente novamente com um extrato suportado.',
+      });
       setPhase('error');
     }
   }, [existingTransactions, userId]);
@@ -288,8 +310,18 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
         if (!item.merchant || !item.category) return;
         try {
           await saveMerchantCategoryLearning(userId, item.merchant, item.category, 0.95);
-        } catch {
-          console.warn('[ImportTransactions] Failed to save merchant learning', { merchant: item.merchant, category: item.category });
+        } catch (error) {
+          logWarn('[ImportTransactions] Failed to save merchant learning', {
+            error,
+            merchant: item.merchant,
+            category: item.category,
+            fallback: 'import-transactions-save-merchant-learning-failed',
+          });
+          setLearningDiagnostic({
+            title: 'Importacao concluida com aprendizado pendente',
+            message: 'Os lancamentos foram importados, mas o aprendizado auxiliar de categorias nao foi salvo para todos os itens.',
+            suggestion: 'Revise os itens importados ou tente sincronizar o aprendizado novamente mais tarde.',
+          });
         }
       })
     );
@@ -316,6 +348,8 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
     setItems([]);
     setProgress({ step: '', pct: 0 });
     setErrorMsg('');
+    setErrorDiagnostic(null);
+    setLearningDiagnostic(null);
     setImportedCount(0);
     setFilterDuplicates(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -341,14 +375,14 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
 
       {/* Header */}
       <div className="flex items-center gap-3 pt-2">
-        <div className="w-11 h-11 bg-gradient-to-br from-sky-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-sky-500/30">
-          <Download size={20} className="text-white" />
+        <div className="w-11 h-11 rounded-2xl flex items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+          <Download size={20} className="text-sky-500" />
         </div>
         <div>
-          <h1 className="text-lg font-black text-slate-900 dark:text-white leading-none">
+          <h1 className="text-lg font-semibold text-slate-900 dark:text-white leading-none">
             {SECONDARY_FLOWS_COPY.import.title}
           </h1>
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-[0.08em] mt-0.5">
             {SECONDARY_FLOWS_COPY.import.subtitle}
           </p>
         </div>
@@ -369,14 +403,14 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
                 : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-sky-300 hover:bg-sky-50/40 dark:hover:bg-sky-500/5'
               }`}
           >
-            <div className="w-16 h-16 bg-gradient-to-br from-sky-100 to-indigo-100 dark:from-sky-500/20 dark:to-indigo-500/20 rounded-2xl flex items-center justify-center">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
               <Upload size={28} className="text-sky-500" />
             </div>
             <div className="text-center">
-              <p className="font-black text-slate-800 dark:text-white text-sm">
+              <p className="font-semibold text-slate-800 dark:text-white text-sm">
                 {SECONDARY_FLOWS_COPY.import.dropzoneTitle}
               </p>
-              <p className="text-[10px] text-slate-400 font-bold mt-1">{SECONDARY_FLOWS_COPY.import.dropzoneFormats}</p>
+              <p className="text-xs text-slate-400 font-medium mt-1">{SECONDARY_FLOWS_COPY.import.dropzoneFormats}</p>
             </div>
             <input
               ref={fileInputRef}
@@ -396,21 +430,21 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${meta.color}`}>
                     {meta.icon}
                   </div>
-                  <p className="text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{meta.label}</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">{meta.label}</p>
                 </div>
               );
             })}
           </div>
 
           {/* Info */}
-          <div className="flex items-start gap-3 px-4 py-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl">
+          <div className="flex items-start gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-700">
             <Info size={14} className="text-indigo-500 shrink-0 mt-0.5" />
             <div>
-              <p className="text-[9px] font-black text-indigo-700 dark:text-indigo-300">
+              <p className="text-xs font-semibold text-slate-800 dark:text-white">
                 Classificação automática por IA
               </p>
-              <p className="text-[8px] text-indigo-500 font-bold mt-0.5 leading-relaxed">
-                Após o upload, o Gemini classifica automaticamente cada transação por categoria e estabelecimento. Você pode revisar e editar antes de confirmar.
+              <p className="text-xs text-slate-500 dark:text-slate-300 font-medium mt-0.5 leading-relaxed">
+                Após o upload, a classificação automática organiza entradas e saídas por categoria e estabelecimento. Você revisa antes de confirmar.
               </p>
             </div>
           </div>
@@ -424,20 +458,20 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
             <Loader2 size={26} className="text-sky-500 animate-spin" />
           </div>
           <div className="text-center w-full px-8">
-            <p className="font-black text-slate-800 dark:text-white text-sm">{progress.step || 'Processando…'}</p>
+            <p className="font-semibold text-slate-800 dark:text-white text-sm">{progress.step || 'Processando…'}</p>
             {/* Progress bar */}
             <div className="mt-3 w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-sky-500 to-indigo-500 rounded-full transition-all duration-500"
+                className="h-full bg-sky-500 rounded-full transition-all duration-500"
                 style={{ width: `${progress.pct}%` }}
               />
             </div>
-            <p className="text-[8px] text-slate-400 font-bold mt-1.5">{progress.pct}%</p>
+            <p className="text-xs text-slate-400 font-medium mt-1.5">{progress.pct}%</p>
           </div>
           {progress.pct >= 65 && (
             <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl">
               <Sparkles size={12} className="text-indigo-500" />
-              <p className="text-[8px] font-black text-indigo-600 dark:text-indigo-400">
+              <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
                 Gemini classificando categorias…
               </p>
             </div>
@@ -451,12 +485,12 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
           {/* Summary bar */}
           <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 overflow-hidden">
             <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[8px] font-black uppercase tracking-widest ${FORMAT_META[result.format].color}`}>
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold uppercase tracking-[0.08em] ${FORMAT_META[result.format].color}`}>
                 {FORMAT_META[result.format].icon}
                 {FORMAT_META[result.format].label}
               </div>
-              <p className="text-[10px] font-bold text-slate-500 truncate flex-1">{result.filename}</p>
-              <div className="flex items-center gap-1 text-[8px] font-black text-slate-400">
+              <p className="text-xs font-medium text-slate-500 truncate flex-1">{result.filename}</p>
+              <div className="flex items-center gap-1 text-xs font-semibold text-slate-400">
                 <Clock size={9} />
                 {result.parse_time_ms}ms
               </div>
@@ -468,8 +502,8 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
                 { label: 'Duplicatas',    value: duplicateCount,        color: duplicateCount > 0 ? 'text-amber-500' : 'text-slate-400' },
               ].map(({ label, value, color }) => (
                 <div key={label} className="bg-white dark:bg-slate-800 px-3 py-3 text-center">
-                  <p className={`text-sm font-black ${color}`}>{value}</p>
-                  <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{label}</p>
+                  <p className={`text-sm font-semibold ${color}`}>{value}</p>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em] mt-0.5">{label}</p>
                 </div>
               ))}
             </div>
@@ -477,17 +511,17 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
             {/* Controls */}
             <div className="flex items-center gap-2 px-5 py-3 border-t border-slate-100 dark:border-slate-700">
               <button onClick={() => selectAll(true)}
-                className="text-[8px] font-black text-indigo-500 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl">
+                className="text-xs font-semibold text-indigo-500 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl">
                 Selecionar todos
               </button>
               <button onClick={() => selectAll(false)}
-                className="text-[8px] font-black text-slate-400 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-xl">
+                className="text-xs font-semibold text-slate-400 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-xl">
                 Desmarcar todos
               </button>
               {duplicateCount > 0 && (
                 <button
                   onClick={() => setFilterDuplicates(f => !f)}
-                  className={`ml-auto text-[8px] font-black px-3 py-1.5 rounded-xl transition-colors ${
+                  className={`ml-auto text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors ${
                     filterDuplicates
                       ? 'bg-amber-500 text-white'
                       : 'bg-amber-50 dark:bg-amber-500/10 text-amber-500'
@@ -502,17 +536,17 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
           {/* Transaction list */}
           <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 overflow-hidden">
             <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                {displayItems.length} transaç{displayItems.length !== 1 ? 'ões' : 'ão'}
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">
+                {displayItems.length} moviment{displayItems.length !== 1 ? 'os' : 'o'}
               </p>
-              <p className="text-[9px] font-black text-slate-400">Toque para expandir e editar</p>
+              <p className="text-xs font-semibold text-slate-400">Toque para expandir e editar</p>
             </div>
             <div className="max-h-[50vh] overflow-y-auto">
               {displayItems.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-10 text-slate-300">
                   <FileText size={28} />
-                  <p className="text-[10px] font-black uppercase tracking-widest">
-                    {filterDuplicates ? 'Todas são duplicatas' : 'Nenhuma transação'}
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em]">
+                    {filterDuplicates ? 'Todas são duplicatas' : 'Nenhum movimento'}
                   </p>
                 </div>
               ) : (
@@ -537,7 +571,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
               <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
               <div className="flex flex-col gap-1">
                 {result.errors.map((e, i) => (
-                  <p key={i} className="text-[8px] text-amber-600 dark:text-amber-400 font-bold">{e}</p>
+                  <p key={i} className="text-xs text-amber-600 dark:text-amber-400 font-medium">{e}</p>
                 ))}
               </div>
             </div>
@@ -548,18 +582,18 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
             <button
               onClick={handleImport}
               disabled={selectedCount === 0}
-              className="w-full bg-gradient-to-r from-sky-500 to-indigo-600 text-white rounded-2xl p-4 flex items-center justify-center gap-3 font-black text-sm shadow-xl shadow-sky-500/25 hover:shadow-sky-500/40 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-sky-600 text-white rounded-2xl p-4 flex items-center justify-center gap-3 font-semibold text-sm shadow-sm hover:bg-sky-500 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download size={18} />
-              Importar {selectedCount} transaç{selectedCount !== 1 ? 'ões' : 'ão'}
+              Importar {selectedCount} moviment{selectedCount !== 1 ? 'os' : 'o'}
               {!hideValues && (
-                <span className="text-white/70 text-[10px] font-bold ml-1">
+                <span className="text-white/70 text-xs font-medium ml-1">
                   ({selectedTotal >= 0 ? '+' : ''}{fmt(selectedTotal)})
                 </span>
               )}
             </button>
             <button onClick={handleReset}
-              className="text-[10px] text-slate-400 font-bold text-center py-1 flex items-center justify-center gap-1.5">
+              className="text-xs text-slate-400 font-medium text-center py-1 flex items-center justify-center gap-1.5">
               <RefreshCw size={10} /> Importar outro arquivo
             </button>
           </div>
@@ -570,27 +604,34 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
       {phase === 'importing' && (
         <div className="flex flex-col items-center gap-4 py-12 bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700">
           <Loader2 size={32} className="text-sky-500 animate-spin" />
-          <p className="font-black text-slate-800 dark:text-white text-sm">Salvando transações…</p>
+          <p className="font-semibold text-slate-800 dark:text-white text-sm">Salvando no caixa…</p>
         </div>
       )}
 
       {/* ── PHASE: done ─────────────────────────────────────────────────────── */}
       {phase === 'done' && (
         <div className="flex flex-col items-center gap-5 py-12 bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700">
-          <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-emerald-600 shadow-sm">
             <Check size={28} className="text-white" />
           </div>
           <div className="text-center">
-            <p className="font-black text-slate-900 dark:text-white text-base">Importação concluída!</p>
-            <p className="text-2xl font-black text-emerald-500 mt-1">{importedCount} transações</p>
-            <p className="text-[9px] text-slate-400 font-bold mt-1">
+            <p className="font-semibold text-slate-900 dark:text-white text-base">Importação concluída!</p>
+            <p className="text-2xl font-semibold text-emerald-500 mt-1">{importedCount} movimentos</p>
+            <p className="text-xs text-slate-400 font-medium mt-1">
               Insights atualizam automaticamente
             </p>
           </div>
+          {learningDiagnostic && (
+            <div role="status" className="w-full max-w-md rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-500/10 p-4 space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-700 dark:text-amber-300">{learningDiagnostic.title}</p>
+              <p className="text-xs font-medium text-amber-800 dark:text-amber-100">{learningDiagnostic.message}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-600 dark:text-amber-300">Próximo passo: {learningDiagnostic.suggestion}</p>
+            </div>
+          )}
           <div className="flex gap-3">
             <button
               onClick={handleReset}
-              className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-slate-700 rounded-2xl font-black text-slate-700 dark:text-white text-sm"
+              className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-slate-700 rounded-2xl font-semibold text-slate-700 dark:text-white text-sm"
             >
               <Upload size={14} /> Importar mais
             </button>
@@ -605,11 +646,18 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
             <AlertTriangle size={22} className="text-rose-500" />
           </div>
           <div className="text-center px-4">
-            <p className="font-black text-rose-700 dark:text-rose-400 text-sm">Falha na importação</p>
-            <p className="text-[10px] text-rose-500 font-bold mt-1">{errorMsg}</p>
+            <p className="font-semibold text-rose-700 dark:text-rose-400 text-sm">Falha na importação</p>
+            <p className="text-xs text-rose-500 font-medium mt-1">{errorMsg}</p>
+            {errorDiagnostic && (
+              <div role="status" className="mt-3 rounded-2xl border border-rose-200 bg-white/70 dark:bg-slate-900/60 p-3 text-left">
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-rose-600 dark:text-rose-300">{errorDiagnostic.title}</p>
+                <p className="mt-1 text-xs font-medium leading-relaxed text-rose-700 dark:text-rose-200">{errorDiagnostic.message}</p>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-rose-500 dark:text-rose-300">Próximo passo: {errorDiagnostic.suggestion}</p>
+              </div>
+            )}
           </div>
           <button onClick={handleReset}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 rounded-2xl font-black text-slate-700 dark:text-white text-sm shadow-sm">
+            className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 rounded-2xl font-semibold text-slate-700 dark:text-white text-sm shadow-sm">
             <RefreshCw size={13} /> Tentar novamente
           </button>
         </div>
@@ -619,3 +667,8 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
 };
 
 export default ImportTransactionsPage;
+
+
+
+
+

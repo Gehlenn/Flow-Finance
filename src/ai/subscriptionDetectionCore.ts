@@ -1,5 +1,33 @@
 export type SharedSubscriptionCycle = 'monthly' | 'weekly' | 'annual' | 'unknown';
 
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function parseSubscriptionDate(dateValue: string): number | null {
+  const trimmed = dateValue.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const dateOnly = DATE_ONLY_PATTERN.exec(trimmed);
+  if (dateOnly) {
+    const year = Number(dateOnly[1]);
+    const month = Number(dateOnly[2]) - 1;
+    const day = Number(dateOnly[3]);
+    const localDate = new Date(year, month, day);
+    if (
+      localDate.getFullYear() === year
+      && localDate.getMonth() === month
+      && localDate.getDate() === day
+    ) {
+      return localDate.getTime();
+    }
+    return null;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
+}
+
 export function normalizeSubscriptionText(value: string): string {
   return value
     .toLowerCase()
@@ -27,8 +55,9 @@ export function inferSubscriptionCycleFromDates(
   if (dates.length < 2) return 'unknown';
 
   const sorted = dates
-    .map((date) => new Date(date).getTime())
+    .map((date) => parseSubscriptionDate(date))
     .filter((time) => !Number.isNaN(time))
+    .filter((time): time is number => time !== null)
     .sort((a, b) => a - b);
 
   if (sorted.length < 2) return 'unknown';

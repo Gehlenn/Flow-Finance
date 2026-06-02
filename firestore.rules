@@ -178,6 +178,17 @@ service cloud.firestore {
           && resourceMatchesWorkspaceContext(workspaceId);
       }
 
+      match /receivables/{receivableId} {
+        allow read: if isWorkspaceMember(workspaceId);
+        allow create: if canEditWorkspaceData(workspaceId)
+          && requestMatchesWorkspaceContext(workspaceId);
+        allow update: if canEditWorkspaceData(workspaceId)
+          && resourceMatchesWorkspaceContext(workspaceId)
+          && requestMatchesWorkspaceContext(workspaceId);
+        allow delete: if canEditWorkspaceData(workspaceId)
+          && resourceMatchesWorkspaceContext(workspaceId);
+      }
+
       match /insights/{insightId} {
         allow read: if isWorkspaceMember(workspaceId);
         allow create: if canEditWorkspaceData(workspaceId)

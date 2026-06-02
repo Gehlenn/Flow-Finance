@@ -1,20 +1,8 @@
 import { categorizationRules } from './categorizationRules';
 import { aiCategorizeTransaction, saveMerchantCategoryLearning } from './aiCategorizerFallback';
+import type { FinanceCategory } from './categoryTypes';
 
-export type FinanceCategory =
-  | 'transporte'
-  | 'alimentacao'
-  | 'assinaturas'
-  | 'moradia'
-  | 'saude'
-  | 'combustivel'
-  | 'educacao'
-  | 'lazer'
-  | 'salario'
-  | 'compras'
-  | 'servicos'
-  | 'banco'
-  | 'outros';
+export type { FinanceCategory } from './categoryTypes';
 
 function normalize(input: string): string {
   return input

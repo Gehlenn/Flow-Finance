@@ -1,4 +1,5 @@
 import { BillingHookPayload } from './types';
+import { logWarn } from '../utils/logger';
 
 type BillingHookListener = (payload: BillingHookPayload) => void;
 
@@ -31,12 +32,21 @@ function persistBillingHook(payload: BillingHookPayload): void {
     const raw = JSON.parse(localStorage.getItem(BILLING_LOG_KEY) || '[]') as unknown[];
     const valid = raw.filter((entry): entry is BillingHookPayload => {
       const ok = isValidHookPayload(entry);
-      if (!ok) console.warn('[BillingHooks] Dropping invalid hook record:', entry);
+      if (!ok) {
+        logWarn('[BillingHooks] Dropping invalid hook record', {
+          entry,
+          fallback: 'billing-hook-invalid-record-dropped',
+        });
+      }
       return ok;
     });
     const trimmed = [...valid, payload].slice(-500);
     localStorage.setItem(BILLING_LOG_KEY, JSON.stringify(trimmed));
-  } catch {
+  } catch (error) {
+    logWarn('[BillingHooks] Failed to persist billing hook payload; ignoring storage write', {
+      error,
+      fallback: 'billing-hook-persist-failed',
+    });
     // Ignore persistence errors to keep billing hooks non-blocking.
   }
 }
@@ -54,10 +64,19 @@ export function getPersistedBillingHooks(): BillingHookPayload[] {
     const raw = JSON.parse(localStorage.getItem(BILLING_LOG_KEY) || '[]') as unknown[];
     return raw.filter((entry): entry is BillingHookPayload => {
       const ok = isValidHookPayload(entry);
-      if (!ok) console.warn('[BillingHooks] Skipping invalid hook record on read:', entry);
+      if (!ok) {
+        logWarn('[BillingHooks] Skipping invalid hook record on read', {
+          entry,
+          fallback: 'billing-hook-invalid-record-read',
+        });
+      }
       return ok;
     });
-  } catch {
+  } catch (error) {
+    logWarn('[BillingHooks] Failed to read persisted billing hooks; returning empty list', {
+      error,
+      fallback: 'billing-hook-read-failed',
+    });
     return [];
   }
 }
@@ -72,7 +91,11 @@ export function emitBillingHook(payload: BillingHookPayload): void {
 
   if (transport) {
     void transport(payload).catch((error) => {
-      console.error('[BillingHooks] Transport failed:', error);
+      logWarn('[BillingHooks] Transport failed', {
+        error,
+        payload,
+        fallback: 'billing-hook-transport-failed',
+      });
     });
   }
 
@@ -80,7 +103,11 @@ export function emitBillingHook(payload: BillingHookPayload): void {
     try {
       listener(payload);
     } catch (error) {
-      console.error('[BillingHooks] Listener failed:', error);
+      logWarn('[BillingHooks] Listener failed', {
+        error,
+        payload,
+        fallback: 'billing-hook-listener-failed',
+      });
     }
   });
 }

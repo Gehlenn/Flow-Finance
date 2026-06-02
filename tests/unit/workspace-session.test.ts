@@ -79,6 +79,26 @@ describe('workspaceSession', () => {
     window.removeEventListener(WORKSPACE_CHANGED_EVENT, listener as EventListener);
   });
 
+  it('returns deterministic owner workspace for demo data mode', async () => {
+    window.history.pushState({}, '', '/?demoData=1');
+    localStorage.setItem('flow_demo_data', '1');
+    localStorage.setItem('flow_demo_user_id', 'demo-owner-1');
+    localStorage.setItem('flow_demo_user_email', 'demo@flow.dev');
+    localStorage.setItem('flow_demo_user_name', 'Demo QA');
+    localStorage.setItem('flow_demo_workspace_id', 'ws-demo-owner-1');
+    localStorage.setItem('flow_demo_workspace_name', 'Demo Workspace');
+    localStorage.setItem('flow_demo_tenant_id', 'tenant-demo-owner-1');
+    localStorage.setItem('flow_demo_tenant_name', 'Demo Tenant');
+
+    const workspace = await ensureActiveWorkspace({ userId: 'demo-owner-1', email: 'demo@flow.dev', name: 'Demo QA' });
+
+    expect(workspace.workspaceId).toBe('ws-demo-owner-1');
+    expect(workspace.role).toBe('owner');
+    expect(workspace.tenantId).toBe('tenant-demo-owner-1');
+    expect(localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY)).toBe('ws-demo-owner-1');
+    expect(firestoreWorkspaceMocks.listUserWorkspaceSummariesMock).not.toHaveBeenCalled();
+    expect(firestoreWorkspaceMocks.ensureActiveWorkspaceForUserMock).not.toHaveBeenCalled();
+  });
 
   it('returns deterministic owner workspace for E2E auth mode', async () => {
     localStorage.setItem('flow_e2e_auth', '1');
@@ -95,7 +115,24 @@ describe('workspaceSession', () => {
     expect(firestoreWorkspaceMocks.listUserWorkspaceSummariesMock).not.toHaveBeenCalled();
     expect(firestoreWorkspaceMocks.ensureActiveWorkspaceForUserMock).not.toHaveBeenCalled();
   });
+
+  it('falls back to demo bootstrap identity when firebase auth is unavailable', () => {
+    window.history.pushState({}, '', '/?demoData=1');
+    localStorage.setItem('flow_demo_data', '1');
+    localStorage.setItem('flow_demo_user_id', 'demo-user-1');
+    localStorage.setItem('flow_demo_user_email', 'demo@flow.dev');
+    localStorage.setItem('flow_demo_user_name', 'Demo QA');
+
+    expect(getCurrentWorkspaceIdentity()).toEqual({
+      userId: 'demo-user-1',
+      email: 'demo@flow.dev',
+      name: 'Demo QA',
+      plan: 'pro',
+    });
+  });
+
   it('falls back to E2E bootstrap identity when firebase auth is unavailable', () => {
+    window.history.pushState({}, '', '/?e2eAuth=1');
     localStorage.setItem('flow_e2e_auth', '1');
     localStorage.setItem('flow_e2e_user_id', 'e2e-user-1');
     localStorage.setItem('flow_e2e_user_email', 'e2e@flow.dev');

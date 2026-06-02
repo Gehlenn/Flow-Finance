@@ -11,6 +11,7 @@ const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 const ignoredDirs = new Set(['node_modules', 'coverage', 'dist', '.git', '.vercel', 'backend']);
 const defaultExcludedPatterns = [
   'tests/e2e/',
+  'tests/firestore/',
   'integration',
   'tests/firestore/firestore.rules.emulator.test.ts',
   'tests/unit/api-storage-provider.test.ts',
@@ -74,7 +75,7 @@ function splitIntoChunks(items, chunkCount) {
 }
 
 function runVitestChunk(files, index, total) {
-  console.log(`[vitest-stable] Running chunk ${index + 1}/${total} with ${files.length} files`);
+  process.stdout.write(`[vitest-stable] Running chunk ${index + 1}/${total} with ${files.length} files\n`);
 
   for (const file of files) {
     // Isolated files use threads pool (single process, no fork doubling) with more memory
@@ -97,7 +98,7 @@ function runVitestChunk(files, index, total) {
     }
 
     if (typeof result.signal === 'string') {
-      console.error(`[vitest-stable] Test file ${file} exited with signal ${result.signal}`);
+      process.stderr.write(`[vitest-stable] Test file ${file} exited with signal ${result.signal}\n`);
       return 1;
     }
   }
@@ -108,7 +109,7 @@ function runVitestChunk(files, index, total) {
 const allTestFiles = collectTestFiles(projectRoot).sort();
 
 if (allTestFiles.length === 0) {
-  console.error('[vitest-stable] No test files found.');
+  process.stderr.write('[vitest-stable] No test files found.\n');
   process.exit(1);
 }
 
@@ -128,5 +129,5 @@ for (let index = 0; index < chunks.length; index += 1) {
   }
 }
 
-console.log(`[vitest-stable] Completed ${allTestFiles.length} test files across ${chunks.length} chunk(s).`);
+process.stdout.write(`[vitest-stable] Completed ${allTestFiles.length} test files across ${chunks.length} chunk(s).\n`);
 

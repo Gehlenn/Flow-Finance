@@ -2,7 +2,11 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 // vi.mock is hoisted before const declarations — must use vi.hoisted() to
 // initialise the mock reference before the factory runs.
-const { apiRequestMock } = vi.hoisted(() => ({ apiRequestMock: vi.fn() }));
+const { apiRequestMock, logWarnMock, logErrorMock } = vi.hoisted(() => ({
+  apiRequestMock: vi.fn(),
+  logWarnMock: vi.fn(),
+  logErrorMock: vi.fn(),
+}));
 
 vi.mock('../../src/config/api.config', () => ({
   API_ENDPOINTS: {
@@ -18,7 +22,13 @@ vi.mock('../../src/config/api.config', () => ({
   apiRequest: apiRequestMock,
 }));
 
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: logWarnMock,
+  logError: logErrorMock,
+}));
+
 import { buildSmartInputFallback, GeminiService } from '../../services/geminiService';
+import type { Reminder, TransactionData } from '../../types';
 import { TransactionType, Category } from '../../types';
 
 describe('buildSmartInputFallback', () => {
@@ -27,7 +37,7 @@ describe('buildSmartInputFallback', () => {
 
     expect(output.intent).toBe('transaction');
     expect(output.data).toHaveLength(1);
-    const tx = output.data[0] as any;
+    const tx = output.data[0] as TransactionData;
     expect(tx.amount).toBe(50);
     expect(tx.type).toBe(TransactionType.DESPESA);
     expect(tx.category).toBe(Category.PESSOAL);
@@ -37,7 +47,7 @@ describe('buildSmartInputFallback', () => {
     const output = buildSmartInputFallback('Recebi 2500 de salario');
 
     expect(output.intent).toBe('transaction');
-    const tx = output.data[0] as any;
+    const tx = output.data[0] as TransactionData;
     expect(tx.amount).toBe(2500);
     expect(tx.type).toBe(TransactionType.RECEITA);
     expect(tx.category).toBe(Category.CONSULTORIO);
@@ -48,7 +58,7 @@ describe('buildSmartInputFallback', () => {
 
     expect(output.intent).toBe('reminder');
     expect(output.data).toHaveLength(1);
-    const reminder = output.data[0] as any;
+    const reminder = output.data[0] as Reminder;
     expect(reminder.title).toContain('Lembrar de pagar luz');
     expect(reminder.priority).toBe('média');
   });
@@ -63,6 +73,8 @@ describe('buildSmartInputFallback', () => {
 describe('GeminiService.processSmartInput', () => {
   beforeEach(() => {
     apiRequestMock.mockReset();
+    logWarnMock.mockReset();
+    logErrorMock.mockReset();
   });
 
   it('usa fallback deterministico quando apiRequest falha', async () => {
@@ -72,8 +84,27 @@ describe('GeminiService.processSmartInput', () => {
     const output = await service.processSmartInput('Comprei 89,90 no mercado');
 
     expect(output.intent).toBe('transaction');
-    const tx = output.data[0] as any;
+    const tx = output.data[0] as TransactionData;
     expect(tx.amount).toBe(89.9);
     expect(tx.type).toBe(TransactionType.DESPESA);
+    expect(logWarnMock).toHaveBeenCalledWith(
+      '[AIService] processSmartInput unavailable, using deterministic fallback',
+      expect.any(Error),
+      expect.objectContaining({ fallback: 'ai-process-smart-input-fallback' }),
+    );
+  });
+
+  it('registra erro ao falhar parsing de imagem financeira', async () => {
+    apiRequestMock.mockRejectedValueOnce(new Error('image parse failed'));
+    const service = new GeminiService();
+
+    const output = await service.parseFinancialImage('base64', 'image/png');
+
+    expect(output).toEqual([]);
+    expect(logErrorMock).toHaveBeenCalledWith(
+      '[AIService] parseFinancialImage failed',
+      expect.any(Error),
+      expect.objectContaining({ fallback: 'ai-parse-financial-image-failed' }),
+    );
   });
 });

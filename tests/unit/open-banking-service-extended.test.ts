@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
-import type { Transaction } from '../../types';
+import { Category, TransactionType, type Transaction } from '../../types';
+import type { Account } from '../../models/Account';
+import type { ImportedTransaction } from '../../src/finance/importService';
+import { getProvider } from '../../services/integrations/mockBankProvider';
+
+const loggerMocks = vi.hoisted(() => ({
+  logWarn: vi.fn(),
+  logError: vi.fn(),
+}));
 
 vi.mock('../../services/integrations/mockBankProvider', () => ({
   getProvider: vi.fn(() => ({
@@ -19,10 +27,15 @@ vi.mock('../../src/ai/aiMemory', () => ({
   learnMemory: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: loggerMocks.logWarn,
+  logError: loggerMocks.logError,
+}));
+
 vi.mock('../../src/finance/importService', () => ({
-  classifyImportedTransactions: vi.fn().mockImplementation((txs: any[]) =>
+  classifyImportedTransactions: vi.fn().mockImplementation((txs: ImportedTransaction[]) =>
     Promise.resolve(
-      txs.map((t: any, i: number) => ({
+      txs.map((t, i) => ({
         ...t,
         category: i % 2 === 0 ? 'PESSOAL' : 'SALARIO',
         confidence: 0.88,
@@ -43,8 +56,8 @@ let apiRequestMock = vi.fn();
 vi.mock('../../src/config/api.config', async () => {
   const actual = await vi.importActual('../../src/config/api.config');
   return {
-    ...(actual as object),
-    apiRequest: (...args: any[]) => apiRequestMock(...args),
+    ...actual,
+    apiRequest: (...args: Parameters<typeof actual.apiRequest>) => apiRequestMock(...args),
     API_ENDPOINTS: {
       BANKING: {
         HEALTH: '/api/banking/health',
@@ -78,7 +91,6 @@ import {
 import { ApiRequestError } from '../../src/config/api.config';
 import { getWorkspaceScopedStorageKey } from '../../src/utils/workspaceStorage';
 
-import { getProvider } from '../../services/integrations/mockBankProvider';
 
 const LEGACY_CONNECTIONS_KEY = getWorkspaceScopedStorageKey('flow_bank_connections');
 
@@ -98,7 +110,7 @@ describe('openBankingService - Extended Coverage', () => {
         { id: 'tx_001', date: new Date(Date.now() - 86400000).toISOString(), amount: -150.0, description: 'Amazon.com', merchant: 'AMAZON' },
         { id: 'tx_002', date: new Date(Date.now() - 172800000).toISOString(), amount: 5000.0, description: 'Salario', merchant: 'EMPRESA_XYZ' },
       ]),
-    } as any);
+    } as unknown as ReturnType<typeof getProvider>);
   });
 
   afterEach(() => {
@@ -113,15 +125,21 @@ describe('openBankingService - Extended Coverage', () => {
   });
 
   it('registra erro quando learnMemory falha no fluxo local', async () => {
-    const warnSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { learnMemory } = await import('../../src/ai/aiMemory');
     vi.mocked(learnMemory).mockRejectedValueOnce(new Error('memory failed'));
 
     await connectBank('nubank', 'u-memory-error');
 
     await Promise.resolve();
-    expect(warnSpy).toHaveBeenCalled();
-    warnSpy.mockRestore();
+    expect(loggerMocks.logError).toHaveBeenCalledWith(
+      expect.stringMatching(/Erro ao registrar mem.{0,6}ria de conex.{0,6}o banc.{0,6}ria/i),
+      expect.any(Error),
+      expect.objectContaining({
+        userId: 'u-memory-error',
+        bankId: 'nubank',
+        fallback: 'open-banking-learn-memory-failed',
+      }),
+    );
   });
 
   it('isola conexoes por usuario', async () => {
@@ -147,7 +165,7 @@ describe('openBankingService - Extended Coverage', () => {
 
   it('sync importa transacoes', async () => {
     const conn = await connectBank('nubank', 'u1');
-    const imported: any[] = [];
+    const imported: Array<Partial<Transaction>> = [];
 
     const result = await syncTransactions(conn.id, [], 'u1', (txs) => imported.push(...txs));
 
@@ -157,11 +175,11 @@ describe('openBankingService - Extended Coverage', () => {
 
   it('sync deduplica contra existingTransactions', async () => {
     const conn = await connectBank('nubank', 'u1');
-    const first: any[] = [];
+    const first: Array<Partial<Transaction>> = [];
 
     await syncTransactions(conn.id, [], 'u1', (txs) => first.push(...txs));
 
-    const second: any[] = [];
+    const second: Array<Partial<Transaction>> = [];
     const result2 = await syncTransactions(conn.id, first as Transaction[], 'u1', (txs) => second.push(...txs));
 
     expect(result2.transactions_imported).toBeLessThanOrEqual(1);
@@ -189,9 +207,9 @@ describe('openBankingService - Extended Coverage', () => {
         category: 'SALARIO',
         date: new Date(Date.now() - 172800000).toISOString(),
       },
-    ] as any;
+    ] as unknown as Transaction[];
 
-    const imported: any[] = [];
+    const imported: Array<Partial<Transaction>> = [];
     const result = await syncTransactions(conn.id, existing, 'u-dup', (txs) => imported.push(...txs));
 
     expect(result.transactions_imported).toBe(0);
@@ -209,7 +227,7 @@ describe('openBankingService - Extended Coverage', () => {
       disconnect: vi.fn(),
       fetchAccounts: vi.fn().mockResolvedValue([]),
       fetchTransactions: vi.fn().mockRejectedValue(new Error('Provider failure')),
-    } as any);
+    } as unknown as ReturnType<typeof getProvider>);
 
     const conn = await connectBank('nubank', 'u1');
     const result = await syncTransactions(conn.id, [], 'u1', vi.fn());
@@ -221,7 +239,7 @@ describe('openBankingService - Extended Coverage', () => {
     vi.mocked(classifyImportedTransactions).mockRejectedValueOnce(new Error('classification failed'));
 
     const conn = await connectBank('nubank', 'u-ai-fallback');
-    const imported: any[] = [];
+    const imported: Array<Partial<Transaction>> = [];
 
     const result = await syncTransactions(conn.id, [], 'u-ai-fallback', (txs) => imported.push(...txs));
 
@@ -242,7 +260,7 @@ describe('openBankingService - Extended Coverage', () => {
       fetchTransactions: vi.fn().mockResolvedValue([
         { id: 'tx_ok', date: new Date().toISOString(), amount: -10, description: 'x', merchant: 'y' },
       ]),
-    } as any);
+    } as unknown as ReturnType<typeof getProvider>);
 
     const conn = await connectBank('nubank', 'u1');
     const result = await fullSync(conn.id, [], [], 'u1', vi.fn(), vi.fn());
@@ -418,7 +436,7 @@ describe('openBankingService - Extended Coverage', () => {
     });
 
     const conn = await connectBank('nubank', 'u1');
-    const imported: any[] = [];
+    const imported: Array<Partial<Transaction>> = [];
 
     apiRequestMock.mockResolvedValueOnce({
       connection_id: conn.id,
@@ -467,7 +485,7 @@ describe('openBankingService - Extended Coverage', () => {
     });
 
     const conn = await connectBank('nubank', 'u1');
-    const imported: any[] = [];
+    const imported: Array<Partial<Transaction>> = [];
 
     apiRequestMock.mockResolvedValueOnce({
       connection_id: conn.id,
@@ -531,7 +549,7 @@ describe('openBankingService - Extended Coverage', () => {
     });
 
     const conn = await connectBank('nubank', 'u1');
-    const imported: any[] = [];
+    const imported: Array<Partial<Transaction>> = [];
 
     apiRequestMock.mockResolvedValueOnce({
       connection_id: conn.id,
@@ -566,7 +584,7 @@ describe('openBankingService - Extended Coverage', () => {
     });
 
     const conn = await connectBank('nubank', 'u1');
-    const imported: any[] = [];
+    const imported: Array<Partial<Transaction>> = [];
 
     apiRequestMock.mockResolvedValueOnce({
       connection_id: conn.id,
@@ -604,7 +622,7 @@ describe('openBankingService - Extended Coverage', () => {
     });
 
     const conn = await connectBank('nubank', 'u2');
-    const imported: any[] = [];
+    const imported: Array<Partial<Transaction>> = [];
 
     apiRequestMock.mockResolvedValueOnce({
       connection_id: conn.id,
@@ -630,7 +648,7 @@ describe('openBankingService - Extended Coverage', () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
       fetchAccounts: vi.fn().mockRejectedValue(new Error('accounts exploded')),
       fetchTransactions: vi.fn().mockResolvedValue([]),
-    } as any);
+    } as unknown as ReturnType<typeof getProvider>);
 
     const conn = await connectBank('nubank', 'u-accounts-error');
 
@@ -643,7 +661,7 @@ describe('openBankingService - Extended Coverage', () => {
 
   it('syncAccounts nao atualiza contas quando nao encontra vinculacao', async () => {
     const conn = await connectBank('nubank', 'u-without-linked-account');
-    const updates: any[] = [];
+    const updates: Array<Account> = [];
 
     await syncAccounts(conn.id, [
       {
@@ -657,7 +675,7 @@ describe('openBankingService - Extended Coverage', () => {
         createdAt: new Date('2026-03-01T00:00:00.000Z'),
         updatedAt: new Date('2026-03-01T00:00:00.000Z'),
       },
-    ] as any, (acc) => updates.push(acc));
+    ] as unknown as Transaction[], (acc) => updates.push(acc));
 
     expect(updates).toEqual([]);
     expect(getConnection(conn.id)?.connection_status).toBe('connected');
@@ -665,7 +683,7 @@ describe('openBankingService - Extended Coverage', () => {
 
   it('syncAccounts vincula saldo em conta generica de open banking', async () => {
     const conn = await connectBank('nubank', 'u-open-banking-link');
-    const updates: any[] = [];
+    const updates: Array<Account> = [];
 
     await syncAccounts(conn.id, [
       {
@@ -679,7 +697,7 @@ describe('openBankingService - Extended Coverage', () => {
         createdAt: new Date('2026-03-01T00:00:00.000Z'),
         updatedAt: new Date('2026-03-01T00:00:00.000Z'),
       },
-    ] as any, (acc) => updates.push(acc));
+    ] as unknown as Transaction[], (acc) => updates.push(acc));
 
     expect(updates).toHaveLength(1);
     expect(updates[0].balance).toBe(5000);
@@ -694,7 +712,7 @@ describe('openBankingService - Extended Coverage', () => {
       disconnect: vi.fn().mockRejectedValue(new Error('disconnect provider failure')),
       fetchAccounts: vi.fn().mockResolvedValue([]),
       fetchTransactions: vi.fn().mockResolvedValue([]),
-    } as any);
+    } as unknown as ReturnType<typeof getProvider>);
 
     const conn = await connectBank('nubank', 'u-disconnect');
     await disconnectBank(conn.id);
@@ -750,7 +768,7 @@ describe('openBankingService - Extended Coverage', () => {
       disconnect: providerDisconnect,
       fetchAccounts: vi.fn().mockResolvedValue([]),
       fetchTransactions: vi.fn().mockResolvedValue([]),
-    } as any);
+    } as unknown as ReturnType<typeof getProvider>);
 
     const conn = await connectBank('nubank', 'u-no-external');
     await disconnectBank(conn.id);
@@ -778,7 +796,7 @@ describe('openBankingService - Extended Coverage', () => {
     const conn = await connectBank('nubank', 'u-local');
     apiRequestMock.mockRejectedValueOnce(new Error('backend sync failure'));
 
-    const imported: any[] = [];
+    const imported: Array<Partial<Transaction>> = [];
     const result = await syncTransactions(conn.id, [], 'u-local', (txs) => imported.push(...txs));
 
     expect(result.transactions_imported).toBe(2);
@@ -803,7 +821,7 @@ describe('openBankingService - Extended Coverage', () => {
     const conn = await connectBank('nubank', 'u-401');
     apiRequestMock.mockRejectedValueOnce(new Error('API Error 401: unauthorized'));
 
-    const imported: any[] = [];
+    const imported: Array<Partial<Transaction>> = [];
     const result = await syncTransactions(conn.id, [], 'u-401', (txs) => imported.push(...txs));
 
     expect(result.transactions_imported).toBe(0);
@@ -833,7 +851,7 @@ describe('openBankingService - Extended Coverage', () => {
     const conn = await connectBank('nubank', 'u-prod-500');
     apiRequestMock.mockRejectedValueOnce(new Error('API Error 500: backend down'));
 
-    const imported: any[] = [];
+    const imported: Array<Partial<Transaction>> = [];
     const result = await syncTransactions(conn.id, [], 'u-prod-500', (txs) => imported.push(...txs));
 
     expect(result.transactions_imported).toBe(0);
@@ -882,7 +900,7 @@ describe('openBankingService - Extended Coverage', () => {
         user_id: 'u-prod-mock-sync',
         provider: 'mock',
         bank_name: 'Mock Bank',
-        bank_logo: '🏦',
+        bank_logo: '??',
         bank_color: '#000000',
         connection_status: 'connected',
         external_account_id: 'mock_ext_sync_prod',
@@ -890,11 +908,11 @@ describe('openBankingService - Extended Coverage', () => {
       },
     ]));
 
-    const imported: any[] = [];
+    const imported: Array<Partial<Transaction>> = [];
     const result = await syncTransactions('conn_mock_sync_prod', [], 'u-prod-mock-sync', (txs) => imported.push(...txs));
 
     expect(result.transactions_imported).toBe(0);
-    expect(result.error).toMatch(/Conexão local de teste removida/i);
+    expect(result.error).toMatch(/Conex.{0,6}o local de teste removida/i);
     expect(imported).toEqual([]);
     expect(getConnection('conn_mock_sync_prod')).toBeNull();
   });
@@ -919,7 +937,7 @@ describe('openBankingService - Extended Coverage', () => {
 
     const result = await syncTransactions(conn.id, [], 'u404', vi.fn());
 
-    expect(result.error).toMatch(/Conexão não encontrada no backend/i);
+    expect(result.error).toMatch(/Conex.{0,6}o n.{0,4}o encontrada no backend/i);
     expect(getConnection(conn.id)).toBeNull();
     expect(apiRequestMock).toHaveBeenCalledTimes(2);
   });
@@ -945,7 +963,7 @@ describe('openBankingService - Extended Coverage', () => {
   });
 
   it('mapPluggyConnectErrorMessage tolera payload circular sem quebrar', () => {
-    const circular: any = { message: 'unknown_error' };
+    const circular: Record<string, unknown> & { self?: unknown } = { message: 'unknown_error' };
     circular.self = circular;
 
     const message = mapPluggyConnectErrorMessage(circular);
@@ -958,7 +976,7 @@ describe('openBankingService - Extended Coverage', () => {
   });
 
   it('mapPluggyConnectErrorMessage aceita erro primitivo nao objeto', () => {
-    const message = mapPluggyConnectErrorMessage(503 as any);
+    const message = mapPluggyConnectErrorMessage(503 as unknown);
     expect(message).toMatch(/cancelada|invalida/i);
   });
 
@@ -1071,7 +1089,7 @@ describe('openBankingService - Extended Coverage', () => {
         user_id: 'u-prod-clean',
         provider: 'mock',
         bank_name: 'Mock Bank',
-        bank_logo: '🏦',
+        bank_logo: '??',
         bank_color: '#000000',
         connection_status: 'connected',
         external_account_id: 'mock_ext_prod',
@@ -1087,7 +1105,7 @@ describe('openBankingService - Extended Coverage', () => {
 
   it('syncTransactions continua mesmo se o registro for removido antes do updateStatus final', async () => {
     const conn = await connectBank('nubank', 'u-status-missing');
-    const imported: any[] = [];
+    const imported: Array<Partial<Transaction>> = [];
 
     const result = await syncTransactions(conn.id, [], 'u-status-missing', (txs) => {
       imported.push(...txs);
@@ -1128,7 +1146,7 @@ describe('openBankingService - Extended Coverage', () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
       fetchAccounts: vi.fn().mockRejectedValue({}),
       fetchTransactions: vi.fn().mockResolvedValue([]),
-    } as any);
+    } as unknown as ReturnType<typeof getProvider>);
 
     const conn = await connectBank('nubank', 'u-accounts-default-error');
 
@@ -1158,10 +1176,10 @@ describe('openBankingService - Extended Coverage', () => {
         merchant: 'EMPRESA_XYZ',
         confidence: 0.91,
       },
-    ] as any);
+    ] as unknown as ImportedTransaction[]);
 
     const conn = await connectBank('nubank', 'u-partial-ai');
-    const imported: any[] = [];
+    const imported: Array<Partial<Transaction>> = [];
 
     await syncTransactions(conn.id, [], 'u-partial-ai', (txs) => imported.push(...txs));
 
@@ -1189,7 +1207,7 @@ describe('openBankingService - Extended Coverage', () => {
       fetchTransactions: vi.fn().mockResolvedValue([
         { id: 'tx_no_merchant', date: new Date(Date.now() - 86400000).toISOString(), amount: -80, description: 'Mercado Bairro' },
       ]),
-    } as any);
+    } as unknown as ReturnType<typeof getProvider>);
 
     const conn = await connectBank('nubank', 'u-no-merchant');
     const result = await syncTransactions(conn.id, [
@@ -1201,7 +1219,7 @@ describe('openBankingService - Extended Coverage', () => {
         category: 'PESSOAL',
         date: new Date(Date.now() - 86400000).toISOString(),
       },
-    ] as any, 'u-no-merchant', vi.fn());
+    ] as unknown as Transaction[], 'u-no-merchant', vi.fn());
 
     expect(result.transactions_imported).toBe(0);
   });
@@ -1212,12 +1230,12 @@ describe('openBankingService - Extended Coverage', () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
       fetchAccounts: vi.fn().mockResolvedValue([]),
       fetchTransactions: vi.fn().mockRejectedValue({}),
-    } as any);
+    } as unknown as ReturnType<typeof getProvider>);
 
     const conn = await connectBank('nubank', 'u-error-default');
     const result = await syncTransactions(conn.id, [], 'u-error-default', vi.fn());
 
-    expect(result.error).toBeUndefined();
+    expect(result.error).toBe('Erro ao sincronizar.');
     expect(getConnection(conn.id)).toMatchObject({
       connection_status: 'error',
       error_message: 'Erro ao sincronizar.',
@@ -1230,3 +1248,5 @@ describe('openBankingService - Extended Coverage', () => {
     expect(formatLastSync(new Date(Date.now() - 5 * 60000).toISOString())).toMatch(/5 min atr/);
   });
 });
+
+

@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+﻿import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
@@ -52,13 +52,13 @@ const skipLocal = hasFlag('--skip-local');
 
 if (!skipFirestore) {
   if (!project) {
-    console.error('Projeto Firebase nao encontrado. Use --project=<id>.');
+    process.stderr.write('Projeto Firebase nao encontrado. Use --project=<id>.');
     process.exit(1);
   }
 
   if (collections.length > 0) {
     for (const collection of collections) {
-      console.log(`\n[firestore] Limpando colecao: ${collection}`);
+      process.stdout.write(`\n[firestore] Limpando colecao: ${collection}`);
       run('npx', [
         'firebase',
         'firestore:delete',
@@ -70,7 +70,7 @@ if (!skipFirestore) {
       ]);
     }
   } else {
-    console.log(`\n[firestore] Limpando todas as colecoes do projeto: ${project}`);
+    process.stdout.write(`\n[firestore] Limpando todas as colecoes do projeto: ${project}`);
     run('npx', [
       'firebase',
       'firestore:delete',
@@ -114,7 +114,8 @@ if (!skipLocal) {
     fs.rmSync(externalIdempotencyPath, { force: true });
   }
 
-  console.log('\n[local] backend/data resetado com sucesso.');
+  process.stdout.write('\n[local] backend/data resetado com sucesso.');
 }
 
-console.log('\nReset concluido.');
+process.stdout.write('\nReset concluido.');
+

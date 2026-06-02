@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import AIOrchestrator, { OrchestratorConfig } from '../../src/services/ai/AIOrchestrator';
 import { IAIProvider } from '../../src/services/ai/IAIProvider';
 import { AIResponse, AIProviderConfig, GenerateContentRequest } from '../../src/services/ai/types';
+import logger from '../../src/config/logger';
 
 // Mock provider for testing
 class MockAIProvider extends IAIProvider {
@@ -21,7 +22,7 @@ class MockAIProvider extends IAIProvider {
 
     return {
       content: `Mock response for ${request.model}`,
-      provider: this.config.name as any,
+      provider: this.config.name,
       model: this.config.models[request.model] || 'mock-model',
       latencyMs: 100,
       wasFallback: false,
@@ -154,6 +155,26 @@ describe('AIOrchestrator', () => {
 
       expect(results.openai).toBe(false);
       expect(results.gemini).toBe(true);
+    });
+
+    it('logs contextual data when a provider health check throws', async () => {
+      const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+      vi.spyOn(primaryProvider, 'healthCheck').mockRejectedValueOnce(new Error('provider down'));
+
+      const results = await orchestrator.healthCheckAll();
+
+      expect(results.openai).toBe(false);
+      expect(errorSpy).toHaveBeenCalledWith(
+        'Health check failed for openai',
+        expect.objectContaining({
+          provider: 'openai',
+          error: 'provider down',
+          errorType: 'Error',
+          fallback: 'provider-health-unavailable',
+        }),
+      );
+
+      errorSpy.mockRestore();
     });
   });
 

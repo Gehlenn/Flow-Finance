@@ -1,6 +1,30 @@
 import { query, testConnection } from '../../config/database';
 import logger from '../../config/logger';
 import { Tenant, Workspace, WorkspaceUser, WorkspaceUserPreference } from '../../types';
+import {
+  addQueryFilter,
+  buildWhereClause,
+  buildLimitClause,
+  buildWorkspaceSaasStateFromRows,
+  mapAuditEventRow,
+  mapDomainEventRow,
+  mapRows,
+  mapUsageSnapshotRow,
+  mapWorkspaceUsageEventRow,
+  queryMappedRow,
+  queryMappedRows,
+  resolveQueryLimit,
+} from './postgresStateStoreQueryHelpers';
+import {
+  saveWorkspaceSaasRows,
+  saveWorkspaceStoreRows,
+} from './postgresStateStoreSaveHelpers';
+import {
+  mapTenantRow,
+  mapWorkspaceRow,
+  mapWorkspaceUserPreferenceRow,
+  mapWorkspaceUserRow,
+} from './postgresStateStoreHelpers';
 
 export type PersistedAuditEventRow = {
   id: string;
@@ -314,61 +338,12 @@ export async function loadRecentAuditEvents(limit = 10000): Promise<PersistedAud
     return [];
   }
 
-  const result = await query(`
+  return queryMappedRows(`
     SELECT id, at, tenant_id, workspace_id, user_id, email, action, status, resource_type, resource_id, ip, user_agent, resource, metadata
     FROM audit_events
     ORDER BY at DESC
     LIMIT $1
-  `, [limit]);
-
-  return result.rows.map((row: Record<string, unknown>) => ({
-    id: String(row.id),
-    at: new Date(String(row.at)).toISOString(),
-    tenantId: typeof row.tenant_id === 'string' ? row.tenant_id : undefined,
-    workspaceId: typeof row.workspace_id === 'string' ? row.workspace_id : undefined,
-    userId: typeof row.user_id === 'string' ? row.user_id : undefined,
-    email: typeof row.email === 'string' ? row.email : undefined,
-    action: String(row.action),
-    status: String(row.status),
-    resourceType: typeof row.resource_type === 'string' ? row.resource_type : undefined,
-    resourceId: typeof row.resource_id === 'string' ? row.resource_id : undefined,
-    ip: typeof row.ip === 'string' ? row.ip : undefined,
-    userAgent: typeof row.user_agent === 'string' ? row.user_agent : undefined,
-    resource: typeof row.resource === 'string' ? row.resource : undefined,
-    metadata: typeof row.metadata === 'object' && row.metadata !== null ? row.metadata as Record<string, unknown> : undefined,
-  }));
-}
-
-function mapTenantRow(row: Record<string, unknown>): Tenant {
-  return {
-    tenantId: String(row.tenant_id),
-    name: String(row.name),
-    plan: String(row.plan) as Tenant['plan'],
-    createdAt: new Date(String(row.created_at)).toISOString(),
-    updatedAt: new Date(String(row.updated_at || row.created_at)).toISOString(),
-  };
-}
-
-function mapWorkspaceRow(row: Record<string, unknown>): Workspace {
-  const workspaceId = String(row.workspace_id);
-  return {
-    workspaceId,
-    tenantId: typeof row.tenant_id === 'string' && row.tenant_id.length > 0 ? row.tenant_id : workspaceId,
-    name: String(row.name),
-    isDefault: typeof row.is_default === 'boolean' ? row.is_default : true,
-    createdAt: new Date(String(row.created_at)).toISOString(),
-    updatedAt: new Date(String(row.updated_at || row.created_at)).toISOString(),
-    plan: String(row.plan) as Workspace['plan'],
-    status: String(row.status || 'active') as Workspace['status'],
-    billingEmail: typeof row.billing_email === 'string' ? row.billing_email : undefined,
-    billingCustomerId: typeof row.billing_customer_id === 'string' ? row.billing_customer_id : undefined,
-    subscription: typeof row.subscription === 'object' && row.subscription !== null
-      ? row.subscription as Workspace['subscription']
-      : undefined,
-    entitlements: typeof row.entitlements === 'object' && row.entitlements !== null
-      ? row.entitlements as Workspace['entitlements']
-      : undefined,
-  };
+  `, [limit], mapAuditEventRow);
 }
 
 export async function loadWorkspaceStoreState(): Promise<PersistedWorkspaceStoreState | null> {
@@ -409,24 +384,10 @@ export async function loadWorkspaceStoreState(): Promise<PersistedWorkspaceStore
   }
 
   return {
-    tenants: tenantResult.rows.map((row: Record<string, unknown>) => mapTenantRow(row)),
-    workspaces: workspaceResult.rows.map((row: Record<string, unknown>) => mapWorkspaceRow(row)),
-    workspaceUsers: workspaceUserResult.rows.map((row: Record<string, unknown>) => ({
-      workspaceId: String(row.workspace_id),
-      tenantId: typeof row.tenant_id === 'string' && row.tenant_id.length > 0 ? row.tenant_id : String(row.workspace_id),
-      userId: String(row.user_id),
-      role: String(row.role) as WorkspaceUser['role'],
-      joinedAt: new Date(String(row.joined_at)).toISOString(),
-      invitedBy: typeof row.invited_by === 'string' ? row.invited_by : undefined,
-      status: String(row.status || 'active') as WorkspaceUser['status'],
-    })),
-    userPreferences: preferenceResult.rows.map((row: Record<string, unknown>) => ({
-      userId: String(row.user_id),
-      lastSelectedWorkspaceId: typeof row.last_selected_workspace_id === 'string'
-        ? row.last_selected_workspace_id
-        : undefined,
-      updatedAt: new Date(String(row.updated_at)).toISOString(),
-    })),
+    tenants: mapRows(tenantResult.rows as Array<Record<string, unknown>>, mapTenantRow),
+    workspaces: mapRows(workspaceResult.rows as Array<Record<string, unknown>>, mapWorkspaceRow),
+    workspaceUsers: mapRows(workspaceUserResult.rows as Array<Record<string, unknown>>, mapWorkspaceUserRow),
+    userPreferences: mapRows(preferenceResult.rows as Array<Record<string, unknown>>, mapWorkspaceUserPreferenceRow),
   };
 }
 
@@ -441,73 +402,19 @@ export async function saveWorkspaceStoreState(state: PersistedWorkspaceStoreStat
     await query('DELETE FROM workspace_users');
     await query('DELETE FROM workspaces');
     await query('DELETE FROM tenants');
-
-    for (const tenant of state.tenants) {
-      await query(`
-        INSERT INTO tenants (
-          tenant_id, name, plan, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5)
-      `, [
-        tenant.tenantId,
-        tenant.name,
-        tenant.plan,
-        tenant.createdAt,
-        tenant.updatedAt,
-      ]);
-    }
-
-    for (const workspace of state.workspaces) {
-      await query(`
-        INSERT INTO workspaces (
-          workspace_id, tenant_id, name, is_default, created_at, plan, status, billing_email, billing_customer_id, subscription, entitlements, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12)
-      `, [
-        workspace.workspaceId,
-        workspace.tenantId,
-        workspace.name,
-        workspace.isDefault,
-        workspace.createdAt,
-        workspace.plan,
-        workspace.status || 'active',
-        workspace.billingEmail || null,
-        workspace.billingCustomerId || null,
-        JSON.stringify(workspace.subscription || null),
-        JSON.stringify(workspace.entitlements || null),
-        workspace.updatedAt || workspace.createdAt,
-      ]);
-    }
-
-    for (const workspaceUser of state.workspaceUsers) {
-      await query(`
-        INSERT INTO workspace_users (
-          workspace_id, tenant_id, user_id, role, joined_at, invited_by, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [
-        workspaceUser.workspaceId,
-        workspaceUser.tenantId,
-        workspaceUser.userId,
-        workspaceUser.role,
-        workspaceUser.joinedAt,
-        workspaceUser.invitedBy || null,
-        workspaceUser.status || 'active',
-      ]);
-    }
-
-    for (const preference of state.userPreferences) {
-      await query(`
-        INSERT INTO workspace_user_preferences (
-          user_id, last_selected_workspace_id, updated_at
-        ) VALUES ($1, $2, $3)
-      `, [
-        preference.userId,
-        preference.lastSelectedWorkspaceId || null,
-        preference.updatedAt,
-      ]);
-    }
+    await saveWorkspaceStoreRows(state);
 
     await query('COMMIT');
   } catch (error) {
     await query('ROLLBACK');
+    logger.error({
+      error,
+      tenantCount: state.tenants.length,
+      workspaceCount: state.workspaces.length,
+      workspaceUserCount: state.workspaceUsers.length,
+      preferenceCount: state.userPreferences.length,
+      fallback: 'workspace-store-save-failed',
+    }, 'Failed to persist workspace store state');
     throw error;
   }
 }
@@ -543,52 +450,11 @@ export async function loadWorkspaceSaasState(): Promise<PersistedWorkspaceSaasSt
     return null;
   }
 
-  const usageByWorkspace: PersistedWorkspaceSaasState['usageByWorkspace'] = {};
-  for (const row of usageResult.rows as Array<Record<string, unknown>>) {
-    const workspaceId = String(row.workspace_id);
-    usageByWorkspace[workspaceId] = usageByWorkspace[workspaceId] || {};
-    usageByWorkspace[workspaceId][String(row.month_key)] = {
-      transactions: Number(row.transactions || 0),
-      aiQueries: Number(row.ai_queries || 0),
-      bankConnections: Number(row.bank_connections || 0),
-    };
-  }
-
-  const usageEventsByWorkspace: PersistedWorkspaceSaasState['usageEventsByWorkspace'] = {};
-  for (const row of usageEventResult.rows as Array<Record<string, unknown>>) {
-    const workspaceId = String(row.workspace_id);
-    usageEventsByWorkspace[workspaceId] = usageEventsByWorkspace[workspaceId] || [];
-    usageEventsByWorkspace[workspaceId].push({
-      id: String(row.id),
-      workspaceId,
-      userId: typeof row.user_id === 'string' ? row.user_id : undefined,
-      resource: String(row.resource) as PersistedWorkspaceUsageEventRow['resource'],
-      amount: Number(row.amount || 0),
-      at: new Date(String(row.at)).toISOString(),
-      metadata: typeof row.metadata === 'object' && row.metadata !== null ? row.metadata as Record<string, unknown> : undefined,
-    });
-  }
-
-  const billingHooksByWorkspace: PersistedWorkspaceSaasState['billingHooksByWorkspace'] = {};
-  for (const row of billingHookResult.rows as Array<Record<string, unknown>>) {
-    const workspaceId = String(row.workspace_id);
-    billingHooksByWorkspace[workspaceId] = billingHooksByWorkspace[workspaceId] || [];
-    billingHooksByWorkspace[workspaceId].push({
-      id: String(row.id),
-      workspaceId,
-      userId: typeof row.user_id === 'string' ? row.user_id : undefined,
-      plan: String(row.plan) as PersistedWorkspaceBillingHookRow['plan'],
-      event: String(row.event) as PersistedWorkspaceBillingHookRow['event'],
-      resource: typeof row.resource === 'string'
-        ? row.resource as PersistedWorkspaceBillingHookRow['resource']
-        : undefined,
-      amount: Number(row.amount || 0),
-      at: new Date(String(row.at)).toISOString(),
-      metadata: typeof row.metadata === 'object' && row.metadata !== null ? row.metadata as Record<string, unknown> : undefined,
-    });
-  }
-
-  return { usageByWorkspace, usageEventsByWorkspace, billingHooksByWorkspace };
+  return buildWorkspaceSaasStateFromRows({
+    usageRows: usageResult.rows as Array<Record<string, unknown>>,
+    usageEventRows: usageEventResult.rows as Array<Record<string, unknown>>,
+    billingHookRows: billingHookResult.rows as Array<Record<string, unknown>>,
+  });
 }
 
 export async function saveWorkspaceSaasState(state: PersistedWorkspaceSaasState): Promise<void> {
@@ -601,64 +467,18 @@ export async function saveWorkspaceSaasState(state: PersistedWorkspaceSaasState)
     await query('DELETE FROM workspace_monthly_usage');
     await query('DELETE FROM workspace_usage_events');
     await query('DELETE FROM workspace_billing_hooks');
-
-    for (const [workspaceId, usageByMonth] of Object.entries(state.usageByWorkspace)) {
-      for (const [monthKey, snapshot] of Object.entries(usageByMonth)) {
-        await query(`
-          INSERT INTO workspace_monthly_usage (
-            workspace_id, month_key, transactions, ai_queries, bank_connections, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, NOW())
-        `, [
-          workspaceId,
-          monthKey,
-          snapshot.transactions,
-          snapshot.aiQueries,
-          snapshot.bankConnections,
-        ]);
-      }
-    }
-
-    for (const events of Object.values(state.usageEventsByWorkspace)) {
-      for (const event of events) {
-        await query(`
-          INSERT INTO workspace_usage_events (
-            id, workspace_id, user_id, resource, amount, at, metadata
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
-        `, [
-          event.id,
-          event.workspaceId,
-          event.userId || null,
-          event.resource,
-          event.amount,
-          event.at,
-          JSON.stringify(event.metadata || {}),
-        ]);
-      }
-    }
-
-    for (const hooks of Object.values(state.billingHooksByWorkspace)) {
-      for (const hook of hooks) {
-        await query(`
-          INSERT INTO workspace_billing_hooks (
-            id, workspace_id, user_id, plan, event, resource, amount, at, metadata
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
-        `, [
-          hook.id,
-          hook.workspaceId,
-          hook.userId || null,
-          hook.plan,
-          hook.event,
-          hook.resource || null,
-          hook.amount,
-          hook.at,
-          JSON.stringify(hook.metadata || {}),
-        ]);
-      }
-    }
+    await saveWorkspaceSaasRows(state);
 
     await query('COMMIT');
   } catch (error) {
     await query('ROLLBACK');
+    logger.error({
+      error,
+      workspaceCount: Object.keys(state.usageByWorkspace).length,
+      usageEventWorkspaceCount: Object.keys(state.usageEventsByWorkspace).length,
+      billingHookWorkspaceCount: Object.keys(state.billingHooksByWorkspace).length,
+      fallback: 'saas-state-save-failed',
+    }, 'Failed to persist workspace SaaS state');
     throw error;
   }
 }
@@ -683,53 +503,21 @@ export async function queryAuditEvents(filters: {
   const clauses: string[] = [];
   const params: unknown[] = [];
 
-  if (filters.tenantId) {
-    params.push(filters.tenantId);
-    clauses.push(`tenant_id = $${params.length}`);
-  }
-  if (filters.workspaceId) {
-    params.push(filters.workspaceId);
-    clauses.push(`workspace_id = $${params.length}`);
-  }
-  if (filters.userId) {
-    params.push(filters.userId);
-    clauses.push(`user_id = $${params.length}`);
-  }
-  if (filters.action) {
-    params.push(filters.action);
-    clauses.push(`action = $${params.length}`);
-  }
-  if (filters.status) {
-    params.push(filters.status);
-    clauses.push(`status = $${params.length}`);
-  }
-  if (filters.resourceType) {
-    params.push(filters.resourceType);
-    clauses.push(`resource_type = $${params.length}`);
-  }
-  if (filters.resourceId) {
-    params.push(filters.resourceId);
-    clauses.push(`resource_id = $${params.length}`);
-  }
-  if (filters.resource) {
-    params.push(filters.resource);
-    clauses.push(`resource = $${params.length}`);
-  }
-  if (filters.since) {
-    params.push(filters.since);
-    clauses.push(`at >= $${params.length}`);
-  }
-  if (filters.until) {
-    params.push(filters.until);
-    clauses.push(`at <= $${params.length}`);
-  }
+  addQueryFilter(params, clauses, filters.tenantId, (index) => `tenant_id = $${index}`);
+  addQueryFilter(params, clauses, filters.workspaceId, (index) => `workspace_id = $${index}`);
+  addQueryFilter(params, clauses, filters.userId, (index) => `user_id = $${index}`);
+  addQueryFilter(params, clauses, filters.action, (index) => `action = $${index}`);
+  addQueryFilter(params, clauses, filters.status, (index) => `status = $${index}`);
+  addQueryFilter(params, clauses, filters.resourceType, (index) => `resource_type = $${index}`);
+  addQueryFilter(params, clauses, filters.resourceId, (index) => `resource_id = $${index}`);
+  addQueryFilter(params, clauses, filters.resource, (index) => `resource = $${index}`);
+  addQueryFilter(params, clauses, filters.since, (index) => `at >= $${index}`);
+  addQueryFilter(params, clauses, filters.until, (index) => `at <= $${index}`);
 
-  const limit = Number.isFinite(filters.limit) && (filters.limit as number) > 0
-    ? Math.min(Number(filters.limit), 5000)
-    : undefined;
+  const limit = resolveQueryLimit(filters.limit, 5000);
 
-  const whereClause = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
-  const limitClause = limit ? `LIMIT ${limit}` : '';
+  const whereClause = buildWhereClause('WHERE 1=1', clauses);
+  const limitClause = buildLimitClause(limit);
 
   const result = await query(`
     SELECT id, at, tenant_id, workspace_id, user_id, email, action, status, resource_type, resource_id, ip, user_agent, resource, metadata
@@ -739,22 +527,7 @@ export async function queryAuditEvents(filters: {
     ${limitClause}
   `, params);
 
-  return result.rows.map((row: Record<string, unknown>) => ({
-    id: String(row.id),
-    at: new Date(String(row.at)).toISOString(),
-    tenantId: typeof row.tenant_id === 'string' ? row.tenant_id : undefined,
-    workspaceId: typeof row.workspace_id === 'string' ? row.workspace_id : undefined,
-    userId: typeof row.user_id === 'string' ? row.user_id : undefined,
-    email: typeof row.email === 'string' ? row.email : undefined,
-    action: String(row.action),
-    status: String(row.status),
-    resourceType: typeof row.resource_type === 'string' ? row.resource_type : undefined,
-    resourceId: typeof row.resource_id === 'string' ? row.resource_id : undefined,
-    ip: typeof row.ip === 'string' ? row.ip : undefined,
-    userAgent: typeof row.user_agent === 'string' ? row.user_agent : undefined,
-    resource: typeof row.resource === 'string' ? row.resource : undefined,
-    metadata: typeof row.metadata === 'object' && row.metadata !== null ? row.metadata as Record<string, unknown> : undefined,
-  }));
+  return mapRows(result.rows as Array<Record<string, unknown>>, mapAuditEventRow);
 }
 
 export async function queryWorkspaceMeteringSummary(
@@ -775,30 +548,31 @@ export async function queryWorkspaceMeteringSummary(
   const params: unknown[] = [workspaceId];
   const clauses = ['workspace_id = $1'];
 
-  if (filters.from) {
-    params.push(filters.from);
-    clauses.push(`to_date(month_key || '-01', 'YYYY-MM-DD') >= date_trunc('month', $${params.length}::timestamptz)::date`);
-  }
-  if (filters.to) {
-    params.push(filters.to);
-    clauses.push(`to_date(month_key || '-01', 'YYYY-MM-DD') <= date_trunc('month', $${params.length}::timestamptz)::date`);
-  }
+  addQueryFilter(
+    params,
+    clauses,
+    filters.from,
+    (index) => `to_date(month_key || '-01', 'YYYY-MM-DD') >= date_trunc('month', $${index}::timestamptz)::date`,
+  );
+  addQueryFilter(
+    params,
+    clauses,
+    filters.to,
+    (index) => `to_date(month_key || '-01', 'YYYY-MM-DD') <= date_trunc('month', $${index}::timestamptz)::date`,
+  );
 
+  const whereClause = buildWhereClause('WHERE 1=1', clauses);
   const result = await query(`
     SELECT month_key, transactions, ai_queries, bank_connections
     FROM workspace_monthly_usage
-    WHERE ${clauses.join(' AND ')}
+    ${whereClause}
     ORDER BY month_key DESC
   `, params);
 
   const months = Object.fromEntries(
-    result.rows.map((row: Record<string, unknown>) => [
+    mapRows(result.rows as Array<Record<string, unknown>>, (row) => [
       String(row.month_key),
-      {
-        transactions: Number(row.transactions || 0),
-        aiQueries: Number(row.ai_queries || 0),
-        bankConnections: Number(row.bank_connections || 0),
-      },
+      mapUsageSnapshotRow(row),
     ]),
   ) as Record<string, PersistedUsageSnapshot>;
 
@@ -831,41 +605,21 @@ export async function queryWorkspaceUsageEvents(
   const params: unknown[] = [workspaceId];
   const clauses = ['workspace_id = $1'];
 
-  if (filters.resource) {
-    params.push(filters.resource);
-    clauses.push(`resource = $${params.length}`);
-  }
-  if (filters.from) {
-    params.push(filters.from);
-    clauses.push(`at >= $${params.length}`);
-  }
-  if (filters.to) {
-    params.push(filters.to);
-    clauses.push(`at <= $${params.length}`);
-  }
+  addQueryFilter(params, clauses, filters.resource, (index) => `resource = $${index}`);
+  addQueryFilter(params, clauses, filters.from, (index) => `at >= $${index}`);
+  addQueryFilter(params, clauses, filters.to, (index) => `at <= $${index}`);
 
-  const limit = Number.isFinite(filters.limit) && (filters.limit as number) > 0
-    ? Math.min(Number(filters.limit), 5000)
-    : undefined;
-  const limitClause = limit ? `LIMIT ${limit}` : '';
+  const limit = resolveQueryLimit(filters.limit, 5000);
+  const limitClause = buildLimitClause(limit);
 
-  const result = await query(`
+  const whereClause = buildWhereClause('WHERE 1=1', clauses);
+  return queryMappedRows(`
     SELECT id, workspace_id, user_id, resource, amount, at, metadata
     FROM workspace_usage_events
-    WHERE ${clauses.join(' AND ')}
+    ${whereClause}
     ORDER BY at DESC, id DESC
     ${limitClause}
-  `, params);
-
-  return result.rows.map((row: Record<string, unknown>) => ({
-    id: String(row.id),
-    workspaceId: String(row.workspace_id),
-    userId: typeof row.user_id === 'string' ? row.user_id : undefined,
-    resource: String(row.resource) as PersistedWorkspaceUsageEventRow['resource'],
-    amount: Number(row.amount || 0),
-    at: new Date(String(row.at)).toISOString(),
-    metadata: typeof row.metadata === 'object' && row.metadata !== null ? row.metadata as Record<string, unknown> : undefined,
-  }));
+  `, params, mapWorkspaceUsageEventRow);
 }
 
 export async function queryWorkspaceById(workspaceId: string): Promise<Workspace | null> {
@@ -873,18 +627,12 @@ export async function queryWorkspaceById(workspaceId: string): Promise<Workspace
     return null;
   }
 
-  const result = await query(`
+  return queryMappedRow(`
     SELECT workspace_id, tenant_id, name, is_default, created_at, updated_at, plan, status, billing_email, billing_customer_id, subscription, entitlements
     FROM workspaces
     WHERE workspace_id = $1
     LIMIT 1
-  `, [workspaceId]);
-
-  if (result.rows.length === 0) {
-    return null;
-  }
-
-  return mapWorkspaceRow(result.rows[0] as Record<string, unknown>);
+  `, [workspaceId], mapWorkspaceRow);
 }
 
 export async function queryWorkspacesForUser(userId: string): Promise<Workspace[]> {
@@ -892,15 +640,13 @@ export async function queryWorkspacesForUser(userId: string): Promise<Workspace[
     return [];
   }
 
-  const result = await query(`
+  return queryMappedRows(`
     SELECT w.workspace_id, w.tenant_id, w.name, w.is_default, w.created_at, w.updated_at, w.plan, w.status, w.billing_email, w.billing_customer_id, w.subscription, w.entitlements
     FROM workspaces w
     INNER JOIN workspace_users wu ON wu.workspace_id = w.workspace_id
     WHERE wu.user_id = $1 AND wu.status = 'active'
     ORDER BY w.created_at ASC
-  `, [userId]);
-
-  return result.rows.map((row: Record<string, unknown>) => mapWorkspaceRow(row));
+  `, [userId], mapWorkspaceRow);
 }
 
 export async function queryWorkspaceUsers(workspaceId: string): Promise<WorkspaceUser[]> {
@@ -908,22 +654,12 @@ export async function queryWorkspaceUsers(workspaceId: string): Promise<Workspac
     return [];
   }
 
-  const result = await query(`
+  return queryMappedRows(`
     SELECT workspace_id, tenant_id, user_id, role, joined_at, invited_by, status
     FROM workspace_users
     WHERE workspace_id = $1
     ORDER BY joined_at ASC
-  `, [workspaceId]);
-
-  return result.rows.map((row: Record<string, unknown>) => ({
-    workspaceId: String(row.workspace_id),
-    tenantId: typeof row.tenant_id === 'string' && row.tenant_id.length > 0 ? row.tenant_id : String(row.workspace_id),
-    userId: String(row.user_id),
-    role: String(row.role) as WorkspaceUser['role'],
-    joinedAt: new Date(String(row.joined_at)).toISOString(),
-    invitedBy: typeof row.invited_by === 'string' ? row.invited_by : undefined,
-    status: String(row.status || 'active') as WorkspaceUser['status'],
-  }));
+  `, [workspaceId], mapWorkspaceUserRow);
 }
 
 export async function queryLastWorkspaceForUser(userId: string): Promise<Workspace | null> {
@@ -931,19 +667,13 @@ export async function queryLastWorkspaceForUser(userId: string): Promise<Workspa
     return null;
   }
 
-  const result = await query(`
+  return queryMappedRow(`
     SELECT w.workspace_id, w.tenant_id, w.name, w.is_default, w.created_at, w.updated_at, w.plan, w.status, w.billing_email, w.billing_customer_id, w.subscription, w.entitlements
     FROM workspace_user_preferences p
     INNER JOIN workspaces w ON w.workspace_id = p.last_selected_workspace_id
     WHERE p.user_id = $1
     LIMIT 1
-  `, [userId]);
-
-  if (result.rows.length === 0) {
-    return null;
-  }
-
-  return mapWorkspaceRow(result.rows[0] as Record<string, unknown>);
+  `, [userId], mapWorkspaceRow);
 }
 
 export async function queryWorkspaceByBillingCustomerId(billingCustomerId: string): Promise<Workspace | null> {
@@ -951,18 +681,12 @@ export async function queryWorkspaceByBillingCustomerId(billingCustomerId: strin
     return null;
   }
 
-  const result = await query(`
+  return queryMappedRow(`
     SELECT workspace_id, tenant_id, name, is_default, created_at, updated_at, plan, status, billing_email, billing_customer_id, subscription, entitlements
     FROM workspaces
     WHERE billing_customer_id = $1
     LIMIT 1
-  `, [billingCustomerId]);
-
-  if (result.rows.length === 0) {
-    return null;
-  }
-
-  return mapWorkspaceRow(result.rows[0] as Record<string, unknown>);
+  `, [billingCustomerId], mapWorkspaceRow);
 }
 
 export async function queryTenantById(tenantId: string): Promise<Tenant | null> {
@@ -970,18 +694,12 @@ export async function queryTenantById(tenantId: string): Promise<Tenant | null> 
     return null;
   }
 
-  const result = await query(`
+  return queryMappedRow(`
     SELECT tenant_id, name, plan, created_at, updated_at
     FROM tenants
     WHERE tenant_id = $1
     LIMIT 1
-  `, [tenantId]);
-
-  if (result.rows.length === 0) {
-    return null;
-  }
-
-  return mapTenantRow(result.rows[0] as Record<string, unknown>);
+  `, [tenantId], mapTenantRow);
 }
 
 export async function queryTenantsForUser(userId: string): Promise<Tenant[]> {
@@ -989,15 +707,13 @@ export async function queryTenantsForUser(userId: string): Promise<Tenant[]> {
     return [];
   }
 
-  const result = await query(`
+  return queryMappedRows(`
     SELECT DISTINCT t.tenant_id, t.name, t.plan, t.created_at, t.updated_at
     FROM tenants t
     INNER JOIN workspace_users wu ON wu.tenant_id = t.tenant_id
     WHERE wu.user_id = $1 AND wu.status = 'active'
     ORDER BY t.created_at ASC
-  `, [userId]);
-
-  return result.rows.map((row: Record<string, unknown>) => mapTenantRow(row));
+  `, [userId], mapTenantRow);
 }
 
 export async function insertDomainEvent(row: PersistedDomainEventRow): Promise<void> {
@@ -1043,54 +759,22 @@ export async function queryDomainEvents(filters: {
   const params: unknown[] = [filters.workspaceId];
   const clauses = ['workspace_id = $1'];
 
-  if (filters.aggregateId) {
-    params.push(filters.aggregateId);
-    clauses.push(`aggregate_id = $${params.length}`);
-  }
-  if (filters.aggregateType) {
-    params.push(filters.aggregateType);
-    clauses.push(`aggregate_type = $${params.length}`);
-  }
-  if (filters.type) {
-    params.push(filters.type);
-    clauses.push(`type = $${params.length}`);
-  }
-  if (filters.userId) {
-    params.push(filters.userId);
-    clauses.push(`user_id = $${params.length}`);
-  }
-  if (filters.since) {
-    params.push(filters.since);
-    clauses.push(`occurred_at >= $${params.length}`);
-  }
-  if (filters.until) {
-    params.push(filters.until);
-    clauses.push(`occurred_at <= $${params.length}`);
-  }
+  addQueryFilter(params, clauses, filters.aggregateId, (index) => `aggregate_id = $${index}`);
+  addQueryFilter(params, clauses, filters.aggregateType, (index) => `aggregate_type = $${index}`);
+  addQueryFilter(params, clauses, filters.type, (index) => `type = $${index}`);
+  addQueryFilter(params, clauses, filters.userId, (index) => `user_id = $${index}`);
+  addQueryFilter(params, clauses, filters.since, (index) => `occurred_at >= $${index}`);
+  addQueryFilter(params, clauses, filters.until, (index) => `occurred_at <= $${index}`);
 
-  const limit = Number.isFinite(filters.limit) && (filters.limit as number) > 0
-    ? Math.min(Number(filters.limit), 1000)
-    : 100;
+  const limit = resolveQueryLimit(filters.limit, 1000) ?? 100;
 
   params.push(limit);
-  const result = await query(`
+  const whereClause = buildWhereClause('WHERE 1=1', clauses);
+  return queryMappedRows(`
     SELECT id, workspace_id, tenant_id, user_id, aggregate_id, aggregate_type, type, payload, metadata, occurred_at
     FROM domain_events
-    WHERE ${clauses.join(' AND ')}
+    ${whereClause}
     ORDER BY occurred_at DESC, id DESC
     LIMIT $${params.length}
-  `, params);
-
-  return result.rows.map((row: Record<string, unknown>) => ({
-    id: String(row.id),
-    workspaceId: String(row.workspace_id),
-    tenantId: typeof row.tenant_id === 'string' ? row.tenant_id : undefined,
-    userId: typeof row.user_id === 'string' ? row.user_id : undefined,
-    aggregateId: typeof row.aggregate_id === 'string' ? row.aggregate_id : undefined,
-    aggregateType: typeof row.aggregate_type === 'string' ? row.aggregate_type : undefined,
-    type: String(row.type),
-    payload: typeof row.payload === 'object' && row.payload !== null ? row.payload as Record<string, unknown> : undefined,
-    metadata: typeof row.metadata === 'object' && row.metadata !== null ? row.metadata as Record<string, unknown> : undefined,
-    occurredAt: new Date(String(row.occurred_at)).toISOString(),
-  }));
+  `, params, mapDomainEventRow);
 }

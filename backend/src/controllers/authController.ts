@@ -49,8 +49,10 @@ declare global {
  */
 export const loginController = asyncHandler(async (req: Request, res: Response) => {
   const { email, password, userId: requestedUserId } = req.body;
+  const normalizedEmail = typeof email === 'string' ? email.trim() : '';
+  const normalizedPassword = typeof password === 'string' ? password.trim() : '';
 
-  if (!email || !password) {
+  if (!normalizedEmail || !normalizedPassword) {
     throw new AppError(400, 'Email and password are required');
   }
 
@@ -64,20 +66,20 @@ export const loginController = asyncHandler(async (req: Request, res: Response) 
   
   const userId = typeof requestedUserId === 'string' && requestedUserId.trim().length > 0
     ? requestedUserId.trim()
-    : Buffer.from(email).toString('base64').substring(0, 20);
+    : Buffer.from(normalizedEmail).toString('base64').substring(0, 20);
   
-  logger.info({ email }, 'User login attempt');
+  logger.info({ email: normalizedEmail }, 'User login attempt');
 
   try {
-    const accessToken = generateAccessToken(userId, email);
+    const accessToken = generateAccessToken(userId, normalizedEmail);
     const decodedToken = decodeToken(accessToken) as JWTPayload;
-    const refresh = issueRefreshToken(userId, email);
+    const refresh = issueRefreshToken(userId, normalizedEmail);
 
     const accessExpiresIn = decodedToken.exp - Math.floor(Date.now() / 1000);
 
     recordAuditEvent({
       userId,
-      email,
+      email: normalizedEmail,
       action: 'auth.login',
       status: 'success',
       ip: req.ip,
@@ -99,12 +101,12 @@ export const loginController = asyncHandler(async (req: Request, res: Response) 
       refreshExpiresIn: refresh.expiresIn,
       user: {
         userId,
-        email
+        email: normalizedEmail
       }
     });
   } catch (error) {
-    logger.error({ error, email }, 'Login error');
-    recordAuditEvent({ email, action: 'auth.login_failed', status: 'failure', ip: req.ip });
+    logger.error({ error, email: normalizedEmail }, 'Login error');
+    recordAuditEvent({ email: normalizedEmail, action: 'auth.login_failed', status: 'failure', ip: req.ip });
     throw new AppError(500, 'Failed to generate authentication token');
   }
 });
@@ -163,7 +165,15 @@ export const firebaseSessionController = asyncHandler(async (req: Request, res: 
       }
     });
   } catch (error) {
-    logger.error({ error }, 'Firebase session exchange error');
+    logger.error({
+      error,
+      path: req.path,
+      ip: req.ip,
+      hasIdToken: typeof idToken === 'string',
+      idTokenLength: typeof idToken === 'string' ? idToken.length : 0,
+      firebaseConfigured: isFirebaseIdentityVerificationConfigured(),
+      fallback: 'firebase-session-exchange-failed',
+    }, 'Firebase session exchange error');
     throw new AppError(401, 'Invalid Firebase identity token');
   }
 });
@@ -231,7 +241,14 @@ export const refreshController = asyncHandler(async (req: Request, res: Response
       expiresIn: decodedToken.exp - Math.floor(Date.now() / 1000),
     });
   } catch (error) {
-    logger.error({ error, userId: req.userId, hasRefreshToken: !!providedRefreshToken }, 'Refresh error');
+    logger.error({
+      error,
+      userId: req.userId,
+      hasRefreshToken: !!providedRefreshToken,
+      hasAuthorizationToken: !providedRefreshToken && !!req.userId && !!req.userEmail,
+      refreshTokenLength: typeof providedRefreshToken === 'string' ? providedRefreshToken.length : 0,
+      fallback: 'auth-refresh-failed',
+    }, 'Refresh error');
     if (error instanceof AppError) {
       throw error;
     }
@@ -271,7 +288,13 @@ export const validateController = asyncHandler(async (req: Request, res: Respons
       expiresIn: expirationTime
     });
   } catch (error) {
-    logger.error({ error, userId: req.userId }, 'Validate error');
+    logger.error({
+      error,
+      userId: req.userId,
+      hasUserEmail: !!req.userEmail,
+      hasExpiration: typeof req.userExp === 'number',
+      fallback: 'auth-validate-failed',
+    }, 'Validate error');
     res.json({ valid: false });
   }
 });

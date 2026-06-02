@@ -60,13 +60,19 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
       return;
     }
 
-    // Permitir tokens mockados em ambiente de teste
-    if (process.env.NODE_ENV === 'test' && token.startsWith('mock-token-for-')) {
-      const userId = token.replace('mock-token-for-', '');
+    const devBypassToken = env.AUTH_DEV_BYPASS_TOKEN;
+    if (env.NODE_ENV === 'test' && devBypassToken && token === devBypassToken) {
+      const userId = 'test-user';
+      const userEmail = 'test-user@local.test';
       req.userId = userId;
-      req.userEmail = `${userId}@mock.local`;
-      req.userExp = Date.now() / 1000 + 3600;
-      updateRequestContext({ userId, userEmail: req.userEmail });
+      req.userEmail = userEmail;
+      req.userExp = Date.now() / 1000 + 60;
+      updateRequestContext({ userId, userEmail });
+      logger.warn({
+        requestId: requestContext.requestId,
+        routeScope: requestContext.routeScope,
+        fallback: 'auth-dev-bypass-active',
+      }, 'INSECURE DEV LOGIN bypass token used');
       next();
       return;
     }
@@ -100,7 +106,12 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
       }
     }
   } catch (error) {
-    logger.error({ error }, 'Auth middleware error');
+    logger.error({
+      error,
+      requestId: requestContext.requestId,
+      routeScope: requestContext.routeScope,
+      fallback: 'auth-middleware-error',
+    }, 'Auth middleware error');
     res.status(500).json(buildAuthError('Internal server error'));
   }
 }
@@ -120,13 +131,22 @@ export function optionalAuthMiddleware(req: Request, res: Response, next: NextFu
           updateRequestContext({ userId: payload.userId, userEmail: payload.email });
         }
       } catch (error) {
-        logger.debug('Optional auth token invalid');
+        logger.debug({
+          requestId: requestContext.requestId,
+          routeScope: requestContext.routeScope,
+          fallback: 'optional-auth-token-invalid',
+        }, 'Optional auth token invalid');
       }
     }
 
     next();
   } catch (error) {
-    logger.error({ error }, 'Optional auth middleware error');
+    logger.error({
+      error,
+      requestId: requestContext.requestId,
+      routeScope: requestContext.routeScope,
+      fallback: 'optional-auth-middleware-error',
+    }, 'Optional auth middleware error');
     res.status(500).json({
       message: 'Internal server error',
       requestId: requestContext.requestId,
@@ -169,7 +189,13 @@ export function generateToken(userId: string, email: string, expiresIn?: string 
 export function decodeToken(token: string): JWTPayload | null {
   try {
     return jwt.verify(token, env.JWT_SECRET) as JWTPayload;
-  } catch {
+  } catch (error) {
+    logger.warn({
+      error,
+      tokenLength: typeof token === 'string' ? token.length : 0,
+      tokenType: typeof token,
+      fallback: 'auth-decode-token-failed',
+    }, '[AuthMiddleware] Failed to decode token; returning null');
     return null;
   }
 }

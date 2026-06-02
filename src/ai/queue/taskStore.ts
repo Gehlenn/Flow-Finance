@@ -3,8 +3,22 @@
  * Manages task persistence and retrieval
  */
 
-import { AITask, AITaskStatus, AITaskPriority } from './taskTypes';
+import { AITask, AITaskStatus } from './taskTypes';
 import { getActiveWorkspaceScopedStorageKey } from '../../utils/workspaceStorage';
+import { logInfo, logWarn } from '../../utils/logger';
+import {
+  QUEUE_EVENT_NAMES,
+  countTasksByStatus,
+  deserializeTaskMap,
+  emitQueueEvent,
+  filterTasksByStatus,
+  filterTasksByUser,
+  pruneExpiredTasks,
+  serializeTaskMap,
+  sortTasksByCreatedAtDesc,
+  sortTasksByPriority,
+  trimTaskMap,
+} from './taskStoreHelpers';
 
 const STORAGE_KEY = 'flow_ai_task_queue';
 const MAX_STORED_TASKS = 100;
@@ -35,15 +49,19 @@ class TaskStore {
     try {
       const stored = localStorage.getItem(this.activeStorageKey);
       if (stored) {
-        const parsed = JSON.parse(stored);
-        this.tasks = new Map(Object.entries(parsed));
+        this.tasks = deserializeTaskMap(stored);
+        this.initialized = true;
         this.cleanExpiredTasks();
       } else {
         this.tasks = new Map();
+        this.initialized = true;
       }
-      this.initialized = true;
     } catch (error) {
-      console.error('[TaskStore] Failed to load from storage:', error);
+      logWarn('[TaskStore] Failed to load from storage; using empty queue', {
+        storageKey: this.activeStorageKey,
+        error,
+        fallback: 'task-store-load-failed',
+      });
       this.tasks = new Map();
       this.initialized = true;
     }
@@ -52,30 +70,26 @@ class TaskStore {
   private saveToStorage(): void {
     this.ensureWorkspaceScope();
     try {
-      const obj = Object.fromEntries(this.tasks);
-      localStorage.setItem(this.activeStorageKey, JSON.stringify(obj));
+      localStorage.setItem(this.activeStorageKey, serializeTaskMap(this.tasks));
     } catch (error) {
-      console.error('[TaskStore] Failed to save to storage:', error);
+      logWarn('[TaskStore] Failed to save to storage; keeping in-memory queue', {
+        storageKey: this.activeStorageKey,
+        error,
+        fallback: 'task-store-save-failed',
+      });
     }
   }
 
   private cleanExpiredTasks(): void {
-    const now = Date.now();
-    let cleaned = 0;
+    const result = pruneExpiredTasks(this.tasks, TASK_TTL);
+    this.tasks = result.tasks;
 
-    for (const [id, task] of this.tasks) {
-      // Remove completed/failed tasks older than TTL
-      if (
-        (task.status === AITaskStatus.COMPLETED || task.status === AITaskStatus.FAILED) &&
-        now - task.createdAt > TASK_TTL
-      ) {
-        this.tasks.delete(id);
-        cleaned++;
-      }
-    }
-
-    if (cleaned > 0) {
-      console.log(`[TaskStore] Cleaned ${cleaned} expired tasks`);
+    if (result.cleaned > 0) {
+      logInfo('[TaskStore] Cleaned expired tasks', {
+        cleaned: result.cleaned,
+        storageKey: this.activeStorageKey,
+        fallback: 'task-store-cleaned-expired-tasks',
+      });
       this.saveToStorage();
     }
   }
@@ -83,15 +97,16 @@ class TaskStore {
   addTask(task: AITask): void {
     this.ensureWorkspaceScope();
     this.tasks.set(task.id, task);
-    
-    // Enforce max tasks limit (keep most recent)
-    if (this.tasks.size > MAX_STORED_TASKS) {
-      const sorted = Array.from(this.tasks.values()).sort((a, b) => b.createdAt - a.createdAt);
-      const toKeep = sorted.slice(0, MAX_STORED_TASKS);
-      this.tasks = new Map(toKeep.map((t) => [t.id, t]));
-    }
+    this.tasks = trimTaskMap(this.tasks, MAX_STORED_TASKS);
 
     this.saveToStorage();
+    emitQueueEvent('ai-task-enqueued', {
+      taskId: task.id,
+      taskType: task.type,
+      status: task.status,
+      priority: task.priority,
+      userId: task.userId,
+    });
   }
 
   getTask(id: string): AITask | undefined {
@@ -114,7 +129,7 @@ class TaskStore {
     const task = this.tasks.get(id);
     if (task) {
       task.status = status;
-      
+
       if (status === AITaskStatus.PROCESSING) {
         task.startedAt = Date.now();
       } else if (status === AITaskStatus.COMPLETED || status === AITaskStatus.FAILED) {
@@ -130,23 +145,19 @@ class TaskStore {
 
       this.tasks.set(id, task);
       this.saveToStorage();
+      emitQueueEvent(QUEUE_EVENT_NAMES.UPDATED, {
+        taskId: id,
+        status,
+        userId: task.userId,
+      });
     }
   }
 
   getNextTask(userId?: string): AITask | null {
     this.ensureWorkspaceScope();
-    // Get pending tasks sorted by priority (high to low) then creation time (old to new)
-    const pendingTasks = Array.from(this.tasks.values())
-      .filter((task) => task.status === AITaskStatus.PENDING)
-      .filter((task) => !userId || task.userId === userId)
-      .sort((a, b) => {
-        // First by priority (higher priority first)
-        if (a.priority !== b.priority) {
-          return b.priority - a.priority;
-        }
-        // Then by creation time (older first)
-        return a.createdAt - b.createdAt;
-      });
+    const pendingTasks = sortTasksByPriority(
+      filterTasksByStatus(Array.from(this.tasks.values()), AITaskStatus.PENDING).filter((task) => !userId || task.userId === userId),
+    );
 
     return pendingTasks.length > 0 ? pendingTasks[0] : null;
   }
@@ -160,35 +171,31 @@ class TaskStore {
     this.ensureWorkspaceScope();
     const userTasks = this.getTasksByUser(userId);
     return {
-      pending: userTasks.filter((t) => t.status === AITaskStatus.PENDING),
-      processing: userTasks.filter((t) => t.status === AITaskStatus.PROCESSING),
-      completed: userTasks.filter((t) => t.status === AITaskStatus.COMPLETED),
-      failed: userTasks.filter((t) => t.status === AITaskStatus.FAILED),
+      pending: filterTasksByStatus(userTasks, AITaskStatus.PENDING),
+      processing: filterTasksByStatus(userTasks, AITaskStatus.PROCESSING),
+      completed: filterTasksByStatus(userTasks, AITaskStatus.COMPLETED),
+      failed: filterTasksByStatus(userTasks, AITaskStatus.FAILED),
     };
   }
 
   getTasksByStatus(status: AITaskStatus): AITask[] {
     this.ensureWorkspaceScope();
-    return Array.from(this.tasks.values())
-      .filter((task) => task.status === status)
-      .sort((a, b) => b.createdAt - a.createdAt);
+    return sortTasksByCreatedAtDesc(filterTasksByStatus(Array.from(this.tasks.values()), status));
   }
 
   getTasksByUser(userId: string): AITask[] {
     this.ensureWorkspaceScope();
-    return Array.from(this.tasks.values())
-      .filter((task) => task.userId === userId)
-      .sort((a, b) => b.createdAt - a.createdAt);
+    return sortTasksByCreatedAtDesc(filterTasksByUser(Array.from(this.tasks.values()), userId));
   }
 
   getPendingCount(): number {
     this.ensureWorkspaceScope();
-    return Array.from(this.tasks.values()).filter((t) => t.status === AITaskStatus.PENDING).length;
+    return countTasksByStatus(Array.from(this.tasks.values()), AITaskStatus.PENDING);
   }
 
   getProcessingCount(): number {
     this.ensureWorkspaceScope();
-    return Array.from(this.tasks.values()).filter((t) => t.status === AITaskStatus.PROCESSING).length;
+    return countTasksByStatus(Array.from(this.tasks.values()), AITaskStatus.PROCESSING);
   }
 
   clearCompletedTasks(userId?: string): void {
@@ -200,25 +207,32 @@ class TaskStore {
         }
       }
     }
+
     this.saveToStorage();
+    emitQueueEvent(QUEUE_EVENT_NAMES.CLEARED, {
+      userId: userId ?? null,
+      scope: userId ? 'user' : 'all',
+    });
   }
 
   getAllTasks(): AITask[] {
     this.ensureWorkspaceScope();
-    return Array.from(this.tasks.values()).sort((a, b) => b.createdAt - a.createdAt);
+    return sortTasksByCreatedAtDesc(Array.from(this.tasks.values()));
   }
 
   clear(): void {
     this.ensureWorkspaceScope();
     this.tasks.clear();
     this.saveToStorage();
+    emitQueueEvent(QUEUE_EVENT_NAMES.CLEARED, {
+      userId: null,
+      scope: 'all',
+    });
   }
 }
 
-// Singleton instance
 export const taskStore = new TaskStore();
 
-// Sprint 3 simple function API wrappers.
 export function addTask(task: AITask): void {
   taskStore.addTask(task);
 }

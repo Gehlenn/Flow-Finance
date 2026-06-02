@@ -1,10 +1,16 @@
-# Guia Rápido de Setup em PT-BR
+�# Guia Rápido de Setup em PT-BR
 
 ## Papel deste documento
 
 Este arquivo é um atalho curto. O documento canônico de setup é [SETUP_GUIDE.md](./SETUP_GUIDE.md).
 
 Use este guia quando você só precisa lembrar a sequência prática.
+
+## Estado vivo em 2026-05-25
+
+- o deploy oficial atual ja esta fechado em `0.9.7`
+- este atalho existe para setup e regressao, nao para diagnosticar o estado vivo do projeto
+
 
 ## Ordem recomendada
 

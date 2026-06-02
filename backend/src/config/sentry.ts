@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import { Request, Response, NextFunction } from 'express';
+import logger from './logger';
 
 // ─── SENTRY CONFIGURATION ──────────────────────────────────────────────────────
 
@@ -12,7 +13,13 @@ export const isSentryConfigured = (): boolean => Boolean(String(process.env.SENT
  */
 export const initSentry = () => {
   // Only initialize if DSN is provided (production/staging)
-  const dsn = process.env.SENTRY_DSN;
+  const dsn = String(process.env.SENTRY_DSN || '').trim();
+
+  if (!dsn && process.env.NODE_ENV === 'production') {
+    logger.warn({
+      fallback: 'backend-sentry-dsn-missing-production',
+    }, '[Sentry] SENTRY_DSN ausente em producao');
+  }
 
   if (!dsn) {
     return;
@@ -20,7 +27,7 @@ export const initSentry = () => {
 
   Sentry.init({
     dsn,
-    environment: process.env.NODE_ENV || 'development',
+    environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development',
     release: process.env.APP_VERSION || '0.6.1',
 
     // Performance monitoring
@@ -31,6 +38,8 @@ export const initSentry = () => {
 
     // Performance traces sample rate (0.0 to 1.0)
     tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    profileSessionSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    profileLifecycle: 'trace',
 
     // Error sample rate (0.0 to 1.0)
     sampleRate: 1.0,
@@ -68,7 +77,9 @@ export const initSentry = () => {
     denyUrls: process.env.NODE_ENV === 'test' ? [/.*/] : [],
   });
 
-  console.log('Sentry initialized for backend error tracking');
+  logger.info({
+    fallback: 'backend-sentry-initialized',
+  }, 'Sentry initialized for backend error tracking');
 };
 
 // ─── ERROR REPORTING HELPERS ─────────────────────────────────────────────────
@@ -76,7 +87,7 @@ export const initSentry = () => {
 /**
  * Report an error manually to Sentry
  */
-export const reportError = (error: Error, context?: Record<string, any>) => {
+export const reportError = (error: Error, context?: Record<string, string | number | boolean | null | undefined>) => {
   Sentry.withScope((scope) => {
     if (context) {
       Object.keys(context).forEach(key => {
@@ -90,7 +101,7 @@ export const reportError = (error: Error, context?: Record<string, any>) => {
 /**
  * Report a message to Sentry
  */
-export const reportMessage = (message: string, level: Sentry.SeverityLevel = 'info', context?: Record<string, any>) => {
+export const reportMessage = (message: string, level: Sentry.SeverityLevel = 'info', context?: Record<string, string | number | boolean | null | undefined>) => {
   Sentry.withScope((scope) => {
     if (context) {
       Object.keys(context).forEach(key => {

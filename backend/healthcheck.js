@@ -8,7 +8,7 @@ const options = {
 };
 
 const request = http.request(options, (res) => {
-  console.log(`STATUS: ${res.statusCode}`);
+  process.stdout.write(`STATUS: ${res.statusCode}\n`);
   if (res.statusCode === 200) {
     process.exit(0);
   } else {
@@ -17,7 +17,7 @@ const request = http.request(options, (res) => {
 });
 
 request.on('error', function(err) {
-  console.log('ERROR');
+  process.stderr.write('ERROR\n');
   process.exit(1);
 });
 

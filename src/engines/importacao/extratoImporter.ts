@@ -1,7 +1,8 @@
-// Módulo de Importação de Extratos Bancários (OFX/CSV/PDF)
-// v0.8.x – Flow Finance
+﻿// Módulo de Importação de Extratos Bancários (OFX/CSV/PDF)
+// v0.8.x â€“ Flow Finance
 
 import { Transaction, TransactionType, Category } from '../../../types';
+import { logWarn } from '../../utils/logger';
 
 export type ExtratoFormato = 'OFX' | 'CSV' | 'PDF';
 
@@ -25,7 +26,30 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
   let formato: ExtratoFormato | undefined = options.formato;
   let erros: string[] = [];
   let transacoes: Transaction[] = [];
-  let conteudo = typeof options.arquivo === 'string' ? options.arquivo : options.arquivo.toString('utf-8');
+  let conteudo = '';
+
+  try {
+    conteudo = typeof options.arquivo === 'string' ? options.arquivo : options.arquivo.toString('utf-8');
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Erro ao ler arquivo de extrato.';
+    const format = formato || 'CSV';
+    if (format === 'CSV') {
+      logWarn('[ExtratoImporter] CSV processing failed', { format, error });
+      erros.push('Erro ao processar CSV: ' + message);
+    } else if (format === 'OFX') {
+      logWarn('[ExtratoImporter] OFX processing failed', { format, error });
+      erros.push('Erro ao processar OFX: ' + message);
+    } else {
+      logWarn('[ExtratoImporter] File reading failed', { format, error });
+      erros.push('Erro ao ler arquivo de extrato: ' + message);
+    }
+
+    return {
+      transacoes,
+      erros,
+      formatoDetectado: (format as ExtratoFormato),
+    };
+  }
 
   // Auto-detecção simples
   if (!formato) {
@@ -66,8 +90,10 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
           });
         }
       }
-    } catch (e: any) {
-      erros.push('Erro ao processar CSV: ' + e.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao processar CSV.';
+      logWarn('[ExtratoImporter] CSV processing failed', { format: formato || 'CSV', error });
+      erros.push('Erro ao processar CSV: ' + message);
     }
 
   } else if (formato === 'OFX') {
@@ -101,8 +127,10 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
       if (transacoesOFX.length === 0) {
         erros.push('Nenhuma transação encontrada no OFX.');
       }
-    } catch (e: any) {
-      erros.push('Erro ao processar OFX: ' + e.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao processar OFX.';
+      logWarn('[ExtratoImporter] OFX processing failed', { format: formato || 'OFX', error });
+      erros.push('Erro ao processar OFX: ' + message);
     }
   } else {
     erros.push('Formato não suportado nesta versão: ' + formato);
@@ -114,3 +142,4 @@ export async function importarExtrato(options: ImportacaoExtratoOptions): Promis
     formatoDetectado: formato,
   };
 }
+

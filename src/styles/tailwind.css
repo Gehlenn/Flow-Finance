@@ -9,6 +9,26 @@
   --flow-border: rgba(148, 163, 184, 0.22);
   --flow-shadow: 0 24px 60px -30px rgba(15, 23, 42, 0.28);
   --flow-focus: rgba(79, 70, 229, 0.28);
+  --flow-text: #0f172a;
+  --flow-text-muted: #475569;
+  --flow-scrollbar-thumb: #cbd5e1;
+  --flow-chart-grid: #e2e8f0;
+  --flow-chart-axis: #64748b;
+  --flow-chart-tooltip-bg: #ffffff;
+  --flow-chart-tooltip-border: #e2e8f0;
+  --flow-chart-tooltip-text: #334155;
+  --flow-chart-tooltip-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.12);
+  --flow-chart-income: #10b981;
+  --flow-chart-expenses: #f43f5e;
+  --flow-chart-balance: #6366f1;
+  --flow-chart-cyan: #06b6d4;
+  --flow-chart-sky: #0ea5e9;
+  --flow-chart-violet: #8b5cf6;
+  --flow-chart-pink: #ec4899;
+  --flow-chart-amber: #f59e0b;
+  --flow-chart-lime: #84cc16;
+  --flow-chart-orange: #f97316;
+  --flow-chart-slate: #334155;
 }
 
 .dark {
@@ -19,6 +39,15 @@
   --flow-border: rgba(71, 85, 105, 0.45);
   --flow-shadow: 0 28px 70px -36px rgba(2, 6, 23, 0.78);
   --flow-focus: rgba(129, 140, 248, 0.35);
+  --flow-text: #e2e8f0;
+  --flow-text-muted: #cbd5e1;
+  --flow-scrollbar-thumb: #475569;
+  --flow-chart-grid: rgba(148, 163, 184, 0.22);
+  --flow-chart-axis: #94a3b8;
+  --flow-chart-tooltip-bg: #0f172a;
+  --flow-chart-tooltip-border: #334155;
+  --flow-chart-tooltip-text: #e2e8f0;
+  --flow-chart-tooltip-shadow: 0 18px 35px -18px rgba(2, 6, 23, 0.75);
 }
 
 body {
@@ -26,13 +55,13 @@ body {
   min-height: 100vh;
   background-color: var(--flow-bg);
   background-image: radial-gradient(circle at top, var(--flow-bg-glow), transparent 42%);
-  color: #0f172a;
+  color: var(--flow-text);
   overflow-x: hidden;
   text-rendering: optimizeLegibility;
 }
 
 .dark body {
-  color: #e2e8f0;
+  color: var(--flow-text);
 }
 
 ::selection {
@@ -141,7 +170,7 @@ a:focus-visible {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
+  background: var(--flow-scrollbar-thumb);
   border-radius: 10px;
 }
 

@@ -1,49 +1,78 @@
-# Flow Finance - Fase 6 (Monetizacao Free + Pro)
+# Flow Finance - Monetizacao Free + Pro (S8)
 
 ## Objetivo
-Separar Free e Pro sem bloquear o core do produto.
 
-## Fronteira de features
+Fechar um paywall simples, audivel e comercializavel sem bloquear o core do produto.
 
-### Core (sempre liberado)
-- Lancamentos manuais
-- Dashboard principal
-- Tela de transacoes
-- Lembretes
+## Regra comercial vigente
 
-### Free (prova de valor)
-- Leitura basica de caixa
-- Insights leves (sinais essenciais)
-- Consultor IA em modo essencial
+### Free
+- 1 workspace
+- 20 consultas do Consultor IA por mes
+- exportacao de relatorios bloqueada
+- core financeiro liberado: lancamentos, dashboard, transacoes e lembretes
 
-### Pro (profundidade e conveniencia)
-- Relatorios completos de analytics
-- Analises profundas de caixa
-- Comparativos historicos completos
-- IA com contexto ampliado para respostas mais ricas
-- Sugestoes inteligentes de limites (smart alerts)
+### Pro
+- Consultor IA ilimitado
+- multiplos workspaces
+- exportacao de relatorios em PDF
+- mantem acesso aos recursos premium ja existentes do app
 
-### Futuro (nao ativar agora)
-- Scanner/import premium com blocos comerciais agressivos
+## Preco desta fase
 
-## Gating aplicado nesta fase
-- Analytics avancado: Pro
-- Insights profundos (contexto avancado + perfil financeiro completo): Pro
-- Consultor IA com contexto completo: Pro
-- Sugestoes inteligentes de limites no Assistant: Pro
-
-## Garantias de produto
-- Core minimo nao foi bloqueado.
-- Free continua util para uso recorrente.
-- Upgrade aparece como evolucao natural, sem paywall agressivo em areas centrais.
-- Automacao externa (n8n) permanece fora do plano de monetizacao do Flow.
-
-## Pricing inicial sugerido
 - Free: R$ 0
-- Pro mensal: R$ 29,90
-- Pro anual: opcional (20% de desconto), sem obrigatoriedade nesta fase.
+- Pro mensal: R$ 49,00
+- Pro anual de referencia: R$ 490,00
 
-## Referencias tecnicas
+Observacao: o wiring de checkout implementado nesta fase usa o fluxo mensal do Stripe ja existente no backend. O anual fica documentado como referencia comercial ate haver price ID dedicado no ambiente.
+
+## Gating implementado em codigo
+
+### AICFO
+- o plano Free pode usar o Consultor IA normalmente ate a consulta 20 do mes
+- a consulta 21 e bloqueada na UI
+- quando o limite e atingido, o app mostra `UpgradePromptCard` inline com CTA para Stripe Checkout
+- a contagem tenta sincronizar com o uso mensal do workspace; se a leitura falhar, cai para contagem local da conversa com diagnostico visivel
+
+### Settings
+- mostra plano atual do workspace
+- mostra a regra operacional do plano ativo
+- exibe CTA de upgrade para workspaces Free
+- exibe CTA de portal para workspaces Pro quando o customer Stripe ja existe
+- quando Stripe nao esta configurado no ambiente, o estado fica explicito
+
+### Pricing
+- `pages/Pricing.tsx` foi criado com comparativo Free vs Pro e CTA de checkout
+- no shell atual do app, a pagina ainda nao esta roteada porque a sessao S8 nao tem ownership sobre `App`/`hooks`
+
+## Wiring tecnico
 
 - `src/app/monetizationPlan.ts`
+  - `FREE_LIMITS`
+  - `PRO_FEATURES`
+  - `withinFreeLimit`
+  - preco atualizado para R$ 49 / R$ 490
+- `components/UpgradePromptCard.tsx`
+  - CTA real para `POST /api/saas/stripe/checkout-session`
+- `pages/AICFO.tsx`
+  - leitura de uso mensal
+  - incremento de `aiQueries`
+  - bloqueio da 21a consulta Free
+- `components/Settings.tsx`
+  - resumo do plano
+  - upgrade/portal via Stripe
+- `pages/Pricing.tsx`
+  - superficie dedicada de pricing
+
+## Dependencias externas ainda necessarias
+
+- `STRIPE_SECRET_KEY`
+- `STRIPE_PRICE_PRO_MONTHLY`
+- `STRIPE_WEBHOOK_SECRET`
+- webhook apontando para `https://flow-finance-backend.vercel.app/api/saas/stripe/webhook`
+- customer Stripe valido por workspace para liberar o portal
+
+## Referencias
+
+- `docs/PLANO_ACAO_AUDITORIA_2026-05-15.md`
 - `docs/EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md`

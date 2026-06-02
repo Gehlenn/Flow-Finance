@@ -1,5 +1,6 @@
 import { Transaction, Category, TransactionType } from '../../../types';
 import Tesseract from 'tesseract.js';
+import { logWarn } from '../../utils/logger';
 
 export interface OCRReciboResultado {
   transacoes: Transaction[];
@@ -9,6 +10,13 @@ export interface OCRReciboResultado {
 export interface OCRReciboOptions {
   arquivo: Buffer | string;
   categoriaPadrao?: Category;
+}
+
+function formatLocalDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function isValidBase64ImageDataUri(value: string): boolean {
@@ -42,7 +50,8 @@ function isValidBase64ImageDataUri(value: string): boolean {
     const isGif = decoded.length >= 6 && (gifHeader === 'GIF87a' || gifHeader === 'GIF89a');
 
     return isPng || isJpeg || isGif;
-  } catch {
+  } catch (error) {
+    logWarn('[OCRRecibo] Failed to validate base64 image data URI', { error });
     return false;
   }
 }
@@ -91,11 +100,12 @@ export async function ocrRecibo(options: OCRReciboOptions): Promise<OCRReciboRes
       type: valor < 0 ? TransactionType.DESPESA : TransactionType.RECEITA,
       category: options.categoriaPadrao || Category.PESSOAL,
       description: descricao,
-      date: new Date().toISOString().slice(0, 10),
+      date: formatLocalDateKey(new Date()),
       source: 'import',
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    logWarn('[OCRRecibo] OCR processing failed', { error, format: typeof options.arquivo === 'string' ? 'string' : 'buffer' });
     erros.push(`Erro no OCR: ${message}`);
   }
 

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { googleOAuthCallbackController, startGoogleOAuthController } from '../../backend/src/controllers/oauthController';
 import { resetRefreshStoreForTests } from '../../backend/src/services/auth/refreshTokenStore';
+import type { Request, Response } from 'express';
 
 const stateStore = new Set<string>();
 
@@ -37,7 +38,7 @@ function createMockRequest(query: Record<string, unknown> = {}) {
     query,
     body: {},
     headers: {},
-  };
+  } as unknown as Request;
 }
 
 function createMockResponse() {
@@ -45,7 +46,7 @@ function createMockResponse() {
     json: vi.fn(),
     status: vi.fn().mockReturnThis(),
     cookie: vi.fn().mockReturnThis(),
-  };
+  } as unknown as Response;
 }
 
 async function flushAsyncHandler() {
@@ -64,7 +65,7 @@ describe('OAuth Controller', () => {
     const req = createMockRequest();
     const res = createMockResponse();
 
-    startGoogleOAuthController(req as any, res as any, vi.fn());
+    startGoogleOAuthController(req, res, vi.fn());
     await flushAsyncHandler();
 
     expect(res.json).toHaveBeenCalled();
@@ -78,7 +79,7 @@ describe('OAuth Controller', () => {
 
   it('callback retorna tokens e user quando code/state validos', async () => {
     const startRes = createMockResponse();
-    startGoogleOAuthController(createMockRequest() as any, startRes as any, vi.fn());
+    startGoogleOAuthController(createMockRequest(), startRes, vi.fn());
     await flushAsyncHandler();
 
     const started = startRes.json.mock.calls[0][0];
@@ -89,7 +90,7 @@ describe('OAuth Controller', () => {
     const callbackRes = createMockResponse();
     const next = vi.fn();
 
-    googleOAuthCallbackController(callbackReq as any, callbackRes as any, next);
+    googleOAuthCallbackController(callbackReq, callbackRes, next);
     await flushAsyncHandler();
 
     expect(next).not.toHaveBeenCalled();
@@ -106,7 +107,7 @@ describe('OAuth Controller', () => {
     const res = createMockResponse();
     const next = vi.fn();
 
-    googleOAuthCallbackController(createMockRequest({ state: 'x' }) as any, res as any, next);
+    googleOAuthCallbackController(createMockRequest({ state: 'x' }), res, next);
     await flushAsyncHandler();
 
     expect(next).toHaveBeenCalled();
@@ -117,7 +118,7 @@ describe('OAuth Controller', () => {
     const res = createMockResponse();
     const next = vi.fn();
 
-    googleOAuthCallbackController(createMockRequest({ code: 'mock_code_123', state: 'state-invalido' }) as any, res as any, next);
+    googleOAuthCallbackController(createMockRequest({ code: 'mock_code_123', state: 'state-invalido' }), res, next);
     await flushAsyncHandler();
 
     expect(next).toHaveBeenCalled();
@@ -126,18 +127,18 @@ describe('OAuth Controller', () => {
 
   it('state e single-use', async () => {
     const startRes = createMockResponse();
-    startGoogleOAuthController(createMockRequest() as any, startRes as any, vi.fn());
+    startGoogleOAuthController(createMockRequest(), startRes, vi.fn());
     await flushAsyncHandler();
 
     const { state } = startRes.json.mock.calls[0][0];
 
     const firstNext = vi.fn();
-    googleOAuthCallbackController(createMockRequest({ code: 'first', state }) as any, createMockResponse() as any, firstNext);
+    googleOAuthCallbackController(createMockRequest({ code: 'first', state }), createMockResponse(), firstNext);
     await flushAsyncHandler();
     expect(firstNext).not.toHaveBeenCalled();
 
     const secondNext = vi.fn();
-    googleOAuthCallbackController(createMockRequest({ code: 'second', state }) as any, createMockResponse() as any, secondNext);
+    googleOAuthCallbackController(createMockRequest({ code: 'second', state }), createMockResponse(), secondNext);
     await flushAsyncHandler();
     expect(secondNext).toHaveBeenCalled();
     expect(secondNext.mock.calls[0][0].statusCode).toBe(401);

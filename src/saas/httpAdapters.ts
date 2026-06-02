@@ -4,6 +4,29 @@ import { BillingHookTransport } from './billingHooks';
 import { BillingHookPayload } from './types';
 import { UsageSnapshot, UsageStoreAdapter } from './usageTracker';
 
+function normalizeUsageRecord(record: unknown): Record<string, UsageSnapshot> {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) {
+    return {};
+  }
+
+  const normalized: Record<string, UsageSnapshot> = {};
+
+  for (const [monthKey, usage] of Object.entries(record as Record<string, unknown>)) {
+    if (!usage || typeof usage !== 'object' || Array.isArray(usage)) {
+      continue;
+    }
+
+    const snapshot = usage as Partial<UsageSnapshot>;
+    normalized[monthKey] = {
+      transactions: Number(snapshot.transactions || 0),
+      aiQueries: Number(snapshot.aiQueries || 0),
+      bankConnections: Number(snapshot.bankConnections || 0),
+    };
+  }
+
+  return normalized;
+}
+
 function buildEndpoint(pathOrUrl: string): string {
   if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
     return pathOrUrl;
@@ -32,18 +55,22 @@ export function createHttpUsageStoreAdapter(baseUrl?: string): UsageStoreAdapter
         return {};
       }
 
-      const body = await response.json() as { usage?: Record<string, UsageSnapshot> };
-      return body.usage || {};
+      const body = await response.json() as { usage?: unknown };
+      return normalizeUsageRecord(body.usage);
     },
 
     async write(data: Record<string, UsageSnapshot>): Promise<void> {
       const workspace = await ensureActiveWorkspace(getCurrentWorkspaceIdentity());
-      await fetch(usageUrl, {
+      const response = await fetch(usageUrl, {
         method: 'PUT',
         credentials: 'include',
         headers: getAuthHeaders({ workspaceId: workspace.workspaceId }),
         body: JSON.stringify({ workspaceId: workspace.workspaceId, usage: data }),
       });
+
+      if (!response.ok) {
+        throw new Error(`Usage transport failed: ${response.status}`);
+      }
     },
   };
 }

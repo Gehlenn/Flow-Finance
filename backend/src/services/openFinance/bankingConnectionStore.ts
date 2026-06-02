@@ -3,6 +3,7 @@ import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin
 import { Firestore, getFirestore } from 'firebase-admin/firestore';
 import logger from '../../config/logger';
 import { applyFirestoreSettingsOnce } from '../../utils/firestoreAdmin';
+import { listUserIdsWithConnectionsFromRows, mapBankingConnectionRow, parseBankingConnectionStoreDriver } from './bankingConnectionStoreHelpers';
 
 export type StoredConnectionStatus = 'connected' | 'disconnected' | 'syncing' | 'error';
 export type StoredBankProvider = 'mock' | 'pluggy' | 'belvo' | 'truelayer' | 'custom';
@@ -124,7 +125,14 @@ class FirebaseAdminBankingConnectionStoreAdapter implements FirebaseBankingConne
       return this.firestore;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'firebase-init-failed';
-      logger.error({ error: message }, 'Failed to initialize Firebase Open Finance store');
+      logger.error({
+        error: message,
+        usingServiceAccount,
+        usingApplicationDefault,
+        configured: true,
+        ready: false,
+        fallback: 'firebase-open-finance-store-init-failed',
+      }, 'Failed to initialize Firebase Open Finance store');
       this.buildStatus(true, false, message);
       return null;
     }
@@ -274,24 +282,6 @@ class PostgresBankingConnectionStore implements BankingConnectionStore {
     logger.info('PostgreSQL banking connection store schema is ready');
   }
 
-  private mapRow(row: Record<string, unknown>): StoredBankConnection {
-    return {
-      id: String(row.id),
-      user_id: String(row.user_id),
-      bank_name: String(row.bank_name),
-      bank_logo: typeof row.bank_logo === 'string' ? row.bank_logo : undefined,
-      bank_color: typeof row.bank_color === 'string' ? row.bank_color : undefined,
-      provider: String(row.provider) as StoredBankProvider,
-      connection_status: String(row.connection_status) as StoredConnectionStatus,
-      external_account_id: typeof row.external_account_id === 'string' ? row.external_account_id : undefined,
-      account_type: typeof row.account_type === 'string' ? row.account_type as StoredBankConnection['account_type'] : undefined,
-      balance: row.balance === null || row.balance === undefined ? undefined : Number(row.balance),
-      last_sync: row.last_sync ? new Date(String(row.last_sync)).toISOString() : undefined,
-      error_message: typeof row.error_message === 'string' ? row.error_message : undefined,
-      created_at: new Date(String(row.created_at)).toISOString(),
-    };
-  }
-
   async getStatus(): Promise<BankingConnectionStoreStatus> {
     if (!this.enabled) {
       return {
@@ -332,7 +322,7 @@ class PostgresBankingConnectionStore implements BankingConnectionStore {
       [userId],
     );
 
-    return result.rows.map((row: Record<string, unknown>) => this.mapRow(row));
+    return result.rows.map((row: Record<string, unknown>) => mapBankingConnectionRow(row));
   }
 
   async setConnectionsForUser(userId: string, connections: StoredBankConnection[]): Promise<void> {
@@ -378,7 +368,7 @@ class PostgresBankingConnectionStore implements BankingConnectionStore {
     );
 
     return result.rows.map((row: Record<string, unknown>) => {
-      const connection = this.mapRow(row);
+      const connection = mapBankingConnectionRow(row);
       return {
         userId: connection.user_id,
         connection,
@@ -395,9 +385,7 @@ class PostgresBankingConnectionStore implements BankingConnectionStore {
   async listUserIdsWithConnections(): Promise<string[]> {
     await this.ensureSchema();
     const result = await query('SELECT DISTINCT user_id FROM bank_connections ORDER BY user_id');
-    return result.rows
-      .map((row: Record<string, unknown>) => (typeof row.user_id === 'string' ? row.user_id : null))
-      .filter((value): value is string => Boolean(value));
+    return listUserIdsWithConnectionsFromRows(result.rows as Array<{ user_id?: unknown }>);
   }
 }
 
@@ -459,16 +447,8 @@ export interface BankingConnectionStoreFactoryOptions {
   firebaseAdapter?: FirebaseBankingConnectionStoreAdapter;
 }
 
-function parseStoreDriver(driver?: string): BankingConnectionStoreDriver | null {
-  const normalized = String(driver || '').toLowerCase();
-  if (normalized === 'memory' || normalized === 'postgres' || normalized === 'firebase') {
-    return normalized;
-  }
-  return null;
-}
-
 export function resolveBankingConnectionStoreDriver(): BankingConnectionStoreDriver {
-  const explicitDriver = parseStoreDriver(process.env.OPEN_FINANCE_STORE_DRIVER);
+  const explicitDriver = parseBankingConnectionStoreDriver(process.env.OPEN_FINANCE_STORE_DRIVER);
   if (explicitDriver) {
     return explicitDriver;
   }

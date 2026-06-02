@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Account } from '../models/Account';
-import { Goal, Alert, Reminder, Transaction } from '../types';
+import { Alert, Reminder } from '../types';
 import { isSyncPermissionError, shouldDisplaySyncConnectionError } from '../src/utils/syncError';
 import {
-  extractSyncPayloads,
-  pullSyncEntities,
   replaceSyncEntityCollection,
 } from '../src/services/sync/cloudSyncClient';
 import {
   saveUserProfile,
   subscribeToUserProfile,
 } from '../src/services/firestoreWorkspaceStore';
+import {
+  createEmptyWorkspaceSyncEntities,
+  mapPulledWorkspaceSyncEntities,
+  WorkspaceSyncEntities,
+} from '../src/services/sync/workspaceSyncEntities';
+import {
+  createDemoProfileState,
+  createDemoWorkspaceEntities,
+} from '../src/demo/demoBootstrap';
+import { logWarn } from '../src/utils/logger';
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 
@@ -21,12 +28,7 @@ export type SyncProfileState = {
   reminders: Reminder[];
 };
 
-export type SyncEntityState = {
-  accounts: Account[];
-  transactions: Transaction[];
-  goals: Goal[];
-  reminders: Reminder[];
-};
+export type SyncEntityState = WorkspaceSyncEntities;
 
 export type SyncEntityIdMap = Record<string, string>;
 
@@ -40,6 +42,7 @@ interface UseSyncEngineOptions {
   activeTenantId: string | null;
   activeWorkspaceId: string | null;
   isE2EBootstrapActive: boolean;
+  isDemoBootstrapActive: boolean;
   cloudSyncEnabled: boolean;
   backendSyncEnabled: boolean;
   onDisableCloudSync: () => void;
@@ -50,13 +53,6 @@ const DEFAULT_PROFILE: SyncProfileState = {
   name: null,
   theme: 'light',
   alerts: [],
-  reminders: [],
-};
-
-const DEFAULT_ENTITIES: SyncEntityState = {
-  accounts: [],
-  transactions: [],
-  goals: [],
   reminders: [],
 };
 
@@ -80,6 +76,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
     activeTenantId,
     activeWorkspaceId,
     isE2EBootstrapActive,
+    isDemoBootstrapActive,
     cloudSyncEnabled,
     backendSyncEnabled,
     onDisableCloudSync,
@@ -88,66 +85,65 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
 
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const [profile, setProfile] = useState<SyncProfileState>(DEFAULT_PROFILE);
-  const [entities, setEntities] = useState<SyncEntityState>(DEFAULT_ENTITIES);
+  const [entities, setEntities] = useState<SyncEntityState>(() => createEmptyWorkspaceSyncEntities());
   const [isProfileReady, setIsProfileReady] = useState(false);
   const [hasLoadedEntities, setHasLoadedEntities] = useState(false);
 
-  const entityRef = useRef<SyncEntityState>(DEFAULT_ENTITIES);
+  const entityRef = useRef<SyncEntityState>(createEmptyWorkspaceSyncEntities());
+  const bootstrapContext = useMemo(() => ({
+    userId,
+    tenantId: activeTenantId,
+    workspaceId: activeWorkspaceId,
+  }), [activeTenantId, activeWorkspaceId, userId]);
 
   useEffect(() => {
     entityRef.current = entities;
   }, [entities]);
 
   useEffect(() => {
+    if (isE2EBootstrapActive) {
+      const emptyEntities = createEmptyWorkspaceSyncEntities();
+      entityRef.current = emptyEntities;
+      setEntities(emptyEntities);
+      setHasLoadedEntities(true);
+      setSyncStatus('idle');
+      return;
+    }
+
+    if (isDemoBootstrapActive) {
+      const demoEntities = createDemoWorkspaceEntities({
+        userId: bootstrapContext.userId || 'demo-user',
+        tenantId: bootstrapContext.tenantId || 'tenant-demo-flow-finance',
+        workspaceId: bootstrapContext.workspaceId || 'ws-demo-flow-finance',
+      });
+      entityRef.current = demoEntities;
+      setEntities(demoEntities);
+      setHasLoadedEntities(true);
+      setSyncStatus('idle');
+      return;
+    }
+
     if (!userId || !activeWorkspaceId) {
-      entityRef.current = DEFAULT_ENTITIES;
-      setEntities(DEFAULT_ENTITIES);
+      const emptyEntities = createEmptyWorkspaceSyncEntities();
+      entityRef.current = emptyEntities;
+      setEntities(emptyEntities);
       setHasLoadedEntities(false);
       return;
     }
 
     const loadEntities = async () => {
       try {
-        if (cloudSyncEnabled) {
-          const syncData = await pullSyncEntities({ workspaceId: activeWorkspaceId });
-          const syncedAccounts = extractSyncPayloads(syncData.entities.accounts) as unknown as Account[];
-          const syncedTransactions = extractSyncPayloads(syncData.entities.transactions) as unknown as Transaction[];
-          const syncedGoals = extractSyncPayloads(syncData.entities.goals) as unknown as Goal[];
-          const syncedReminders = extractSyncPayloads(syncData.entities.reminders) as unknown as Reminder[];
-
-          const nextEntities = {
-            accounts: syncedAccounts,
-            transactions: syncedTransactions,
-            goals: syncedGoals,
-            reminders: syncedReminders,
-          };
-
-          entityRef.current = nextEntities;
-          setEntities(nextEntities);
-          setHasLoadedEntities(true);
-          return;
-        }
-
-        if (backendSyncEnabled) {
-          const syncData = await pullSyncEntities({ workspaceId: activeWorkspaceId });
-          const syncedAccounts = extractSyncPayloads(syncData.entities.accounts) as unknown as Account[];
-          const syncedTransactions = extractSyncPayloads(syncData.entities.transactions) as unknown as Transaction[];
-          const syncedGoals = extractSyncPayloads(syncData.entities.goals) as unknown as Goal[];
-          const syncedReminders = extractSyncPayloads(syncData.entities.reminders) as unknown as Reminder[];
-
-          const nextEntities = {
-            accounts: syncedAccounts,
-            transactions: syncedTransactions,
-            goals: syncedGoals,
-            reminders: syncedReminders,
-          };
-
+        if (cloudSyncEnabled || backendSyncEnabled) {
+          const nextEntities = await mapPulledWorkspaceSyncEntities(activeWorkspaceId);
           entityRef.current = nextEntities;
           setEntities(nextEntities);
           setHasLoadedEntities(true);
         }
       } catch (error) {
-        console.error('Falha ao carregar dados sincronizados:', error);
+        logWarn('[useSyncEngine] Failed to load synced entities', {
+          error,
+          fallback: 'use-sync-engine-load-entities-failed',
+        });
         if (cloudSyncEnabled) {
           onDisableCloudSync();
         } else {
@@ -157,10 +153,27 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
     };
 
     void loadEntities();
-  }, [activeWorkspaceId, backendSyncEnabled, cloudSyncEnabled, onDisableBackendSync, onDisableCloudSync, userId]);
+  }, [
+    activeWorkspaceId,
+    activeTenantId,
+    backendSyncEnabled,
+    bootstrapContext,
+    cloudSyncEnabled,
+    isDemoBootstrapActive,
+    isE2EBootstrapActive,
+    onDisableBackendSync,
+    onDisableCloudSync,
+    userId,
+  ]);
 
   useEffect(() => {
     if (isE2EBootstrapActive) {
+      setIsProfileReady(true);
+      return;
+    }
+
+    if (isDemoBootstrapActive) {
+      setProfile(createDemoProfileState());
       setIsProfileReady(true);
       return;
     }
@@ -181,10 +194,16 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
       },
       (error) => {
         if (isSyncPermissionError(error)) {
-          console.warn('Permissao/autenticacao insuficiente no Firestore:', error);
+          logWarn('[useSyncEngine] Firestore permission denied while subscribing to user profile', {
+            error,
+            fallback: 'use-sync-engine-firestore-permission-denied',
+          });
           onDisableCloudSync();
         } else {
-          console.error('Erro na conexao com Firestore:', error);
+          logWarn('[useSyncEngine] Firestore connection error while subscribing to user profile', {
+            error,
+            fallback: 'use-sync-engine-firestore-connection-error',
+          });
         }
 
         if (shouldDisplaySyncConnectionError(error)) {
@@ -198,7 +217,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
     );
 
     return () => unsubscribe();
-  }, [isE2EBootstrapActive, onDisableCloudSync, userId]);
+  }, [isDemoBootstrapActive, isE2EBootstrapActive, onDisableCloudSync, userId]);
 
   const syncProfile = useCallback(async (
     updates: Partial<{ name: string; theme: 'light' | 'dark'; alerts: Alert[]; reminders: Reminder[] }>,
@@ -209,7 +228,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
 
     setSyncStatus('syncing');
     try {
-      if (cloudSyncEnabled && Object.keys(updates).length > 0) {
+      if (cloudSyncEnabled && Object.keys(updates).length > 0 && !isDemoBootstrapActive && !isE2EBootstrapActive) {
         await saveUserProfile(userId, updates);
       }
 
@@ -220,7 +239,10 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
       setSyncStatus('synced');
       setTimeout(() => setSyncStatus('idle'), 2000);
     } catch (error) {
-      console.error('Erro ao sincronizar perfil:', error);
+      logWarn('[useSyncEngine] Failed to sync profile', {
+        error,
+        fallback: 'use-sync-engine-profile-sync-failed',
+      });
       if (isSyncPermissionError(error)) {
         onDisableCloudSync();
       }
@@ -230,20 +252,27 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
         setSyncStatus('idle');
       }
     }
-  }, [cloudSyncEnabled, onDisableCloudSync, userId]);
+  }, [cloudSyncEnabled, isDemoBootstrapActive, isE2EBootstrapActive, onDisableCloudSync, userId]);
 
   const syncEntities = useCallback(async (
     updates: Partial<SyncEntityState>,
     previous?: Partial<SyncEntityState>,
   ): Promise<SyncEntitiesResult> => {
-    if (!userId || !activeWorkspaceId || !activeTenantId) {
+    const nextLocalEntities: SyncEntityState = {
+      accounts: updates.accounts || entityRef.current.accounts,
+      transactions: updates.transactions || entityRef.current.transactions,
+      goals: updates.goals || entityRef.current.goals,
+      reminders: updates.reminders || entityRef.current.reminders,
+      receivables: updates.receivables || entityRef.current.receivables,
+    };
+
+    if (isE2EBootstrapActive || isDemoBootstrapActive || !userId || !activeWorkspaceId || !activeTenantId) {
+      entityRef.current = nextLocalEntities;
+      setEntities(nextLocalEntities);
+      setHasLoadedEntities(true);
+      setSyncStatus('idle');
       return {
-        entities: {
-          accounts: updates.accounts || entityRef.current.accounts,
-          transactions: updates.transactions || entityRef.current.transactions,
-          goals: updates.goals || entityRef.current.goals,
-          reminders: updates.reminders || entityRef.current.reminders,
-        },
+        entities: nextLocalEntities,
         idMaps: {},
       };
     }
@@ -292,6 +321,16 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
         idMaps.reminders = Object.fromEntries(result.reconciledIds.map((entry) => [entry.clientId, entry.serverId]));
       }
 
+      if (Array.isArray(updates.receivables)) {
+        const result = await replaceSyncEntityCollection(
+          'receivables',
+          updates.receivables,
+          previous?.receivables || entityRef.current.receivables,
+          { userId, tenantId: activeTenantId, workspaceId: activeWorkspaceId },
+        );
+        idMaps.receivables = Object.fromEntries(result.reconciledIds.map((entry) => [entry.clientId, entry.serverId]));
+      }
+
       const nextEntities = {
         accounts: Array.isArray(updates.accounts)
           ? applyIdMapToCollection(updates.accounts, idMaps.accounts)
@@ -305,6 +344,9 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
         reminders: Array.isArray(updates.reminders)
           ? applyIdMapToCollection(updates.reminders, idMaps.reminders)
           : entityRef.current.reminders,
+        receivables: Array.isArray(updates.receivables)
+          ? applyIdMapToCollection(updates.receivables, idMaps.receivables)
+          : entityRef.current.receivables,
       };
 
       entityRef.current = nextEntities;
@@ -313,7 +355,10 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
       setTimeout(() => setSyncStatus('idle'), 2000);
       return { entities: nextEntities, idMaps };
     } catch (error) {
-      console.error('Erro ao sincronizar entidades:', error);
+      logWarn('[useSyncEngine] Failed to sync entities', {
+        error,
+        fallback: 'use-sync-engine-entities-sync-failed',
+      });
       if (cloudSyncEnabled) {
         onDisableCloudSync();
       } else {
@@ -326,11 +371,21 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
       }
       throw error;
     }
-  }, [activeTenantId, activeWorkspaceId, cloudSyncEnabled, onDisableBackendSync, onDisableCloudSync, userId]);
+  }, [
+    activeTenantId,
+    activeWorkspaceId,
+    cloudSyncEnabled,
+    isDemoBootstrapActive,
+    isE2EBootstrapActive,
+    onDisableBackendSync,
+    onDisableCloudSync,
+    userId,
+  ]);
 
   const resetEntityState = useCallback(() => {
-    entityRef.current = DEFAULT_ENTITIES;
-    setEntities(DEFAULT_ENTITIES);
+    const emptyEntities = createEmptyWorkspaceSyncEntities();
+    entityRef.current = emptyEntities;
+    setEntities(emptyEntities);
     setHasLoadedEntities(false);
     setSyncStatus('idle');
   }, []);

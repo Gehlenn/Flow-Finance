@@ -74,7 +74,8 @@ describe('UserContext factories', () => {
 
   it('createUserContext usa UTC quando timezone do runtime nao existe', async () => {
     const OriginalDateTimeFormat = Intl.DateTimeFormat;
-    const dateTimeFormatSpy = vi.spyOn(Intl, 'DateTimeFormat').mockImplementation((...args: any[]) => {
+    type DateTimeFormatArgs = ConstructorParameters<typeof Intl.DateTimeFormat>;
+    const dateTimeFormatSpy = vi.spyOn(Intl, 'DateTimeFormat').mockImplementation((...args: DateTimeFormatArgs) => {
       const formatter = new OriginalDateTimeFormat(...args);
       return {
         ...formatter,

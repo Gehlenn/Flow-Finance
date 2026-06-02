@@ -1,4 +1,4 @@
-﻿import { beforeEach, describe, expect, it } from 'vitest';
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { configureUsageStoreAdapter, getCurrentUsage, resetUsageForUser, trackUsage } from '../../src/saas/usageTracker';
 
 describe('usageTracker', () => {
@@ -21,6 +21,7 @@ describe('usageTracker', () => {
 
   it('delegates increment and reset when the configured adapter supports them', async () => {
     let resetMonthKey: string | undefined;
+    let incrementAt: Date | undefined;
     let readCalls = 0;
 
     await configureUsageStoreAdapter({
@@ -31,7 +32,8 @@ describe('usageTracker', () => {
       async write() {
         return;
       },
-      async increment() {
+      async increment(params) {
+        incrementAt = params.at;
         return 3;
       },
       async reset(monthKey) {
@@ -43,8 +45,31 @@ describe('usageTracker', () => {
     expect(await getCurrentUsage('user_1', 'transactions', new Date('2026-04-10T00:00:00.000Z'))).toBe(0);
     expect(await trackUsage('user_1', 'transactions', 1, new Date('2026-04-10T00:00:00.000Z'))).toBe(3);
     expect(await getCurrentUsage('user_1', 'transactions', new Date('2026-04-10T00:00:00.000Z'))).toBe(3);
+    expect(incrementAt).toBeInstanceOf(Date);
 
     await resetUsageForUser('user_1', new Date('2026-04-10T00:00:00.000Z'));
     expect(resetMonthKey).toBe('2026-04');
+  });
+
+  it('keeps the local calendar month when tracking usage near month boundaries', async () => {
+    await configureUsageStoreAdapter({
+      async read() {
+        return {};
+      },
+      async write() {
+        return;
+      },
+      async increment() {
+        return 1;
+      },
+    });
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-01T02:00:00.000Z'));
+
+    expect(await trackUsage('user_1', 'transactions', 1, new Date('2026-05-01T02:00:00.000Z'))).toBe(1);
+    expect(await getCurrentUsage('user_1', 'transactions', new Date('2026-05-01T02:00:00.000Z'))).toBe(1);
+
+    vi.useRealTimers();
   });
 });

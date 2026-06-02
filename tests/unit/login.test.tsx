@@ -57,6 +57,8 @@ describe('Login accessibility flow', () => {
     fireEvent.click(screen.getByRole('button', { name: /Acessar Conta/i }));
 
     expect((await screen.findByRole('alert')).textContent).toContain('Local auth failed');
+    expect(screen.getByText(/Diagnóstico de sessão local/i)).toBeTruthy();
+    expect(screen.getByText(/backend local rejeitou a autenticação insegura de desenvolvimento/i)).toBeTruthy();
 
     loginMocks.isFirebaseConfigured = true;
   });

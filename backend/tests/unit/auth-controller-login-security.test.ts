@@ -4,6 +4,31 @@ import type { NextFunction, Request, Response } from 'express';
 import { AppError } from '../../src/middleware/errorHandler';
 import { isInsecureLocalLoginAllowed, loginController } from '../../src/controllers/authController';
 
+type MockResponse = {
+  json: ReturnType<typeof vi.fn>;
+  cookie: ReturnType<typeof vi.fn>;
+};
+
+type LoginResponse = {
+  token: string;
+  accessToken: string;
+  refreshToken?: string;
+  expiresIn: number;
+  refreshExpiresIn?: number;
+  user?: {
+    userId: string;
+    email: string;
+    name?: string;
+    picture?: string;
+    emailVerified?: boolean;
+  };
+};
+
+const createMockResponse = (): MockResponse => ({
+  json: vi.fn(),
+  cookie: vi.fn(),
+});
+
 describe('authController login security hardening', () => {
   const originalNodeEnv = process.env.NODE_ENV;
   const originalOverride = process.env.AUTH_ALLOW_INSECURE_LOCAL_LOGIN;
@@ -56,22 +81,19 @@ describe('authController login security hardening', () => {
       },
     } as Request;
 
-    const res = {
-      json: vi.fn(),
-    } as unknown as Response;
-
-    const next = vi.fn() as unknown as NextFunction;
+    const res = createMockResponse();
+    const next = vi.fn<(err?: unknown) => void>();
 
     await new Promise<void>((resolve) => {
-      loginController(req, res, ((err?: unknown) => {
-        (next as any)(err);
+      loginController(req, res as unknown as Response, ((err?: unknown) => {
+        next(err);
         resolve();
       }) as NextFunction);
     });
 
     expect(res.json).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledTimes(1);
-    const forwardedError = (next as any).mock.calls[0][0];
+    const forwardedError = next.mock.calls[0][0];
     expect(forwardedError).toBeInstanceOf(AppError);
     expect((forwardedError as AppError).statusCode).toBe(503);
   });
@@ -89,18 +111,14 @@ describe('authController login security hardening', () => {
       ip: '127.0.0.1',
     } as unknown as Request;
 
-    const res = {
-      json: vi.fn(),
-      cookie: vi.fn(),
-    } as unknown as Response;
+    const res = createMockResponse();
+    const next = vi.fn<(err?: unknown) => void>();
 
-    const next = vi.fn() as unknown as NextFunction;
-
-    loginController(req, res, next);
+    loginController(req, res as unknown as Response, next as unknown as NextFunction);
     await Promise.resolve();
 
     expect(next).not.toHaveBeenCalled();
-    expect((res as any).cookie).toHaveBeenCalledTimes(2);
+    expect(res.cookie).toHaveBeenCalledTimes(2);
     expect(res.json).toHaveBeenCalledTimes(1);
   });
 
@@ -119,19 +137,15 @@ describe('authController login security hardening', () => {
         ip: '127.0.0.1',
       } as Request;
 
-      const res = { json: vi.fn() } as unknown as Response;
-      const next = vi.fn() as unknown as NextFunction;
+      const res = createMockResponse();
+      const next = vi.fn<(err?: unknown) => void>();
 
-      await new Promise<void>((resolve) => {
-        loginController(req, res, ((err?: unknown) => {
-          (next as any)(err);
-          resolve();
-        }) as NextFunction);
-      });
+      loginController(req, res as unknown as Response, next as unknown as NextFunction);
+      await Promise.resolve();
 
       expect(res.json).not.toHaveBeenCalled();
       expect(next).toHaveBeenCalledTimes(1);
-      const err = (next as any).mock.calls[0][0] as AppError;
+      const err = next.mock.calls[0][0] as AppError;
       expect(err).toBeInstanceOf(AppError);
       expect(err.statusCode).toBe(400);
       expect(err.message).toContain('Email');
@@ -146,19 +160,15 @@ describe('authController login security hardening', () => {
         ip: '127.0.0.1',
       } as Request;
 
-      const res = { json: vi.fn() } as unknown as Response;
-      const next = vi.fn() as unknown as NextFunction;
+      const res = createMockResponse();
+      const next = vi.fn<(err?: unknown) => void>();
 
-      await new Promise<void>((resolve) => {
-        loginController(req, res, ((err?: unknown) => {
-          (next as any)(err);
-          resolve();
-        }) as NextFunction);
-      });
+      loginController(req, res as unknown as Response, next as unknown as NextFunction);
+      await Promise.resolve();
 
       expect(res.json).not.toHaveBeenCalled();
       expect(next).toHaveBeenCalledTimes(1);
-      const err = (next as any).mock.calls[0][0] as AppError;
+      const err = next.mock.calls[0][0] as AppError;
       expect(err).toBeInstanceOf(AppError);
       expect(err.statusCode).toBe(400);
       expect(err.message).toContain('password');
@@ -174,15 +184,11 @@ describe('authController login security hardening', () => {
         ip: '127.0.0.1',
       } as Request;
 
-      const res = { json: vi.fn() } as unknown as Response;
-      const next = vi.fn() as unknown as NextFunction;
+      const res = createMockResponse();
+      const next = vi.fn<(err?: unknown) => void>();
 
-      await new Promise<void>((resolve) => {
-        loginController(req, res, ((err?: unknown) => {
-          (next as any)(err);
-          resolve();
-        }) as NextFunction);
-      });
+      loginController(req, res as unknown as Response, next as unknown as NextFunction);
+      await Promise.resolve();
 
       expect(res.json).not.toHaveBeenCalled();
       expect(next).toHaveBeenCalledTimes(1);
@@ -198,15 +204,11 @@ describe('authController login security hardening', () => {
         ip: '127.0.0.1',
       } as Request;
 
-      const res = { json: vi.fn() } as unknown as Response;
-      const next = vi.fn() as unknown as NextFunction;
+      const res = createMockResponse();
+      const next = vi.fn<(err?: unknown) => void>();
 
-      await new Promise<void>((resolve) => {
-        loginController(req, res, ((err?: unknown) => {
-          (next as any)(err);
-          resolve();
-        }) as NextFunction);
-      });
+      loginController(req, res as unknown as Response, next as unknown as NextFunction);
+      await Promise.resolve();
 
       expect(res.json).not.toHaveBeenCalled();
       expect(next).toHaveBeenCalledTimes(1);
@@ -230,17 +232,13 @@ describe('authController login security hardening', () => {
         ip: '127.0.0.1',
       } as unknown as Request;
 
-      const res = {
-        json: vi.fn(),
-        cookie: vi.fn(),
-      } as unknown as Response;
+      const res = createMockResponse();
+      const next = vi.fn<(err?: unknown) => void>();
 
-      const next = vi.fn() as unknown as NextFunction;
-
-      loginController(req, res, next);
+      loginController(req, res as unknown as Response, next as unknown as NextFunction);
       await Promise.resolve();
 
-      const responseData = (res.json as any).mock.calls[0][0];
+      const responseData = res.json.mock.calls[0][0] as LoginResponse;
       expect(responseData.user.userId).toBe('custom-user-id-123');
     });
 
@@ -254,17 +252,13 @@ describe('authController login security hardening', () => {
         ip: '127.0.0.1',
       } as unknown as Request;
 
-      const res = {
-        json: vi.fn(),
-        cookie: vi.fn(),
-      } as unknown as Response;
+      const res = createMockResponse();
+      const next = vi.fn<(err?: unknown) => void>();
 
-      const next = vi.fn() as unknown as NextFunction;
-
-      loginController(req, res, next);
+      loginController(req, res as unknown as Response, next as unknown as NextFunction);
       await Promise.resolve();
 
-      const responseData = (res.json as any).mock.calls[0][0];
+      const responseData = res.json.mock.calls[0][0] as LoginResponse;
       const userId = responseData.user.userId;
 
       // Should be base64 encoded substring (first 20 chars)
@@ -295,7 +289,7 @@ describe('authController login security hardening', () => {
       loginController(req, res, next);
       await Promise.resolve();
 
-      const responseData = (res.json as any).mock.calls[0][0];
+      const responseData = res.json.mock.calls[0][0] as LoginResponse;
       const userId = responseData.user.userId;
 
       // Should NOT be '   ', should be email-based
@@ -320,17 +314,13 @@ describe('authController login security hardening', () => {
         ip: '127.0.0.1',
       } as unknown as Request;
 
-      const res = {
-        json: vi.fn(),
-        cookie: vi.fn(),
-      } as unknown as Response;
+      const res = createMockResponse();
+      const next = vi.fn<(err?: unknown) => void>();
 
-      const next = vi.fn() as unknown as NextFunction;
-
-      loginController(req, res, next);
+      loginController(req, res as unknown as Response, next as unknown as NextFunction);
       await Promise.resolve();
 
-      const responseData = (res.json as any).mock.calls[0][0];
+      const responseData = res.json.mock.calls[0][0] as LoginResponse;
       expect(responseData.token).toBeDefined();
       expect(responseData.accessToken).toBeDefined();
       expect(responseData.token).toBe(responseData.accessToken);
@@ -346,17 +336,13 @@ describe('authController login security hardening', () => {
         ip: '127.0.0.1',
       } as unknown as Request;
 
-      const res = {
-        json: vi.fn(),
-        cookie: vi.fn(),
-      } as unknown as Response;
+      const res = createMockResponse();
+      const next = vi.fn<(err?: unknown) => void>();
 
-      const next = vi.fn() as unknown as NextFunction;
-
-      loginController(req, res, next);
+      loginController(req, res as unknown as Response, next as unknown as NextFunction);
       await Promise.resolve();
 
-      const responseData = (res.json as any).mock.calls[0][0];
+      const responseData = res.json.mock.calls[0][0] as LoginResponse;
       expect(responseData.refreshToken).toBeDefined();
       expect(typeof responseData.refreshToken).toBe('string');
       expect(responseData.refreshToken.length).toBeGreaterThan(0);
@@ -372,17 +358,13 @@ describe('authController login security hardening', () => {
         ip: '127.0.0.1',
       } as unknown as Request;
 
-      const res = {
-        json: vi.fn(),
-        cookie: vi.fn(),
-      } as unknown as Response;
+      const res = createMockResponse();
+      const next = vi.fn<(err?: unknown) => void>();
 
-      const next = vi.fn() as unknown as NextFunction;
-
-      loginController(req, res, next);
+      loginController(req, res as unknown as Response, next as unknown as NextFunction);
       await Promise.resolve();
 
-      const responseData = (res.json as any).mock.calls[0][0];
+      const responseData = res.json.mock.calls[0][0] as LoginResponse;
       expect(responseData.expiresIn).toBeDefined();
       expect(typeof responseData.expiresIn).toBe('number');
       expect(responseData.expiresIn).toBeGreaterThan(0);
@@ -401,17 +383,13 @@ describe('authController login security hardening', () => {
         ip: '127.0.0.1',
       } as unknown as Request;
 
-      const res = {
-        json: vi.fn(),
-        cookie: vi.fn(),
-      } as unknown as Response;
+      const res = createMockResponse();
+      const next = vi.fn<(err?: unknown) => void>();
 
-      const next = vi.fn() as unknown as NextFunction;
-
-      loginController(req, res, next);
+      loginController(req, res as unknown as Response, next as unknown as NextFunction);
       await Promise.resolve();
 
-      const responseData = (res.json as any).mock.calls[0][0];
+      const responseData = res.json.mock.calls[0][0] as LoginResponse;
       expect(responseData.user).toBeDefined();
       expect(responseData.user.userId).toBe('test-user-id');
       expect(responseData.user.email).toBe('test@example.com');
@@ -436,14 +414,10 @@ describe('authController login security hardening', () => {
         ip: '192.168.1.100',
       } as unknown as Request;
 
-      const res = {
-        json: vi.fn(),
-        cookie: vi.fn(),
-      } as unknown as Response;
+      const res = createMockResponse();
+      const next = vi.fn<(err?: unknown) => void>();
 
-      const next = vi.fn() as unknown as NextFunction;
-
-      loginController(req, res, next);
+      loginController(req, res as unknown as Response, next as unknown as NextFunction);
       await Promise.resolve();
 
       expect(res.json).toHaveBeenCalled();
@@ -464,14 +438,12 @@ describe('authController login security hardening', () => {
         ip: '192.168.1.100',
       } as Request;
 
-      const res = { json: vi.fn() } as unknown as Response;
-      const next = vi.fn() as unknown as NextFunction;
+      const res = createMockResponse();
+      const next = vi.fn<(err?: unknown) => void>();
 
       await new Promise<void>((resolve) => {
-        loginController(req, res, ((err?: unknown) => {
-          (next as any)(err);
-          resolve();
-        }) as NextFunction);
+        loginController(req, res as unknown as Response, next as unknown as NextFunction);
+        resolve();
       });
 
       expect(next).toHaveBeenCalled();
@@ -550,7 +522,7 @@ describe('authController login security hardening', () => {
 
       await new Promise<void>((resolve) => {
         loginController(req, res, ((err?: unknown) => {
-          (next as any)(err);
+          next(err);
           resolve();
         }) as NextFunction);
       });
@@ -572,17 +544,15 @@ describe('authController login security hardening', () => {
         ip: '127.0.0.1',
       } as Request;
 
-      const res = { json: vi.fn() } as unknown as Response;
-      const next = vi.fn() as unknown as NextFunction;
+      const res = createMockResponse();
+      const next = vi.fn<(err?: unknown) => void>();
 
       await new Promise<void>((resolve) => {
-        loginController(req, res, ((err?: unknown) => {
-          (next as any)(err);
-          resolve();
-        }) as NextFunction);
+        loginController(req, res as unknown as Response, next as unknown as NextFunction);
+        resolve();
       });
 
-      const err = (next as any).mock.calls[0][0] as AppError;
+      const err = next.mock.calls[0][0] as AppError;
       // 503 indicates service misconfiguration, not invalid credentials
       expect(err.statusCode).toBe(503);
     });
@@ -600,17 +570,15 @@ describe('authController login security hardening', () => {
         ip: '127.0.0.1',
       } as Request;
 
-      const res = { json: vi.fn() } as unknown as Response;
-      const next = vi.fn() as unknown as NextFunction;
+      const res = createMockResponse();
+      const next = vi.fn<(err?: unknown) => void>();
 
       await new Promise<void>((resolve) => {
-        loginController(req, res, ((err?: unknown) => {
-          (next as any)(err);
-          resolve();
-        }) as NextFunction);
+        loginController(req, res as unknown as Response, next as unknown as NextFunction);
+        resolve();
       });
 
-      const err = (next as any).mock.calls[0][0] as AppError;
+      const err = next.mock.calls[0][0] as AppError;
       expect(err.message).not.toContain('typeof');
       expect(err.message).not.toContain('undefined');
       expect(err.message).not.toContain('stack');

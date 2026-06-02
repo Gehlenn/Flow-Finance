@@ -14,6 +14,13 @@ import { TransactionData, ReminderData } from '../../types';
 
 import { getAIMemory, AIMemory } from './aiMemory';
 import { logAIDebug } from './aiDebugService';
+import { logWarn } from '../utils/logger';
+import {
+  buildMemoryContextBlock,
+  buildUnknownImageInterpretation,
+  buildUnknownTextInterpretation,
+  estimateInterpreterConfidence,
+} from './aiInterpreterHelpers';
 
 // ─── Output Types ─────────────────────────────────────────────────────────────
 
@@ -28,6 +35,11 @@ export interface InterpreterOutput {
   raw_input: string;
   processing_ms: number;
   enriched: boolean; // true se a memória influenciou o resultado
+  diagnostic?: {
+    kind: 'ai_unavailable' | 'ai_uncertain';
+    message: string;
+    suggestion?: string;
+  };
 }
 
 // ─── Memory context builder ───────────────────────────────────────────────────
@@ -37,33 +49,13 @@ export async function buildMemoryContext(userId: string): Promise<{
   contextBlock: string;
 }> {
   const memories = await getAIMemory(userId);
-  if (memories.length === 0) return { memories: [], contextBlock: '' };
-
-  const lines = memories.map(m =>
-    `- ${m.key}: ${m.value} (confiança: ${Math.round(m.confidence * 100)}%)`
-  );
-
-  const contextBlock = `
-CONTEXTO DO USUÁRIO (memória aprendida):
-${lines.join('\n')}
-Use essas informações para melhorar a precisão da classificação.
-  `.trim();
-
-  return { memories, contextBlock };
+  return { memories, contextBlock: buildMemoryContextBlock(memories) };
 }
 
 // ─── Confidence estimator ─────────────────────────────────────────────────────
 
 export function estimateConfidence(data: TransactionData[] | ReminderData[], intent: string): number {
-  if (!data || data.length === 0) return 0.1;
-  const item = data[0];
-  let score = 0.5;
-  if ('amount' in item && item.amount && item.amount > 0) score += 0.15;
-  if ('description' in item && item.description && item.description.length > 3) score += 0.1;
-  if ('category' in item && item.category) score += 0.1;
-  if (item.type) score += 0.1;
-  if (intent !== 'unknown') score += 0.05;
-  return Math.min(parseFloat(score.toFixed(2)), 1.0);
+  return estimateInterpreterConfidence(data, intent);
 }
 
 // ─── Interpret Text ───────────────────────────────────────────────────────────
@@ -88,16 +80,20 @@ export async function interpretText(
     // Normaliza intents inválidos para 'unknown'
     const validIntents = ['transaction', 'reminder'];
     if (!validIntents.includes(result.intent)) {
-      return {
+      logAIDebug({
+        input,
         intent: 'unknown',
-        modality: 'text',
-        data: [],
-        confidence: 0.1,
-        memory_context_used: memories.map(m => m.key),
-        raw_input: input,
+        error: 'Intent invalido retornado pelo interpretador',
         processing_ms: Date.now() - start,
+      });
+      return buildUnknownTextInterpretation({
+        input,
+        memories,
+        processingMs: Date.now() - start,
         enriched,
-      };
+        message: 'Nao consegui classificar esta entrada com seguranca.',
+        suggestion: 'Tente descrever o lancamento com valor, data e contexto mais claros.',
+      });
     }
 
     const confidence = estimateConfidence(result.data, result.intent);
@@ -125,24 +121,28 @@ export async function interpretText(
     });
 
     return output;
-  } catch (err: any) {
+  } catch (error: unknown) {
     const processing_ms = Date.now() - start;
-    console.warn('[AI Interpreter] Text interpretation failed:', { userId, inputLength: input.length, error: err });
+    logWarn('[AI Interpreter] Text interpretation failed; returning unknown intent', {
+      userId,
+      inputLength: input.length,
+      error: error instanceof Error ? error.message : error,
+    });
     logAIDebug({
       input,
-      error: err?.message || 'Erro desconhecido no interpretador',
+      error: error instanceof Error ? error.message : 'Erro desconhecido no interpretador',
       processing_ms,
     });
-    return {
-      intent: 'unknown',
-      modality: 'text',
-      data: [],
-      confidence: 0,
-      memory_context_used: [],
-      raw_input: input,
-      processing_ms,
+    return buildUnknownTextInterpretation({
+      input,
+      memories: [],
+      processingMs: processing_ms,
       enriched: false,
-    };
+      kind: 'ai_unavailable',
+      confidence: 0,
+      message: 'A IA de entrada falhou ao processar este texto.',
+      suggestion: 'Tente novamente ou use o modo manual para registrar o lancamento.',
+    });
   }
 }
 
@@ -153,7 +153,7 @@ export async function interpretImage(
   mimeType: string,
   hint: string,
   userId: string,
-  geminiImageFn: (b: string, m: string, t?: string) => Promise<any[]>
+  geminiImageFn: (b: string, m: string, t?: string) => Promise<TransactionData[]>
 ): Promise<InterpreterOutput> {
   const start = Date.now();
   const { memories, contextBlock } = await buildMemoryContext(userId);
@@ -184,12 +184,20 @@ export async function interpretImage(
       processing_ms,
       enriched,
     };
-  } catch (err: any) {
-    console.warn('[AI Interpreter] Image interpretation failed:', { userId, mimeType, hintLength: hint?.length ?? 0, error: err });
-    logAIDebug({ input: '[imagem]', error: err?.message, processing_ms: Date.now() - start });
-    return {
-      intent: 'unknown', modality: 'image', data: [], confidence: 0,
-      memory_context_used: [], raw_input: '[image]', processing_ms: Date.now() - start, enriched: false,
-    };
+  } catch (error: unknown) {
+    logWarn('[AI Interpreter] Image interpretation failed; returning unknown intent', {
+      userId,
+      mimeType,
+      hintLength: hint?.length ?? 0,
+      error: error instanceof Error ? error.message : error,
+    });
+    logAIDebug({
+      input: '[imagem]',
+      error: error instanceof Error ? error.message : String(error ?? 'unknown-error'),
+      processing_ms: Date.now() - start,
+    });
+    return buildUnknownImageInterpretation({
+      processingMs: Date.now() - start,
+    });
   }
 }

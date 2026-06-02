@@ -1,7 +1,7 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 /**
- * Flow Finance — Interactive Setup Wizard
+ * Flow Finance â€” Interactive Setup Wizard
  * 
  * This script guides you through the complete setup process:
  * 1. OpenAI API Key
@@ -26,11 +26,11 @@ const question = (prompt) => {
 };
 
 const log = {
-  info: (msg) => console.log(`ℹ️  ${msg}`),
-  success: (msg) => console.log(`✅ ${msg}`),
-  warning: (msg) => console.log(`⚠️  ${msg}`),
-  error: (msg) => console.log(`❌ ${msg}`),
-  title: (msg) => console.log(`\n🚀 ${msg}\n`),
+  info: (msg) => process.stdout.write(`â„¹ï¸  ${msg}`),
+  success: (msg) => process.stdout.write(`âœ… ${msg}`),
+  warning: (msg) => process.stdout.write(`âš ï¸  ${msg}`),
+  error: (msg) => process.stderr.write(`ERROR ${msg}\n`),
+  title: (msg) => process.stdout.write(`\nðŸš€ ${msg}\n`),
 };
 
 async function main() {
@@ -49,8 +49,8 @@ async function main() {
   let envContent = fs.readFileSync(envPath, 'utf-8');
 
   // 1. OpenAI Setup
-  log.title('1️⃣  OPENAI API KEY CONFIGURATION');
-  console.log('Get your key from: https://platform.openai.com/api/keys\n');
+  log.title('1ï¸âƒ£  OPENAI API KEY CONFIGURATION');
+  process.stdout.write('Get your key from: https://platform.openai.com/api/keys\n');
 
   const openaiKey = await question('Enter your OpenAI API Key (sk-proj-...): ');
   if (openaiKey.trim()) {
@@ -62,8 +62,8 @@ async function main() {
   }
 
   // 2. Firebase Setup
-  log.title('2️⃣  FIREBASE CONFIGURATION');
-  console.log('Get from: https://console.firebase.google.com → Project Settings → Service Accounts\n');
+  log.title('2ï¸âƒ£  FIREBASE CONFIGURATION');
+  process.stdout.write('Get from: https://console.firebase.google.com â†’ Project Settings â†’ Service Accounts\n');
 
   const firebaseProject = await question('Enter FIREBASE_PROJECT_ID (komodo-flow): ');
   if (firebaseProject.trim()) {
@@ -83,7 +83,7 @@ async function main() {
   }
 
   // 3. Backend URL
-  log.title('3️⃣  BACKEND CONFIGURATION');
+  log.title('3ï¸âƒ£  BACKEND CONFIGURATION');
   const backendUrl = await question('Enter VITE_API_PROD_URL (https://your-backend.com): ');
   if (backendUrl.trim()) {
     envContent = envContent.replace(
@@ -98,24 +98,24 @@ async function main() {
   log.success('Configuration saved to .env.local');
 
   // 4. Next Steps
-  log.title('✅ SETUP COMPLETE - NEXT STEPS');
+  log.title('âœ… SETUP COMPLETE - NEXT STEPS');
   
-  console.log('📝 Configuration saved to .env.local\n');
+  process.stdout.write('ðŸ“ Configuration saved to .env.local\n');
   
-  console.log('🔗 Link Vercel Account:');
-  console.log('   1. npm install -g vercel');
-  console.log('   2. vercel login');
-  console.log('   3. vercel link\n');
+  process.stdout.write('ðŸ”— Link Vercel Account:');
+  process.stdout.write('   1. npm install -g vercel');
+  process.stdout.write('   2. vercel login');
+  process.stdout.write('   3. vercel link\n');
 
-  console.log('🚀 Deploy:');
-  console.log('   1. npm run build          (Test locally)');
-  console.log('   2. npm run deploy:preview (Test deployment)');
-  console.log('   3. npm run deploy         (Production)\n');
+  process.stdout.write('ðŸš€ Deploy:');
+  process.stdout.write('   1. npm run build          (Test locally)');
+  process.stdout.write('   2. npm run deploy:preview (Test deployment)');
+  process.stdout.write('   3. npm run deploy         (Production)\n');
 
-  console.log('📚 Documentation:');
-  console.log('   • SETUP_GUIDE.md         (Complete guide)');
-  console.log('   • SETUP_GUIA_PT.md       (Portuguese guide)');
-  console.log('   • VERCEL_QUICK_START.md  (Vercel deployment)');
+  process.stdout.write('ðŸ“š Documentation:');
+  process.stdout.write('   â€¢ SETUP_GUIDE.md         (Complete guide)');
+  process.stdout.write('   â€¢ SETUP_GUIA_PT.md       (Portuguese guide)');
+  process.stdout.write('   â€¢ VERCEL_QUICK_START.md  (Vercel deployment)');
 
   rl.close();
   process.exit(0);
@@ -126,3 +126,5 @@ main().catch((err) => {
   rl.close();
   process.exit(1);
 });
+
+

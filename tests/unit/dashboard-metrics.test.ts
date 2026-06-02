@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import {
   buildDashboardFocusNote,
   buildDashboardReminderStateSummary,
@@ -123,7 +123,7 @@ describe('dashboard metrics', () => {
     });
 
     expect(note.title).toBe('Recebiveis vencidos pedem acao');
-    expect(note.description).toContain('R$ 320,00');
+    expect(note.description).toMatch(/R\$\s*320,00/);
   });
 
   it('falls back to alert review when there is no pending or overdue revenue', () => {
@@ -139,6 +139,22 @@ describe('dashboard metrics', () => {
     });
 
     expect(note.title).toBe('Alertas pedem revisao');
+  });
+
+  it('prioritizes negative balance when there is no receivable pressure', () => {
+    const note = buildDashboardFocusNote({
+      currentBalance: -420,
+      inflowMonth: 1000,
+      outflowMonth: 800,
+      projectedRevenueMonth: 700,
+      pendingRevenueMonth: 0,
+      overdueRevenueAmount: 0,
+      confirmedRevenueMonth: 700,
+      activeAlerts: 0,
+    });
+
+    expect(note.title).toBe('Saldo negativo pede revisao');
+    expect(note.description).toMatch(/R\$\s*420,00/);
   });
 
   it('keeps pending and overdue calculations domain-agnostic even with extra metadata', () => {
@@ -226,3 +242,6 @@ describe('dashboard metrics', () => {
     expect(summary.dueThisWeekCount).toBe(2);
   });
 });
+
+
+

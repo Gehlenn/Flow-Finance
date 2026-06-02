@@ -67,7 +67,7 @@ import {
 // Verificar saúde da API
 const apiStatus = await checkAPIHealth();
 if (apiStatus.status === 'warning') {
-  console.warn('API está offline');
+  // Exiba estado offline na UI ou registre via logger estruturado
 }
 
 // Checar se está em modo fallback
@@ -132,8 +132,7 @@ Quando múltiplos guards falham, uma tela modal é exibida:
 import { getGuardStatus } from './src/runtime';
 
 const status = getGuardStatus();
-console.log('Initialized:', status.initialized);
-console.log('Config:', status.config);
+// Consulte `status.initialized` e `status.config` para telemetria ou UI de debug
 ```
 
 ## 🎨 Notificações Visuais

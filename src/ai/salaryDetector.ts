@@ -12,6 +12,15 @@
 
 import { Transaction, TransactionType } from '../../types';
 import { makeId } from '../../utils/helpers';
+import {
+  avgDayOfMonth,
+  isRegularInterval,
+  matchesKeywords,
+  median,
+  nextExpectedDate,
+  parseLocalDate,
+} from './salaryDetectorHelpers';
+import { SALARY_KEYWORDS } from './salaryDetectorCatalog';
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -49,68 +58,6 @@ export interface SalaryDetectionResult {
   has_multiple_sources: boolean;
 }
 
-// ─── Salary keyword catalog ───────────────────────────────────────────────────
-
-const SALARY_KEYWORDS: Array<{ keywords: string[]; type: IncomeType; weight: number }> = [
-  // CLT / formal
-  { keywords: ['salário', 'salario', 'folha pagamento', 'folha de pagamento', 'holerite', 'remuneração', 'remuneracao', 'vencimento'], type: 'salary', weight: 1.0 },
-  // Pró-labore / autônomo
-  { keywords: ['pro labore', 'pró labore', 'pro-labore', 'pró-labore', 'honorários', 'honorarios', 'prolabore'], type: 'pro_labore', weight: 0.9 },
-  // Freelance / autônomo
-  { keywords: ['freelance', 'free lance', 'autônomo', 'autonomo', 'pagamento serviços', 'pagamento de serviços', 'prestação serviços'], type: 'freelance', weight: 0.85 },
-  // Pensão / aposentadoria
-  { keywords: ['aposentadoria', 'pensão', 'pensao', 'benefício inss', 'beneficio inss', 'inss', 'previdência', 'previdencia'], type: 'pension', weight: 0.95 },
-  // Aluguel recebido
-  { keywords: ['aluguel recebido', 'locação recebida', 'locacao recebida', 'aluguel', 'renda aluguel'], type: 'rent_income', weight: 0.8 },
-  // Investimentos
-  { keywords: ['rendimento', 'dividendo', 'jcp', 'juros sobre capital', 'renda fixa', 'cdb', 'lci', 'lca', 'tesouro', 'resgat'], type: 'investment', weight: 0.7 },
-  // Genérico
-  { keywords: ['pagamento recebido', 'pix recebido', 'transferência recebida', 'ted recebida', 'doc recebido', 'crédito em conta'], type: 'other_recurring', weight: 0.5 },
-];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-
-function normalize(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function matchesKeywords(tx: Transaction, keywords: string[]): boolean {
-  const text = normalize(`${tx.description ?? ''} ${tx.merchant ?? ''}`);
-  return keywords.some(kw => text.includes(normalize(kw)));
-}
-
-function median(values: number[]): number {
-  if (!values.length) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-
-function avgDayOfMonth(dates: string[]): number | null {
-  if (dates.length < 2) return null;
-  const days = dates.map(d => new Date(d).getDate());
-  const avg = days.reduce((s, d) => s + d, 0) / days.length;
-  const variance = days.reduce((s, d) => s + Math.abs(d - avg), 0) / days.length;
-  // Only report a stable day if variance < 5 days
-  return variance < 5 ? Math.round(avg) : null;
-}
-
-function nextExpectedDate(lastDate: string, dayOfMonth: number | null): string | null {
-  const d = new Date(lastDate);
-  if (isNaN(d.getTime())) return null;
-  const next = new Date(d);
-  next.setMonth(next.getMonth() + 1);
-  if (dayOfMonth) next.setDate(dayOfMonth);
-  return next.toISOString();
-}
-
 function detectIncomeType(txs: Transaction[]): { type: IncomeType; employer?: string; weight: number } {
   for (const { keywords, type, weight } of SALARY_KEYWORDS) {
     if (txs.some(tx => matchesKeywords(tx, keywords))) {
@@ -122,18 +69,6 @@ function detectIncomeType(txs: Transaction[]): { type: IncomeType; employer?: st
     }
   }
   return { type: 'other_recurring', weight: 0.5 };
-}
-
-function isRegularInterval(dates: string[], targetDays: number, toleranceDays: number): boolean {
-  if (dates.length < 2) return false;
-  const sorted = [...dates].sort();
-  const gaps: number[] = [];
-  for (let i = 1; i < sorted.length; i++) {
-    const diff = (new Date(sorted[i]).getTime() - new Date(sorted[i-1]).getTime()) / 86400000;
-    gaps.push(diff);
-  }
-  const avg = gaps.reduce((s, g) => s + g, 0) / gaps.length;
-  return Math.abs(avg - targetDays) <= toleranceDays;
 }
 
 // ─── PART 4 — detectSalary ────────────────────────────────────────────────────
@@ -197,7 +132,14 @@ export function detectSalary(transactions: Transaction[]): SalaryDetectionResult
       if (sg.length >= 3) confidence = Math.min(1, confidence + 0.1);
       if (amountVar < 0.05) confidence = Math.min(1, confidence + 0.1); // stable value
 
-      const sorted = [...sg].sort((a, b) => b.date.localeCompare(a.date));
+      const sorted = [...sg].sort((a, b) => {
+        const left = parseLocalDate(a.date);
+        const right = parseLocalDate(b.date);
+        if (!left && !right) return b.date.localeCompare(a.date);
+        if (!left) return 1;
+        if (!right) return -1;
+        return right.getTime() - left.getTime();
+      });
 
       results.push({
         id:           makeId(),
@@ -237,7 +179,14 @@ export function detectSalary(transactions: Transaction[]): SalaryDetectionResult
     if (!isRegularInterval(dates, 30, 12)) continue; // must be ~monthly
 
     const amounts = group.map(t => t.amount);
-    const sorted = [...group].sort((a, b) => b.date.localeCompare(a.date));
+    const sorted = [...group].sort((a, b) => {
+      const left = parseLocalDate(a.date);
+      const right = parseLocalDate(b.date);
+      if (!left && !right) return b.date.localeCompare(a.date);
+      if (!left) return 1;
+      if (!right) return -1;
+      return right.getTime() - left.getTime();
+    });
     const domMode = avgDayOfMonth(dates);
 
     results.push({
@@ -312,7 +261,9 @@ export function formatIncomeStability(stability: SalaryDetectionResult['income_s
 /** Format next expected date */
 export function formatNextPayday(iso: string | null): string {
   if (!iso) return 'Indeterminado';
-  const d = new Date(iso);
+  const parsed = parseLocalDate(iso);
+  if (!parsed) return 'Indeterminado';
+  const d = parsed;
   const diffDays = Math.round((d.getTime() - Date.now()) / 86400000);
   if (diffDays < 0)    return 'Atrasado';
   if (diffDays === 0)  return 'Hoje';

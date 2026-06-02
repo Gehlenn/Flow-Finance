@@ -1,5 +1,14 @@
-import { importarExtrato, ImportacaoExtratoOptions } from './extratoImporter';
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { mockLogWarn } = vi.hoisted(() => ({
+  mockLogWarn: vi.fn(),
+}));
+
+vi.mock('../../utils/logger', () => ({
+  logWarn: mockLogWarn,
+}));
+
+import { importarExtrato } from './extratoImporter';
 
 const exemploOFX = `<OFX>
 <BANKTRANLIST>
@@ -17,10 +26,14 @@ const exemploOFX = `<OFX>
 </STMTTRN>
 </BANKTRANLIST>
 </OFX>`;
+
 const exemploCSV = 'Data,Descricao,Valor\n2026-03-01,Padaria,-20.00\n2026-03-02,Salário,5000.00';
 
-
 describe('importarExtrato', () => {
+  beforeEach(() => {
+    mockLogWarn.mockClear();
+  });
+
   it('importa transações de CSV válido', async () => {
     const resultado = await importarExtrato({ arquivo: exemploCSV, formato: 'CSV' });
     expect(resultado.transacoes.length).toBe(2);
@@ -47,5 +60,26 @@ describe('importarExtrato', () => {
     const resultado = await importarExtrato({ arquivo: exemploOFX });
     expect(['CSV', 'OFX', 'PDF']).toContain(resultado.formatoDetectado);
     expect(resultado.transacoes.length).toBe(2);
+  });
+
+  it('registra aviso quando CSV invalido falha no parse', async () => {
+    const resultado = await importarExtrato({
+      arquivo: {
+        toString: () => {
+          throw new Error('boom csv');
+        },
+      } as unknown as Buffer,
+      formato: 'CSV',
+    });
+
+    expect(resultado.transacoes.length).toBe(0);
+    expect(resultado.erros).toContain('Erro ao processar CSV: boom csv');
+    expect(mockLogWarn).toHaveBeenCalledWith(
+      '[ExtratoImporter] CSV processing failed',
+      expect.objectContaining({
+        format: 'CSV',
+        error: expect.any(Error),
+      }),
+    );
   });
 });

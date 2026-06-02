@@ -10,6 +10,7 @@ import { registerAIQueueListener }   from './aiQueueListener';
 import { registerForecastListener }  from './forecastListener';
 import { registerAuditListener }     from './auditListener';
 import { registerCacheInvalidationListener } from './cacheInvalidationListener';
+import { logInfo } from '../../utils/logger';
 
 export type ListenerCleanup = () => void;
 
@@ -26,10 +27,10 @@ export function registerEventListeners(): ListenerCleanup {
     registerForecastListener(),
   ];
 
-  console.info('[EventListeners] Todos os listeners registrados.');
+  logInfo('[EventListeners] Todos os listeners registrados.');
 
   return () => {
     cleanupFns.forEach((fn) => fn());
-    console.info('[EventListeners] Todos os listeners removidos.');
+    logInfo('[EventListeners] Todos os listeners removidos.');
   };
 }

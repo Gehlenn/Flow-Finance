@@ -5,8 +5,8 @@ const token = (process.env.CFO_TOKEN || '').trim();
 const workspaceId = (process.env.CFO_WORKSPACE_ID || '').trim();
 
 function printUsageAndExit() {
-  console.error('Uso:');
-  console.error('  CFO_BASE_URL=https://api.example.com CFO_TOKEN=<token> CFO_WORKSPACE_ID=<workspaceId> npm run validate:cfo:route');
+  process.stderr.write('Uso:\n');
+  process.stderr.write('  CFO_BASE_URL=https://api.example.com CFO_TOKEN=<token> CFO_WORKSPACE_ID=<workspaceId> npm run validate:cfo:route\n');
   process.exit(1);
 }
 
@@ -38,11 +38,11 @@ function assertStatus(actual, expected, label) {
   if (actual !== expected) {
     throw new Error(`${label}: esperado ${expected}, recebido ${actual}`);
   }
-  console.log(`OK: ${label} -> ${actual}`);
+  process.stdout.write(`OK: ${label} -> ${actual}\n`);
 }
 
 async function run() {
-  console.log('Validando rota protegida /api/ai/cfo...');
+  process.stdout.write('Validando rota protegida /api/ai/cfo...\n');
 
   const noAuth = await post('/api/ai/cfo', { question: 'Posso gastar este mes?' }, {
     'x-workspace-id': workspaceId,
@@ -78,11 +78,11 @@ async function run() {
     throw new Error('Resposta valida sem campo answer');
   }
 
-  console.log('OK: payload contem answer');
-  console.log('Validacao finalizada com sucesso.');
+  process.stdout.write('OK: payload contem answer\n');
+  process.stdout.write('Validacao finalizada com sucesso.\n');
 }
 
 run().catch((error) => {
-  console.error('Falha na validacao da rota CFO:', error.message);
+  process.stderr.write(`Falha na validacao da rota CFO: ${error.message}\n`);
   process.exit(1);
 });

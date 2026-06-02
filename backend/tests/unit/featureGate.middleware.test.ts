@@ -87,7 +87,8 @@ describe('Feature Gate Middleware', () => {
       try {
         middleware(mockReq as Request, mockRes as Response, mockNext);
       } catch (err) {
-        expect((err as any).statusCode).toBe(503);
+        const error = err as AppError;
+        expect(error.statusCode).toBe(503);
       }
     });
 
@@ -96,7 +97,8 @@ describe('Feature Gate Middleware', () => {
       try {
         middleware(mockReq as Request, mockRes as Response, mockNext);
       } catch (err) {
-        expect((err as any).message).toContain('temporarily unavailable');
+        const error = err as AppError;
+        expect(error.message).toContain('temporarily unavailable');
       }
     });
   });

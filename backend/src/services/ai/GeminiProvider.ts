@@ -69,9 +69,9 @@ export class GeminiProvider extends IAIProvider {
         latencyMs,
         wasFallback: false,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       const latencyMs = Date.now() - startTime;
-      const errorMsg = error?.message || 'Unknown Gemini error';
+      const errorMsg = error instanceof Error ? error.message : String(error || 'Unknown Gemini error');
 
       logger.error('Gemini request failed', {
         provider: 'gemini',
@@ -95,7 +95,10 @@ export class GeminiProvider extends IAIProvider {
       await model.generateContent('ping');
       return true;
     } catch (error) {
-      logger.error('Gemini health check failed', { provider: 'gemini' });
+      logger.error('Gemini health check failed', {
+        provider: 'gemini',
+        error: error instanceof Error ? error.message : String(error),
+      });
       return false;
     }
   }

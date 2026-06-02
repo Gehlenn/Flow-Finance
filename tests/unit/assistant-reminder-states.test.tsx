@@ -10,8 +10,9 @@ vi.mock('../../src/config/api.config', async (importOriginal) => {
   return {
     ...actual,
     API_ENDPOINTS: {
-      ...((actual as any).API_ENDPOINTS ?? {}),
+      ...actual.API_ENDPOINTS,
       AI: {
+        ...actual.API_ENDPOINTS.AI,
         GENERATE_INSIGHTS: '/api/ai/insights',
       },
     },
@@ -37,11 +38,11 @@ describe('isFinancialReminder', () => {
   });
 
   it('classifies reminder with explicit kind=financial as financial (generic field)', () => {
-    expect(isFinancialReminder(makeReminder({ kind: 'financial' } as any))).toBe(true);
+    expect(isFinancialReminder(makeReminder({ kind: 'financial' }))).toBe(true);
   });
 
   it('does not classify clinic-specific fields alone as financial', () => {
-    const reminder = makeReminder({ source: 'clinic-automation', external_receivable_id: 'ext-123' } as any);
+    const reminder = makeReminder({ source: 'clinic-automation', external_receivable_id: 'ext-123' });
     expect(isFinancialReminder(reminder)).toBe(false);
   });
 
@@ -64,7 +65,7 @@ describe('assistant reminder states', () => {
   });
 
   it('classifies canceled metadata and completed reminders as inactive states', () => {
-    const canceledReminder = makeReminder({ status: 'canceled' } as any);
+    const canceledReminder = makeReminder({ status: 'canceled' });
     const completedReminder = makeReminder({ id: 'rem-2', completed: true });
 
     expect(classifyReminderOperationalState(canceledReminder, now)).toBe('canceled');
@@ -83,7 +84,7 @@ describe('assistant reminder states', () => {
     render(
       <Assistant
         reminders={[
-          makeReminder({ id: 'active-fin', title: 'Receber consulta', amount: 300 }),
+          makeReminder({ id: 'active-fin', title: 'Receber consulta', amount: 300, date: '2026-06-12T10:00:00.000Z' }),
           makeReminder({ id: 'overdue-op', title: 'Agendar retorno', date: '2020-01-01T10:00:00.000Z', amount: undefined }),
           makeReminder({ id: 'done-1', title: 'Boleto pago', completed: true }),
         ]}
@@ -103,8 +104,12 @@ describe('assistant reminder states', () => {
       />,
     );
 
-    expect(screen.getByText(/financeiro 1/i)).toBeTruthy();
-    expect(screen.getByText(/operacional 1/i)).toBeTruthy();
+    expect(screen.getByText(/lembretes operacionais/i)).toBeTruthy();
+    expect(screen.getByText(/ativos 1/i)).toBeTruthy();
+    expect(screen.getByText(/vencidos 1/i)).toBeTruthy();
+    expect(screen.getByText(/encerrados 1/i)).toBeTruthy();
+    expect(screen.getByText(/financeiros 1/i)).toBeTruthy();
+    expect(screen.getByText(/operacionais 2/i)).toBeTruthy();
     expect(screen.getByText(/agendar retorno/i)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: /concluidos e cancelados/i }));
@@ -167,7 +172,7 @@ describe('assistant reminder states', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Gerar sugestoes de limite/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Gerar alertas de limite do caixa/i }));
 
     expect(screen.getByText(/O Free continua com criacao manual de alertas/i)).toBeTruthy();
     expect(screen.getByText(/No Pro voce destrava/i)).toBeTruthy();
@@ -194,11 +199,11 @@ describe('assistant reminder states', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Gerar sugestoes de limite/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Gerar alertas de limite do caixa/i }));
 
     await waitFor(() => {
       expect(screen.queryByText(/No Pro voce destrava/i)).toBeNull();
-      expect(screen.getByRole('heading', { name: /Sugestoes de limite/i })).toBeTruthy();
+      expect(screen.getByRole('heading', { name: /Alertas do caixa/i })).toBeTruthy();
     });
   });
 });

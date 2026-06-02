@@ -84,7 +84,14 @@ export function createDistributedRateLimitByUser(config: DistributedRateLimitByU
       next();
     } catch (error) {
       logger.warn(
-        { error, namespace, limiterKey },
+        {
+          error,
+          namespace,
+          limiterKey,
+          windowMs,
+          max,
+          fallback: 'distributed-rate-limit-unavailable',
+        },
         'Distributed rate limiter unavailable, falling back to in-memory limiter',
       );
       return fallbackLimiter(req, res, next);

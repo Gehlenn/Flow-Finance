@@ -22,6 +22,6 @@ describe('authMiddleware cookie support', () => {
 
     expect(next).toHaveBeenCalledTimes(1);
     expect((req as Request & { userId?: string }).userId).toBe('user-cookie');
-    expect((res as any).status).not.toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 });

@@ -1,14 +1,18 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import TransactionList, { classifyTransactionFinancialState } from '../../components/TransactionList';
 import { Category, TransactionType, type Transaction } from '../../types';
 
+type TransactionWithState = Transaction & {
+  status?: 'pending' | 'confirmed' | 'overdue';
+};
+
 describe('transaction financial states', () => {
   const now = new Date('2026-04-10T12:00:00.000Z');
 
-  const makeTransaction = (overrides: Partial<Transaction> = {}): Transaction => ({
+  const makeTransaction = (overrides: Partial<TransactionWithState> = {}): TransactionWithState => ({
     id: 'tx-1',
     amount: 120,
     type: TransactionType.DESPESA,
@@ -19,7 +23,7 @@ describe('transaction financial states', () => {
   });
 
   it('classifies explicit metadata status before fallback heuristics', () => {
-    const transaction = makeTransaction({ status: 'pending' } as any);
+    const transaction = makeTransaction({ status: 'pending' });
 
     expect(classifyTransactionFinancialState(transaction, now)).toBe('pending');
   });
@@ -56,5 +60,44 @@ describe('transaction financial states', () => {
     expect(screen.getByText(/confirmado 1/i)).toBeTruthy();
     expect(screen.getByText(/pendente 1/i)).toBeTruthy();
     expect(screen.getByText(/vencido 1/i)).toBeTruthy();
+  });
+
+  it('filters the list by financial state for faster review', () => {
+    render(
+      <TransactionList
+        transactions={[
+          makeTransaction({ id: 'confirmed-1', description: 'Pagamento fornecedor' }),
+          makeTransaction({ id: 'pending-1', description: 'Recebimento agendado', type: TransactionType.RECEITA, date: '2099-01-01T10:00:00.000Z' }),
+          makeTransaction({ id: 'overdue-1', description: 'Recorrencia atrasada', generated: true, date: '2020-01-01T10:00:00.000Z' }),
+        ]}
+        hideValues={false}
+        onDelete={vi.fn()}
+        onDeleteMultiple={vi.fn()}
+        onUpdate={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText(/abrir filtros da lista/i));
+    fireEvent.click(screen.getByRole('button', { name: /^Pendente$/i }));
+
+    expect(screen.getByRole('button', { name: /^Pendente$/i }).className).toContain('bg-indigo-600');
+    expect(screen.getByText(/Recebimento agendado/i)).toBeTruthy();
+  });
+
+  it('orienta o primeiro lancamento quando a lista ainda esta vazia', () => {
+    render(
+      <TransactionList
+        transactions={[]}
+        hideValues={false}
+        onDelete={vi.fn()}
+        onDeleteMultiple={vi.fn()}
+        onUpdate={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/Nenhum lançamento ainda/i)).toBeTruthy();
+    expect(screen.getByText(/botão \+ no Dashboard/i)).toBeTruthy();
+    expect(screen.getByText('Dashboard', { selector: 'span' })).toBeTruthy();
+    expect(screen.getByText('+', { selector: 'span' })).toBeTruthy();
   });
 });

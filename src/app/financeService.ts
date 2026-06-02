@@ -1,117 +1,29 @@
-import { Account, DEFAULT_ACCOUNT } from '../../models/Account';
+import { Account } from '../../models/Account';
+import { Category, Goal, Reminder, Transaction, TransactionType, type Alert } from '../../types';
+import type { FinanceServiceContext } from './financeServiceTypes';
 import {
-  Alert,
-  Category,
-  Goal,
-  Reminder,
-  Transaction,
-  TransactionType,
-} from '../../types';
+  applyIdMapToCollection,
+  assertScopedEntityOwnership,
+  createDefaultAccount,
+  createId,
+  nowIso,
+  forceScopedEntityContext,
+} from './financeServiceHelpers';
+import {
+  buildNextReminderReceivables,
+  removeReminderReceivableForReminder,
+  syncEntityCollection,
+  syncEntityCollectionResult,
+  syncReminderCollections,
+} from './financeServiceSyncHelpers';
 
-export type FinancialCollections = {
-  accounts: Account[];
-  transactions: Transaction[];
-  goals: Goal[];
-  reminders: Reminder[];
-  alerts: Alert[];
-};
-
-export type EntityCollections = Pick<FinancialCollections, 'accounts' | 'transactions' | 'goals' | 'reminders'>;
-export type ProfileCollections = Pick<FinancialCollections, 'reminders' | 'alerts'>;
-
-export interface FinanceServiceContext {
-  userId: string;
-  tenantId?: string | null;
-  workspaceId?: string | null;
-  collections: FinancialCollections;
-  syncProfile: (updates: Partial<{ name: string; theme: 'light' | 'dark' } & ProfileCollections>) => Promise<void>;
-  syncEntities: (
-    updates: Partial<EntityCollections>,
-    previous?: Partial<EntityCollections>,
-  ) => Promise<{
-    entities: EntityCollections;
-    idMaps: Partial<Record<keyof EntityCollections, Record<string, string>>>;
-  }>;
-  emitTransactionCreated?: (transaction: Transaction) => void;
-  createId?: () => string;
-  now?: () => string;
-}
-
-function assertScopedEntityOwnership(
-  entity: { id: string; user_id?: string; workspace_id?: string },
-  context: Pick<FinanceServiceContext, 'userId' | 'workspaceId'>,
-  entityLabel: string,
-): void {
-  if (entity.user_id && entity.user_id !== context.userId) {
-    throw new Error(`${entityLabel} does not belong to the active user context`);
-  }
-
-  if (context.workspaceId && entity.workspace_id && entity.workspace_id !== context.workspaceId) {
-    throw new Error(`${entityLabel} does not belong to the active workspace context`);
-  }
-}
-
-function forceScopedEntityContext<T extends { id: string; user_id?: string; tenant_id?: string; workspace_id?: string }>(
-  entity: T,
-  context: Pick<FinanceServiceContext, 'userId' | 'tenantId' | 'workspaceId'>,
-): T {
-  return {
-    ...entity,
-    user_id: context.userId,
-    tenant_id: context.tenantId || undefined,
-    workspace_id: context.workspaceId || undefined,
-  };
-}
-
-function defaultCreateId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `tmp_${crypto.randomUUID()}`;
-  }
-
-  return `tmp_${Math.random().toString(36).slice(2, 11)}`;
-}
-
-function nowIso(now: FinanceServiceContext['now']): string {
-  return (now ? now() : new Date().toISOString());
-}
-
-function createId(createIdFn?: FinanceServiceContext['createId']): string {
-  return createIdFn ? createIdFn() : defaultCreateId();
-}
-
-function applyIdMapToCollection<TItem extends { id: string }>(
-  items: TItem[],
-  idMap?: Record<string, string>,
-): TItem[] {
-  if (!idMap || Object.keys(idMap).length === 0) {
-    return items;
-  }
-
-  return items.map((item) => {
-    const nextId = idMap[item.id];
-    return nextId ? { ...item, id: nextId } : item;
-  });
-}
-
-export function createDefaultAccount(
-  userId: string,
-  tenantId?: string | null,
-  workspaceId?: string | null,
-  createIdFn?: FinanceServiceContext['createId'],
-  now?: FinanceServiceContext['now'],
-): Account {
-  return {
-    id: createId(createIdFn),
-    user_id: userId,
-    tenant_id: tenantId || undefined,
-    workspace_id: workspaceId || undefined,
-    name: DEFAULT_ACCOUNT.name,
-    type: DEFAULT_ACCOUNT.type,
-    balance: DEFAULT_ACCOUNT.balance,
-    currency: DEFAULT_ACCOUNT.currency,
-    created_at: nowIso(now),
-  };
-}
+export { createDefaultAccount } from './financeServiceHelpers';
+export type {
+  EntityCollections,
+  FinanceServiceContext,
+  FinancialCollections,
+  ProfileCollections,
+} from './financeServiceTypes';
 
 export async function createTransactions(
   input: Partial<Transaction>[],
@@ -131,9 +43,11 @@ export async function createTransactions(
   })) as Transaction[];
 
   const nextTransactions = [...createdTransactions, ...context.collections.transactions];
-  const syncResult = await context.syncEntities(
-    { transactions: nextTransactions },
-    { transactions: context.collections.transactions },
+  const syncResult = await syncEntityCollectionResult(
+    context,
+    'transactions',
+    nextTransactions,
+    context.collections.transactions,
   );
 
   const reconciledTransactions = applyIdMapToCollection(
@@ -164,12 +78,7 @@ export async function updateTransaction(
     transaction.id === normalizedTransaction.id ? normalizedTransaction : transaction,
   );
 
-  const syncResult = await context.syncEntities(
-    { transactions: nextTransactions },
-    { transactions: context.collections.transactions },
-  );
-
-  return syncResult.entities.transactions;
+  return syncEntityCollection(context, 'transactions', nextTransactions, context.collections.transactions);
 }
 
 export async function deleteTransactions(
@@ -188,12 +97,7 @@ export async function deleteTransactions(
   const idSet = new Set(transactionIds);
   const nextTransactions = context.collections.transactions.filter((transaction) => !idSet.has(transaction.id));
 
-  const syncResult = await context.syncEntities(
-    { transactions: nextTransactions },
-    { transactions: context.collections.transactions },
-  );
-
-  return syncResult.entities.transactions;
+  return syncEntityCollection(context, 'transactions', nextTransactions, context.collections.transactions);
 }
 
 export async function createAccount(
@@ -201,21 +105,25 @@ export async function createAccount(
   context: FinanceServiceContext,
 ): Promise<{ nextAccounts: Account[]; createdAccount: Account }> {
   const createdAccount: Account = {
-    id: createId(context.createId),
-    user_id: context.userId,
-    tenant_id: context.tenantId || undefined,
-    workspace_id: context.workspaceId || undefined,
+    ...createDefaultAccount(
+      context.userId,
+      context.tenantId,
+      context.workspaceId,
+      context.createId,
+      context.now,
+    ),
     name: input.name.trim(),
     type: input.type,
     balance: Number.isFinite(input.balance) ? input.balance : 0,
     currency: 'BRL',
-    created_at: nowIso(context.now),
   };
 
   const nextAccounts = [...context.collections.accounts, createdAccount];
-  const syncResult = await context.syncEntities(
-    { accounts: nextAccounts },
-    { accounts: context.collections.accounts },
+  const syncResult = await syncEntityCollectionResult(
+    context,
+    'accounts',
+    nextAccounts,
+    context.collections.accounts,
   );
 
   const reconciledAccount = applyIdMapToCollection(
@@ -242,12 +150,7 @@ export async function updateAccount(
     account.id === normalizedAccount.id ? normalizedAccount : account,
   );
 
-  const syncResult = await context.syncEntities(
-    { accounts: nextAccounts },
-    { accounts: context.collections.accounts },
-  );
-
-  return syncResult.entities.accounts;
+  return syncEntityCollection(context, 'accounts', nextAccounts, context.collections.accounts);
 }
 
 export async function deleteAccount(
@@ -266,12 +169,7 @@ export async function deleteAccount(
   }
 
   const nextAccounts = context.collections.accounts.filter((account) => account.id !== accountId);
-  const syncResult = await context.syncEntities(
-    { accounts: nextAccounts },
-    { accounts: context.collections.accounts },
-  );
-
-  return syncResult.entities.accounts;
+  return syncEntityCollection(context, 'accounts', nextAccounts, context.collections.accounts);
 }
 
 export async function createGoal(
@@ -293,10 +191,7 @@ export async function createGoal(
   };
 
   const nextGoals = [...context.collections.goals, createdGoal];
-  const syncResult = await context.syncEntities(
-    { goals: nextGoals },
-    { goals: context.collections.goals },
-  );
+  const syncResult = await syncEntityCollectionResult(context, 'goals', nextGoals, context.collections.goals);
 
   const reconciledGoal = applyIdMapToCollection(
     [createdGoal],
@@ -325,12 +220,7 @@ export async function updateGoal(
     goal.id === normalizedGoal.id ? normalizedGoal : goal,
   );
 
-  const syncResult = await context.syncEntities(
-    { goals: nextGoals },
-    { goals: context.collections.goals },
-  );
-
-  return syncResult.entities.goals;
+  return syncEntityCollection(context, 'goals', nextGoals, context.collections.goals);
 }
 
 export async function deleteGoal(
@@ -345,12 +235,7 @@ export async function deleteGoal(
   assertScopedEntityOwnership(goal, context, 'Goal');
 
   const nextGoals = context.collections.goals.filter((goal) => goal.id !== goalId);
-  const syncResult = await context.syncEntities(
-    { goals: nextGoals },
-    { goals: context.collections.goals },
-  );
-
-  return syncResult.entities.goals;
+  return syncEntityCollection(context, 'goals', nextGoals, context.collections.goals);
 }
 
 export async function contributeGoal(
@@ -373,12 +258,7 @@ export async function contributeGoal(
     };
   });
 
-  const syncResult = await context.syncEntities(
-    { goals: nextGoals },
-    { goals: context.collections.goals },
-  );
-
-  return syncResult.entities.goals;
+  return syncEntityCollection(context, 'goals', nextGoals, context.collections.goals);
 }
 
 export async function createReminder(
@@ -397,17 +277,29 @@ export async function createReminder(
   } as Reminder;
 
   const nextReminders = [createdReminder, ...context.collections.reminders];
-  const syncResult = await context.syncEntities(
-    { reminders: nextReminders },
-    { reminders: context.collections.reminders },
+  const reminderSyncResult = await syncEntityCollectionResult(
+    context,
+    'reminders',
+    nextReminders,
+    context.collections.reminders,
   );
 
   const reconciledReminder = applyIdMapToCollection(
     [createdReminder],
-    syncResult.idMaps.reminders,
+    reminderSyncResult.idMaps.reminders,
   )[0];
 
-  return { nextReminders: syncResult.entities.reminders, createdReminder: reconciledReminder };
+  const nextReceivables = buildNextReminderReceivables(
+    context.collections.receivables,
+    reconciledReminder,
+    context,
+  );
+
+  if (nextReceivables !== context.collections.receivables) {
+    await syncEntityCollection(context, 'receivables', nextReceivables, context.collections.receivables);
+  }
+
+  return { nextReminders: reminderSyncResult.entities.reminders, createdReminder: reconciledReminder };
 }
 
 export async function updateReminder(
@@ -417,12 +309,16 @@ export async function updateReminder(
   const nextReminders = context.collections.reminders.map((reminder) =>
     reminder.id === updatedReminder.id ? updatedReminder : reminder,
   );
+  const nextReceivables = buildNextReminderReceivables(context.collections.receivables, updatedReminder, context);
 
-  const syncResult = await context.syncEntities(
-    { reminders: nextReminders },
-    { reminders: context.collections.reminders },
+  const syncResult = await syncReminderCollections(
+    context,
+    nextReminders,
+    context.collections.reminders,
+    nextReceivables,
+    context.collections.receivables,
   );
-  return syncResult.entities.reminders;
+  return syncResult.reminders;
 }
 
 export async function deleteReminder(
@@ -430,11 +326,15 @@ export async function deleteReminder(
   context: FinanceServiceContext,
 ): Promise<Reminder[]> {
   const nextReminders = context.collections.reminders.filter((reminder) => reminder.id !== reminderId);
-  const syncResult = await context.syncEntities(
-    { reminders: nextReminders },
-    { reminders: context.collections.reminders },
+  const nextReceivables = removeReminderReceivableForReminder(context.collections.receivables, reminderId);
+  const syncResult = await syncReminderCollections(
+    context,
+    nextReminders,
+    context.collections.reminders,
+    nextReceivables,
+    context.collections.receivables,
   );
-  return syncResult.entities.reminders;
+  return syncResult.reminders;
 }
 
 export async function toggleReminder(
@@ -444,12 +344,19 @@ export async function toggleReminder(
   const nextReminders = context.collections.reminders.map((reminder) =>
     reminder.id === reminderId ? { ...reminder, completed: !reminder.completed } : reminder,
   );
+  const toggledReminder = nextReminders.find((reminder) => reminder.id === reminderId);
+  const nextReceivables = toggledReminder
+    ? buildNextReminderReceivables(context.collections.receivables, toggledReminder, context)
+    : context.collections.receivables;
 
-  const syncResult = await context.syncEntities(
-    { reminders: nextReminders },
-    { reminders: context.collections.reminders },
+  const syncResult = await syncReminderCollections(
+    context,
+    nextReminders,
+    context.collections.reminders,
+    nextReceivables,
+    context.collections.receivables,
   );
-  return syncResult.entities.reminders;
+  return syncResult.reminders;
 }
 
 export async function createAlert(

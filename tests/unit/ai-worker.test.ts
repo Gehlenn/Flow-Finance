@@ -53,6 +53,13 @@ vi.mock('../../src/ai/fixedExpenseDetector', () => ({
 
 import { runAIWorker } from '../../src/ai/queue/AIWorker';
 import { AITaskPriority, AITaskStatus, AITaskType } from '../../src/ai/queue/taskTypes';
+import { logError, logInfo, logWarn } from '../../src/utils/logger';
+
+vi.mock('../../src/utils/logger', () => ({
+  logError: vi.fn(),
+  logInfo: vi.fn(),
+  logWarn: vi.fn(),
+}));
 
 describe('AIWorker', () => {
   beforeEach(() => {
@@ -60,7 +67,6 @@ describe('AIWorker', () => {
   });
 
   it('logs contextual data when task execution fails', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     queueMocks.getNextTask.mockReturnValueOnce({
       id: 'task-1',
       userId: 'user-1',
@@ -77,18 +83,77 @@ describe('AIWorker', () => {
 
     await expect(runAIWorker()).resolves.toBeUndefined();
 
-    expect(errorSpy).toHaveBeenCalledWith(
-      '[AI Worker] Task execution failed:',
+    expect(logError).toHaveBeenCalledWith(
+      '[AI Worker] Task execution failed',
+      expect.any(Error),
       expect.objectContaining({
         taskId: 'task-1',
         taskType: 'invalid_task_type',
         userId: 'user-1',
         retryCount: 0,
         maxRetries: 1,
-        error: expect.any(Error),
+        executionTime: expect.any(Number),
+      }),
+    );
+  });
+
+  it('logs contextual data for lifecycle and retry paths', async () => {
+    queueMocks.getNextTask.mockReturnValueOnce({
+      id: 'task-2',
+      userId: 'user-2',
+      type: 'invalid_task_type' as AITaskType,
+      status: AITaskStatus.PENDING,
+      priority: AITaskPriority.NORMAL,
+      createdAt: Date.now(),
+      payload: { transactions: [] },
+      retryCount: 0,
+      maxRetries: 2,
+    });
+    queueMocks.updateTaskStatus.mockImplementation(() => undefined);
+    queueMocks.updateTask.mockImplementation(() => undefined);
+
+    const { aiWorker } = await import('../../src/ai/queue/AIWorker');
+
+    aiWorker.start();
+    aiWorker.start();
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(logInfo).toHaveBeenCalledWith(
+      '[AI Worker] Starting...',
+      expect.objectContaining({ fallback: 'ai-worker-starting' }),
+    );
+    expect(logWarn).toHaveBeenCalledWith(
+      '[AI Worker] Already running',
+      expect.objectContaining({ fallback: 'ai-worker-already-running' }),
+    );
+    expect(logInfo).toHaveBeenCalledWith(
+      '[AI Worker] Processing task',
+      expect.objectContaining({
+        taskId: 'task-2',
+        taskType: 'invalid_task_type',
+        userId: 'user-2',
+        fallback: 'ai-worker-processing-task',
+      }),
+    );
+    expect(logInfo).toHaveBeenCalledWith(
+      '[AI Worker] Task will be retried',
+      expect.objectContaining({
+        taskId: 'task-2',
+        taskType: 'invalid_task_type',
+        userId: 'user-2',
+        retryCount: 1,
+        maxRetries: 2,
+        fallback: 'ai-worker-task-will-be-retried',
       }),
     );
 
-    errorSpy.mockRestore();
+    aiWorker.stop();
+
+    expect(logInfo).toHaveBeenCalledWith(
+      '[AI Worker] Stopped',
+      expect.objectContaining({ fallback: 'ai-worker-stopped' }),
+    );
   });
 });

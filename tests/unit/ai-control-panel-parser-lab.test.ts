@@ -9,6 +9,7 @@ describe('AIControlPanel parser lab defaults', () => {
       input: '',
       result: null,
       error: null,
+      diagnostic: null,
     });
   });
 
@@ -18,6 +19,7 @@ describe('AIControlPanel parser lab defaults', () => {
       input: '',
       result: null,
       error: null,
+      diagnostic: null,
     });
   });
 });

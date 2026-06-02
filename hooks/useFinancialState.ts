@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Account } from '../models/Account';
-import { Alert, Goal, Reminder, Transaction } from '../types';
+import { Alert, Goal, Reminder, Transaction, Receivable } from '../types';
+import { FinancialLeak } from '../src/ai/leakDetector';
 import { detectAndLearnPatterns } from '../src/ai/aiMemory';
 import { runAdaptiveLearning } from '../src/ai/adaptiveAIEngine';
 import { FinancialEventEmitter } from '../src/events/eventEngine';
 import { initEventListeners } from '../src/events/eventEngine';
+import { logWarn } from '../src/utils/logger';
 import {
   createAccount,
   createAlert,
@@ -25,6 +27,7 @@ import {
   updateReminder,
   updateTransaction,
 } from '../src/app/financeService';
+import { FinancialReport } from '../src/finance/reportEngine';
 import { useSyncEngine } from './useSyncEngine';
 
 interface UseFinancialStateOptions {
@@ -32,15 +35,19 @@ interface UseFinancialStateOptions {
   activeTenantId: string | null;
   activeWorkspaceId: string | null;
   syncEngine: ReturnType<typeof useSyncEngine>;
+  isDemoMode: boolean;
 }
 
 export function useFinancialState(options: UseFinancialStateOptions) {
-  const { userId, activeTenantId, activeWorkspaceId, syncEngine } = options;
+  const { userId, activeTenantId, activeWorkspaceId, syncEngine, isDemoMode } = options;
 
   const workspaceDefaultAccountRef = useRef<string | null>(null);
+  const [latestLeaks, setLatestLeaks] = useState<FinancialLeak[]>([]);
+  const [latestReport, setLatestReport] = useState<FinancialReport | null>(null);
   const accounts = syncEngine.entities.accounts;
   const transactions = syncEngine.entities.transactions;
   const goals = syncEngine.entities.goals;
+  const receivables = syncEngine.entities.receivables;
   const reminders = useMemo(() => {
     const byId = new Map<string, Reminder>();
 
@@ -66,9 +73,10 @@ export function useFinancialState(options: UseFinancialStateOptions) {
     accounts,
     transactions,
     goals,
+    receivables,
     reminders,
     alerts,
-  }), [accounts, alerts, goals, reminders, transactions]);
+  }), [accounts, alerts, goals, receivables, reminders, transactions]);
 
   const serviceContext = useMemo(() => {
     if (!userId) {
@@ -82,21 +90,28 @@ export function useFinancialState(options: UseFinancialStateOptions) {
       collections,
       syncProfile: syncEngine.syncProfile,
       syncEntities: syncEngine.syncEntities,
-      emitTransactionCreated: FinancialEventEmitter.transactionCreated,
+      emitTransactionCreated: isDemoMode ? undefined : FinancialEventEmitter.transactionCreated,
     };
-  }, [activeTenantId, activeWorkspaceId, collections, syncEngine.syncEntities, syncEngine.syncProfile, userId]);
+  }, [activeTenantId, activeWorkspaceId, collections, isDemoMode, syncEngine.syncEntities, syncEngine.syncProfile, userId]);
 
   useEffect(() => {
+    if (isDemoMode) {
+      return;
+    }
+
     if (userId && transactions.length >= 3) {
       detectAndLearnPatterns(userId, transactions);
       runAdaptiveLearning(userId, transactions).catch((error) => {
-        console.error('Falha ao executar aprendizado adaptativo:', error);
+        logWarn('[useFinancialState] Failed to execute adaptive learning', {
+          error,
+          fallback: 'use-financial-state-adaptive-learning-failed',
+        });
       });
     }
-  }, [transactions, userId]);
+  }, [isDemoMode, transactions, userId]);
 
   useEffect(() => {
-    if (!userId) {
+    if (isDemoMode || !userId) {
       return undefined;
     }
 
@@ -104,11 +119,17 @@ export function useFinancialState(options: UseFinancialStateOptions) {
       transactions,
       accounts,
       userId,
+      onLeaks: (leaks: FinancialLeak[]) => {
+        setLatestLeaks(leaks);
+      },
+      onReport: (report: FinancialReport) => {
+        setLatestReport(report);
+      },
     }));
-  }, [accounts, transactions, userId]);
+  }, [accounts, isDemoMode, transactions, userId]);
 
   useEffect(() => {
-    if (!serviceContext || !activeWorkspaceId || !syncEngine.backendSyncEnabled || !syncEngine.hasLoadedEntities) {
+    if (isDemoMode || !serviceContext || !activeWorkspaceId || !syncEngine.backendSyncEnabled || !syncEngine.hasLoadedEntities) {
       return;
     }
 
@@ -122,13 +143,17 @@ export function useFinancialState(options: UseFinancialStateOptions) {
       { accounts: [defaultAccount] },
       { accounts: [] },
     ).catch((error) => {
-      console.error('Falha ao criar conta padrao do workspace:', error);
+      logWarn('[useFinancialState] Failed to create default workspace account', {
+        error,
+        fallback: 'use-financial-state-create-default-account-failed',
+      });
       workspaceDefaultAccountRef.current = null;
     });
   }, [
     accounts.length,
     activeWorkspaceId,
     activeTenantId,
+    isDemoMode,
     serviceContext,
     syncEngine,
     userId,
@@ -233,8 +258,11 @@ export function useFinancialState(options: UseFinancialStateOptions) {
     transactions,
     accounts,
     goals,
+    receivables,
     reminders,
     alerts,
+    latestLeaks,
+    latestReport,
     addTransactions,
     updateTransaction: updateSingleTransaction,
     deleteTransaction: deleteSingleTransaction,

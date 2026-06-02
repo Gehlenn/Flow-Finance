@@ -11,9 +11,19 @@ import {
 } from '../../src/finance/importService';
 import * as categorizationService from '../../src/services/ai/categorizationService';
 
+const logWarnMock = vi.fn();
+const logErrorMock = vi.fn();
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: (...args: unknown[]) => logWarnMock(...args),
+  logError: (...args: unknown[]) => logErrorMock(...args),
+}));
+
 describe('importService', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    logWarnMock.mockReset();
+    logErrorMock.mockReset();
   });
 
   it('parseOFX suporta XML e SGML', () => {
@@ -29,9 +39,11 @@ describe('importService', () => {
     const sgmlResult = parseOFX(sgml);
 
     expect(xmlResult).toHaveLength(1);
+    expect(xmlResult[0].raw_date).toBe('2026-03-01');
     expect(xmlResult[0].raw_amount).toBe(123.45);
     expect(xmlResult[0].raw_type).toBe(TransactionType.DESPESA);
     expect(sgmlResult).toHaveLength(1);
+    expect(sgmlResult[0].raw_date).toBe('2026-03-05');
     expect(sgmlResult[0].raw_description).toBe('Salario');
     expect(sgmlResult[0].raw_type).toBe(TransactionType.RECEITA);
   });
@@ -46,8 +58,10 @@ describe('importService', () => {
     const result = parseCSV(csv);
 
     expect(result).toHaveLength(2);
+    expect(result[0].raw_date).toBe('2026-03-01');
     expect(result[0].raw_amount).toBeCloseTo(12.5);
     expect(result[0].raw_type).toBe(TransactionType.DESPESA);
+    expect(result[1].raw_date).toBe('2026-03-02');
     expect(result[1].raw_amount).toBeCloseTo(1234.56);
     expect(result[1].raw_type).toBe(TransactionType.RECEITA);
     expect(result[1].merchant).toBe('Cliente XP');
@@ -177,5 +191,38 @@ describe('importService', () => {
       confidence: 0.84,
       type: TransactionType.RECEITA,
     });
+  });
+
+  it('registra aviso contextual quando a classificacao por IA falha e usa categoria padrao', async () => {
+    vi.spyOn(categorizationService, 'classifyTransactionsWithAI').mockRejectedValueOnce(new Error('classification down'));
+
+    const result = await classifyImportedTransactions(
+      [
+        {
+          raw_date: '2026-04-01T00:00:00.000Z',
+          raw_amount: 950,
+          raw_description: 'Pagamento cliente recorrente',
+          raw_type: TransactionType.RECEITA,
+          selected: true,
+          merchant: 'Cliente XP',
+        },
+      ],
+      'user-import',
+    );
+
+    expect(result[0]).toMatchObject({
+      category: Category.PESSOAL,
+      confidence: 0.3,
+      type: TransactionType.RECEITA,
+    });
+    expect(logWarnMock).toHaveBeenCalledWith(
+      '[ImportService] AI classification failed; using default categories',
+      expect.objectContaining({
+        userId: 'user-import',
+        transactionCount: 1,
+        error: expect.any(Error),
+        fallback: 'import-service-ai-classification-failed',
+      }),
+    );
   });
 });

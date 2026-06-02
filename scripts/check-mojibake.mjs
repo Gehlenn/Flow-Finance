@@ -129,15 +129,15 @@ async function main() {
   }
 
   if (hits.length === 0) {
-    console.log('OK: no mojibake patterns found.');
+    process.stdout.write('OK: no mojibake patterns found.\n');
     return;
   }
 
-  console.log(`MOJIBAKE: found ${hits.length} hit(s) (showing up to 200):\n`);
+  process.stdout.write(`MOJIBAKE: found ${hits.length} hit(s) (showing up to 200):\n`);
   for (const h of hits) {
     const rel = normalizeSlashes(path.relative(repoRoot, h.file));
-    console.log(`- ${rel}:${h.line} contains '${h.pattern}'`);
-    console.log(`  ${h.text}`);
+    process.stdout.write(`- ${rel}:${h.line} contains '${h.pattern}'\n`);
+    process.stdout.write(`  ${h.text}\n`);
   }
   process.exitCode = 1;
 }

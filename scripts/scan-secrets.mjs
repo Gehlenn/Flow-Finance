@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+﻿import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
@@ -60,7 +60,7 @@ function listTrackedFiles() {
   });
 
   if (result.status !== 0) {
-    console.error('Nao foi possivel listar arquivos rastreados pelo git.');
+    process.stderr.write('Nao foi possivel listar arquivos rastreados pelo git.');
     process.exit(result.status ?? 1);
   }
 
@@ -116,13 +116,14 @@ for (const relPath of files) {
 }
 
 if (findings.length === 0) {
-  console.log('Secret scan passed: no suspicious values found.');
+  process.stdout.write('Secret scan passed: no suspicious values found.');
   process.exit(0);
 }
 
-console.error(`Secret scan failed: ${findings.length} potential secret(s) found.`);
+process.stderr.write(`Secret scan failed: ${findings.length} potential secret(s) found.`);
 for (const finding of findings) {
-  console.error(`- ${finding.file}:${finding.line} [${finding.pattern}] ${finding.sample}`);
+  process.stderr.write(`- ${finding.file}:${finding.line} [${finding.pattern}] ${finding.sample}`);
 }
 
 process.exit(1);
+

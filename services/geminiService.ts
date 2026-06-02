@@ -12,9 +12,120 @@ import { InterpretResponse } from '../types';
 
 import { Transaction, Reminder, TransactionData, TransactionType, Category } from "../types";
 import { API_ENDPOINTS, apiRequest } from "../src/config/api.config";
+import { logError, logWarn } from "../src/utils/logger";
 
-type DailyInsightsApiResponse = { insights?: any[] } | any[];
-type StrategicInsightsApiResponse = { report?: any } | any;
+type DailyInsightLike = {
+  title: string;
+  description: string;
+  type: string;
+};
+
+type StrategicReportLike = {
+  executiveSummary?: string;
+  actionPlan?: string[];
+  diagnostic?: {
+    kind?: string;
+    message?: string;
+    suggestion?: string;
+  };
+  [key: string]: unknown;
+};
+
+type DailyInsightsApiResponse = { insights?: DailyInsightLike[] } | DailyInsightLike[];
+type StrategicInsightsApiResponse = { report?: StrategicReportLike } | StrategicReportLike;
+
+function isLocalDemoMode(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  return params.get('demoData') === '1' || window.localStorage.getItem('flow_demo_data') === '1';
+}
+
+function summarizeTransactions(transactions: Transaction[]): { income: number; expenses: number; balance: number; count: number } {
+  return transactions.reduce(
+    (summary, transaction) => {
+      const amount = Math.abs(Number(transaction.amount) || 0);
+      if (transaction.type === TransactionType.RECEITA) {
+        summary.income += amount;
+      } else {
+        summary.expenses += amount;
+      }
+      summary.balance = summary.income - summary.expenses;
+      summary.count += 1;
+      return summary;
+    },
+    { income: 0, expenses: 0, balance: 0, count: 0 },
+  );
+}
+
+function formatBRL(value: number): string {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+}
+
+function buildLocalStrategicReport(transactions: Transaction[], reason = 'demo-local'): StrategicReportLike {
+  const summary = summarizeTransactions(transactions);
+  const runwaySignal = summary.balance >= 0
+    ? `O recorte mostra saldo operacional positivo de ${formatBRL(summary.balance)}.`
+    : `O recorte mostra pressao de caixa de ${formatBRL(Math.abs(summary.balance))}.`;
+  const expenseRatio = summary.income > 0 ? summary.expenses / summary.income : 0;
+  const attention = expenseRatio > 0.55
+    ? 'As saidas ja consomem uma parte relevante das entradas; revise despesas recorrentes antes de assumir novos compromissos.'
+    : 'As saidas estao sob controle neste recorte; priorize recebiveis pendentes e previsibilidade.';
+
+  return {
+    executiveSummary: `${runwaySignal} ${attention}`,
+    actionPlan: [
+      'Confirmar recebiveis pendentes antes de tratar previsao como caixa disponivel.',
+      'Revisar despesas recorrentes e separar o que e operacao essencial do que pode esperar.',
+      'Manter uma proxima acao por cliente/recebivel para reduzir atraso e incerteza.',
+    ],
+    diagnostic: {
+      kind: reason,
+      message: 'Diagnostico local gerado sem depender do backend de IA.',
+      suggestion: 'Use esta leitura para demonstracao; em producao, valide com o endpoint de IA autenticado.',
+    },
+  };
+}
+
+function buildLocalCFOAnswer(question: string, context: string, intent: string): string {
+  const normalizedQuestion = normalizeInput(question);
+  const asksRisk = intent === 'risk_question' || /risco|perigo|atras/.test(normalizedQuestion);
+  const asksCash = intent === 'cash_position' || /caixa|saldo|posicao/.test(normalizedQuestion);
+  const asksReceivables = intent === 'receivables_question' || /receber|recebivel|pendente|vencido/.test(normalizedQuestion);
+  const contextHint = context.trim().slice(0, 360);
+
+  if (asksReceivables) {
+    return [
+      'Leitura demo: separe recebiveis pendentes de caixa confirmado. Pendente ainda nao e dinheiro disponivel.',
+      'Prioridade: cobrar o item vencido primeiro, confirmar data do proximo recebimento e so depois liberar novas despesas.',
+      contextHint ? `Base usada: ${contextHint}` : 'Base usada: dados locais da demonstracao premium.',
+    ].join('\n\n');
+  }
+
+  if (asksRisk) {
+    return [
+      'Leitura demo: o maior risco nao e o volume vendido, e a distancia entre previsao e recebimento confirmado.',
+      'Acao recomendada: travar gastos nao essenciais ate os recebiveis de curto prazo serem confirmados.',
+      contextHint ? `Base usada: ${contextHint}` : 'Base usada: dados locais da demonstracao premium.',
+    ].join('\n\n');
+  }
+
+  if (asksCash) {
+    return [
+      'Leitura demo: trate o saldo confirmado como limite operacional e use a previsao apenas para planejamento.',
+      'Proximo passo: olhe entradas confirmadas, pendentes e vencidas antes de decidir qualquer novo compromisso.',
+      contextHint ? `Base usada: ${contextHint}` : 'Base usada: dados locais da demonstracao premium.',
+    ].join('\n\n');
+  }
+
+  return [
+    'Leitura demo: mantenha a decisao no caixa de curto prazo, nao em faturamento bruto.',
+    'Prioridade: confirmar recebiveis, reduzir saidas recorrentes dispensaveis e manter uma acao clara para cada pendencia.',
+    contextHint ? `Base usada: ${contextHint}` : 'Base usada: dados locais da demonstracao premium.',
+  ].join('\n\n');
+}
 
 function normalizeInput(raw: string): string {
   return raw
@@ -133,7 +244,9 @@ export class GeminiService {
         }
       );
     } catch (error) {
-      console.warn('[AIService] processSmartInput unavailable, using deterministic fallback');
+      logWarn('[AIService] processSmartInput unavailable, using deterministic fallback', error, {
+        fallback: 'ai-process-smart-input-fallback',
+      });
       return buildSmartInputFallback(text);
     }
   }
@@ -173,7 +286,9 @@ export class GeminiService {
 
       return [normalized];
     } catch (error) {
-      console.error('[AIService] parseFinancialImage failed:', error);
+      logError('[AIService] parseFinancialImage failed', error, {
+        fallback: 'ai-parse-financial-image-failed',
+      });
       return [];
     }
   }
@@ -182,7 +297,7 @@ export class GeminiService {
    * Generate daily insights about transactions
    * Backend handles LLM call and analysis
    */
-  async generateDailyInsights(transactions: Transaction[]): Promise<any[]> {
+  async generateDailyInsights(transactions: Transaction[]): Promise<DailyInsightLike[]> {
     try {
       const response = await apiRequest<DailyInsightsApiResponse>(
         API_ENDPOINTS.AI.GENERATE_INSIGHTS,
@@ -199,7 +314,9 @@ export class GeminiService {
 
       return Array.isArray(response) ? response : (response.insights || []);
     } catch (error) {
-      console.warn('[AIService] generateDailyInsights unavailable, using empty fallback');
+      logWarn('[AIService] generateDailyInsights unavailable, using empty fallback', error, {
+        fallback: 'ai-generate-daily-insights-fallback',
+      });
       return [];
     }
   }
@@ -218,7 +335,9 @@ export class GeminiService {
         }
       );
     } catch (error) {
-      console.error('[AIService] classifyTransactions failed:', error);
+      logError('[AIService] classifyTransactions failed', error, {
+        fallback: 'ai-classify-transactions-failed',
+      });
       return [];
     }
   }
@@ -227,7 +346,11 @@ export class GeminiService {
    * Generate strategic financial report
    * Backend handles detailed analysis
    */
-  async generateStrategicReport(transactions: Transaction[]): Promise<any> {
+  async generateStrategicReport(transactions: Transaction[]): Promise<StrategicReportLike | null> {
+    if (isLocalDemoMode()) {
+      return buildLocalStrategicReport(transactions);
+    }
+
     try {
       const response = await apiRequest<StrategicInsightsApiResponse>(
         API_ENDPOINTS.AI.GENERATE_INSIGHTS,
@@ -242,10 +365,20 @@ export class GeminiService {
         }
       );
 
-      return Array.isArray(response) ? response : (response.report ?? response);
+      if (Array.isArray(response)) {
+        return (response[0] as StrategicReportLike | undefined) ?? buildLocalStrategicReport(transactions, 'strategic-empty');
+      }
+
+      if ('report' in response) {
+        return (response.report as StrategicReportLike | undefined) ?? buildLocalStrategicReport(transactions, 'strategic-empty');
+      }
+
+      return response as StrategicReportLike;
     } catch (error) {
-      console.warn('[AIService] generateStrategicReport unavailable, using null fallback');
-      return null;
+      logWarn('[AIService] generateStrategicReport unavailable, using null fallback', error, {
+        fallback: 'ai-generate-strategic-report-fallback',
+      });
+      return buildLocalStrategicReport(transactions, 'ai_unavailable');
     }
   }
 
@@ -264,7 +397,9 @@ export class GeminiService {
       );
       return result.tokenCount;
     } catch (error) {
-      console.error('[AIService] countTokens failed:', error);
+      logError('[AIService] countTokens failed', error, {
+        fallback: 'ai-count-tokens-failed',
+      });
       return 0;
     }
   }
@@ -277,7 +412,7 @@ export class GeminiService {
     { title: string; description: string; type: 'economy' | 'investment' | 'habit' | 'alert' }[]
   > {
     try {
-      const daily: any[] = await this.generateDailyInsights(transactions);
+      const daily: DailyInsightLike[] = await this.generateDailyInsights(transactions);
       return daily.map(ins => {
         let t: 'economy' | 'investment' | 'habit' | 'alert' = 'economy';
         if (ins.type === 'alerta') t = 'alert';
@@ -286,13 +421,19 @@ export class GeminiService {
         return { title: ins.title, description: ins.description, type: t };
       });
     } catch (error) {
-      console.error('[AIService] generateFinancialConsultancy failed:', error);
+      logError('[AIService] generateFinancialConsultancy failed', error, {
+        fallback: 'ai-generate-financial-consultancy-failed',
+      });
       return [];
     }
   }
 
   // ─── CFO helper ──────────────────────────────────────────────────────────
   async generateCFO(question: string, context: string, intent: string): Promise<{ answer: string }> {
+    if (isLocalDemoMode()) {
+      return { answer: buildLocalCFOAnswer(question, context, intent) };
+    }
+
     try {
       return await apiRequest(
         API_ENDPOINTS.AI.CFO,
@@ -302,8 +443,10 @@ export class GeminiService {
         }
       );
     } catch (error) {
-      console.error('[AIService] generateCFO failed:', error);
-      return { answer: '' };
+      logError('[AIService] generateCFO failed', error, {
+        fallback: 'ai-generate-cfo-failed',
+      });
+      return { answer: buildLocalCFOAnswer(question, context, intent) };
     }
   }
 

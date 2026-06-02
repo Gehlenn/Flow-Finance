@@ -1,5 +1,23 @@
 import { Transaction, TransactionType } from '../../../types';
 
+function parseTimelineDate(value: string): Date | null {
+  const trimmed = value.trim();
+  const dateOnlyMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const parsed = new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatTimelineDayKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export interface TimelinePoint {
   date: string;
   income: number;
@@ -37,11 +55,13 @@ export function buildFinancialTimeline(transactions: Transaction[]): FinancialTi
   const grouped = new Map<string, { income: number; expenses: number }>();
 
   const sorted = [...transactions].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    (a, b) => (parseTimelineDate(a.date)?.getTime() ?? 0) - (parseTimelineDate(b.date)?.getTime() ?? 0)
   );
 
   for (const tx of sorted) {
-    const dayKey = new Date(tx.date).toISOString().slice(0, 10);
+    const parsed = parseTimelineDate(tx.date);
+    if (!parsed) continue;
+    const dayKey = formatTimelineDayKey(parsed);
     if (!grouped.has(dayKey)) {
       grouped.set(dayKey, { income: 0, expenses: 0 });
     }
@@ -85,8 +105,8 @@ export function aggregateByMonth(transactions: Transaction[]): MonthlyAggregate[
   const monthMap = new Map<string, { income: number; expenses: number }>();
 
   for (const tx of transactions) {
-    const d = new Date(tx.date);
-    if (Number.isNaN(d.getTime())) continue;
+    const d = parseTimelineDate(tx.date);
+    if (!d) continue;
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     if (!monthMap.has(key)) monthMap.set(key, { income: 0, expenses: 0 });
     const entry = monthMap.get(key)!;

@@ -8,8 +8,14 @@ import { QueryDocumentSnapshot, DocumentData } from 'firebase-admin/firestore';
 import { PredictionEngine } from '../services/PredictionEngine';
 import { authMiddleware } from '../middleware/auth';
 import { PredictionApiResponse, CashFlowPrediction, TransactionHistory } from '../types/prediction';
+import logger from '../config/logger';
 
 type HistoricalTransaction = TransactionHistory['transactions'][number];
+type PredictionHandlerResult = Promise<void>;
+
+function toPredictionErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 function docToTransaction(doc: QueryDocumentSnapshot<DocumentData>): HistoricalTransaction {
   const d = doc.data();
@@ -115,24 +121,26 @@ const predictionEngine = new PredictionEngine();
  * Get cash flow prediction for authenticated user
  * Query params: days (default: 30)
  */
-router.get('/cash-flow', authMiddleware, async (req, res): Promise<any> => {
+router.get('/cash-flow', authMiddleware, async (req, res): PredictionHandlerResult => {
   try {
     const userId = req.userId;
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Unauthorized',
       } as PredictionApiResponse);
+      return;
     }
 
     const days = parseInt(req.query.days as string) || 30;
     
     // Validate days parameter
     if (days < 7 || days > 90) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Days must be between 7 and 90',
       } as PredictionApiResponse);
+      return;
     }
 
     // Fetch user's transaction history from Firestore
@@ -148,10 +156,11 @@ router.get('/cash-flow', authMiddleware, async (req, res): Promise<any> => {
     const transactions: HistoricalTransaction[] = transactionsSnapshot.docs.map(docToTransaction);
 
     if (transactions.length < 10) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Insufficient historical data. Need at least 10 transactions.',
       } as PredictionApiResponse);
+      return;
     }
 
     // Build transaction history object
@@ -223,9 +232,15 @@ router.get('/cash-flow', authMiddleware, async (req, res): Promise<any> => {
       data: prediction,
       cached: false,
     } as PredictionApiResponse);
+    return;
 
   } catch (error) {
-    console.error('[Predictions API] Error:', error);
+    logger.warn({
+      error: toPredictionErrorMessage(error),
+      route: 'cash-flow',
+      userId: req.userId,
+      days: typeof req.query.days === 'string' ? parseInt(req.query.days, 10) || 30 : 30,
+    }, '[Predictions API] Error');
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error',
@@ -237,14 +252,15 @@ router.get('/cash-flow', authMiddleware, async (req, res): Promise<any> => {
  * GET /api/predictions/shortfall-risk
  * Get shortfall risk warning for authenticated user
  */
-router.get('/shortfall-risk', authMiddleware, async (req, res): Promise<any> => {
+router.get('/shortfall-risk', authMiddleware, async (req, res): PredictionHandlerResult => {
   try {
     const userId = req.userId;
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Unauthorized',
       } as PredictionApiResponse);
+      return;
     }
 
     // Get latest prediction from Firestore
@@ -258,10 +274,11 @@ router.get('/shortfall-risk', authMiddleware, async (req, res): Promise<any> => 
 
     if (!predictionDoc.exists) {
       // Generate new prediction
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'No prediction found. Generate a cash flow prediction first.',
       } as PredictionApiResponse);
+      return;
     }
 
     const predictionData = predictionDoc.data();
@@ -287,9 +304,10 @@ router.get('/shortfall-risk', authMiddleware, async (req, res): Promise<any> => 
       success: true,
       data: shortfallRisk,
     } as PredictionApiResponse);
+    return;
 
   } catch (error) {
-    console.error('[Predictions API] Shortfall error:', error);
+    logger.warn({ error: toPredictionErrorMessage(error), route: 'shortfall-risk', userId: req.userId }, '[Predictions API] Shortfall error');
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error',
@@ -301,14 +319,15 @@ router.get('/shortfall-risk', authMiddleware, async (req, res): Promise<any> => 
  * GET /api/predictions/seasonality
  * Get seasonal patterns detected in user's transactions
  */
-router.get('/seasonality', authMiddleware, async (req, res): Promise<any> => {
+router.get('/seasonality', authMiddleware, async (req, res): PredictionHandlerResult => {
   try {
     const userId = req.userId;
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Unauthorized',
       } as PredictionApiResponse);
+      return;
     }
 
     // Fetch user's transaction history
@@ -321,17 +340,38 @@ router.get('/seasonality', authMiddleware, async (req, res): Promise<any> => {
       .limit(365)
       .get();
 
-    const transactions = transactionsSnapshot.docs.map((doc: any) => ({
-      id: doc.id,
-      ...doc.data(),
-      date: doc.data().date?.toDate() || new Date(doc.data().date),
-    }));
+    const docs = transactionsSnapshot.docs as Array<{
+      id: string;
+      data: () => Record<string, unknown> & { date?: { toDate?: () => Date } | string };
+    }>;
+
+    const transactions: Array<{
+      id: string;
+      date: Date;
+      amount: number;
+      type: 'income' | 'expense';
+      category: string;
+      description: string;
+    }> = docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        amount: typeof data.amount === 'number' ? data.amount : Number(data.amount ?? 0),
+        type: data.type === 'income' ? 'income' : 'expense',
+        category: typeof data.category === 'string' ? data.category : 'geral',
+        description: typeof data.description === 'string' ? data.description : '',
+        date: data.date && typeof data.date === 'object' && 'toDate' in data.date
+          ? data.date.toDate?.() ?? new Date()
+          : new Date(data.date as string),
+      };
+    });
 
     if (transactions.length < 10) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Insufficient historical data',
       } as PredictionApiResponse);
+      return;
     }
 
     // Detect seasonal patterns
@@ -341,9 +381,10 @@ router.get('/seasonality', authMiddleware, async (req, res): Promise<any> => {
       success: true,
       data: patterns,
     } as PredictionApiResponse);
+    return;
 
   } catch (error) {
-    console.error('[Predictions API] Seasonality error:', error);
+    logger.warn({ error: toPredictionErrorMessage(error), route: 'seasonality', userId: req.userId }, '[Predictions API] Seasonality error');
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error',
@@ -355,14 +396,15 @@ router.get('/seasonality', authMiddleware, async (req, res): Promise<any> => {
  * POST /api/predictions/refresh
  * Force refresh of prediction (clear cache and regenerate)
  */
-router.post('/refresh', authMiddleware, async (req, res): Promise<any> => {
+router.post('/refresh', authMiddleware, async (req, res): PredictionHandlerResult => {
   try {
     const userId = req.userId;
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Unauthorized',
       } as PredictionApiResponse);
+      return;
     }
 
     // Clear cache
@@ -381,10 +423,11 @@ router.post('/refresh', authMiddleware, async (req, res): Promise<any> => {
     const transactions: HistoricalTransaction[] = transactionsSnapshot.docs.map(docToTransaction);
 
     if (transactions.length < 10) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Insufficient historical data',
       } as PredictionApiResponse);
+      return;
     }
 
     const historicalData = {
@@ -434,9 +477,15 @@ router.post('/refresh', authMiddleware, async (req, res): Promise<any> => {
       data: prediction,
       cached: false,
     } as PredictionApiResponse);
+    return;
 
   } catch (error) {
-    console.error('[Predictions API] Refresh error:', error);
+    logger.warn({
+      error: toPredictionErrorMessage(error),
+      route: 'refresh',
+      userId: req.userId,
+      days: req.body?.days || 30,
+    }, '[Predictions API] Refresh error');
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error',

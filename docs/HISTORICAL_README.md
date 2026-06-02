@@ -1,4 +1,4 @@
-# Mapa Histórico e de Auditoria
+�# Mapa Histórico e de Auditoria
 
 Este arquivo agrupa materiais úteis como evidência, contexto ou memória técnica, mas que não devem ser tratados como fonte de verdade operacional atual.
 
@@ -8,6 +8,12 @@ Este arquivo agrupa materiais úteis como evidência, contexto ou memória técn
 - recuperar contexto de versao antiga
 - consultar evidência histórica
 - entender diagnóstico ou bug antigo
+
+## Estado vivo atual
+
+- o baseline operacional atual do projeto esta em `0.9.7` e deve ser lido nos documentos vivos: `README.md`, `docs/README.md`, `docs/OPERATIONS_README.md`, `docs/ROADMAP.md` e `docs/DEPLOYMENT_STATUS.md`
+- esta trilha existe para memoria, auditoria e rastreabilidade
+- se um achado aqui ainda for operacionalmente relevante, ele precisa ser promovido explicitamente para a trilha viva
 
 ## Auditorias e avaliações
 

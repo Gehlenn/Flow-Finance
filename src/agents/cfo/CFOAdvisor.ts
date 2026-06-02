@@ -13,6 +13,48 @@ type TransactionReader = {
   getByUser(userId: string): Promise<DomainTransaction[]>;
 };
 
+function parseCfoAdvisorDate(value: string | Date): Date | null {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  const trimmed = value.trim();
+  const dateOnlyMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const year = Number(dateOnlyMatch[1]);
+    const month = Number(dateOnlyMatch[2]) - 1;
+    const day = Number(dateOnlyMatch[3]);
+    const parsed = new Date(year, month, day);
+    if (
+      Number.isNaN(parsed.getTime()) ||
+      parsed.getFullYear() !== year ||
+      parsed.getMonth() !== month ||
+      parsed.getDate() !== day
+    ) {
+      return null;
+    }
+    return parsed;
+  }
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatCfoDateKey(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeCfoAdvisorDate(value: string | Date): string {
+  if (value instanceof Date) {
+    return formatCfoDateKey(value);
+  }
+
+  const parsed = parseCfoAdvisorDate(value);
+  return parsed ? formatCfoDateKey(parsed) : new Date().toISOString();
+}
+
 export interface CFOAdvisorInput {
   userId: string;
   transactions?: Transaction[];
@@ -43,7 +85,7 @@ export class CFOAdvisor {
         ? (tx.category as Category)
         : Category.PESSOAL,
       description: tx.description,
-      date: tx.date instanceof Date ? tx.date.toISOString() : new Date(tx.date).toISOString(),
+      date: normalizeCfoAdvisorDate(tx.date),
       merchant: tx.merchant,
       generated: tx.isGenerated,
     }));

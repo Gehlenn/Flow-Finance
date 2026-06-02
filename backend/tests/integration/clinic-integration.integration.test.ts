@@ -1,4 +1,6 @@
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import request from 'supertest';
 import type { Express } from 'express';
 import { beforeAll, beforeEach, afterEach } from 'vitest';
@@ -10,6 +12,9 @@ import { resetExternalIdempotencyStoreForTests } from '../../src/services/extern
 
 let app: Express;
 let workspaceId: string;
+const workspaceStoreFile = path.resolve(process.cwd(), '.tmp', 'clinic-integration-workspace-store.json');
+const saasStoreFile = path.resolve(process.cwd(), '.tmp', 'clinic-integration-saas-store.json');
+const domainEventStoreFile = path.resolve(process.cwd(), '.tmp', 'clinic-integration-domain-events.json');
 
 function signWebhook(timestamp: string, rawBody: string, secret: string): string {
   const digest = crypto
@@ -49,6 +54,14 @@ describe('Clinic Integration API', () => {
     process.env.CLINIC_EDGE_RATE_LIMIT_MAX = '5';
     process.env.CLINIC_AUTH_RATE_LIMIT_MAX = '10';
     process.env.CLINIC_WEBHOOK_MAX_PAYLOAD_BYTES = '1024';
+    process.env.WORKSPACE_STORE_FILE = workspaceStoreFile;
+    process.env.SAAS_STORE_FILE = saasStoreFile;
+    process.env.DOMAIN_EVENT_STORE_FILE = domainEventStoreFile;
+
+    fs.mkdirSync(path.dirname(workspaceStoreFile), { recursive: true });
+    fs.rmSync(workspaceStoreFile, { force: true });
+    fs.rmSync(saasStoreFile, { force: true });
+    fs.rmSync(domainEventStoreFile, { force: true });
 
     ({ default: app } = await import('../../src/index'));
   });
@@ -62,6 +75,9 @@ describe('Clinic Integration API', () => {
     process.env.CLINIC_EDGE_RATE_LIMIT_MAX = '5';
     process.env.CLINIC_AUTH_RATE_LIMIT_MAX = '10';
     process.env.CLINIC_WEBHOOK_MAX_PAYLOAD_BYTES = '1024';
+    process.env.WORKSPACE_STORE_FILE = workspaceStoreFile;
+    process.env.SAAS_STORE_FILE = saasStoreFile;
+    process.env.DOMAIN_EVENT_STORE_FILE = domainEventStoreFile;
     resetWorkspaceStoreForTests();
     resetDomainEventStoreForTests();
     resetCloudSyncStoreForTests();
@@ -82,6 +98,9 @@ describe('Clinic Integration API', () => {
     resetCloudSyncStoreForTests();
     resetExternalIdempotencyStoreForTests();
     resetRateLimitStore();
+    fs.rmSync(workspaceStoreFile, { force: true });
+    fs.rmSync(saasStoreFile, { force: true });
+    fs.rmSync(domainEventStoreFile, { force: true });
   });
 
   it('deve retornar 401 para x-integration-key inválida', async () => {

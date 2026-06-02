@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
@@ -148,5 +148,8 @@ describe('AIControlPanel viewers', () => {
     expect(screen.getAllByText(/Pessoal/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/in30Days/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/u_panel/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/task-panel-1/i)).toBeTruthy();
+    expect(screen.getByText(/"status": "pending"/i)).toBeTruthy();
   });
 });
+

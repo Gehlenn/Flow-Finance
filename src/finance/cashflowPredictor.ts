@@ -35,13 +35,41 @@ function addDays(date: Date, n: number): Date {
 }
 
 function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseCashflowDate(value: string): Date | null {
+  const dateOnly = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    const year = Number(dateOnly[1]);
+    const month = Number(dateOnly[2]) - 1;
+    const day = Number(dateOnly[3]);
+    const localDate = new Date(year, month, day);
+    if (
+      Number.isNaN(localDate.getTime()) ||
+      localDate.getFullYear() !== year ||
+      localDate.getMonth() !== month ||
+      localDate.getDate() !== day
+    ) {
+      return null;
+    }
+    return localDate;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function calcMonthlyAvg(txs: Transaction[], type: TransactionType, months = 3): number {
   const now = new Date();
   const cutoff = new Date(now.getFullYear(), now.getMonth() - months, 1);
-  const recent = txs.filter(t => !t.generated && t.type === type && new Date(t.date) >= cutoff);
+  const recent = txs.filter(t => {
+    const parsed = parseCashflowDate(t.date);
+    return !t.generated && t.type === type && Boolean(parsed && parsed >= cutoff);
+  });
   return recent.reduce((s, t) => s + t.amount, 0) / months;
 }
 
@@ -73,7 +101,9 @@ export function predictCashflow(
   // 4. Mapear recorrentes por data
   const recurringByDay: Record<string, Transaction[]> = {};
   for (const t of recurring) {
-    const key = isoDate(new Date(t.date));
+    const parsed = parseCashflowDate(t.date);
+    if (!parsed) continue;
+    const key = isoDate(parsed);
     if (!recurringByDay[key]) recurringByDay[key] = [];
     recurringByDay[key].push(t);
   }

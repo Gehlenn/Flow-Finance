@@ -84,12 +84,13 @@ describe('aiMemory', () => {
   // ─────────────────────── learnMemory ─────────────────────────────────────
 
   it('learnMemory creates a new entry when key does not exist', async () => {
-    await learnMemory('u1', 'preferred_bank', 'nubank', 0.9);
+    await learnMemory('u1', 'preferred_bank', 'nubank', 0.9, { source: 'conversa' });
     const all = await getAIMemory('u1');
     expect(all).toHaveLength(1);
     expect(all[0].key).toBe('preferred_bank');
     expect(all[0].value).toBe('nubank');
     expect(all[0].confidence).toBe(0.9);
+    expect(all[0].metadata?.source).toBe('conversa');
   });
 
   it('learnMemory updates existing entry for same user + key', async () => {
@@ -100,6 +101,32 @@ describe('aiMemory', () => {
     expect(all).toHaveLength(1);
     expect(all[0].value).toBe('light');
     expect(all[0].confidence).toBe(0.95);
+    expect(all[0].metadata?.source).toBe('transação');
+  });
+
+  it('learnMemory preserves and merges metadata for review flows', async () => {
+    await learnMemory('u1', 'merchant_review', 'approved', 0.7, {
+      source: 'conversa',
+      metadata: {
+        reviewState: 'confirmed',
+        reviewer: 'admin',
+      },
+    });
+
+    await learnMemory('u1', 'merchant_review', 'invalidated', 0.4, {
+      metadata: {
+        reviewer: 'ops',
+      },
+    });
+
+    const [memory] = await getAIMemory('u1');
+    expect(memory.value).toBe('invalidated');
+    expect(memory.confidence).toBe(0.4);
+    expect(memory.metadata).toEqual(expect.objectContaining({
+      source: 'conversa',
+      reviewState: 'confirmed',
+      reviewer: 'ops',
+    }));
   });
 
   it('learnMemory isolates by userId — different users, same key = separate entries', async () => {
@@ -166,5 +193,21 @@ describe('aiMemory', () => {
     const merchantMemory = memories.find(m => m.key === 'frequent_merchant');
     expect(merchantMemory).toBeDefined();
     expect(merchantMemory!.value).toBe('ifood');
+  });
+
+  it('detectAndLearnPatterns detects weekend spending from date-only values', async () => {
+    const txs = [
+      { ...makeTx('Cafe', 30, TransactionType.DESPESA, 0), date: '2026-03-07' },
+      { ...makeTx('Lanche', 25, TransactionType.DESPESA, 0), date: '2026-03-08' },
+      { ...makeTx('Taxi', 40, TransactionType.DESPESA, 0), date: '2026-03-14' },
+      { ...makeTx('Conta', 55, TransactionType.DESPESA, 0), date: '2026-03-10' },
+      { ...makeTx('Salario', 5000, TransactionType.RECEITA, 0), date: '2026-03-05' },
+    ];
+
+    await detectAndLearnPatterns('u1', txs);
+
+    const memories = await getAIMemory('u1');
+    const weekendMemory = memories.find((m) => m.key === 'weekend_spending');
+    expect(weekendMemory?.value).toBe('high');
   });
 });

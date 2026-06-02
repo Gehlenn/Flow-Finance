@@ -2,6 +2,16 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { NextFunction, Request, Response } from 'express';
 import crypto from 'crypto';
 
+const { mockWarn } = vi.hoisted(() => ({
+  mockWarn: vi.fn(),
+}));
+
+vi.mock('../../src/config/logger', () => ({
+  default: {
+    warn: mockWarn,
+  },
+}));
+
 import { externalIntegrationAuth } from '../../src/middleware/externalIntegrationAuth';
 
 type Req = Omit<Partial<Request>, 'header'> & {
@@ -30,7 +40,7 @@ describe('externalIntegrationAuth', () => {
     statusMock.mockReturnValue({ json: jsonMock });
 
     res = {
-      status: statusMock as any,
+      status: statusMock,
     };
 
     next = vi.fn();
@@ -70,6 +80,16 @@ describe('externalIntegrationAuth', () => {
     expect(statusMock).toHaveBeenCalledWith(401);
     expect(jsonMock).toHaveBeenCalledWith({ error: 'Invalid integration key' });
     expect(next).not.toHaveBeenCalled();
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: undefined,
+        reason: 'invalid_key',
+        hasProvidedKey: true,
+        hasEnvKeys: true,
+        fallback: 'external-integration-invalid-key',
+      }),
+      '[ExternalIntegrationAuth] Invalid integration key',
+    );
   });
 
   it('retorna 401 quando HMAC está habilitado e assinatura não é enviada', () => {
@@ -211,5 +231,40 @@ describe('externalIntegrationAuth', () => {
 
     expect(next).toHaveBeenCalled();
     expect(statusMock).not.toHaveBeenCalled();
+  });
+
+  it('registra aviso quando a comparacao segura da assinatura falha', () => {
+    process.env.FLOW_EXTERNAL_INTEGRATION_KEYS = 'valid-key';
+    process.env.FLOW_EXTERNAL_INTEGRATION_HMAC_SECRETS = 'super-secret';
+
+    const timingSafeEqualSpy = vi
+      .spyOn(crypto, 'timingSafeEqual')
+      .mockImplementationOnce(() => true)
+      .mockImplementationOnce(() => {
+        throw new Error('timing failure');
+      });
+
+    req.headers['x-integration-key'] = 'valid-key';
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    req.headers['x-integration-timestamp'] = timestamp;
+    req.headers['x-integration-signature'] = sign(timestamp, req.rawBody || '', 'super-secret');
+
+    externalIntegrationAuth(req as Request, res as Response, next);
+
+    expect(statusMock).toHaveBeenCalledWith(401);
+    expect(jsonMock).toHaveBeenCalledWith({ error: 'Invalid integration signature' });
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.any(Error),
+        hasSignature: true,
+        hasTimestamp: true,
+        method: 'POST',
+        expectsSignedRequestBody: true,
+        fallback: 'external-integration-signature-compare-failed',
+      }),
+      '[ExternalIntegrationAuth] timingSafeEqual failed; rejecting signature',
+    );
+
+    timingSafeEqualSpy.mockRestore();
   });
 });

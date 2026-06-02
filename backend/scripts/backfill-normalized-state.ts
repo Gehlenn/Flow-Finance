@@ -35,7 +35,7 @@ async function main(): Promise<void> {
   const usageMonths = workspaceIds.reduce((acc, workspaceId) => acc + Object.keys(getWorkspaceUsage(workspaceId)).length, 0);
   const billingHooks = workspaceIds.reduce((acc, workspaceId) => acc + getWorkspaceBillingHookCount(workspaceId), 0);
 
-  console.log(JSON.stringify({
+  process.stdout.write(`${JSON.stringify({
     status: 'ok',
     workspaces: workspaceSnapshot.workspaces.length,
     workspaceUsers: workspaceSnapshot.workspaceUsers.length,
@@ -44,11 +44,11 @@ async function main(): Promise<void> {
     workspaceBillingHooks: billingHooks,
     auditEventsBuffered: getAuditEventCount(),
     nextStep: 'Enable DISABLE_LEGACY_STATE_BLOBS=true after validating the normalized tables in Postgres.',
-  }, null, 2));
+  }, null, 2)}\n`);
 }
 
 void main().catch((error) => {
-  console.error('[backfill-normalized-state] failed');
-  console.error(error);
+  process.stderr.write('[backfill-normalized-state] failed\n');
+  process.stderr.write(`${error instanceof Error ? error.stack || error.message : String(error)}\n`);
   process.exit(1);
 });

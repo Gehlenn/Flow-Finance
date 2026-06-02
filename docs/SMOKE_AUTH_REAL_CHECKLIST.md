@@ -13,6 +13,7 @@ Objetivo: validar o fluxo real de autenticacao (sem mock) no Flow Finance.
    - `VITE_FIREBASE_AUTH_DOMAIN`
    - `VITE_FIREBASE_PROJECT_ID`
    - `VITE_FIREBASE_APP_ID`
+4. Garantir que `AUTH_DEV_BYPASS_TOKEN` esteja vazio ou ausente no backend durante o smoke real.
 
 ## 2. Checagem automatica de readiness
 
@@ -25,6 +26,9 @@ node scripts/check-local-auth-readiness.mjs
 Saidas esperadas:
 - `READY`: ambiente pronto para smoke real
 - `NOT READY`: faltam chaves obrigatorias
+
+Observacao:
+- `AUTH_DEV_BYPASS_TOKEN` existe apenas para automacao local insegura. Nao usar no smoke real de autenticacao.
 
 Modo JSON:
 

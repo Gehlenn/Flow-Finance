@@ -7,6 +7,7 @@
 import { Transaction, TransactionType } from '../../types';
 import { Account } from '../../models/Account';
 import { sumTransactions } from './moneyMath';
+import type { AuditLogPersistenceContext } from './auditLogService';
 import { logAuditEvent } from './auditLogService';
 
 export interface ReconciliationResult {
@@ -18,12 +19,15 @@ export interface ReconciliationResult {
   transactions_count: number;
 }
 
+type ReconciliationAuditContext = AuditLogPersistenceContext | null | undefined;
+
 /**
  * Reconcilia o saldo de uma conta.
  */
 export function reconcileAccountBalance(
   account: Account,
-  transactions: Transaction[]
+  transactions: Transaction[],
+  context?: ReconciliationAuditContext,
 ): ReconciliationResult {
   // Filtrar transações da conta
   const accountTxs = transactions.filter(tx => tx.account_id === account.id);
@@ -49,7 +53,7 @@ export function reconcileAccountBalance(
       stored_balance: account.balance,
       calculated_balance: calculatedBalance,
       difference,
-    });
+    }, context ?? undefined);
   }
 
   return {

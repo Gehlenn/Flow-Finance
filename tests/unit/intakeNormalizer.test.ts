@@ -202,9 +202,12 @@ describe('normalizeFromFileImport', () => {
 
   it('occurredAt parseia data ISO corretamente', () => {
     const draft = normalizeFromFileImport(base);
-    const d = new Date(draft.occurredAt);
-    expect(d.getFullYear()).toBe(2024);
-    expect(d.getMonth()).toBe(2); // março (0-indexed)
+    expect(draft.occurredAt).toBe('2024-03-15');
+  });
+
+  it('preserva data-only como chave local no occurredAt', () => {
+    const draft = normalizeFromFileImport({ ...base, date: '2024-03-15' });
+    expect(draft.occurredAt).toBe('2024-03-15');
   });
 
   it('fieldConfidences.amount é 0.95 para amounts positivos', () => {
@@ -233,6 +236,18 @@ describe('normalizeFromFileImport', () => {
     const draft = normalizeFromFileImport(row);
     const diff = Date.now() - new Date(draft.occurredAt).getTime();
     expect(diff).toBeLessThan(5000); // dentro de 5 segundos
+  });
+
+  it('normaliza integration date-only como chave local', () => {
+    const draft = normalizeFromIntegration({
+      externalReference: 'cob-001',
+      amount: 200,
+      occurredAt: '2024-03-15',
+      description: 'Pagamento',
+      type: TransactionType.RECEITA,
+    });
+
+    expect(draft.occurredAt).toBe('2024-03-15');
   });
 });
 
@@ -290,7 +305,7 @@ describe('draftToTransaction', () => {
       type: TransactionType.DESPESA,
     };
     const draft = normalizeManual(base);
-    (draft as any).source = 'scanner';
+    (draft as { source: string }).source = 'scanner';
     expect(draftToTransaction(draft).source).toBe('ai_image');
   });
 

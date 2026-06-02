@@ -1,3 +1,4 @@
+import { logWarn } from '../../src/utils/logger';
 import { getActiveWorkspaceScopedStorageKey } from '../../src/utils/workspaceStorage';
 import { BankConnection } from '../../models/BankConnection';
 
@@ -7,7 +8,9 @@ export function readConnections(): BankConnection[] {
   try {
     return JSON.parse(localStorage.getItem(getActiveWorkspaceScopedStorageKey(CONNECTIONS_KEY)) || '[]');
   } catch (error) {
-    console.warn('[OpenBanking] Failed to parse local connections cache:', error);
+    logWarn('[OpenBanking] Failed to parse local connections cache', error, {
+      fallback: 'open-banking-parse-local-connections-cache-failed',
+    });
     return [];
   }
 }

@@ -1,4 +1,25 @@
 import { useEffect, useState } from 'react';
+import { logWarn } from '../src/utils/logger';
+
+interface PerformanceMemoryInfo {
+  usedJSHeapSize?: number;
+  totalJSHeapSize?: number;
+  jsHeapSizeLimit?: number;
+}
+
+interface PerformanceConnectionInfo {
+  type?: string;
+  effectiveType?: string;
+  downlink?: number;
+  addEventListener?: (type: 'change', listener: () => void) => void;
+  removeEventListener?: (type: 'change', listener: () => void) => void;
+}
+
+interface PerformanceEntryLike extends PerformanceEntry {
+  processingStart?: number;
+  hadRecentInput?: boolean;
+  value?: number;
+}
 
 export interface PerformanceMetrics {
   // Core Web Vitals
@@ -47,13 +68,15 @@ export const usePerformanceMonitoring = () => {
   useEffect(() => {
     // Check if Performance API is available
     if (!('performance' in window) || !('PerformanceObserver' in window)) {
-      console.warn('Performance API not supported');
+      logWarn('[Performance Monitoring] Performance API not supported', {
+        fallback: 'performance-api-not-supported',
+      });
       return;
     }
 
     const performance = window.performance;
     const observer = new PerformanceObserver((list) => {
-      const entries = list.getEntries();
+      const entries = list.getEntries() as PerformanceEntryLike[];
 
       setMetrics(prev => {
         const newMetrics = { ...prev };
@@ -64,11 +87,11 @@ export const usePerformanceMonitoring = () => {
               newMetrics.lcp = entry.startTime;
               break;
             case 'first-input':
-              newMetrics.fid = (entry as any).processingStart - entry.startTime;
+              newMetrics.fid = (entry.processingStart ?? entry.startTime) - entry.startTime;
               break;
             case 'layout-shift':
-              if (!(entry as any).hadRecentInput) {
-                newMetrics.cls = (newMetrics.cls || 0) + (entry as any).value;
+              if (!entry.hadRecentInput) {
+                newMetrics.cls = (newMetrics.cls || 0) + (entry.value || 0);
               }
               break;
             case 'paint':
@@ -93,13 +116,19 @@ export const usePerformanceMonitoring = () => {
     try {
       observer.observe({ entryTypes: ['largest-contentful-paint', 'first-input', 'layout-shift', 'paint', 'navigation'] });
     } catch (error) {
-      console.warn('Performance observer setup failed:', error);
+      logWarn('[Performance Monitoring] Performance observer setup failed', {
+        error,
+        fallback: 'performance-observer-setup-failed',
+      });
     }
 
     // Get memory usage if available
     const updateMemoryUsage = () => {
       if ('memory' in performance) {
-        const memory = (performance as any).memory;
+        const memory = performance.memory as PerformanceMemoryInfo | undefined;
+        if (!memory) {
+          return;
+        }
         setMetrics(prev => ({
           ...prev,
           memoryUsage: {
@@ -114,7 +143,7 @@ export const usePerformanceMonitoring = () => {
     // Get network information if available
     const updateNetworkInfo = () => {
       if ('connection' in navigator) {
-        const connection = (navigator as any).connection;
+        const connection = navigator.connection as PerformanceConnectionInfo | undefined;
         setMetrics(prev => ({
           ...prev,
           connectionType: connection?.type || null,
@@ -133,20 +162,16 @@ export const usePerformanceMonitoring = () => {
 
     // Listen for network changes
     if ('connection' in navigator) {
-      const connection = (navigator as any).connection;
-      if (connection) {
-        connection.addEventListener('change', updateNetworkInfo);
-      }
+      const connection = navigator.connection as PerformanceConnectionInfo | undefined;
+      connection?.addEventListener?.('change', updateNetworkInfo);
     }
 
     return () => {
       observer.disconnect();
       clearInterval(memoryInterval);
       if ('connection' in navigator) {
-        const connection = (navigator as any).connection;
-        if (connection) {
-          connection.removeEventListener('change', updateNetworkInfo);
-        }
+        const connection = navigator.connection as PerformanceConnectionInfo | undefined;
+        connection?.removeEventListener?.('change', updateNetworkInfo);
       }
     };
   }, []);

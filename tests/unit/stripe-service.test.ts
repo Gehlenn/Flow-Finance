@@ -11,6 +11,18 @@ import {
 } from '../../backend/src/services/saas/stripeService';
 import { createWorkspace, resetWorkspaceStoreForTests } from '../../backend/src/services/admin/workspaceStore';
 
+type StripeSubscriptionEvent = {
+  id: string;
+  type: string;
+  data: {
+    object: {
+      items?: {
+        data?: Array<{ price?: { id?: string } }>;
+      };
+    };
+  };
+};
+
 function signPayload(payload: string, secret: string, timestamp: string): string {
   const digest = crypto.createHmac('sha256', secret).update(`${timestamp}.${payload}`).digest('hex');
   return `t=${timestamp},v1=${digest}`;
@@ -48,7 +60,7 @@ describe('stripeService helpers', () => {
   });
 
   it('getPlanFromStripeEvent returns pro when price id matches', () => {
-    const event = {
+    const event: StripeSubscriptionEvent = {
       id: 'evt_2',
       type: 'customer.subscription.updated',
       data: {
@@ -58,23 +70,23 @@ describe('stripeService helpers', () => {
           },
         },
       },
-    } as any;
+    };
 
     expect(getPlanFromStripeEvent(event)).toBe('pro');
   });
 
   it('getPlanFromStripeEvent returns free for subscription deleted', () => {
-    const event = {
+    const event: StripeSubscriptionEvent = {
       id: 'evt_3',
       type: 'customer.subscription.deleted',
       data: { object: {} },
-    } as any;
+    };
 
     expect(getPlanFromStripeEvent(event)).toBe('free');
   });
 
   it('getPlanFromStripeEvent returns null when price is not recognized', () => {
-    const event = {
+    const event: StripeSubscriptionEvent = {
       id: 'evt_4',
       type: 'customer.subscription.updated',
       data: {
@@ -84,7 +96,7 @@ describe('stripeService helpers', () => {
           },
         },
       },
-    } as any;
+    };
 
     expect(getPlanFromStripeEvent(event)).toBeNull();
   });

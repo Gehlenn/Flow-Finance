@@ -21,11 +21,11 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, className = '
       {/* Container Esmaecido (Efeito de Sombra/Aura) - overflow-visible para não cortar animação */}
       <div className={`${s.container} relative flex items-center justify-center transition-all duration-700 group-hover:scale-110 active:scale-95 overflow-visible`}>
         
-        {/* Aura Suave (Expandida e sem cortes) */}
-        <div className="absolute inset-[-40%] bg-gradient-to-br from-indigo-500/10 via-violet-500/5 to-transparent blur-2xl rounded-full opacity-60 group-hover:opacity-100 transition-opacity duration-1000 animate-breath pointer-events-none"></div>
+        {/* Aura suave em tom neutro */}
+        <div className="absolute inset-[-34%] bg-gradient-to-br from-slate-400/10 via-slate-300/5 to-transparent blur-2xl rounded-full opacity-50 group-hover:opacity-80 transition-opacity duration-1000 animate-breath pointer-events-none"></div>
         
-        {/* Camada de esmaecimento de borda (Shadow Glow mais amplo) */}
-        <div className="absolute inset-[-20%] bg-[radial-gradient(circle,_rgba(99,102,241,0.1)_0%,_rgba(99,102,241,0)_75%)] rounded-full pointer-events-none"></div>
+        {/* Camada de esmaecimento de borda */}
+        <div className="absolute inset-[-18%] bg-[radial-gradient(circle,_rgba(148,163,184,0.12)_0%,_rgba(148,163,184,0)_75%)] rounded-full pointer-events-none"></div>
         
         {/* Ícone Principal - overflow-visible é CRÍTICO aqui */}
         <svg 
@@ -39,9 +39,8 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, className = '
         >
           <defs>
             <linearGradient id="flowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#6366F1" />
-              <stop offset="50%" stopColor="#8B5CF6" />
-              <stop offset="100%" stopColor="#06B6D4" />
+              <stop offset="0%" stopColor="#0F172A" />
+              <stop offset="100%" stopColor="#475569" />
             </linearGradient>
           </defs>
 
@@ -87,8 +86,8 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, className = '
             Flow
           </span>
           <div className="flex items-center gap-2 mt-1 opacity-50 group-hover:opacity-100 transition-opacity">
-            <div className="h-px w-4 bg-indigo-500"></div>
-            <span className="text-[9px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-[0.4em]">
+            <div className="h-px w-4 bg-slate-400"></div>
+            <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.4em]">
               Finance AI
             </span>
           </div>

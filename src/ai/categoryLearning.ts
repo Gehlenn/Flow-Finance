@@ -44,7 +44,7 @@ export async function learnCategoryFromTransactions(
     const confidence = total > 0 ? (data.categories[topCategory] / total) : 0;
 
     if (confidence > 0.5) { // só salvar se confiança alta
-      await learnMemory(userId, `category_${merchant}`, topCategory, confidence);
+      await learnMemory(userId, `category_${merchant}`, topCategory, confidence, { source: 'categorização' });
     }
   }
 }

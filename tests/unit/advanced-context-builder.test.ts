@@ -134,6 +134,42 @@ describe('buildAdvancedAIContext', () => {
     expect(context.dataQuality.merchantCoverage).toBe(0);
   });
 
+  it('ordena transacoes date-only sem drift de timezone no contexto avancado', () => {
+    const transactions: Transaction[] = [
+      tx({
+        id: 'old_date_only',
+        amount: 120,
+        type: TransactionType.DESPESA,
+        category: Category.PESSOAL,
+        description: 'Assinatura',
+        merchant: 'Netflix',
+        date: '2026-01-08',
+      }),
+      tx({
+        id: 'new_date_only',
+        amount: 130,
+        type: TransactionType.DESPESA,
+        category: Category.PESSOAL,
+        description: 'Assinatura',
+        merchant: 'Netflix',
+        date: '2026-03-08',
+      }),
+    ];
+
+    const context = buildAdvancedAIContext(
+      {
+        userId: 'u_ctx_date_only',
+        accounts: ['acc_1'],
+        timezone: 'UTC',
+        currency: 'BRL',
+      },
+      transactions
+    );
+
+    expect(context.recentTransactions[0].id).toBe('new_date_only');
+    expect(context.dataQuality.datedTransactions).toBe(2);
+  });
+
   it('reforca cenario de dominancia por categoria e queda progressiva da previsao', () => {
     const transactions: Transaction[] = [
       tx({

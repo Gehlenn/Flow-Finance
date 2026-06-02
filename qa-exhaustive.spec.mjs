@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+﻿import { test, expect } from '@playwright/test';
 
 const BASE_URL = process.env.QA_URL || 'http://localhost:3078';
 
@@ -12,12 +12,12 @@ test.describe('QA Exhaustivo - Flow Finance', () => {
   test.beforeEach(async ({ page }) => {
     page.on('console', msg => {
       if (msg.type() === 'error') {
-        console.error(`Console error: ${msg.text()}`);
+        /* intentionally silent */
       }
     });
     
     page.on('pageerror', error => {
-      console.error(`Page error: ${error.message}`);
+      /* intentionally silent */
     });
   });
 
@@ -50,11 +50,9 @@ test.describe('QA Exhaustivo - Flow Finance', () => {
     
     // Check for dashboard elements
     const dashboardElements = await page.locator('[class*="dashboard"], [class*="chart"], [class*="finance"], canvas').all();
-    console.log(`✅ Found ${dashboardElements.length} dashboard elements`);
     
     // Check for navigation
     const nav = await page.locator('nav, [class*="nav"], [class*="sidebar"]').count();
-    console.log(`✅ Navigation elements: ${nav}`);
   });
 
   // ==========================================
@@ -68,11 +66,9 @@ test.describe('QA Exhaustivo - Flow Finance', () => {
     const authButtons = await page.locator('button:has-text("login"), button:has-text("sign"), button:has-text("entrar"), a:has-text("login")').all();
     const authInputs = await page.locator('input[type="email"], input[type="password"]').all();
     
-    console.log(`✅ Auth buttons: ${authButtons.length}, Auth inputs: ${authInputs.length}`);
     
     // Flow uses Firebase Auth - check for Firebase UI
     const hasFirebaseUI = await page.locator('.firebaseui, [class*="firebase"]').count() > 0;
-    console.log(`✅ Firebase Auth UI: ${hasFirebaseUI}`);
   });
 
   test('Transaction entry form', async ({ page }) => {
@@ -83,7 +79,6 @@ test.describe('QA Exhaustivo - Flow Finance', () => {
     const amountInputs = await page.locator('input[name*="amount"], input[placeholder*="valor"], input[placeholder*="amount"]').all();
     const descInputs = await page.locator('input[name*="description"], input[placeholder*="descrição"], textarea').all();
     
-    console.log(`✅ Amount inputs: ${amountInputs.length}, Description inputs: ${descInputs.length}`);
   });
 
   // ==========================================
@@ -96,7 +91,6 @@ test.describe('QA Exhaustivo - Flow Finance', () => {
     
     // Check for chart containers (recharts)
     const charts = await page.locator('.recharts-wrapper, svg[class*="recharts"], [class*="chart"]').all();
-    console.log(`✅ Chart components found: ${charts.length}`);
     
     // Screenshots for visual verification
     await page.screenshot({ path: 'qa-reports/screenshots/flow-dashboard.png', fullPage: true });
@@ -107,8 +101,7 @@ test.describe('QA Exhaustivo - Flow Finance', () => {
     await page.waitForTimeout(3000);
     
     // Look for currency displays
-    const currencyElements = await page.locator('text=/R\\$|\\$|€|balance|saldo/i').all();
-    console.log(`✅ Currency/financial elements: ${currencyElements.length}`);
+    const currencyElements = await page.locator('text=/R\\$|\\$|â‚¬|balance|saldo/i').all();
   });
 
   // ==========================================
@@ -125,7 +118,6 @@ test.describe('QA Exhaustivo - Flow Finance', () => {
     for (const link of links.slice(0, 5)) {
       const href = await link.getAttribute('href');
       if (href && !href.startsWith('http')) {
-        console.log(`Testing route: ${href}`);
         await link.click().catch(() => {});
         await page.waitForTimeout(500);
       }
@@ -137,13 +129,11 @@ test.describe('QA Exhaustivo - Flow Finance', () => {
     await page.waitForTimeout(2000);
     
     const buttons = await page.locator('button').all();
-    console.log(`✅ Total buttons found: ${buttons.length}`);
     
     // Test a few buttons
     for (const btn of buttons.slice(0, 3)) {
       const isEnabled = await btn.isEnabled().catch(() => false);
       const isVisible = await btn.isVisible().catch(() => false);
-      console.log(`Button: enabled=${isEnabled}, visible=${isVisible}`);
     }
   });
 
@@ -160,7 +150,6 @@ test.describe('QA Exhaustivo - Flow Finance', () => {
     
     // Check for mobile menu or responsive elements
     const mobileElements = await page.locator('[class*="mobile"], [class*="hamburger"], button[class*="menu"]').all();
-    console.log(`✅ Mobile UI elements: ${mobileElements.length}`);
   });
 
   test('Tablet viewport rendering', async ({ page }) => {
@@ -181,7 +170,6 @@ test.describe('QA Exhaustivo - Flow Finance', () => {
     
     // Look for empty state messages
     const emptyStates = await page.locator('text=/empty|vazio|no data|nenhum/i').all();
-    console.log(`✅ Empty state indicators: ${emptyStates.length}`);
   });
 
   test('No unhandled promise rejections', async ({ page }) => {
@@ -209,7 +197,6 @@ test.describe('QA Exhaustivo - Flow Finance', () => {
     await page.waitForLoadState('networkidle');
     const loadTime = Date.now() - startTime;
     
-    console.log(`⏱️ Flow Finance load time: ${loadTime}ms`);
     expect(loadTime).toBeLessThan(5000);
   });
 
@@ -221,7 +208,6 @@ test.describe('QA Exhaustivo - Flow Finance', () => {
       return window.React !== undefined || document.querySelector('[data-reactroot]') !== null;
     }).catch(() => false);
     
-    console.log(`✅ React loaded: ${reactLoaded}`);
   });
 
   // ==========================================
@@ -250,7 +236,6 @@ test.describe('QA Exhaustivo - Flow Finance', () => {
       }
     }
     
-    console.log(`✅ ${inputs.length} inputs, ${unlabeledInputs.length} potentially unlabeled`);
   });
 
   // ==========================================
@@ -263,14 +248,9 @@ test.describe('QA Exhaustivo - Flow Finance', () => {
     
     try {
       const response = await page.goto(`${backendUrl}/health`);
-      console.log(`✅ Backend health check: ${response?.status()}`);
     } catch (e) {
-      console.log(`ℹ️ Backend health check skipped: ${e.message}`);
     }
   });
 });
 
-test.afterAll(async () => {
-  console.log('\n📊 QA Flow Finance Completo!');
-  console.log('Verifique qa-reports/screenshots/ para evidências visuais');
-});
+

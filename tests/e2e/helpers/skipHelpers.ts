@@ -1,4 +1,4 @@
-import { test, Page } from '@playwright/test';
+import { test, type Page, type TestInfo } from '@playwright/test';
 
 /**
  * Environment-aware skip helpers for E2E tests
@@ -31,7 +31,7 @@ export async function skipIf(
 
   const globalForceSkip = process.env.E2E_FORCE_SKIP_VERIFICATION === 'true';
   if (globalForceSkip && options.allowForceSkip !== false) {
-    console.warn(`⚠️  Forced execution despite: ${options.reason}`);
+    process.stdout.write(`âš ï¸  Forced execution despite: ${options.reason}\n`);
     return;
   }
 
@@ -43,7 +43,7 @@ export async function skipIf(
  */
 export async function hasAuthenticatedShell(page: Page): Promise<boolean> {
   return (await page.getByRole('button', { 
-    name: /Apoio IA|Consultor IA|Ajustes|Settings|Inicio|Caixa|Transacoes|Fluxo|Historico/i 
+    name: /Apoio IA|Consultor IA|Ajustes|Settings|Inicio|Caixa|Transacoes|Fluxo|Receitas|Historico/i 
   }).count()) > 0;
 }
 
@@ -58,7 +58,7 @@ export async function skipIfNoAuthShell(page: Page): Promise<void> {
     // Check for specific override
     const forceShell = process.env.E2E_FORCE_SHELL_VERIFICATION === 'true';
     if (forceShell) {
-      console.warn('⚠️  Forced execution despite missing authenticated shell');
+      process.stdout.write('WARN: Forced execution despite missing authenticated shell\\n');
       return;
     }
   }
@@ -81,7 +81,7 @@ export async function skipIfBackendUnavailable(
   const forceBackend = process.env.E2E_FORCE_BACKEND_AVAILABLE === 'true';
   
   if (forceBackend) {
-    console.warn('⚠️  Forced execution despite potential backend unavailability');
+    process.stdout.write('âš ï¸  Forced execution despite potential backend unavailability\n');
     return;
   }
 
@@ -103,7 +103,7 @@ export async function skipIfBackendUnavailable(
  * Skip if running on mobile device
  * Useful for desktop-only tests
  */
-export async function skipIfMobile(testInfo: any): Promise<void> {
+export async function skipIfMobile(testInfo: TestInfo): Promise<void> {
   const isMobile = testInfo.project.use.isMobile || false;
   
   await skipIf(isMobile, {
@@ -117,7 +117,7 @@ export async function skipIfMobile(testInfo: any): Promise<void> {
  * Skip if running on desktop (opposite of skipIfMobile)
  * Useful for mobile-only tests
  */
-export async function skipIfDesktop(testInfo: any): Promise<void> {
+export async function skipIfDesktop(testInfo: TestInfo): Promise<void> {
   const isDesktop = !testInfo.project.use.isMobile;
   
   await skipIf(isDesktop, {
@@ -132,7 +132,7 @@ export async function skipIfDesktop(testInfo: any): Promise<void> {
  * Use for reporting and debugging
  */
 export function annotateSkipReason(
-  testInfo: any,
+  testInfo: TestInfo,
   reason: string,
   category: string
 ): void {
@@ -141,3 +141,6 @@ export function annotateSkipReason(
     description: `[${category}] ${reason}`,
   });
 }
+
+
+

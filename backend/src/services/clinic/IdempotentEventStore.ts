@@ -16,6 +16,30 @@ export interface RedisLike {
   ping(): Promise<string>;
 }
 
+export interface ProcessedEventRecord {
+  eventId: string;
+  externalEventId: string;
+  sourceSystem: string;
+  processedAt: string;
+  result: 'success' | 'failure';
+  metadata?: Record<string, unknown>;
+}
+
+function isProcessedEventRecord(value: unknown): value is ProcessedEventRecord {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.eventId === 'string' &&
+    typeof record.externalEventId === 'string' &&
+    typeof record.sourceSystem === 'string' &&
+    typeof record.processedAt === 'string' &&
+    (record.result === 'success' || record.result === 'failure')
+  );
+}
+
 /**
  * IdempotentEventStore: Rastreia eventos processados para evitar duplicação.
  * Usa Redis para performance e escalabilidade.
@@ -42,7 +66,7 @@ export class IdempotentEventStore {
   /**
    * Gerar fingerprint SHA256 da payload para deduplicação.
    */
-  generatePayloadHash(payload: any): string {
+  generatePayloadHash(payload: unknown): string {
     const json = JSON.stringify(payload);
     return crypto.createHash('sha256').update(json).digest('hex');
   }
@@ -56,7 +80,7 @@ export class IdempotentEventStore {
     externalEventId: string,
     internalEventId: string,
     result: 'success' | 'failure',
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): Promise<boolean> {
     const key = this.generateIdempotencyKey(sourceSystem, externalEventId);
 
@@ -106,7 +130,9 @@ export class IdempotentEventStore {
   }
 
   private async tryAtomicSetIfAbsent(key: string, value: string): Promise<boolean | null> {
-    const redisAny = this.redis as any;
+    const redisAny = this.redis as RedisLike & {
+      set?: (...args: unknown[]) => Promise<string | null | 'OK'>;
+    };
     const setFn = redisAny?.set;
 
     if (typeof setFn !== 'function') {
@@ -122,7 +148,13 @@ export class IdempotentEventStore {
       if (objectResult === null) {
         return false;
       }
-    } catch {
+    } catch (error) {
+      logger.warn({
+        key,
+        error,
+        ttlSeconds: this.ttlSeconds,
+        fallback: 'idempotent-event-atomic-set-failed',
+      }, 'Atomic Redis SET NX/EX failed, trying positional fallback');
       // ioredis style fallback abaixo
     }
 
@@ -135,7 +167,13 @@ export class IdempotentEventStore {
       if (positionalResult === null) {
         return false;
       }
-    } catch {
+    } catch (error) {
+      logger.warn({
+        key,
+        error,
+        ttlSeconds: this.ttlSeconds,
+        fallback: 'idempotent-event-positional-set-failed',
+      }, 'Positional Redis SET NX/EX fallback failed');
       return null;
     }
 
@@ -160,9 +198,10 @@ export class IdempotentEventStore {
   ): Promise<{
     eventId: string;
     externalEventId: string;
+    sourceSystem: string;
     processedAt: string;
     result: 'success' | 'failure';
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   } | null> {
     const key = this.generateIdempotencyKey(sourceSystem, externalEventId);
     const json = await this.redis.get(key);
@@ -172,9 +211,14 @@ export class IdempotentEventStore {
     }
 
     try {
-      return JSON.parse(json);
+      const parsed = JSON.parse(json) as unknown;
+      return isProcessedEventRecord(parsed) ? parsed : null;
     } catch (error) {
-      logger.error({ key, error }, 'Failed to parse stored record');
+      logger.error({
+        key,
+        error,
+        fallback: 'idempotent-event-parse-failed',
+      }, 'Failed to parse stored record');
       return null;
     }
   }
@@ -195,18 +239,26 @@ export class IdempotentEventStore {
   async listProcessedBySource(
     sourceSystem: string,
     limit: number = 100
-  ): Promise<Array<any>> {
+  ): Promise<ProcessedEventRecord[]> {
     const pattern = `idempotent:${sourceSystem}:*`;
     const keys = await this.redis.keys(pattern);
 
-    const records: Array<any> = [];
+    const records: ProcessedEventRecord[] = [];
     for (const key of keys.slice(0, limit)) {
       const json = await this.redis.get(key);
       if (json) {
         try {
-          records.push(JSON.parse(json));
-        } catch {
-          // Ignorar registros inválidos
+          const parsed = JSON.parse(json) as unknown;
+          if (isProcessedEventRecord(parsed)) {
+            records.push(parsed);
+          }
+        } catch (error) {
+          logger.warn({
+            key,
+            error,
+            sourceSystem,
+            fallback: 'idempotent-event-list-parse-failed',
+          }, 'Ignoring invalid idempotent record payload');
         }
       }
     }
