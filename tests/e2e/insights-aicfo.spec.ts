@@ -14,7 +14,8 @@ async function openApp(page: Page): Promise<void> {
 
 async function tryOpenInsightsSurface(page: Page): Promise<boolean> {
   const insightsTriggers = [
-    page.getByRole('button', { name: /Insights/i }),
+    page.getByRole('tab', { name: /^Insights$/i }),
+    page.getByRole('button', { name: /^Insights$/i }),
     page.getByRole('button', { name: /Ver insights/i }),
     page.getByText(/Insights atualizam automaticamente/i),
   ];
@@ -31,7 +32,7 @@ async function tryOpenInsightsSurface(page: Page): Promise<boolean> {
 
 async function openConsultorIA(page: Page): Promise<void> {
   await clickWithRetry(() => page.getByRole('button', { name: /^IA$/i }).first());
-  await clickWithRetry(() => page.getByRole('button', { name: /Consultor|Apoio IA|Consultor IA/i }).first());
+  await clickWithRetry(() => page.getByRole('tab', { name: /^Consultor$/i }).first());
 }
 
 test.describe('Insights + AI CFO', () => {

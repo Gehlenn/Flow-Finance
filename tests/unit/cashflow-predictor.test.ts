@@ -43,6 +43,15 @@ function makeAccount(id: string, balance: number): Account {
   return { id, userId: 'u1', name: 'Conta', type: 'checking', balance, currency: 'BRL', isActive: true, createdAt: new Date(), updatedAt: new Date() } as Account;
 }
 
+function makeDateOnly(daysAgo: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // â”€â”€â”€ predictCashflow â”€â”€â”€
 
 describe('predictCashflow', () => {
@@ -171,9 +180,9 @@ describe('predictCashflow', () => {
 
   it('aceita transacoes date-only na projecao recorrente', () => {
     const txs = [
-      { ...makeTx('Salario date-only', 3000, TransactionType.RECEITA, 5, true), date: '2026-02-10' },
-      { ...makeTx('Salario date-only', 3000, TransactionType.RECEITA, 35, true), date: '2026-03-10' },
-      { ...makeTx('Salario date-only', 3000, TransactionType.RECEITA, 65, true), date: '2026-04-10' },
+      { ...makeTx('Salario date-only', 3000, TransactionType.RECEITA, 5, true), date: makeDateOnly(5) },
+      { ...makeTx('Salario date-only', 3000, TransactionType.RECEITA, 35, true), date: makeDateOnly(35) },
+      { ...makeTx('Salario date-only', 3000, TransactionType.RECEITA, 65, true), date: makeDateOnly(65) },
     ] as Transaction[];
 
     const result = predictCashflow([makeAccount('a1', 1000)], txs);
