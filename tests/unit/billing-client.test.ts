@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const apiMocks = vi.hoisted(() => ({
   apiRequest: vi.fn(),
   logWarn: vi.fn(),
+  demoPlan: { value: null as 'free' | 'pro' | null },
 }));
 
 vi.mock('../../src/config/api.config', () => ({
@@ -29,12 +30,17 @@ vi.mock('../../src/utils/logger', () => ({
   logWarn: (...args: unknown[]) => apiMocks.logWarn(...args),
 }));
 
+vi.mock('../../src/demo/demoBootstrap', () => ({
+  getDemoBootstrapPlan: () => apiMocks.demoPlan.value,
+}));
+
 import { ApiRequestError } from '../../src/config/api.config';
 import { getWorkspacePlanCatalog } from '../../src/saas/billingClient';
 
 describe('billingClient', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    apiMocks.demoPlan.value = null;
   });
 
   it('logs when falling back to the local plan catalog', async () => {
@@ -75,5 +81,18 @@ describe('billingClient', () => {
         fallback: 'billing-client-local-catalog-fallback',
       }),
     );
+  });
+
+  it('returns a pro catalog without Stripe wiring when demo bootstrap is active', async () => {
+    apiMocks.demoPlan.value = 'pro';
+
+    const catalog = await getWorkspacePlanCatalog({ workspaceId: 'ws-demo', currentPlan: 'free' });
+
+    expect(apiMocks.apiRequest).not.toHaveBeenCalled();
+    expect(catalog.currentPlan).toBe('pro');
+    expect(catalog.billingProvider).toBe('none');
+    expect(catalog.stripeConfigured).toBe(false);
+    expect(catalog.stripePortalEnabled).toBe(false);
+    expect(catalog.manualPlanChangeAllowed).toBe(false);
   });
 });

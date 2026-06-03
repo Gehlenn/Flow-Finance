@@ -34,11 +34,13 @@ test.describe('Edição de Categoria - TransactionList', () => {
       token: 'tx-token',
     });
 
-    const operationButton = page.getByRole('button', { name: /Operacao/i }).first();
+    const operationButton = page.getByRole('button', { name: /^Operacao$/i }).first();
     await expect(operationButton).toBeVisible({ timeout: 10000 });
     await clickWithRetry(() => operationButton);
 
-    const historyButton = page.getByRole('button', { name: /Historico|Transacoes/i }).first();
+    const historyButton = page.getByRole('tablist', { name: /Operacao subsecoes/i })
+      .getByRole('tab', { name: /^Transacoes$/i })
+      .first();
     await expect(historyButton).toBeVisible({ timeout: 10000 });
 
     await clickWithRetry(() => historyButton);
@@ -67,7 +69,7 @@ test.describe('Edição de Categoria - TransactionList', () => {
     await clickWithRetry(() => firstTransactionTitle);
 
     // Abre modal de detalhes e clica em Editar
-    await clickWithRetry(() => page.getByRole('button', { name: 'Editar' }));
+    await clickWithRetry(() => page.getByRole('button', { name: /^Editar$/i }));
 
     // Modal de edição deve aparecer
     await expect(page.getByRole('dialog', { name: 'Editar Categoria' })).toBeVisible();

@@ -100,21 +100,22 @@ describe('aiController observability', () => {
       userId: 'user-1',
     };
     const res = makeRes();
-    const next = vi.fn();
 
-    cfoController(req, res, next);
+    await cfoController(req, res);
 
-    await vi.waitFor(() => {
-      expect(next).toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({
+      answer: 'Nao consegui gerar a resposta consultiva agora. Verifique a sessao e tente novamente em alguns instantes.',
     });
     expect(controllerMocks.loggerError).toHaveBeenCalledWith(
       expect.objectContaining({
+        event: 'ai_cfo_request_failed',
         userId: 'user-1',
-        questionLength: 20,
+        questionLength: expect.any(Number),
+        contextLength: expect.any(Number),
         intent: 'cash_position',
-        fallback: 'cfo-failed',
+        fallback: 'cfo-fallback-answer',
       }),
-      'CFO generation error',
+      'CFO generation error; returning fallback answer',
     );
   });
 });

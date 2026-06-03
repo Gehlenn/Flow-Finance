@@ -1,4 +1,4 @@
-﻿import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page, Locator } from '@playwright/test';
 import { skipIfNoAuthShell } from './helpers/skipHelpers';
 import { gotoDemoApp } from './helpers/appBootstrap';
 import { clickWithRetry } from './helpers/resilientActions';
@@ -14,14 +14,26 @@ async function openApp(page: Page): Promise<void> {
 
 async function tryOpenInsightsSurface(page: Page): Promise<boolean> {
   const insightsTriggers = [
-    page.getByRole('button', { name: /Insights/i }),
+    page.getByRole('tab', { name: /^Insights$/i }),
+    page.getByRole('button', { name: /^Insights$/i }),
     page.getByRole('button', { name: /Ver insights/i }),
     page.getByText(/Insights atualizam automaticamente/i),
   ];
 
   for (const trigger of insightsTriggers) {
     if (await trigger.count()) {
-      await clickWithRetry(() => trigger);
+      await clickWithRetry(() => trigger.first());
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function clickFirstAvailable(locators: Locator[]): Promise<boolean> {
+  for (const locator of locators) {
+    if (await locator.count()) {
+      await clickWithRetry(() => locator.first());
       return true;
     }
   }
@@ -30,8 +42,23 @@ async function tryOpenInsightsSurface(page: Page): Promise<boolean> {
 }
 
 async function openConsultorIA(page: Page): Promise<void> {
-  await clickWithRetry(() => page.getByRole('button', { name: /^IA$/i }).first());
-  await clickWithRetry(() => page.getByRole('button', { name: /Consultor|Apoio IA|Consultor IA/i }).first());
+  const openedSection = await clickFirstAvailable([
+    page.getByRole('button', { name: /^IA$/i }),
+    page.getByRole('tab', { name: /^IA$/i }),
+    page.getByRole('button', { name: /^Apoio IA$/i }),
+    page.getByRole('tab', { name: /^Apoio IA$/i }),
+  ]);
+
+  expect(openedSection).toBe(true);
+
+  const openedConsultor = await clickFirstAvailable([
+    page.getByRole('tab', { name: /^Consultor$/i }),
+    page.getByRole('button', { name: /^Consultor$/i }),
+    page.getByRole('tab', { name: /^Consultor IA$/i }),
+    page.getByRole('button', { name: /^Consultor IA$/i }),
+  ]);
+
+  expect(openedConsultor).toBe(true);
 }
 
 test.describe('Insights + AI CFO', () => {

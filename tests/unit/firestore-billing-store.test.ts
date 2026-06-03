@@ -7,6 +7,7 @@ const billingMocks = vi.hoisted(() => ({
   generatedId: { value: 0 },
   writeAuditLogEventMock: vi.fn().mockResolvedValue(undefined),
   isFirebaseConfigured: { value: true },
+  demoPlan: { value: null as 'free' | 'pro' | null },
 }));
 
 vi.mock('../../services/firebase', () => ({
@@ -14,6 +15,10 @@ vi.mock('../../services/firebase', () => ({
   get isFirebaseConfigured() {
     return billingMocks.isFirebaseConfigured.value;
   },
+}));
+
+vi.mock('../../src/demo/demoBootstrap', () => ({
+  getDemoBootstrapPlan: () => billingMocks.demoPlan.value,
 }));
 
 vi.mock('../../src/services/firestoreWorkspaceStore', () => ({
@@ -60,6 +65,7 @@ describe('firestoreBillingStore', () => {
     vi.clearAllMocks();
     billingMocks.generatedId.value = 0;
     billingMocks.isFirebaseConfigured.value = true;
+    billingMocks.demoPlan.value = null;
   });
 
   it('reads billing overview from Firestore collections', async () => {
@@ -189,6 +195,25 @@ describe('firestoreBillingStore', () => {
         amount: 0,
         at: '2026-04-02T00:00:00.000Z',
       },
-    })).rejects.toThrow(/workspaceId and tenantId/i);
+      })).rejects.toThrow(/workspaceId and tenantId/i);
+  });
+
+  it('returns a pro billing overview in demo mode without Firestore reads', async () => {
+    billingMocks.demoPlan.value = 'pro';
+
+    await expect(getWorkspaceBillingOverview({ tenantId: 'tenant-demo', workspaceId: 'ws-demo' })).resolves.toEqual(
+      expect.objectContaining({
+        currentPlan: 'pro',
+        billingState: expect.objectContaining({
+          plan: 'pro',
+          updatedByUserId: 'demo',
+        }),
+        currentMonthUsage: { transactions: 0, aiQueries: 0, bankConnections: 0 },
+        billingHooks: [],
+      }),
+    );
+
+    expect(billingMocks.getDocMock).not.toHaveBeenCalled();
+    expect(billingMocks.getDocsMock).not.toHaveBeenCalled();
   });
 });

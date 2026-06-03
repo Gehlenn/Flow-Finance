@@ -401,20 +401,27 @@ const App: React.FC = () => {
           )}
         </div>
 
-        <div className={`${activeTabContainerClass} mx-auto px-4 ${showTopStatus ? "pt-16" : "pt-5"} pb-28 md:pb-44`}>
+        <div className={`${activeTabContainerClass} mx-auto px-4 ${showTopStatus ? "pt-16" : "pt-5"} pb-32 md:pb-44`}>
           {activeNavigationSection.items.length > 1 && (
-            <div className="mb-4 overflow-x-auto pb-1 no-scrollbar" aria-label={`${activeNavigationSection.label} subsecoes`}>
-              <div className="flex min-w-full items-center gap-1 rounded-2xl border border-slate-200 bg-white/85 p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
+            <div className="mb-4">
+              <div
+                role="tablist"
+                aria-label={`${activeNavigationSection.label} subsecoes`}
+                className="grid gap-2 rounded-2xl border border-slate-200 bg-white/90 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/80"
+                style={{ gridTemplateColumns: "repeat(auto-fit, minmax(8.5rem, 1fr))" }}
+              >
                 {activeNavigationSection.items.map((item) => {
                   const active = navigation.activeTab === item.tab;
                   return (
                     <button
                       key={item.tab}
                       type="button"
+                      role="tab"
+                      aria-selected={active}
                       onClick={() => navigation.setActiveTab(item.tab)}
-                      className={`min-w-[5.25rem] flex-1 whitespace-nowrap rounded-xl px-3 py-2 text-center text-xs font-semibold transition-colors ${
+                      className={`w-full min-w-0 rounded-xl px-3 py-2.5 text-center text-sm font-semibold leading-tight transition-colors ${
                         active
-                          ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                          ? "bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900"
                           : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                       }`}
                     >
@@ -440,7 +447,7 @@ const App: React.FC = () => {
           </button>
         )}
 
-        <nav className="flow-nav fixed bottom-0 left-0 right-0 z-[60] flex items-stretch justify-between px-1.5 py-1 md:left-1/2 md:right-auto md:bottom-5 md:w-[min(92vw,44rem)] md:-translate-x-1/2 md:justify-center md:gap-1.5 md:rounded-2xl md:border md:border-slate-200/80 md:bg-white/95 md:px-2 md:py-1.5 md:shadow-[0_16px_40px_-26px_rgba(15,23,42,0.35)] md:backdrop-blur dark:md:border-slate-800 dark:md:bg-slate-950/90">
+        <nav aria-label="Navegacao principal" className="flow-nav fixed bottom-0 left-0 right-0 z-[60] grid grid-cols-4 items-stretch gap-1.5 border-t border-slate-200/80 bg-white/95 px-2 py-2 shadow-[0_-12px_30px_-24px_rgba(15,23,42,0.32)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 md:left-1/2 md:right-auto md:bottom-5 md:w-[min(92vw,44rem)] md:-translate-x-1/2 md:justify-center md:gap-1.5 md:rounded-2xl md:border md:px-2 md:py-1.5 md:shadow-[0_16px_40px_-26px_rgba(15,23,42,0.35)]">
           {mainNavigationItems.map((item) => (
             <NavButton
               key={item.tab}
@@ -477,15 +484,15 @@ const App: React.FC = () => {
 
 const NAV_BUTTON_CLASS_MAP = {
   buttonBase:
-    "flex min-h-9 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1 transition-colors duration-200 md:min-h-12 md:min-w-[7rem] md:flex-none md:flex-row md:gap-2 md:rounded-xl md:px-3 md:py-1",
-  active: "text-slate-950 dark:text-white -translate-y-1 md:translate-y-0",
+    "flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 transition-colors duration-200 md:min-h-12 md:min-w-[7rem] md:flex-none md:flex-row md:gap-2 md:rounded-xl md:px-3 md:py-2",
+  active: "bg-slate-100 text-slate-950 shadow-sm dark:bg-slate-800 dark:text-white",
   inactive:
-    "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300",
+    "text-slate-500 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-200",
   iconActive:
-    "flex h-8 w-8 items-center justify-center rounded-2xl bg-slate-100 shadow-sm md:h-8 md:w-8 md:rounded-xl dark:bg-slate-800",
-  iconInactive: "flex h-8 w-8 items-center justify-center rounded-2xl md:h-8 md:w-8 md:rounded-xl",
+    "flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm md:h-8 md:w-8 md:rounded-xl dark:bg-slate-100 dark:text-slate-900",
+  iconInactive: "flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 md:h-8 md:w-8 md:rounded-xl dark:bg-slate-800 dark:text-slate-300",
   label:
-    "max-w-[5rem] text-center text-[8px] font-semibold uppercase leading-none tracking-[0.01em] md:max-w-none md:text-xs md:leading-tight md:tracking-[0.08em]",
+    "max-w-[4.75rem] text-center text-[10px] font-semibold uppercase leading-tight tracking-[0.02em] md:max-w-none md:text-xs md:leading-tight md:tracking-[0.08em]",
 };
 
 function renderTabIcon(tab: string): React.ReactNode {
@@ -516,6 +523,7 @@ const NavButton: React.FC<{
   label: string;
 }> = ({ active, onClick, icon, label }) => (
   <button
+    type="button"
     onClick={onClick}
     className={`${NAV_BUTTON_CLASS_MAP.buttonBase} ${active ? NAV_BUTTON_CLASS_MAP.active : NAV_BUTTON_CLASS_MAP.inactive}`}
   >

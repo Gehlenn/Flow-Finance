@@ -15,6 +15,7 @@ const aicfoMocks = vi.hoisted(() => ({
   getCurrentWorkspaceIdentity: vi.fn(),
   getWorkspaceBillingOverview: vi.fn(),
   incrementWorkspaceUsage: vi.fn(),
+  demoPlan: { value: null as 'free' | 'pro' | null },
 }));
 
 vi.mock('../../src/ai/riskAnalyzer', () => ({
@@ -77,6 +78,11 @@ vi.mock('../../src/services/firestoreBillingStore', () => ({
   incrementWorkspaceUsage: aicfoMocks.incrementWorkspaceUsage,
 }));
 
+vi.mock('../../src/demo/demoBootstrap', () => ({
+  getDemoBootstrapIdentity: () => undefined,
+  getDemoBootstrapPlan: () => aicfoMocks.demoPlan.value,
+}));
+
 const baseTransactions: Transaction[] = [
   {
     id: 'tx-1',
@@ -119,6 +125,7 @@ const baseAccounts: Account[] = [
 describe('AICFO plan render', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    aicfoMocks.demoPlan.value = null;
     aicfoMocks.getCurrentWorkspaceIdentity.mockReturnValue({ userId: 'u1' });
     aicfoMocks.ensureActiveWorkspace.mockResolvedValue({
       workspaceId: 'ws-1',
@@ -180,6 +187,26 @@ describe('AICFO plan render', () => {
     expect(screen.queryByText(/Modo Free/i)).toBeNull();
     expect(screen.getAllByRole('button').length).toBeGreaterThanOrEqual(6);
     expect(screen.getByText(/Perguntas rápidas do caixa/i)).toBeTruthy();
+  });
+
+  it('usa o plano pro do demo mesmo quando o workspace chega como free', () => {
+    aicfoMocks.demoPlan.value = 'pro';
+
+    render(
+      <AICFO
+        transactions={baseTransactions}
+        accounts={baseAccounts}
+        userId="u1"
+        workspacePlan="free"
+        hideValues={false}
+        onNavigateToTab={vi.fn()}
+        onCreateReminder={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(/Modo Free/i)).toBeNull();
+    expect(screen.queryByText(/Assinar Pro agora/i)).toBeNull();
+    expect(screen.getByText(/Perguntas r.*idas do caixa/i)).toBeTruthy();
   });
 
   it('bloqueia a consulta 21 do plano free com paywall visivel', async () => {

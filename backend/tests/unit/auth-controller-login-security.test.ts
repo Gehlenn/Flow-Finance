@@ -1,6 +1,22 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import type { NextFunction, Request, Response } from 'express';
 
+const controllerMocks = vi.hoisted(() => ({
+  loggerWarn: vi.fn(),
+  loggerInfo: vi.fn(),
+  loggerError: vi.fn(),
+  loggerDebug: vi.fn(),
+}));
+
+vi.mock('../../src/config/logger', () => ({
+  default: {
+    warn: controllerMocks.loggerWarn,
+    info: controllerMocks.loggerInfo,
+    error: controllerMocks.loggerError,
+    debug: controllerMocks.loggerDebug,
+  },
+}));
+
 import { AppError } from '../../src/middleware/errorHandler';
 import { isInsecureLocalLoginAllowed, loginController } from '../../src/controllers/authController';
 
@@ -96,6 +112,14 @@ describe('authController login security hardening', () => {
     const forwardedError = next.mock.calls[0][0];
     expect(forwardedError).toBeInstanceOf(AppError);
     expect((forwardedError as AppError).statusCode).toBe(503);
+    expect(controllerMocks.loggerWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'auth_login_blocked',
+        insecureLocalLoginAllowed: false,
+        fallback: 'auth-login-disabled',
+      }),
+      'Email/password login blocked by backend policy',
+    );
   });
 
   it('sets secure auth cookies when local login is explicitly allowed', async () => {
