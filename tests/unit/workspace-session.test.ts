@@ -7,10 +7,39 @@ const firestoreWorkspaceMocks = vi.hoisted(() => ({
   ensureActiveWorkspaceForUserMock: vi.fn(),
 }));
 
+const workspaceSessionApiMocks = vi.hoisted(() => ({
+  getAuthHeadersMock: vi.fn(() => ({
+    'Content-Type': 'application/json',
+    Authorization: 'Bearer test-token',
+  })),
+}));
+
+const workspaceSessionLoggerMocks = vi.hoisted(() => ({
+  logWarnMock: vi.fn(),
+}));
+
+vi.mock('../../src/config/api.config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/config/api.config')>();
+  return {
+    ...actual,
+    API_ENDPOINTS: {
+      ...actual.API_ENDPOINTS,
+      WORKSPACE: {
+        ROOT: 'https://backend.flow.test/api/workspace',
+      },
+    },
+    getAuthHeaders: workspaceSessionApiMocks.getAuthHeadersMock,
+  };
+});
+
 vi.mock('../../src/services/firestoreWorkspaceStore', () => ({
   listUserWorkspaceSummaries: firestoreWorkspaceMocks.listUserWorkspaceSummariesMock,
   createPersonalWorkspace: firestoreWorkspaceMocks.createPersonalWorkspaceMock,
   ensureActiveWorkspaceForUser: firestoreWorkspaceMocks.ensureActiveWorkspaceForUserMock,
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: workspaceSessionLoggerMocks.logWarnMock,
 }));
 
 import {
@@ -25,10 +54,96 @@ describe('workspaceSession', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('backend offline')));
   });
 
   afterEach(() => {
     clearActiveWorkspace();
+    vi.unstubAllGlobals();
+  });
+
+  it('prefers the backend workspace list when the published backend already knows the workspace', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        workspaces: [
+          { workspaceId: 'ws_api_1', tenantId: 'tenant-api', name: 'Workspace API 1', tenantName: 'Tenant API', plan: 'free', role: 'member', isDefault: false },
+          { workspaceId: 'ws_api_2', tenantId: 'tenant-api', name: 'Workspace API 2', tenantName: 'Tenant API', plan: 'pro', role: 'owner', isDefault: true },
+        ],
+      }),
+    }) as unknown as typeof fetch);
+    localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, 'ws_api_2');
+
+    const workspace = await ensureActiveWorkspace({ userId: 'user-1', name: 'Flow User', email: 'user@test.dev' });
+
+    expect(workspace.workspaceId).toBe('ws_api_2');
+    expect(localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY)).toBe('ws_api_2');
+    expect(firestoreWorkspaceMocks.listUserWorkspaceSummariesMock).not.toHaveBeenCalled();
+  });
+
+  it('creates a personal workspace through the backend when the backend list is empty', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ workspaces: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          workspaceId: 'ws_backend_new',
+          tenantId: 'tenant-backend-new',
+          name: 'Workspace de Flow User',
+          tenantName: 'Tenant de Flow User',
+          plan: 'free',
+          role: 'owner',
+          isDefault: true,
+        }),
+      });
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+    const workspace = await ensureActiveWorkspace({ userId: 'user-1', name: 'Flow User', email: 'user@test.dev' });
+
+    expect(workspace.workspaceId).toBe('ws_backend_new');
+    expect(localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY)).toBe('ws_backend_new');
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'https://backend.flow.test/api/workspace',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ name: 'Workspace de Flow User' }),
+      }),
+    );
+    expect(firestoreWorkspaceMocks.ensureActiveWorkspaceForUserMock).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the Firestore bootstrap path when the backend bootstrap fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('backend down')) as unknown as typeof fetch);
+    firestoreWorkspaceMocks.listUserWorkspaceSummariesMock.mockResolvedValue([]);
+    firestoreWorkspaceMocks.ensureActiveWorkspaceForUserMock.mockResolvedValue({
+      workspaceId: 'ws_new',
+      tenantId: 'tenant-new',
+      name: 'Workspace Pessoal',
+      tenantName: 'Tenant de Flow User',
+      plan: 'free',
+      role: 'owner',
+      isDefault: true,
+    });
+
+    const workspace = await ensureActiveWorkspace({ userId: 'user-1', name: 'Flow User', email: 'user@test.dev' });
+
+    expect(workspace.workspaceId).toBe('ws_new');
+    expect(firestoreWorkspaceMocks.ensureActiveWorkspaceForUserMock).toHaveBeenCalledWith({
+      userId: 'user-1',
+      name: 'Flow User',
+      email: 'user@test.dev',
+    });
+    expect(workspaceSessionLoggerMocks.logWarnMock).toHaveBeenCalledWith(
+      '[WorkspaceSession] Backend workspace bootstrap failed; falling back to Firestore bootstrap',
+      expect.objectContaining({
+        endpoint: 'https://backend.flow.test/api/workspace',
+        fallback: 'workspace-bootstrap-backend-to-firestore',
+      }),
+    );
   });
 
   it('reuses the stored workspace when it is still available', async () => {
