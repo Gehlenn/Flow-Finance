@@ -1,20 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { Check, Loader2, Sparkles } from 'lucide-react';
 import { MONETIZATION_PRICING } from '../src/app/monetizationPlan';
-import { createWorkspaceCheckoutSession } from '../src/saas/billingClient';
+import { trackProductEvent } from '../src/app/productAnalytics';
+import { buildBillingReturnUrl, createWorkspaceCheckoutSession } from '../src/saas';
 import { ensureActiveWorkspace, getCurrentWorkspaceIdentity } from '../src/services/workspaceSession';
 import { logWarn } from '../src/utils/logger';
 
 const PRO_FEATURE_LIST = [
-  'Consultor IA ilimitado',
-  'Multiplos workspaces',
-  'Exportacao de relatorios em PDF',
+  'Consultor IA ilimitado para revisao semanal de caixa',
+  'Multiplos workspaces para operacoes ou unidades separadas',
+  'Historico de caixa, previsto vs realizado e risco recorrente',
 ];
 
 const FREE_FEATURE_LIST = [
-  '1 workspace',
+  'Dashboard de caixa, previsto e realizado',
+  'Lancamentos, recebiveis e vencimentos essenciais',
   '20 consultas do Consultor IA por mes',
-  'Sem exportacao de relatorios',
 ];
 
 const Pricing: React.FC = () => {
@@ -54,19 +55,31 @@ const Pricing: React.FC = () => {
 
     setIsLoading(true);
     setError(null);
-
+    let checkoutSessionUrl: string | null | undefined;
     try {
       const session = await createWorkspaceCheckoutSession({
         workspaceId,
-        returnUrl: window.location.href,
+        returnUrl: buildBillingReturnUrl({ pricing: true }),
+        source: 'pricing',
       });
+      checkoutSessionUrl = session.url;
 
-      if (!session.url) {
+      if (!checkoutSessionUrl) {
         throw new Error('Stripe checkout session returned no URL');
       }
 
-      window.location.assign(session.url);
+      trackProductEvent('billing_checkout_redirected', {
+        source: 'pricing',
+        plan: 'pro',
+      });
+      window.location.assign(checkoutSessionUrl);
     } catch (checkoutError) {
+      if (checkoutSessionUrl !== undefined) {
+        trackProductEvent('billing_checkout_failed', {
+          source: 'pricing',
+          plan: 'pro',
+        });
+      }
       logWarn('[Pricing] Failed to open Stripe checkout', {
         error: checkoutError,
         workspaceId,
@@ -85,7 +98,7 @@ const Pricing: React.FC = () => {
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Planos</p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Flow Finance Pro</h1>
           <p className="mt-2 max-w-2xl text-sm font-medium text-slate-500 dark:text-slate-300">
-            O Free cobre a operacao principal. O Pro libera analise mais profunda, mais trabalho paralelo e exportacao de relatorios.
+            O Free valida o fluxo de caixa operacional. O Pro aprofunda revisao semanal, historico, risco e operacoes separadas sem tirar o core do MVP.
           </p>
         </div>
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
@@ -97,7 +110,7 @@ const Pricing: React.FC = () => {
         <article className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Free</p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">R$ 0</h2>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Operacao principal</p>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Caixa operacional</p>
           <ul className="mt-6 space-y-3">
             {FREE_FEATURE_LIST.map((feature) => (
               <li key={feature} className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
@@ -127,7 +140,7 @@ const Pricing: React.FC = () => {
               Anual R$ {MONETIZATION_PRICING.proAnnualBRL.toFixed(2).replace('.', ',')}
             </span>
           </div>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Camada analitica e exportacao</p>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Revisao e historico</p>
           <ul className="mt-6 space-y-3">
             {PRO_FEATURE_LIST.map((feature) => (
               <li key={feature} className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">

@@ -21,16 +21,18 @@ import {
   type WorkspaceBillingHookDocument,
 } from '../src/services/firestoreBillingStore';
 import {
+  buildBillingReturnUrl as buildSaasBillingReturnUrl,
   createWorkspaceCheckoutSession,
   createWorkspacePortalSession,
   getWorkspacePlanCatalog,
   type WorkspacePlanCatalog,
-} from '../src/saas/billingClient';
+} from '../src/saas';
 import {
   canManageWorkspaceBilling,
   canManageWorkspaceMembers,
   canViewWorkspaceAudit,
 } from '../src/security/workspacePermissions';
+import { trackProductEvent } from '../src/app/productAnalytics';
 import { logWarn } from '../src/utils/logger';
 import type { Tab } from '../hooks/navigationTypes';
 import { getDemoBootstrapPlan } from '../src/demo/demoBootstrap';
@@ -252,11 +254,7 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
   };
 
   const buildBillingReturnUrl = () => {
-    if (typeof window === 'undefined') {
-      return 'http://localhost:3000';
-    }
-
-    return window.location.href;
+    return buildSaasBillingReturnUrl({ tab: 'workspaceadmin' });
   };
 
   const redirectToBillingUrl = (url: string | null | undefined) => {
@@ -274,13 +272,26 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
 
     setBusy(true);
     setError(null);
+    let checkoutSessionUrl: string | null | undefined;
     try {
       const session = await createWorkspaceCheckoutSession({
         workspaceId: activeWorkspace.workspaceId,
         returnUrl: buildBillingReturnUrl(),
+        source: 'workspace_admin',
       });
-      redirectToBillingUrl(session.url);
+      checkoutSessionUrl = session.url;
+      trackProductEvent('billing_checkout_redirected', {
+        source: 'workspace_admin',
+        plan: 'pro',
+      });
+      redirectToBillingUrl(checkoutSessionUrl);
     } catch (billingError) {
+      if (checkoutSessionUrl !== undefined) {
+        trackProductEvent('billing_checkout_failed', {
+          source: 'workspace_admin',
+          plan: 'pro',
+        });
+      }
       logWarn('[WorkspaceAdmin] Failed to start Stripe checkout', {
         error: billingError,
         workspaceId: activeWorkspace.workspaceId,
@@ -301,13 +312,26 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
 
     setBusy(true);
     setError(null);
+    let portalSessionUrl: string | undefined;
     try {
       const session = await createWorkspacePortalSession({
         workspaceId: activeWorkspace.workspaceId,
         returnUrl: buildBillingReturnUrl(),
+        source: 'workspace_admin',
       });
-      redirectToBillingUrl(session.url);
+      portalSessionUrl = session.url;
+      trackProductEvent('billing_portal_redirected', {
+        source: 'workspace_admin',
+        plan: activeWorkspace.plan || 'pro',
+      });
+      redirectToBillingUrl(portalSessionUrl);
     } catch (billingError) {
+      if (portalSessionUrl !== undefined) {
+        trackProductEvent('billing_portal_failed', {
+          source: 'workspace_admin',
+          plan: activeWorkspace.plan || 'pro',
+        });
+      }
       logWarn('[WorkspaceAdmin] Failed to open Stripe billing portal', {
         error: billingError,
         workspaceId: activeWorkspace.workspaceId,

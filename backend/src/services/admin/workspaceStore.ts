@@ -12,25 +12,30 @@ import {
 } from '../../types';
 import { recordAuditEvent } from './auditLog';
 import logger from '../../config/logger';
+import { AppError } from '../../shared/AppError';
 import {
   buildEntitlements,
   buildWorkspaceAuditEvent,
   buildWorkspaceSummaries,
   buildWorkspaceStoreState,
   cloneState,
+  areLegacyStateBlobsDisabled,
   getActiveTenantIdsForUser,
   getActiveWorkspaceIdsForUser,
   ensureWorkspaceTenants,
-  ensureStoreDirExists,
   getWorkspaceStoreFilePath,
   normalizeTenant,
   normalizeWorkspace,
   normalizeWorkspaceStoreState,
   readThroughWorkspaceStore,
+  persistLegacyWorkspaceStoreState,
   replaceUserPreference,
   type WorkspaceStoreState,
 } from './workspaceStoreHelpers';
+import { hasDatabaseConfig } from '../../config/database';
 import {
+  initializePostgresStateStore,
+  isPostgresStateStoreEnabled,
   loadJsonState,
   queryLastWorkspaceForUser,
   queryTenantById,
@@ -43,6 +48,22 @@ import {
   saveJsonState,
   saveWorkspaceStoreState,
 } from '../persistence/postgresStateStore';
+import {
+  addWorkspaceUserToFirestore,
+  createTenantInFirestore,
+  createWorkspaceInFirestore,
+  findWorkspaceByBillingCustomerIdFromFirestore,
+  getLastWorkspaceForUserFromFirestore,
+  getTenantFromFirestore,
+  getWorkspaceFirestoreStatus,
+  getWorkspaceFromFirestore,
+  getWorkspaceUsersFromFirestore,
+  listTenantsForUserFromFirestore,
+  listWorkspacesForUserFromFirestore,
+  removeWorkspaceUserFromFirestore,
+  setLastWorkspaceForUserInFirestore,
+  updateWorkspaceBillingInFirestore,
+} from './workspaceStoreFirestore';
 
 const POSTGRES_STATE_KEY = 'workspace_store_state';
 const EMPTY_STATE: WorkspaceStoreState = {
@@ -54,8 +75,15 @@ const EMPTY_STATE: WorkspaceStoreState = {
 
 let stateCache: WorkspaceStoreState | null = null;
 
-function areLegacyStateBlobsDisabled(): boolean {
-  return String(process.env.DISABLE_LEGACY_STATE_BLOBS || '').toLowerCase() === 'true';
+type WorkspacePersistenceMode = 'postgres' | 'firebase' | 'legacy-file' | 'memory';
+
+export interface WorkspacePersistenceHealthCheck {
+  status: 'healthy' | 'unhealthy';
+  mode: WorkspacePersistenceMode;
+  durable: boolean;
+  configured: boolean;
+  required: boolean;
+  reason: string;
 }
 
 function loadState(): WorkspaceStoreState {
@@ -72,7 +100,6 @@ function loadState(): WorkspaceStoreState {
 
   try {
     if (!fs.existsSync(filePath)) {
-      ensureStoreDirExists(filePath);
       stateCache = cloneState(EMPTY_STATE);
       return stateCache;
     }
@@ -99,11 +126,6 @@ function loadState(): WorkspaceStoreState {
 
 function persistState(state: WorkspaceStoreState): void {
   stateCache = cloneState(state);
-  if (!areLegacyStateBlobsDisabled()) {
-    const filePath = getWorkspaceStoreFilePath();
-    ensureStoreDirExists(filePath);
-    fs.writeFileSync(filePath, JSON.stringify(state, null, 2), 'utf8');
-  }
   void saveWorkspaceStoreState(state).catch((error) => {
     logger.warn({
       error,
@@ -114,6 +136,24 @@ function persistState(state: WorkspaceStoreState): void {
       fallback: 'workspace-store-postgres-save-failed',
     }, 'Failed to persist normalized workspace store to Postgres');
   });
+
+  if (!areLegacyStateBlobsDisabled()) {
+    const filePath = getWorkspaceStoreFilePath();
+    try {
+      persistLegacyWorkspaceStoreState(filePath, state);
+    } catch (error) {
+      logger.warn({
+        error,
+        filePath,
+        tenantCount: state.tenants.length,
+        workspaceCount: state.workspaces.length,
+        workspaceUserCount: state.workspaceUsers.length,
+        preferenceCount: state.userPreferences.length,
+        fallback: 'workspace-store-legacy-write-failed',
+      }, 'Failed to persist legacy workspace store blob');
+    }
+  }
+
   if (!areLegacyStateBlobsDisabled()) {
     void saveJsonState(POSTGRES_STATE_KEY, state as unknown as Record<string, unknown>).catch((error) => {
       logger.warn({
@@ -125,6 +165,144 @@ function persistState(state: WorkspaceStoreState): void {
         fallback: 'workspace-store-json-save-failed',
       }, 'Failed to persist workspace store JSON blob');
     });
+  }
+}
+
+function isDurableWorkspacePersistenceRequired(): boolean {
+  return process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+}
+
+export async function getWorkspacePersistenceHealthCheck(): Promise<WorkspacePersistenceHealthCheck> {
+  const required = isDurableWorkspacePersistenceRequired();
+  const legacyEnabled = !areLegacyStateBlobsDisabled();
+
+  if (isPostgresStateStoreEnabled()) {
+    const ready = await initializePostgresStateStore();
+    if (ready) {
+      return {
+        status: 'healthy',
+        mode: 'postgres',
+        durable: true,
+        configured: true,
+        required,
+        reason: 'postgres-ready',
+      };
+    }
+  }
+
+  const firestore = await getWorkspaceFirestoreStatus();
+  if (firestore.ready) {
+    return {
+      status: 'healthy',
+      mode: 'firebase',
+      durable: true,
+      configured: true,
+      required,
+      reason: isPostgresStateStoreEnabled() ? 'postgres-unavailable-fallback-firebase' : 'firebase-ready',
+    };
+  }
+
+  if (firestore.configured) {
+    return {
+      status: required ? 'unhealthy' : 'healthy',
+      mode: 'firebase',
+      durable: false,
+      configured: true,
+      required,
+      reason: 'firebase-unavailable',
+    };
+  }
+
+  if (legacyEnabled) {
+    const durable = !required;
+    return {
+      status: durable ? 'healthy' : 'unhealthy',
+      mode: 'legacy-file',
+      durable,
+      configured: true,
+      required,
+      reason: durable ? 'legacy-file-local-only' : 'legacy-file-not-accepted-for-production',
+    };
+  }
+
+  return {
+    status: required ? 'unhealthy' : 'healthy',
+    mode: 'memory',
+    durable: false,
+    configured: hasDatabaseConfig(),
+    required,
+    reason: hasDatabaseConfig() ? 'database-config-present-but-postgres-state-store-disabled' : 'no-durable-store-configured',
+  };
+}
+
+async function persistStateForRuntime(state: WorkspaceStoreState): Promise<void> {
+  const previousState = stateCache ? cloneState(stateCache) : null;
+  stateCache = cloneState(state);
+
+  const persistence = await getWorkspacePersistenceHealthCheck();
+  if (persistence.required && !persistence.durable) {
+    stateCache = previousState;
+    logger.error({
+      persistence,
+      tenantCount: state.tenants.length,
+      workspaceCount: state.workspaces.length,
+      workspaceUserCount: state.workspaceUsers.length,
+      preferenceCount: state.userPreferences.length,
+      fallback: 'workspace-store-durable-persistence-required',
+    }, 'Rejected workspace write because durable persistence is unavailable');
+    throw new AppError(503, 'Persistencia duravel de workspace indisponivel');
+  }
+
+  if (persistence.mode === 'postgres') {
+    try {
+      await saveWorkspaceStoreState(state);
+    } catch (error) {
+      stateCache = previousState;
+      logger.error({
+        error,
+        persistence,
+        tenantCount: state.tenants.length,
+        workspaceCount: state.workspaces.length,
+        workspaceUserCount: state.workspaceUsers.length,
+        preferenceCount: state.userPreferences.length,
+        fallback: 'workspace-store-postgres-write-blocked',
+      }, 'Workspace write failed while durable Postgres persistence was required');
+      throw new AppError(503, 'Persistencia duravel de workspace indisponivel');
+    }
+    return;
+  }
+
+  if (persistence.mode === 'legacy-file') {
+    const filePath = getWorkspaceStoreFilePath();
+    try {
+      persistLegacyWorkspaceStoreState(filePath, state);
+    } catch (error) {
+      stateCache = previousState;
+      logger.error({
+        error,
+        filePath,
+        persistence,
+        tenantCount: state.tenants.length,
+        workspaceCount: state.workspaces.length,
+        workspaceUserCount: state.workspaceUsers.length,
+        preferenceCount: state.userPreferences.length,
+        fallback: 'workspace-store-legacy-write-blocked',
+      }, 'Workspace write failed while legacy file persistence was active');
+      throw new AppError(503, 'Persistencia de workspace indisponivel');
+    }
+
+    try {
+      await saveJsonState(POSTGRES_STATE_KEY, state as unknown as Record<string, unknown>);
+    } catch (error) {
+      logger.warn({
+        error,
+        tenantCount: state.tenants.length,
+        workspaceCount: state.workspaces.length,
+        workspaceUserCount: state.workspaceUsers.length,
+        preferenceCount: state.userPreferences.length,
+        fallback: 'workspace-store-json-save-failed',
+      }, 'Failed to persist workspace store JSON blob');
+    }
   }
 }
 
@@ -199,6 +377,68 @@ export function createTenant(name: string, ownerUserId: string): { tenant: Tenan
   return { tenant, workspace };
 }
 
+export async function createTenantAsync(name: string, ownerUserId: string): Promise<{ tenant: Tenant; workspace: Workspace }> {
+  const persistence = await getWorkspacePersistenceHealthCheck();
+  if (persistence.mode === 'firebase' && persistence.durable) {
+    return createTenantInFirestore(name, ownerUserId);
+  }
+
+  const state = loadState();
+  const tenantId = randomUUID();
+  const workspaceId = randomUUID();
+  const createdAt = new Date().toISOString();
+  const normalizedName = name.trim();
+
+  const tenant: Tenant = {
+    tenantId,
+    name: normalizedName,
+    plan: 'free',
+    createdAt,
+    updatedAt: createdAt,
+  };
+
+  const workspace: Workspace = {
+    workspaceId,
+    tenantId,
+    name: normalizedName,
+    isDefault: true,
+    createdAt,
+    updatedAt: createdAt,
+    plan: 'free',
+    status: 'active',
+    entitlements: buildEntitlements('free'),
+  };
+
+  const ownerMembership: WorkspaceUser = {
+    userId: ownerUserId,
+    workspaceId,
+    tenantId,
+    role: 'owner',
+    joinedAt: createdAt,
+    status: 'active',
+  };
+
+  await persistStateForRuntime(buildWorkspaceStoreState(state, {
+    tenants: [...state.tenants, tenant],
+    workspaces: [...state.workspaces, workspace],
+    workspaceUsers: [...state.workspaceUsers, ownerMembership],
+    userPreferences: replaceUserPreference(state.userPreferences, ownerUserId, workspaceId, createdAt),
+  }));
+
+  recordAuditEvent(buildWorkspaceAuditEvent({
+    tenantId,
+    workspaceId,
+    userId: ownerUserId,
+    action: 'workspace.addUser',
+    status: 'success',
+    resourceType: 'workspace',
+    resourceId: workspaceId,
+    metadata: { created: true, isDefault: true, tenantName: normalizedName },
+  }));
+
+  return { tenant, workspace };
+}
+
 export function createWorkspace(name: string, ownerUserId: string, tenantId?: string): Workspace {
   if (!tenantId) {
     return createTenant(name, ownerUserId).workspace;
@@ -253,12 +493,79 @@ export function createWorkspace(name: string, ownerUserId: string, tenantId?: st
   return workspace;
 }
 
+export async function createWorkspaceAsync(name: string, ownerUserId: string, tenantId?: string): Promise<Workspace> {
+  const persistence = await getWorkspacePersistenceHealthCheck();
+  if (persistence.mode === 'firebase' && persistence.durable) {
+    if (!tenantId) {
+      return (await createTenantInFirestore(name, ownerUserId)).workspace;
+    }
+    return createWorkspaceInFirestore(name, ownerUserId, tenantId);
+  }
+
+  if (!tenantId) {
+    return (await createTenantAsync(name, ownerUserId)).workspace;
+  }
+
+  const state = loadState();
+  const tenant = state.tenants.find((item) => item.tenantId === tenantId);
+  if (!tenant) {
+    throw new Error(`Tenant ${tenantId} not found`);
+  }
+
+  const workspaceId = randomUUID();
+  const createdAt = new Date().toISOString();
+  const workspace: Workspace = {
+    workspaceId,
+    tenantId,
+    name: name.trim(),
+    isDefault: false,
+    createdAt,
+    updatedAt: createdAt,
+    plan: tenant.plan,
+    status: 'active',
+    entitlements: buildEntitlements(tenant.plan),
+  };
+  const ownerMembership: WorkspaceUser = {
+    userId: ownerUserId,
+    workspaceId,
+    tenantId,
+    role: 'owner',
+    joinedAt: createdAt,
+    status: 'active',
+  };
+
+  await persistStateForRuntime(buildWorkspaceStoreState(state, {
+    tenants: state.tenants.map((item) => item.tenantId === tenantId ? { ...item, updatedAt: createdAt } : item),
+    workspaces: [...state.workspaces, workspace],
+    workspaceUsers: [...state.workspaceUsers, ownerMembership],
+    userPreferences: replaceUserPreference(state.userPreferences, ownerUserId, workspaceId, createdAt),
+  }));
+
+  recordAuditEvent(buildWorkspaceAuditEvent({
+    tenantId,
+    workspaceId,
+    userId: ownerUserId,
+    action: 'workspace.addUser',
+    status: 'success',
+    resourceType: 'workspace',
+    resourceId: workspaceId,
+    metadata: { created: true, isDefault: false, workspaceName: workspace.name },
+  }));
+
+  return workspace;
+}
+
 export function getWorkspace(workspaceId: string): Workspace | undefined {
   const workspace = loadState().workspaces.find((item) => item.workspaceId === workspaceId);
   return workspace ? normalizeWorkspace(workspace) : undefined;
 }
 
 export async function getWorkspaceAsync(workspaceId: string): Promise<Workspace | undefined> {
+  const firestoreStatus = await getWorkspaceFirestoreStatus();
+  if (firestoreStatus.ready) {
+    return getWorkspaceFromFirestore(workspaceId);
+  }
+
   return readThroughWorkspaceStore(
     async () => {
       const workspace = await queryWorkspaceById(workspaceId);
@@ -278,6 +585,11 @@ export function listWorkspacesForUser(userId: string): Workspace[] {
 }
 
 export async function listWorkspacesForUserAsync(userId: string): Promise<Workspace[]> {
+  const firestoreStatus = await getWorkspaceFirestoreStatus();
+  if (firestoreStatus.ready) {
+    return listWorkspacesForUserFromFirestore(userId);
+  }
+
   return readThroughWorkspaceStore(
     async () => {
       const workspaces = await queryWorkspacesForUser(userId);
@@ -297,6 +609,11 @@ export function listTenantsForUser(userId: string): Tenant[] {
 }
 
 export async function listTenantsForUserAsync(userId: string): Promise<Tenant[]> {
+  const firestoreStatus = await getWorkspaceFirestoreStatus();
+  if (firestoreStatus.ready) {
+    return listTenantsForUserFromFirestore(userId);
+  }
+
   return readThroughWorkspaceStore(
     async () => {
       const tenants = await queryTenantsForUser(userId);
@@ -311,6 +628,11 @@ export function getTenant(tenantId: string): Tenant | undefined {
 }
 
 export async function getTenantAsync(tenantId: string): Promise<Tenant | undefined> {
+  const firestoreStatus = await getWorkspaceFirestoreStatus();
+  if (firestoreStatus.ready) {
+    return getTenantFromFirestore(tenantId);
+  }
+
   return readThroughWorkspaceStore(
     async () => {
       const tenant = await queryTenantById(tenantId);
@@ -372,11 +694,30 @@ export function addUserToWorkspace(
   return workspaceUser;
 }
 
+export async function addUserToWorkspaceAsync(
+  workspaceId: string,
+  userId: string,
+  role: Role = 'member',
+  invitedBy?: string,
+): Promise<WorkspaceUser | undefined> {
+  const firestoreStatus = await getWorkspaceFirestoreStatus();
+  if (firestoreStatus.ready) {
+    return addWorkspaceUserToFirestore(workspaceId, userId, role, invitedBy);
+  }
+
+  return addUserToWorkspace(workspaceId, userId, role, invitedBy);
+}
+
 export function getWorkspaceUsers(workspaceId: string): WorkspaceUser[] {
   return getWorkspaceUsersInternal(loadState(), workspaceId);
 }
 
 export async function getWorkspaceUsersAsync(workspaceId: string): Promise<WorkspaceUser[]> {
+  const firestoreStatus = await getWorkspaceFirestoreStatus();
+  if (firestoreStatus.ready) {
+    return getWorkspaceUsersFromFirestore(workspaceId);
+  }
+
   return readThroughWorkspaceStore(
     async () => {
       const users = await queryWorkspaceUsers(workspaceId);
@@ -439,6 +780,15 @@ export function removeUserFromWorkspace(userId: string, workspaceId: string): bo
   }
 
   return true;
+}
+
+export async function removeUserFromWorkspaceAsync(userId: string, workspaceId: string): Promise<boolean> {
+  const firestoreStatus = await getWorkspaceFirestoreStatus();
+  if (firestoreStatus.ready) {
+    return removeWorkspaceUserFromFirestore(userId, workspaceId);
+  }
+
+  return removeUserFromWorkspace(userId, workspaceId);
 }
 
 export function updateWorkspaceBilling(
@@ -514,6 +864,11 @@ export async function updateWorkspaceBillingAsync(
     subscription?: WorkspaceSubscription;
   },
 ): Promise<Workspace | undefined> {
+  const firestoreStatus = await getWorkspaceFirestoreStatus();
+  if (firestoreStatus.ready) {
+    return updateWorkspaceBillingInFirestore(workspaceId, input);
+  }
+
   return readThroughWorkspaceStore(
     async () => {
       const workspace = await queryWorkspaceById(workspaceId);
@@ -537,6 +892,11 @@ export function findWorkspaceByBillingCustomerId(billingCustomerId: string): Wor
 }
 
 export async function findWorkspaceByBillingCustomerIdAsync(billingCustomerId: string): Promise<Workspace | undefined> {
+  const firestoreStatus = await getWorkspaceFirestoreStatus();
+  if (firestoreStatus.ready) {
+    return findWorkspaceByBillingCustomerIdFromFirestore(billingCustomerId);
+  }
+
   return readThroughWorkspaceStore(
     async () => {
       const workspace = await queryWorkspaceByBillingCustomerId(billingCustomerId);
@@ -553,6 +913,8 @@ export function setLastWorkspaceForUser(userId: string, workspaceId: string): vo
   persistStateUpdate(state, {
     userPreferences: replaceUserPreference(state.userPreferences, userId, workspaceId, updatedAt),
   });
+
+  void setLastWorkspaceForUserInFirestore(userId, workspaceId);
 }
 
 export function getLastWorkspaceForUser(userId: string): Workspace | undefined {
@@ -565,6 +927,11 @@ export function getLastWorkspaceForUser(userId: string): Workspace | undefined {
 }
 
 export async function getLastWorkspaceForUserAsync(userId: string): Promise<Workspace | undefined> {
+  const firestoreStatus = await getWorkspaceFirestoreStatus();
+  if (firestoreStatus.ready) {
+    return getLastWorkspaceForUserFromFirestore(userId);
+  }
+
   return readThroughWorkspaceStore(
     async () => {
       const workspace = await queryLastWorkspaceForUser(userId);

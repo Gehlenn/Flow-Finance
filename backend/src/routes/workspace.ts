@@ -2,11 +2,11 @@ import { Router, Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth';
 import { workspaceContextMiddleware } from '../middleware/workspaceContext';
 import {
-  createWorkspace,
+  createWorkspaceAsync,
   listWorkspaceSummariesForUserAsync,
-  addUserToWorkspace,
+  addUserToWorkspaceAsync,
   getWorkspaceUsersAsync,
-  removeUserFromWorkspace,
+  removeUserFromWorkspaceAsync,
 } from '../services/admin/workspaceStore';
 import { authz } from '../middleware/authz';
 import { asyncHandler } from '../middleware/errorHandler';
@@ -46,7 +46,7 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
     }
   }
 
-  const workspace = createWorkspace(name, req.userId!, typeof tenantId === 'string' ? tenantId : undefined);
+  const workspace = await createWorkspaceAsync(name, req.userId!, typeof tenantId === 'string' ? tenantId : undefined);
   res.status(201).json(workspace);
 }));
 
@@ -59,25 +59,28 @@ router.post(
   '/:workspaceId/users',
   workspaceContextMiddleware,
   authz('workspace:members:add'),
-  (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const { userId, role } = req.body;
     const workspaceId = normalizeParam(req.params.workspaceId);
 
     if (!userId || typeof userId !== 'string') {
-      return res.status(400).json({ error: 'userId obrigatorio' });
+      res.status(400).json({ error: 'userId obrigatorio' });
+      return;
     }
 
     if (!workspaceId) {
-      return res.status(400).json({ error: 'workspaceId obrigatorio' });
+      res.status(400).json({ error: 'workspaceId obrigatorio' });
+      return;
     }
 
-    const membership = addUserToWorkspace(workspaceId, userId, normalizeRole(role), req.userId!);
+    const membership = await addUserToWorkspaceAsync(workspaceId, userId, normalizeRole(role), req.userId!);
     if (!membership) {
-      return res.status(404).json({ error: 'Workspace nao encontrado' });
+      res.status(404).json({ error: 'Workspace nao encontrado' });
+      return;
     }
 
-    return res.status(201).json(membership);
-  },
+    res.status(201).json(membership);
+  }),
 );
 
 router.get('/:workspaceId/users', workspaceContextMiddleware, authz('workspace:members:read'), asyncHandler(async (req: Request, res: Response) => {
@@ -91,20 +94,22 @@ router.get('/:workspaceId/users', workspaceContextMiddleware, authz('workspace:m
   res.json({ users });
 }));
 
-router.delete('/:workspaceId/users/:userId', workspaceContextMiddleware, authz('workspace:members:remove'), (req: Request, res: Response) => {
+router.delete('/:workspaceId/users/:userId', workspaceContextMiddleware, authz('workspace:members:remove'), asyncHandler(async (req: Request, res: Response) => {
   const workspaceId = normalizeParam(req.params.workspaceId);
   const userId = normalizeParam(req.params.userId);
 
   if (!workspaceId || !userId) {
-    return res.status(400).json({ error: 'workspaceId e userId obrigatorios' });
+    res.status(400).json({ error: 'workspaceId e userId obrigatorios' });
+    return;
   }
 
-  const removed = removeUserFromWorkspace(userId, workspaceId);
+  const removed = await removeUserFromWorkspaceAsync(userId, workspaceId);
   if (!removed) {
-    return res.status(404).json({ error: 'Membro nao encontrado' });
+    res.status(404).json({ error: 'Membro nao encontrado' });
+    return;
   }
 
-  return res.status(204).send();
-});
+  res.status(204).send();
+}));
 
 export default router;

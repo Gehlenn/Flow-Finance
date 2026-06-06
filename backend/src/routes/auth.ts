@@ -11,6 +11,7 @@ import {
 import { googleOAuthCallbackController, startGoogleOAuthController } from '../controllers/oauthController';
 import { validate } from '../middleware/validate';
 import { FirebaseSessionSchema, LoginSchema } from '../validation/user.schema';
+import { requireTrustedStateChangingOrigin } from '../middleware/csrfOrigin';
 
 const router = Router();
 
@@ -43,7 +44,7 @@ router.get('/oauth/google/callback', authLimiterByUser, googleOAuthCallbackContr
  * Headers: Authorization: Bearer <old_token>
  * Returns: { token: string, expiresIn: number }
  */
-router.post('/refresh', optionalAuthMiddleware, authRefreshLimiterByUser, refreshController);
+router.post('/refresh', requireTrustedStateChangingOrigin, optionalAuthMiddleware, authRefreshLimiterByUser, refreshController);
 
 /**
  * GET /api/auth/validate

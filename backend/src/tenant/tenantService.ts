@@ -1,7 +1,7 @@
 import { Tenant, Workspace } from '../types';
 import { AppError } from '../shared/AppError';
 import {
-  createTenant,
+  createTenantAsync,
   getLastWorkspaceForUserAsync,
   getTenantAsync,
   getWorkspaceAsync,
@@ -12,13 +12,13 @@ import {
 } from '../services/admin/workspaceStore';
 
 export class TenantService {
-  createTenant(name: string, ownerUserId: string): { tenant: Tenant; workspace: Workspace } {
+  async createTenant(name: string, ownerUserId: string): Promise<{ tenant: Tenant; workspace: Workspace }> {
     const normalizedName = name.trim();
     if (!normalizedName) {
       throw new AppError(400, 'Tenant name is required');
     }
 
-    return createTenant(normalizedName, ownerUserId);
+    return await createTenantAsync(normalizedName, ownerUserId);
   }
 
   async selectTenant(tenantId: string, userId?: string): Promise<Tenant> {

@@ -9,6 +9,14 @@ import {
   saveWorkspaceSaasState,
 } from '../services/persistence/postgresStateStore';
 import {
+  estimateAICost,
+  summarizeWorkspaceAICost,
+  type AICostEvidence,
+  type AICostEstimate,
+  type AICostSample,
+  type WorkspaceAICostSummary as AICostSummaryBase,
+} from '../services/ai/aiCostMonitor';
+import {
   appendScopedBillingHook,
   areLegacyStateBlobsDisabled,
   cloneState,
@@ -63,6 +71,23 @@ export type WorkspaceUsageEvent = {
   metadata?: Record<string, unknown>;
 };
 
+export type WorkspaceAICostEstimate = Omit<AICostEstimate, 'evidence'> & {
+  basis: 'estimated_from_tokens';
+  pricingEvidence: AICostEvidence;
+  disclaimer: string;
+};
+
+export type WorkspaceAICostSummary = Omit<AICostSummaryBase, 'evidence'> & {
+  evidence: 'estimated_from_tokens';
+  basis: 'estimated_from_tokens';
+  disclaimer: string;
+  sampleCount: number;
+};
+
+export type WorkspaceUsageEventWithAICost = WorkspaceUsageEvent & {
+  aiCost?: WorkspaceAICostEstimate;
+};
+
 type ScopedUsageMap = Record<string, Record<string, UsageSnapshot>>;
 type ScopedBillingHookMap = Record<string, BillingHookPayload[]>;
 
@@ -77,6 +102,7 @@ type SaasStoreState = {
 
 const DEFAULT_STORE_FILE = path.resolve(__dirname, '../../data/saas-store.json');
 const POSTGRES_STATE_KEY = 'saas_store_state';
+const AI_COST_DISCLAIMER = 'Estimated from token metadata in usage events; not a real provider invoice.';
 
 let stateCache: SaasStoreState | null = null;
 
@@ -417,6 +443,105 @@ export function getWorkspaceUsageEvents(
 
   const reversed = [...events].reverse();
   return filters.limit ? reversed.slice(0, filters.limit) : reversed;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function positiveInteger(value: unknown): number {
+  const numeric = typeof value === 'string' ? Number(value) : value;
+  if (!Number.isFinite(numeric as number) || (numeric as number) <= 0) {
+    return 0;
+  }
+
+  return Math.floor(numeric as number);
+}
+
+function readAICostMetadata(metadata?: Record<string, unknown>): Record<string, unknown> | null {
+  if (!metadata) {
+    return null;
+  }
+
+  const nested = metadata.aiUsage ?? metadata.aiCost ?? metadata.ai;
+  if (isRecord(nested)) {
+    return nested;
+  }
+
+  if (typeof metadata.provider === 'string' && typeof metadata.model === 'string') {
+    return metadata;
+  }
+
+  return null;
+}
+
+function toAICostSample(workspaceId: string, event: WorkspaceUsageEvent): AICostSample | null {
+  const metadata = readAICostMetadata(event.metadata);
+  if (!metadata) {
+    return null;
+  }
+
+  const provider = typeof metadata.provider === 'string' ? metadata.provider : undefined;
+  const model = typeof metadata.model === 'string' ? metadata.model : undefined;
+  if (!provider || !model) {
+    return null;
+  }
+
+  return {
+    workspaceId,
+    provider: provider as AICostSample['provider'],
+    model,
+    inputTokens: positiveInteger(metadata.inputTokens ?? metadata.promptTokens),
+    outputTokens: positiveInteger(metadata.outputTokens ?? metadata.completionTokens),
+    tokensUsed: positiveInteger(metadata.tokensUsed ?? metadata.totalTokens ?? metadata.tokens),
+  };
+}
+
+export function enrichWorkspaceUsageEventsWithAICost(
+  workspaceId: string,
+  events: WorkspaceUsageEvent[],
+): WorkspaceUsageEventWithAICost[] {
+  return events.map((event) => {
+    const sample = toAICostSample(workspaceId, event);
+    if (!sample) {
+      return { ...event };
+    }
+
+    const estimate = estimateAICost(sample);
+    return {
+      ...event,
+      aiCost: {
+        workspaceId: estimate.workspaceId,
+        provider: estimate.provider,
+        model: estimate.model,
+        inputTokens: estimate.inputTokens,
+        outputTokens: estimate.outputTokens,
+        totalTokens: estimate.totalTokens,
+        estimatedCostUsd: estimate.estimatedCostUsd,
+        basis: 'estimated_from_tokens',
+        pricingEvidence: estimate.evidence,
+        disclaimer: AI_COST_DISCLAIMER,
+      },
+    };
+  });
+}
+
+export function getWorkspaceAICostSummaryFromEvents(
+  workspaceId: string,
+  events: WorkspaceUsageEvent[],
+): WorkspaceAICostSummary {
+  const samples = events
+    .map((event) => toAICostSample(workspaceId, event))
+    .filter((sample): sample is AICostSample => Boolean(sample));
+
+  const summary = summarizeWorkspaceAICost(samples, workspaceId);
+  return {
+    ...summary,
+    evidence: 'estimated_from_tokens',
+    basis: 'estimated_from_tokens',
+    disclaimer: AI_COST_DISCLAIMER,
+    sampleCount: samples.length,
+  };
 }
 
 export function getWorkspaceMeteringSummary(

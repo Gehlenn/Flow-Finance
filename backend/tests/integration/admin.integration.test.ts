@@ -8,6 +8,7 @@ import { resetSaasStoreForTests } from '../../src/utils/saasStore';
 vi.mock('../../src/config/database', () => ({
   query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
   testConnection: vi.fn().mockResolvedValue(false),
+  hasDatabaseConfig: vi.fn().mockReturnValue(false),
   checkDatabaseHealth: vi.fn().mockResolvedValue(false),
   closePool: vi.fn().mockResolvedValue(undefined),
   pool: {
@@ -131,6 +132,24 @@ describe('Admin API', () => {
     const ownerUserId = 'owner-admin-metering';
     const workspaceId = await createProWorkspace(ownerUserId);
 
+    await request(app)
+      .post('/api/saas/usage/increment')
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .set('x-workspace-id', workspaceId)
+      .send({
+        resource: 'aiQueries',
+        amount: 1,
+        metadata: {
+          aiUsage: {
+            provider: 'openai',
+            model: 'gpt-4o-mini',
+            inputTokens: 1_000_000,
+            outputTokens: 1_000_000,
+            tokensUsed: 2_000_000,
+          },
+        },
+      });
+
     const res = await request(app)
       .get('/api/admin/usage-metering?from=2026-01-01T00:00:00.000Z&to=2026-12-31T23:59:59.999Z')
       .set('Authorization', createTestAuthorizationHeader(ownerUserId))
@@ -138,10 +157,23 @@ describe('Admin API', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.workspaceId).toBe(workspaceId);
+    expect(res.body.workspacePersistence).toEqual({
+      status: 'healthy',
+      configured: false,
+      required: false,
+      durable: false,
+      mode: 'memory',
+      reason: 'no-durable-store-configured',
+    });
     expect(res.body.summary).toBeDefined();
     expect(res.body.summary.totals).toBeDefined();
     expect(res.body.summary.totals.bankConnections).toBeGreaterThanOrEqual(0);
+    expect(res.body.summary.aiCost).toBeDefined();
+    expect(res.body.summary.aiCost.evidence).toBe('estimated_from_tokens');
     expect(Array.isArray(res.body.events)).toBe(true);
+    const aiEvent = res.body.events.find((event: { resource?: string }) => event.resource === 'aiQueries');
+    expect(aiEvent?.aiCost).toBeDefined();
+    expect(aiEvent?.aiCost.pricingEvidence).toBe('provider_usage_tokens');
     expect(typeof res.body.nextCursor === 'string' || res.body.nextCursor === null).toBe(true);
   }, 30000);
 

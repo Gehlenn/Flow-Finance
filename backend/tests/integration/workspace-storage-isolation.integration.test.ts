@@ -9,6 +9,7 @@ import { getAuditEvents, resetAuditLogForTests } from '../../src/services/admin/
 vi.mock('../../src/config/database', () => ({
   query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
   testConnection: vi.fn().mockResolvedValue(false),
+  hasDatabaseConfig: vi.fn().mockReturnValue(false),
   checkDatabaseHealth: vi.fn().mockResolvedValue(false),
   closePool: vi.fn().mockResolvedValue(undefined),
   pool: {
@@ -71,7 +72,7 @@ describe('Workspace storage isolation', () => {
     process.env.DISABLE_LEGACY_STATE_BLOBS = 'true';
     process.env.FEATURE_OPEN_FINANCE = 'true';
     ({ default: app } = await import('../../src/index'));
-  });
+  }, 30000);
 
   beforeEach(() => {
     process.env.POSTGRES_STATE_STORE_ENABLED = 'false';
@@ -82,6 +83,29 @@ describe('Workspace storage isolation', () => {
     resetWorkspaceStoreForTests();
     resetCloudSyncStoreForTests();
     resetAuditLogForTests();
+  });
+
+  it('fails closed on POST /api/workspace in production without a durable backend', async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+
+    try {
+      const ownerUserId = 'owner-workspace-production';
+
+      const res = await request(app)
+        .post('/api/workspace')
+        .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+        .send({ name: 'Workspace Production' });
+
+      expect(res.status).toBe(503);
+      expect(res.body.message).toBe('Persistencia duravel de workspace indisponivel');
+    } finally {
+      if (originalNodeEnv === undefined) {
+        delete process.env.NODE_ENV;
+      } else {
+        process.env.NODE_ENV = originalNodeEnv;
+      }
+    }
   });
 
   it('isolates sync state by workspace for the same user', async () => {
@@ -204,6 +228,84 @@ describe('Workspace storage isolation', () => {
     expect(firstRead.body.workspaceId).toBe(firstWorkspace.body.workspaceId);
     expect(secondRead.body.workspaceId).toBe(secondWorkspace.body.workspaceId);
   }, 15000);
+
+  it('keeps sync and usage isolated under artificial multi-workspace load', async () => {
+    const ownerUserId = 'owner-artificial-load';
+    const workspaceCount = 8;
+    const workspaces: Array<{ workspaceId: string; tenantId: string }> = [];
+
+    for (let index = 0; index < workspaceCount; index++) {
+      const response = await request(app)
+        .post('/api/tenant')
+        .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+        .send({ name: `Load Workspace ${index + 1}` });
+
+      expect(response.status).toBe(201);
+      workspaces.push({
+        workspaceId: response.body.workspaceId,
+        tenantId: response.body.tenantId,
+      });
+    }
+
+    for (const [index, workspace] of workspaces.entries()) {
+      const goalId = `goal_load_${index + 1}`;
+
+      const syncResponse = await request(app)
+        .post('/api/sync/push')
+        .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+        .set('x-workspace-id', workspace.workspaceId)
+        .send({
+          entity: 'goals',
+          items: [{
+            id: goalId,
+            updatedAt: `2026-04-${String(index + 1).padStart(2, '0')}T10:00:00.000Z`,
+            payload: { target: (index + 1) * 1000 },
+          }],
+        });
+
+      const usageResponse = await request(app)
+        .put('/api/saas/usage')
+        .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+        .set('x-workspace-id', workspace.workspaceId)
+        .send({
+          usage: {
+            '2026-04': {
+              transactions: index + 1,
+              aiQueries: (index + 1) * 2,
+              bankConnections: 0,
+            },
+          },
+        });
+
+      expect(syncResponse.status).toBe(200);
+      expect(usageResponse.status).toBe(200);
+    }
+
+    for (const [index, workspace] of workspaces.entries()) {
+      const pullResponse = await request(app)
+        .get('/api/sync/pull')
+        .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+        .set('x-workspace-id', workspace.workspaceId);
+
+      const usageRead = await request(app)
+        .get('/api/saas/usage')
+        .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+        .set('x-workspace-id', workspace.workspaceId);
+
+      expect(pullResponse.status).toBe(200);
+      expect(usageRead.status).toBe(200);
+      expect(pullResponse.body.entities.goals).toHaveLength(1);
+      expect(pullResponse.body.entities.goals[0].id).toBe(`goal_load_${index + 1}`);
+      expect(pullResponse.body.entities.goals[0].payload.workspace_id).toBe(workspace.workspaceId);
+      expect(pullResponse.body.entities.goals[0].payload.tenant_id).toBe(workspace.tenantId);
+      expect(usageRead.body.workspaceId).toBe(workspace.workspaceId);
+      expect(usageRead.body.usage['2026-04'].transactions).toBe(index + 1);
+      expect(usageRead.body.usage['2026-04'].aiQueries).toBe((index + 1) * 2);
+    }
+
+    const goalLogs = getAuditEvents({ action: 'goal.created', userId: ownerUserId });
+    expect(new Set(goalLogs.map((entry) => entry.workspaceId)).size).toBe(workspaceCount);
+  }, 30000);
 });
 
 

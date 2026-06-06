@@ -2,6 +2,7 @@ import env from './env';
 import logger from './logger';
 import * as openai from './openai';
 import * as gemini from './gemini';
+import { estimateAICost } from '../services/ai/aiCostMonitor';
 
 /**
  * AI Provider Wrapper with automatic fallback and structured observability
@@ -12,6 +13,8 @@ type AIRequestContext = {
   operation?: string;
   requestId?: string;
   source?: string;
+  workspaceId?: string | null;
+  userId?: string;
 };
 
 type AIProviderOptions = {
@@ -23,6 +26,22 @@ type AIProviderError = {
   status?: number;
   code?: string;
   message?: string;
+};
+
+export type AIProviderResponse = {
+  content: string;
+  provider: 'openai' | 'gemini';
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  tokensUsed: number;
+  latencyMs?: number;
+};
+
+export type AIResponseEnvelope = AIProviderResponse & {
+  workspaceId: string | null;
+  estimatedCostUsd: number;
+  costEvidence: string;
 };
 
 function isAIProviderError(err: unknown): err is AIProviderError {
@@ -38,7 +57,11 @@ function categorizeError(err: unknown): string {
   return 'unknown_error';
 }
 
-async function callProvider(provider: string, prompt: string, options?: AIProviderOptions): Promise<string> {
+async function callProvider(
+  provider: string,
+  prompt: string,
+  options?: AIProviderOptions
+): Promise<AIProviderResponse> {
   if (provider === 'gemini') {
     return gemini.generateContent(prompt, options);
   }
@@ -49,7 +72,7 @@ export async function generateContent(
   prompt: string,
   options?: AIProviderOptions,
   context?: AIRequestContext
-): Promise<string> {
+): Promise<AIResponseEnvelope> {
   const hasOpenAI = !!env.OPENAI_API_KEY;
   const hasGemini = !!env.GEMINI_API_KEY;
   const primary = env.AI_PRIMARY_PROVIDER || 'gemini';
@@ -67,6 +90,7 @@ export async function generateContent(
       event: 'ai_request_started',
       operation: context?.operation,
       requestId: context?.requestId,
+      workspaceId: context?.workspaceId ?? null,
       source: context?.source,
       responseMimeType: options?.responseMimeType,
       providerPlan,
@@ -86,11 +110,53 @@ export async function generateContent(
   if (primaryAvailable) {
     try {
       const result = await callProvider(primary, prompt, options);
+      const costEstimate = estimateAICost({
+        workspaceId: context?.workspaceId ?? null,
+        provider: result.provider,
+        model: result.model,
+        inputTokens: result.inputTokens,
+        outputTokens: result.outputTokens,
+        tokensUsed: result.tokensUsed,
+      });
       logger.info(
-        { event: 'ai_provider_success', provider: primary, operation: context?.operation, requestId: context?.requestId },
+        {
+          event: 'ai_provider_success',
+          provider: primary,
+          operation: context?.operation,
+          requestId: context?.requestId,
+          workspaceId: context?.workspaceId ?? null,
+          model: result.model,
+          tokensUsed: result.tokensUsed,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+          estimatedCostUsd: costEstimate.estimatedCostUsd,
+          costEvidence: costEstimate.evidence,
+        },
         `${primary} response received successfully`,
       );
-      return result;
+      logger.info(
+        {
+          event: 'ai_response_cost_estimated',
+          provider: result.provider,
+          model: result.model,
+          operation: context?.operation,
+          requestId: context?.requestId,
+          workspaceId: context?.workspaceId ?? null,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+          tokensUsed: result.tokensUsed,
+          estimatedCostUsd: costEstimate.estimatedCostUsd,
+          costEvidence: costEstimate.evidence,
+        },
+        'AI response cost estimated',
+      );
+      const envelope = {
+        ...result,
+        workspaceId: context?.workspaceId ?? null,
+        estimatedCostUsd: costEstimate.estimatedCostUsd,
+        costEvidence: costEstimate.evidence,
+      };
+      return envelope;
     } catch (err: unknown) {
       const failureCategory = categorizeError(err);
       const errObj = isAIProviderError(err) ? err : {};
@@ -107,11 +173,53 @@ export async function generateContent(
         );
         try {
           const result = await callProvider(fallback, prompt, options);
+          const costEstimate = estimateAICost({
+            workspaceId: context?.workspaceId ?? null,
+            provider: result.provider,
+            model: result.model,
+            inputTokens: result.inputTokens,
+            outputTokens: result.outputTokens,
+            tokensUsed: result.tokensUsed,
+          });
           logger.info(
-            { event: 'ai_provider_fallback_success', provider: fallback, operation: context?.operation, requestId: context?.requestId },
+            {
+              event: 'ai_provider_fallback_success',
+              provider: fallback,
+              operation: context?.operation,
+              requestId: context?.requestId,
+              workspaceId: context?.workspaceId ?? null,
+              model: result.model,
+              tokensUsed: result.tokensUsed,
+              inputTokens: result.inputTokens,
+              outputTokens: result.outputTokens,
+              estimatedCostUsd: costEstimate.estimatedCostUsd,
+              costEvidence: costEstimate.evidence,
+            },
             `${fallback} response received successfully`,
           );
-          return result;
+          logger.info(
+            {
+              event: 'ai_response_cost_estimated',
+              provider: result.provider,
+              model: result.model,
+              operation: context?.operation,
+              requestId: context?.requestId,
+              workspaceId: context?.workspaceId ?? null,
+              inputTokens: result.inputTokens,
+              outputTokens: result.outputTokens,
+              tokensUsed: result.tokensUsed,
+              estimatedCostUsd: costEstimate.estimatedCostUsd,
+              costEvidence: costEstimate.evidence,
+            },
+            'AI response cost estimated',
+          );
+          const envelope = {
+            ...result,
+            workspaceId: context?.workspaceId ?? null,
+            estimatedCostUsd: costEstimate.estimatedCostUsd,
+            costEvidence: costEstimate.evidence,
+          };
+          return envelope;
         } catch (fallbackErr: unknown) {
           const fallbackErrObj = isAIProviderError(fallbackErr) ? fallbackErr : {};
           logger.error(
@@ -129,11 +237,53 @@ export async function generateContent(
   if (fallbackAvailable) {
     try {
       const result = await callProvider(fallback, prompt, options);
+      const costEstimate = estimateAICost({
+        workspaceId: context?.workspaceId ?? null,
+        provider: result.provider,
+        model: result.model,
+        inputTokens: result.inputTokens,
+        outputTokens: result.outputTokens,
+        tokensUsed: result.tokensUsed,
+      });
       logger.info(
-        { event: 'ai_provider_success', provider: fallback, operation: context?.operation, requestId: context?.requestId },
+        {
+          event: 'ai_provider_success',
+          provider: fallback,
+          operation: context?.operation,
+          requestId: context?.requestId,
+          workspaceId: context?.workspaceId ?? null,
+          model: result.model,
+          tokensUsed: result.tokensUsed,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+          estimatedCostUsd: costEstimate.estimatedCostUsd,
+          costEvidence: costEstimate.evidence,
+        },
         `${fallback} response received successfully`,
       );
-      return result;
+      logger.info(
+        {
+          event: 'ai_response_cost_estimated',
+          provider: result.provider,
+          model: result.model,
+          operation: context?.operation,
+          requestId: context?.requestId,
+          workspaceId: context?.workspaceId ?? null,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+          tokensUsed: result.tokensUsed,
+          estimatedCostUsd: costEstimate.estimatedCostUsd,
+          costEvidence: costEstimate.evidence,
+        },
+        'AI response cost estimated',
+      );
+      const envelope = {
+        ...result,
+        workspaceId: context?.workspaceId ?? null,
+        estimatedCostUsd: costEstimate.estimatedCostUsd,
+        costEvidence: costEstimate.evidence,
+      };
+      return envelope;
     } catch (err: unknown) {
       const failureCategory = categorizeError(err);
       const errObj = isAIProviderError(err) ? err : {};

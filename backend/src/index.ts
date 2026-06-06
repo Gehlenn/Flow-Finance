@@ -5,7 +5,7 @@ import 'dotenv/config';
 
 import logger from './config/logger';
 import { initSentry, isSentryConfigured, sentryRequestHandler, sentryErrorHandler, addBreadcrumb } from './config/sentry';
-import { errorHandler } from './middleware/errorHandler';
+import { asyncHandler, errorHandler } from './middleware/errorHandler';
 import { validateJsonMiddleware } from './middleware/jsonValidation';
 import { apiLimiter } from './middleware/rateLimit';
 import { requestContextMiddleware } from './middleware/requestContext';
@@ -36,6 +36,7 @@ import {
   initializePersistenceStores,
   initializePersistenceStoresForServerlessColdStart,
 } from './bootstrap/runtimeInitialization';
+import { getWorkspacePersistenceHealthCheck } from './services/admin/workspaceStore';
 
 // ─── INITIALIZATION ──────────────────────────────────────────────────────────
 
@@ -143,6 +144,9 @@ interface HealthCheckResult {
   latency?: number;
   configured?: boolean;
   required?: boolean;
+  durable?: boolean;
+  mode?: string;
+  reason?: string;
 }
 
 // Health check with dependency verification
@@ -174,6 +178,16 @@ app.get('/health', async (req: Request, res: Response) => {
   } else {
     checks.database = { status: 'healthy', configured: false, required: false };
   }
+
+  const workspacePersistence = await getWorkspacePersistenceHealthCheck();
+  checks.workspacePersistence = {
+    status: workspacePersistence.status,
+    configured: workspacePersistence.configured,
+    required: workspacePersistence.required,
+    durable: workspacePersistence.durable,
+    mode: workspacePersistence.mode,
+    reason: workspacePersistence.reason,
+  };
 
   // Check Redis (if configured)
   if (process.env.REDIS_URL) {
@@ -218,7 +232,7 @@ app.get('/health', async (req: Request, res: Response) => {
   };
 
   const isHealthy = Object.values(checks).every((check) => {
-    if (check.required === false || check.configured === false) {
+    if (check.required === false) {
       return true;
     }
 
@@ -237,19 +251,22 @@ app.get('/health', async (req: Request, res: Response) => {
 });
 
 // API version
-app.get('/api/version', (req: Request, res: Response) => {
+app.get('/api/version', asyncHandler(async (req: Request, res: Response) => {
   const requestContext = getRequestContext(req);
+  const workspacePersistence = await getWorkspacePersistenceHealthCheck();
   res.json({
     version: process.env.APP_VERSION || '0.9.7',
     environment: process.env.NODE_ENV || 'development',
     requestId: requestContext.requestId,
     routeScope: requestContext.routeScope,
+    workspacePersistence,
   });
-});
+}));
 
 // API health check (stable endpoint for probes)
-app.get('/api/health', (req: Request, res: Response) => {
+app.get('/api/health', asyncHandler(async (req: Request, res: Response) => {
   const requestContext = getRequestContext(req);
+  const workspacePersistence = await getWorkspacePersistenceHealthCheck();
   res.json({
     status: 'ok',
     service: 'flow-finance-api',
@@ -259,8 +276,9 @@ app.get('/api/health', (req: Request, res: Response) => {
     observability: {
       sentryConfigured: isSentryConfigured(),
     },
+    workspacePersistence,
   });
-});
+}));
 
 if (isApiDocsEnabled(process.env.NODE_ENV)) {
   app.get('/api/openapi.json', (_req: Request, res: Response) => {

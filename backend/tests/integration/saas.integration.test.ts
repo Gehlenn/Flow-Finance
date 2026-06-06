@@ -11,6 +11,7 @@ vi.mock('../../src/config/database', () => ({
   query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
   testConnection: vi.fn().mockResolvedValue(false),
   checkDatabaseHealth: vi.fn().mockResolvedValue(false),
+  hasDatabaseConfig: vi.fn().mockReturnValue(false),
   closePool: vi.fn().mockResolvedValue(undefined),
   pool: {
     query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
@@ -172,6 +173,24 @@ describe('SaaS API workspace scope', () => {
       .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .send({ name: 'Workspace Metering' });
 
+    await request(app)
+      .post('/api/saas/usage/increment')
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .set('x-workspace-id', created.body.workspaceId)
+      .send({
+        resource: 'aiQueries',
+        amount: 1,
+        metadata: {
+          aiUsage: {
+            provider: 'openai',
+            model: 'gpt-4o-mini',
+            inputTokens: 1_000_000,
+            outputTokens: 1_000_000,
+            tokensUsed: 2_000_000,
+          },
+        },
+      });
+
     const res = await request(app)
       .get('/api/saas/metering?from=2026-01-01T00:00:00.000Z&to=2026-12-31T23:59:59.999Z')
       .set('Authorization', createTestAuthorizationHeader(ownerUserId))
@@ -183,6 +202,12 @@ describe('SaaS API workspace scope', () => {
     expect(res.body.summary).toBeDefined();
     expect(res.body.summary.totals).toBeDefined();
     expect(res.body.summary.totals.bankConnections).toBeGreaterThanOrEqual(0);
+    expect(res.body.summary.aiCost).toBeDefined();
+    expect(res.body.summary.aiCost.evidence).toBe('estimated_from_tokens');
+    expect(res.body.summary.aiCost.sampleCount).toBeGreaterThanOrEqual(1);
     expect(Array.isArray(res.body.events)).toBe(true);
+    const aiEvent = res.body.events.find((event: { resource?: string }) => event.resource === 'aiQueries');
+    expect(aiEvent?.aiCost).toBeDefined();
+    expect(aiEvent?.aiCost.basis).toBe('estimated_from_tokens');
   }, 15000);
 });

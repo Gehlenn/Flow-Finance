@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useCallback, useState } from 'react';
 import { Loader2, Activity } from 'lucide-react';
 import { Account } from '../models/Account';
-import { Alert, Goal, Reminder, Transaction } from '../types';
+import { Alert, Goal, Receivable, Reminder, Transaction } from '../types';
 import { FinancialLeak } from '../src/ai/leakDetector';
 import { FinancialReport } from '../src/finance/reportEngine';
 import type { WorkspaceRole } from '../src/services/workspaceSession';
@@ -68,6 +68,58 @@ export type Tab =
   | 'analytics'
   | 'performance';
 
+const URL_TABS = new Set<Tab>([
+  'dashboard',
+  'history',
+  'assistant',
+  'flow',
+  'settings',
+  'workspaceadmin',
+  'workspaceaudit',
+  'accounts',
+  'insights',
+  'cfo',
+  'goals',
+  'import',
+  'aicontrol',
+  'analytics',
+  'performance',
+]);
+
+function isUrlTab(value: string | null): value is Tab {
+  return Boolean(value) && URL_TABS.has(value as Tab);
+}
+
+function readTabFromLocation(): Tab {
+  if (typeof window === 'undefined' || window.location.pathname !== '/') {
+    return 'dashboard';
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const candidate = params.get('tab');
+  return isUrlTab(candidate) ? candidate : 'dashboard';
+}
+
+function syncTabToLocation(tab: string): void {
+  if (typeof window === 'undefined' || window.location.pathname !== '/' || !isUrlTab(tab)) {
+    return;
+  }
+
+  const url = new URL(window.location.href);
+
+  if (tab === 'dashboard') {
+    url.searchParams.delete('tab');
+  } else {
+    url.searchParams.set('tab', tab);
+  }
+
+  const next = `${url.pathname}${url.search}${url.hash}`;
+  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (next !== current) {
+    window.history.replaceState({}, '', next);
+  }
+}
+
 export interface NavigationRenderContext {
   userId: string | null;
   userName: string | null;
@@ -86,11 +138,13 @@ export interface NavigationRenderContext {
   accounts: Account[];
   alerts: Alert[];
   reminders: Reminder[];
+  receivables: Receivable[];
   goals: Goal[];
   latestLeaks?: FinancialLeak[];
   latestReport?: FinancialReport | null;
   onToggleHideValues: () => void;
   onNavigateToTab: (tab: Tab) => void;
+  onOpenEntryCapture?: () => void;
   onUpdateProfileName: (name: string) => void;
   onThemeChange: (theme: 'light' | 'dark') => void;
   onLogout: () => void | Promise<void>;
@@ -123,7 +177,11 @@ function LoadingFallback() {
 }
 
 export function useNavigationTabs() {
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [activeTab, setActiveTabState] = useState<Tab | string>(() => readTabFromLocation());
+  const setActiveTab = useCallback((tab: Tab) => {
+    setActiveTabState(tab);
+    syncTabToLocation(tab);
+  }, []);
 
   const renderActiveTab = useCallback((context: NavigationRenderContext) => {
     switch (activeTab) {
@@ -132,18 +190,25 @@ export function useNavigationTabs() {
           <Suspense fallback={<LoadingFallback />}>
             <Dashboard
               userName={context.userName}
+              userId={context.userId}
               userEmail={context.userEmail}
+              activeWorkspaceId={context.activeWorkspaceId}
               activeWorkspaceName={context.activeWorkspaceName}
               activeWorkspacePlan={context.activeWorkspacePlan}
               transactions={context.transactions}
               accounts={context.accounts}
               alerts={context.alerts}
               reminders={context.reminders}
+              receivables={context.receivables}
               hideValues={context.hideValues}
+              onCreateAccount={context.onCreateAccount}
+              onAddTransactions={context.onAddTransactions}
+              onAddReminder={context.onAddReminder}
               onNavigateToInsights={() => context.onNavigateToTab('insights')}
               onNavigateToHistory={() => context.onNavigateToTab('history')}
               onNavigateToFlow={() => context.onNavigateToTab('flow')}
               onNavigateToSettings={() => context.onNavigateToTab('settings')}
+              onOpenEntryCapture={context.onOpenEntryCapture}
             />
           </Suspense>
         );
@@ -365,7 +430,7 @@ export function useNavigationTabs() {
   }, [activeTab]);
 
   return {
-    activeTab,
+    activeTab: activeTab as Tab,
     setActiveTab,
     renderActiveTab,
   };

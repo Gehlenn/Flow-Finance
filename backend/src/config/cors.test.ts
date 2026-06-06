@@ -60,6 +60,18 @@ describe('cors config', () => {
     expect(callback).toHaveBeenCalledWith(null, false);
   });
 
+  it('permite headers de tracing do Sentry no preflight', () => {
+    const options = createCorsOptions({
+      nodeEnv: 'production',
+      allowedOrigins: 'https://app.flow-finance.com',
+    });
+
+    expect(options.allowedHeaders).toEqual(expect.arrayContaining([
+      'sentry-trace',
+      'baggage',
+    ]));
+  });
+
   it('registra aviso quando a origem informada e malformada', () => {
     const allowedOrigins = resolveAllowedOrigins({
       nodeEnv: 'development',

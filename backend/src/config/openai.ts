@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import env from './env';
 import logger from './logger';
+import type { AIProviderResponse } from './ai';
 
 let client: OpenAI | null = null;
 
@@ -34,8 +35,9 @@ export function getOpenAI(): OpenAI {
 export async function generateContent(
   prompt: string,
   options?: { responseMimeType?: string; responseSchema?: unknown }
-): Promise<string> {
+): Promise<AIProviderResponse> {
   try {
+    const startTime = Date.now();
     logger.debug({ model: env.OPENAI_MODEL, promptLength: prompt.length }, 'Initializing OpenAI client');
     const openai = getOpenAI();
     
@@ -49,10 +51,32 @@ export async function generateContent(
         response_format: { type: 'json_object' }
       })
     });
-    
     const content = resp.choices[0]?.message?.content || '';
-    logger.info({ resultLength: content.length, model: env.OPENAI_MODEL }, 'OpenAI response received successfully');
-    return content;
+    const latencyMs = Date.now() - startTime;
+    const inputTokens = resp.usage?.prompt_tokens ?? 0;
+    const outputTokens = resp.usage?.completion_tokens ?? 0;
+    const tokensUsed = resp.usage?.total_tokens ?? inputTokens + outputTokens;
+
+    logger.info(
+      {
+        resultLength: content.length,
+        model: env.OPENAI_MODEL,
+        inputTokens,
+        outputTokens,
+        tokensUsed,
+        latencyMs,
+      },
+      'OpenAI response received successfully'
+    );
+    return {
+      content,
+      provider: 'openai',
+      model: env.OPENAI_MODEL || 'gpt-4o-mini',
+      inputTokens,
+      outputTokens,
+      tokensUsed,
+      latencyMs,
+    };
   } catch (error: unknown) {
     logger.error({ 
       error: error instanceof Error ? error.message : String(error),

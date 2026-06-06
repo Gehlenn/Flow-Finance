@@ -11,7 +11,7 @@ vi.mock('../../src/config/logger', () => ({
 }));
 
 import { AppError } from '../../src/middleware/errorHandler';
-import { parseStripeWebhookEvent, verifyStripeWebhookSignature } from '../../src/services/saas/stripeService';
+import { parseStripeWebhookEvent, verifyStripeWebhookSignature, verifyStripeWebhookSignatureAt } from '../../src/services/saas/stripeService';
 
 describe('stripeService', () => {
   beforeEach(() => {
@@ -66,7 +66,7 @@ describe('stripeService', () => {
     );
 
     stripeMocks.mockWarn.mockClear();
-    expect(verifyStripeWebhookSignature('raw-body', 't=123,v1=deadbeef')).toBe(false);
+    expect(verifyStripeWebhookSignatureAt('raw-body', 't=123,v1=deadbeef', 123000)).toBe(false);
     expect(stripeMocks.mockWarn).toHaveBeenCalledWith(
       expect.objectContaining({
         rawLength: 8,
@@ -77,7 +77,7 @@ describe('stripeService', () => {
     );
 
     stripeMocks.mockWarn.mockClear();
-    expect(verifyStripeWebhookSignature('raw-body', `t=123,v1=${'a'.repeat(64)}`)).toBe(false);
+    expect(verifyStripeWebhookSignatureAt('raw-body', `t=123,v1=${'a'.repeat(64)}`, 123000)).toBe(false);
     expect(stripeMocks.mockWarn).toHaveBeenCalledWith(
       expect.objectContaining({
         rawLength: 8,

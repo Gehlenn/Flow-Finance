@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI, ResponseSchema } from '@google/generative-ai';
 import env from './env';
 import logger from './logger';
+import type { AIProviderResponse } from './ai';
 
 let genAI: GoogleGenerativeAI | null = null;
 
@@ -54,13 +55,14 @@ export async function generateContent(
     responseMimeType?: string;
     responseSchema?: ResponseSchema;
   }
-): Promise<string> {
+): Promise<AIProviderResponse> {
   const client = getGemini();
   const candidates = getCandidateModels();
   let lastError: unknown;
 
   for (const modelName of candidates) {
     try {
+      const startTime = Date.now();
       logger.debug({ promptLength: prompt.length, model: modelName }, 'Initializing Gemini model');
       const model = client.getGenerativeModel({ model: modelName });
 
@@ -78,8 +80,38 @@ export async function generateContent(
       }
 
       const result = response.response.text();
-      logger.info({ resultLength: result?.length || 0, model: modelName }, 'Gemini response received successfully');
-      return result;
+      const usageMetadata = (response.response as {
+        usageMetadata?: {
+          promptTokenCount?: number;
+          candidatesTokenCount?: number;
+          totalTokenCount?: number;
+        };
+      }).usageMetadata;
+      const inputTokens = usageMetadata?.promptTokenCount ?? 0;
+      const outputTokens = usageMetadata?.candidatesTokenCount ?? 0;
+      const tokensUsed = usageMetadata?.totalTokenCount ?? inputTokens + outputTokens;
+      const latencyMs = Date.now() - startTime;
+
+      logger.info(
+        {
+          resultLength: result?.length || 0,
+          model: modelName,
+          inputTokens,
+          outputTokens,
+          tokensUsed,
+          latencyMs,
+        },
+        'Gemini response received successfully',
+      );
+      return {
+        content: result,
+        provider: 'gemini',
+        model: modelName,
+        inputTokens,
+        outputTokens,
+        tokensUsed,
+        latencyMs,
+      };
     } catch (error: unknown) {
       lastError = error;
 

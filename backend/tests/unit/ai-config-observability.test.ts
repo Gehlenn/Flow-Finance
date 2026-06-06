@@ -61,26 +61,48 @@ describe('config/ai observability', () => {
     Object.assign(mocks.envMock.default, baselineEnv);
   });
 
-  it('registra tentativa, sucesso e metadados de operação', async () => {
-    mocks.geminiGenerateContentMock.mockResolvedValueOnce('{"ok":true}');
+  it('propagates provider cost metadata for the primary provider', async () => {
+    mocks.geminiGenerateContentMock.mockResolvedValueOnce({
+      content: '{"ok":true}',
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      inputTokens: 1000,
+      outputTokens: 1000,
+      tokensUsed: 2000,
+      latencyMs: 11,
+    });
 
     await expect(
       generateContent(
         'prompt de teste',
         { responseMimeType: 'application/json' },
-        { operation: 'interpret', requestId: 'req-123', source: 'aiController' }
-      )
-    ).resolves.toBe('{"ok":true}');
+        {
+          operation: 'interpret',
+          requestId: 'req-123',
+          source: 'aiController',
+          workspaceId: 'workspace-123',
+          userId: 'user-123',
+        },
+      ),
+    ).resolves.toEqual(expect.objectContaining({
+      content: '{"ok":true}',
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      workspaceId: 'workspace-123',
+      estimatedCostUsd: 0.00000375,
+      costEvidence: 'provider_usage_tokens',
+    }));
 
     expect(mocks.loggerMock.info).toHaveBeenCalledWith(
       expect.objectContaining({
         event: 'ai_request_started',
         operation: 'interpret',
         requestId: 'req-123',
+        workspaceId: 'workspace-123',
         responseMimeType: 'application/json',
         providerPlan: ['gemini', 'openai'],
       }),
-      'AI request started'
+      'AI request started',
     );
 
     expect(mocks.loggerMock.info).toHaveBeenCalledWith(
@@ -89,22 +111,51 @@ describe('config/ai observability', () => {
         provider: 'gemini',
         operation: 'interpret',
         requestId: 'req-123',
+        workspaceId: 'workspace-123',
+        estimatedCostUsd: 0.00000375,
+        costEvidence: 'provider_usage_tokens',
       }),
-      expect.stringContaining('response received successfully')
+      expect.stringContaining('response received successfully'),
+    );
+
+    expect(mocks.loggerMock.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'ai_response_cost_estimated',
+        provider: 'gemini',
+        workspaceId: 'workspace-123',
+        estimatedCostUsd: 0.00000375,
+        costEvidence: 'provider_usage_tokens',
+      }),
+      'AI response cost estimated',
     );
   });
 
-  it('registra fallback estruturado quando o provider primário falha', async () => {
+  it('propagates fallback cost metadata when the primary provider fails', async () => {
     const quotaError = Object.assign(new Error('Rate limit exceeded'), { status: 429 });
     mocks.geminiGenerateContentMock.mockRejectedValueOnce(quotaError);
-    mocks.openaiGenerateContentMock.mockResolvedValueOnce('fallback-response');
+    mocks.openaiGenerateContentMock.mockResolvedValueOnce({
+      content: 'fallback-response',
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      inputTokens: 1000,
+      outputTokens: 1000,
+      tokensUsed: 2000,
+      latencyMs: 7,
+    });
 
     await expect(
       generateContent('prompt de fallback', undefined, {
         operation: 'generate_insights_strategic',
         requestId: 'req-fallback',
-      })
-    ).resolves.toBe('fallback-response');
+        workspaceId: 'workspace-fallback',
+      }),
+    ).resolves.toEqual(expect.objectContaining({
+      content: 'fallback-response',
+      provider: 'openai',
+      workspaceId: 'workspace-fallback',
+      estimatedCostUsd: 0.00000075,
+      costEvidence: 'provider_usage_tokens',
+    }));
 
     expect(mocks.loggerMock.error).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -113,7 +164,7 @@ describe('config/ai observability', () => {
         failureCategory: 'quota_exceeded',
         requestId: 'req-fallback',
       }),
-      'Gemini failed'
+      'Gemini failed',
     );
 
     expect(mocks.loggerMock.warn).toHaveBeenCalledWith(
@@ -124,7 +175,7 @@ describe('config/ai observability', () => {
         failureCategory: 'quota_exceeded',
         requestId: 'req-fallback',
       }),
-      'Falling back from Gemini'
+      'Falling back from Gemini',
     );
 
     expect(mocks.loggerMock.info).toHaveBeenCalledWith(
@@ -132,8 +183,11 @@ describe('config/ai observability', () => {
         event: 'ai_provider_fallback_success',
         provider: 'openai',
         requestId: 'req-fallback',
+        workspaceId: 'workspace-fallback',
+        estimatedCostUsd: 0.00000075,
+        costEvidence: 'provider_usage_tokens',
       }),
-      expect.stringContaining('response received successfully')
+      expect.stringContaining('response received successfully'),
     );
   });
 
@@ -142,7 +196,7 @@ describe('config/ai observability', () => {
     mocks.envMock.default.GEMINI_API_KEY = '';
 
     await expect(
-      generateContent('prompt sem provider', undefined, { operation: 'cfo_answer', requestId: 'req-empty' })
+      generateContent('prompt sem provider', undefined, { operation: 'cfo_answer', requestId: 'req-empty' }),
     ).rejects.toThrow('No AI provider configured');
 
     expect(mocks.loggerMock.error).toHaveBeenCalledWith(
@@ -151,7 +205,7 @@ describe('config/ai observability', () => {
         failureCategory: 'no_provider_configured',
         requestId: 'req-empty',
       }),
-      'No AI provider configured. Set OPENAI_API_KEY or GEMINI_API_KEY in .env'
+      'No AI provider configured. Set OPENAI_API_KEY or GEMINI_API_KEY in .env',
     );
   });
 
@@ -166,7 +220,7 @@ describe('config/ai observability', () => {
         event: 'ai_token_estimate_fallback',
         error: 'estimate unavailable',
       }),
-      'Falling back to heuristic token estimate'
+      'Falling back to heuristic token estimate',
     );
   });
 });

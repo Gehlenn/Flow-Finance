@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { Loader2, Sparkles, TrendingUp } from 'lucide-react';
-import { createWorkspaceCheckoutSession } from '../src/saas/billingClient';
+import { buildBillingReturnUrl, createWorkspaceCheckoutSession } from '../src/saas';
 import { ensureActiveWorkspace, getCurrentWorkspaceIdentity } from '../src/services/workspaceSession';
 import { MONETIZATION_PRICING } from '../src/app/monetizationPlan';
+import { trackProductEvent } from '../src/app/productAnalytics';
 import { logWarn } from '../src/utils/logger';
 
 interface UpgradePromptCardProps {
@@ -34,21 +35,33 @@ const UpgradePromptCard: React.FC<UpgradePromptCardProps> = ({
   const handleUpgrade = async () => {
     setIsLoading(true);
     setError(null);
-
+    let checkoutSessionUrl: string | null | undefined;
     try {
       const resolvedWorkspaceId = workspaceId
         || (await ensureActiveWorkspace(getCurrentWorkspaceIdentity())).workspaceId;
       const session = await createWorkspaceCheckoutSession({
         workspaceId: resolvedWorkspaceId,
-        returnUrl: window.location.href,
+        returnUrl: buildBillingReturnUrl(),
+        source: 'upgrade_prompt',
       });
+      checkoutSessionUrl = session.url;
 
-      if (!session.url) {
+      if (!checkoutSessionUrl) {
         throw new Error('Stripe checkout session returned no URL');
       }
 
-      window.location.assign(session.url);
+      trackProductEvent('billing_checkout_redirected', {
+        source: 'upgrade_prompt',
+        plan: 'pro',
+      });
+      window.location.assign(checkoutSessionUrl);
     } catch (checkoutError) {
+      if (checkoutSessionUrl !== undefined) {
+        trackProductEvent('billing_checkout_failed', {
+          source: 'upgrade_prompt',
+          plan: 'pro',
+        });
+      }
       logWarn('[UpgradePromptCard] Failed to open Stripe checkout', {
         error: checkoutError,
         workspaceId,

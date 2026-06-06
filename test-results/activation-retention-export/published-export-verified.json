@@ -1,0 +1,15 @@
+{
+  "verified": true,
+  "date": "2026-06-05",
+  "backendUrl": "https://flow-finance-backend.vercel.app",
+  "summary": "Published activation/retention gate closed with real backend-authenticated workspace cohort export and PASS evidence artifact.",
+  "evidence": {
+    "exportArtifact": "test-results/activation-retention-export/2026-06-05T20-20-29-124Z/report.json",
+    "exportRows": "test-results/activation-retention-export/2026-06-05T20-20-29-124Z/events.jsonl",
+    "checkerArtifact": "test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.json",
+    "checkerStatus": "PASS",
+    "cohortWindowDays": 7,
+    "activationCohorts": 1,
+    "retainedCohortsWithinWindow": 1
+  }
+}

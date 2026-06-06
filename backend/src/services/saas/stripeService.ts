@@ -6,9 +6,13 @@ import {
   getLastWorkspaceForUserAsync,
   getWorkspaceAsync,
   listWorkspacesForUserAsync,
-  updateWorkspaceBilling,
+  updateWorkspaceBillingAsync,
 } from '../admin/workspaceStore';
 import { Workspace } from '../../types';
+import {
+  claimExternalEventProcessed,
+  resetExternalIdempotencyStoreForTests,
+} from '../externalIdempotencyStore';
 
 type StripeCheckoutInput = {
   userId: string;
@@ -42,6 +46,9 @@ type StripeWebhookEvent = {
     };
   };
 };
+
+const STRIPE_WEBHOOK_TOLERANCE_SECONDS = 300;
+const STRIPE_IDEMPOTENCY_SCOPE = 'stripe';
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
@@ -122,10 +129,12 @@ export async function createStripeCheckoutSession(input: StripeCheckoutInput): P
     customer_email: knownCustomer ? undefined : input.email,
     'metadata[userId]': input.userId,
     'metadata[workspaceId]': workspace.workspaceId,
+    'subscription_data[metadata][userId]': input.userId,
+    'subscription_data[metadata][workspaceId]': workspace.workspaceId,
   });
 
   if (session.customer) {
-    updateWorkspaceBilling(workspace.workspaceId, {
+    await updateWorkspaceBillingAsync(workspace.workspaceId, {
       billingCustomerId: session.customer,
     });
   }
@@ -149,6 +158,10 @@ export async function createStripePortalSession(input: StripePortalInput): Promi
 }
 
 export function verifyStripeWebhookSignature(rawBody: string, stripeSignature?: string): boolean {
+  return verifyStripeWebhookSignatureAt(rawBody, stripeSignature, Date.now());
+}
+
+export function verifyStripeWebhookSignatureAt(rawBody: string, stripeSignature: string | undefined, nowMs: number): boolean {
   const webhookSecret = getRequiredEnv('STRIPE_WEBHOOK_SECRET');
   if (!stripeSignature) {
     logger.warn({
@@ -175,6 +188,30 @@ export function verifyStripeWebhookSignature(rawBody: string, stripeSignature?: 
 
   const timestamp = timestampPart.replace('t=', '').trim();
   const signature = signaturePart.replace('v1=', '').trim();
+  const timestampSeconds = Number(timestamp);
+
+  if (!Number.isFinite(timestampSeconds)) {
+    logger.warn({
+      rawLength: rawBody.length,
+      hasSignature: true,
+      timestampLength: timestamp.length,
+      fallback: 'stripe-webhook-signature-malformed-timestamp',
+    }, '[StripeService] Malformed Stripe webhook timestamp');
+    return false;
+  }
+
+  const ageSeconds = Math.abs(Math.floor(nowMs / 1000) - timestampSeconds);
+  if (ageSeconds > STRIPE_WEBHOOK_TOLERANCE_SECONDS) {
+    logger.warn({
+      rawLength: rawBody.length,
+      hasSignature: true,
+      ageSeconds,
+      toleranceSeconds: STRIPE_WEBHOOK_TOLERANCE_SECONDS,
+      fallback: 'stripe-webhook-signature-stale',
+    }, '[StripeService] Stale Stripe webhook signature');
+    return false;
+  }
+
   const signedPayload = `${timestamp}.${rawBody}`;
   const expectedSignature = crypto.createHmac('sha256', webhookSecret).update(signedPayload).digest('hex');
 
@@ -197,6 +234,26 @@ export function verifyStripeWebhookSignature(rawBody: string, stripeSignature?: 
   return matches;
 }
 
+export async function claimStripeWebhookEvent(eventId: string | undefined): Promise<boolean> {
+  if (!eventId) {
+    logger.warn({
+      fallback: 'stripe-webhook-event-id-missing',
+    }, '[StripeService] Stripe webhook event id missing');
+    return false;
+  }
+
+  const claimed = await claimExternalEventProcessed(STRIPE_IDEMPOTENCY_SCOPE, eventId);
+  if (!claimed) {
+    logger.warn({
+      eventId,
+      fallback: 'stripe-webhook-event-duplicate',
+    }, '[StripeService] Duplicate Stripe webhook event ignored');
+    return false;
+  }
+
+  return true;
+}
+
 export function parseStripeWebhookEvent(rawBody: string): StripeWebhookEvent {
   try {
     return JSON.parse(rawBody) as StripeWebhookEvent;
@@ -209,18 +266,18 @@ export function parseStripeWebhookEvent(rawBody: string): StripeWebhookEvent {
 export async function rememberStripeCustomer(userId: string, customerId: string): Promise<void> {
   const workspace = await resolveWorkspaceForUser(userId);
   if (workspace.workspaceId && customerId) {
-    updateWorkspaceBilling(workspace.workspaceId, {
+    await updateWorkspaceBillingAsync(workspace.workspaceId, {
       billingCustomerId: customerId,
     });
   }
 }
 
-export function rememberStripeCustomerForWorkspace(workspaceId: string, customerId: string): void {
+export async function rememberStripeCustomerForWorkspace(workspaceId: string, customerId: string): Promise<void> {
   if (!workspaceId || !customerId) {
     return;
   }
 
-  updateWorkspaceBilling(workspaceId, {
+  await updateWorkspaceBillingAsync(workspaceId, {
     billingCustomerId: customerId,
   });
 }
@@ -249,5 +306,5 @@ export function getPlanFromStripeEvent(event: StripeWebhookEvent): 'free' | 'pro
 }
 
 export function resetStripeServiceForTests(): void {
-  // No-op: state is persisted in the workspace store.
+  resetExternalIdempotencyStoreForTests();
 }

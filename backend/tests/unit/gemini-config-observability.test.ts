@@ -78,6 +78,43 @@ describe('config/gemini observability', () => {
     );
   });
 
+  it('propagates token usage and cost-ready metadata for a real response', async () => {
+    mocks.generateContentMock.mockResolvedValueOnce({
+      response: {
+        text: () => '{"ok":true}',
+        usageMetadata: {
+          promptTokenCount: 1000,
+          candidatesTokenCount: 1000,
+          totalTokenCount: 2000,
+        },
+      },
+    });
+
+    const { generateContent } = await import('../../src/config/gemini');
+
+    await expect(generateContent('prompt de teste')).resolves.toEqual(
+      expect.objectContaining({
+        content: '{"ok":true}',
+        provider: 'gemini',
+        model: 'gemini-2.5-flash',
+        inputTokens: 1000,
+        outputTokens: 1000,
+        tokensUsed: 2000,
+      }),
+    );
+
+    expect(mocks.loggerMock.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resultLength: 11,
+        model: 'gemini-2.5-flash',
+        inputTokens: 1000,
+        outputTokens: 1000,
+        tokensUsed: 2000,
+      }),
+      'Gemini response received successfully',
+    );
+  });
+
   it('registra contexto quando countTokens falha em todos os modelos', async () => {
     const modelUnavailable = Object.assign(new Error('model not found'), { status: 404 });
     mocks.countTokensMock.mockRejectedValueOnce(modelUnavailable);

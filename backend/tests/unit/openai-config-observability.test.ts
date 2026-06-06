@@ -16,7 +16,20 @@ const mocks = vi.hoisted(() => {
     },
   };
 
-  return { loggerMock, envMock };
+  const createMock = vi.fn();
+  const clientMock = {
+    chat: {
+      completions: {
+        create: createMock,
+      },
+    },
+  };
+
+  const openaiCtorMock = vi.fn(function MockOpenAI(this: unknown) {
+    return clientMock;
+  });
+
+  return { loggerMock, envMock, createMock, clientMock, openaiCtorMock };
 });
 
 vi.mock('../../src/config/logger', () => ({
@@ -25,7 +38,9 @@ vi.mock('../../src/config/logger', () => ({
 
 vi.mock('../../src/config/env', () => mocks.envMock);
 
-import { initOpenAI } from '../../src/config/openai';
+vi.mock('openai', () => ({
+  default: mocks.openaiCtorMock,
+}));
 
 describe('openai config observability', () => {
   beforeEach(() => {
@@ -35,8 +50,10 @@ describe('openai config observability', () => {
     mocks.envMock.default.OPENAI_MAX_TOKENS = '4096';
   });
 
-  it('registra erro contextual quando a OPENAI_API_KEY nao esta configurada', () => {
+  it('registra erro contextual quando a OPENAI_API_KEY nao esta configurada', async () => {
     mocks.envMock.default.OPENAI_API_KEY = '';
+
+    const { initOpenAI } = await import('../../src/config/openai');
 
     expect(() => initOpenAI()).toThrow('OPENAI_API_KEY is not set');
 
@@ -46,7 +63,42 @@ describe('openai config observability', () => {
         model: 'gpt-4o-mini',
         fallback: 'openai-api-key-missing',
       }),
-      'OpenAI API key is missing'
+      'OpenAI API key is missing',
+    );
+  });
+
+  it('propagates token usage and cost-ready metadata for a real response', async () => {
+    mocks.createMock.mockResolvedValueOnce({
+      choices: [{ message: { content: '{"ok":true}' } }],
+      usage: {
+        prompt_tokens: 1000,
+        completion_tokens: 1000,
+        total_tokens: 2000,
+      },
+    });
+
+    const { generateContent } = await import('../../src/config/openai');
+
+    await expect(generateContent('prompt de teste', { responseMimeType: 'application/json' })).resolves.toEqual(
+      expect.objectContaining({
+        content: '{"ok":true}',
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+        inputTokens: 1000,
+        outputTokens: 1000,
+        tokensUsed: 2000,
+      }),
+    );
+
+    expect(mocks.loggerMock.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resultLength: 11,
+        model: 'gpt-4o-mini',
+        inputTokens: 1000,
+        outputTokens: 1000,
+        tokensUsed: 2000,
+      }),
+      'OpenAI response received successfully',
     );
   });
 });

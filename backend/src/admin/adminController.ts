@@ -1,8 +1,14 @@
 import { Request, Response } from 'express';
 import logger from '../config/logger';
-import { getWorkspaceUsersAsync } from '../services/admin/workspaceStore';
+import { getWorkspacePersistenceHealthCheck, getWorkspaceUsersAsync } from '../services/admin/workspaceStore';
 import { getAuditEvents } from '../services/admin/auditLog';
-import { getWorkspaceMeteringSummary, getWorkspaceUsageEvents, ResourceKind } from '../utils/saasStore';
+import {
+  enrichWorkspaceUsageEventsWithAICost,
+  getWorkspaceAICostSummaryFromEvents,
+  getWorkspaceMeteringSummary,
+  getWorkspaceUsageEvents,
+  ResourceKind,
+} from '../utils/saasStore';
 import { AppError, asyncHandler } from '../middleware/errorHandler';
 import { parseSafeLimit } from '../utils/jsonHelpers';
 import {
@@ -73,6 +79,10 @@ export const listUsageMetering = asyncHandler(async (req: Request, res: Response
     limit: parseSafeLimit(req.query.limit, 100),
   };
 
+  const summaryEvents = isPostgresStateStoreEnabled()
+    ? await queryWorkspaceUsageEvents(workspaceId, filters)
+    : getWorkspaceUsageEvents(workspaceId, filters);
+
   const summary = isPostgresStateStoreEnabled()
     ? await queryWorkspaceMeteringSummary(workspaceId, filters)
     : getWorkspaceMeteringSummary(workspaceId, filters);
@@ -82,12 +92,17 @@ export const listUsageMetering = asyncHandler(async (req: Request, res: Response
     : getWorkspaceUsageEvents(workspaceId, eventFilters);
 
   const events = paginateByCursor(sourceEvents, typeof req.query.cursor === 'string' ? req.query.cursor : undefined);
+  const workspacePersistence = await getWorkspacePersistenceHealthCheck();
 
   res.json({
     workspaceId,
     filters,
-    summary,
-    events,
+    workspacePersistence,
+    summary: {
+      ...summary,
+      aiCost: getWorkspaceAICostSummaryFromEvents(workspaceId, summaryEvents),
+    },
+    events: enrichWorkspaceUsageEventsWithAICost(workspaceId, events),
     nextCursor: events.length > 0 ? buildCursor(events[events.length - 1].at, events[events.length - 1].id) : null,
   });
 });
@@ -168,6 +183,9 @@ export const exportUsageMetering = asyncHandler(async (req: Request, res: Respon
   const events = isPostgresStateStoreEnabled()
     ? await queryWorkspaceUsageEvents(workspaceId, eventFilters)
     : getWorkspaceUsageEvents(workspaceId, eventFilters);
+  const allEvents = isPostgresStateStoreEnabled()
+    ? await queryWorkspaceUsageEvents(workspaceId, filters)
+    : getWorkspaceUsageEvents(workspaceId, filters);
 
   const format = req.query.format === 'csv' ? 'csv' : 'json';
   const fileName = `usage-metering-${workspaceId}.${format}`;
@@ -175,19 +193,31 @@ export const exportUsageMetering = asyncHandler(async (req: Request, res: Respon
   if (format === 'csv') {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    res.send(toCsv(events.map((event) => ({
+    res.send(toCsv(enrichWorkspaceUsageEventsWithAICost(workspaceId, events).map((event) => ({
       id: event.id,
       at: event.at,
       userId: event.userId || '',
       resource: event.resource,
       amount: event.amount,
       metadata: JSON.stringify(event.metadata || {}),
+      aiCostEstimatedUsd: event.aiCost?.estimatedCostUsd ?? '',
+      aiCostBasis: event.aiCost?.basis ?? '',
+      aiCostPricingEvidence: event.aiCost?.pricingEvidence ?? '',
+      aiCostDisclaimer: event.aiCost?.disclaimer ?? '',
     }))));
     return;
   }
 
   res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-  res.json({ workspaceId, filters, summary, events });
+  res.json({
+    workspaceId,
+    filters,
+    summary: {
+      ...summary,
+      aiCost: getWorkspaceAICostSummaryFromEvents(workspaceId, allEvents),
+    },
+    events: enrichWorkspaceUsageEventsWithAICost(workspaceId, events),
+  });
 });
 
 export function escapeCsvCell(value: unknown): string {

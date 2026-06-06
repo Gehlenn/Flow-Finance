@@ -86,6 +86,15 @@ export function ensureStoreDirExists(filePath: string): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
 }
 
+export function areLegacyStateBlobsDisabled(): boolean {
+  return String(process.env.DISABLE_LEGACY_STATE_BLOBS || '').toLowerCase() === 'true';
+}
+
+export function persistLegacyWorkspaceStoreState(filePath: string, state: WorkspaceStoreState): void {
+  ensureStoreDirExists(filePath);
+  fs.writeFileSync(filePath, JSON.stringify(state, null, 2), 'utf8');
+}
+
 export function normalizeWorkspaceStoreState(state: Partial<WorkspaceStoreState>): WorkspaceStoreState {
   return {
     tenants: Array.isArray(state.tenants) ? state.tenants.map((tenant) => normalizeTenant(tenant)) : [],

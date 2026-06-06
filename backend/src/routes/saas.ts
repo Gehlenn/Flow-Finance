@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth';
+import { authz } from '../middleware/authz';
 import { parseSafeLimit } from '../utils/jsonHelpers';
 import { validate } from '../middleware/validate';
+import { workspaceContextMiddleware } from '../middleware/workspaceContext';
 import {
   BillingHookSchema,
   UsageIncrementSchema,
@@ -15,6 +17,8 @@ import logger from '../config/logger';
 import { billingService } from '../billing/billingService';
 import {
   getBillingHooksForWorkspace,
+  enrichWorkspaceUsageEventsWithAICost,
+  getWorkspaceAICostSummaryFromEvents,
   getWorkspaceBillingHookCount,
   getWorkspaceMeteringSummary,
   getWorkspaceUsage,
@@ -37,6 +41,7 @@ import {
   rememberStripeCustomer,
   rememberStripeCustomerForWorkspace,
   verifyStripeWebhookSignature,
+  claimStripeWebhookEvent,
 } from '../services/saas/stripeService';
 import { getWorkspaceAsync, isUserInWorkspaceAsync } from '../services/admin/workspaceStore';
 import { AppError, asyncHandler } from '../middleware/errorHandler';
@@ -76,6 +81,11 @@ router.post('/stripe/webhook', asyncHandler(async (req: Request, res: Response) 
   }
 
   const event = parseStripeWebhookEvent(rawBody);
+  if (!await claimStripeWebhookEvent(event.id)) {
+    res.json({ received: true, duplicate: true });
+    return;
+  }
+
   const customerId = event.data.object.customer;
   const userId = event.data.object.metadata?.userId;
   const workspaceIdFromMetadata = event.data.object.metadata?.workspaceId;
@@ -89,7 +99,7 @@ router.post('/stripe/webhook', asyncHandler(async (req: Request, res: Response) 
   const workspaceId = workspaceIdFromMetadata || resolvedWorkspace?.workspaceId;
 
   if (workspaceId && customerId) {
-    rememberStripeCustomerForWorkspace(workspaceId, customerId);
+    await rememberStripeCustomerForWorkspace(workspaceId, customerId);
   } else if (userId && customerId) {
     await rememberStripeCustomer(userId, customerId);
   }
@@ -113,13 +123,14 @@ router.post('/stripe/webhook', asyncHandler(async (req: Request, res: Response) 
 }));
 
 router.use(authMiddleware);
+router.use(workspaceContextMiddleware);
 
-router.get('/usage', asyncHandler(async (req: Request, res: Response) => {
+router.get('/usage', authz('billing:read'), asyncHandler(async (req: Request, res: Response) => {
   const workspaceId = await requireAuthorizedWorkspace(req);
   res.json({ scope: 'workspace', workspaceId, usage: getWorkspaceUsage(workspaceId) });
 }));
 
-router.put('/usage', validate(UsageUpsertSchema), asyncHandler(async (req: Request, res: Response) => {
+router.put('/usage', authz('billing:manage'), validate(UsageUpsertSchema), asyncHandler(async (req: Request, res: Response) => {
   const payload = req.body as {
     usage: Record<string, { transactions: number; aiQueries: number; bankConnections: number }>;
   };
@@ -129,7 +140,7 @@ router.put('/usage', validate(UsageUpsertSchema), asyncHandler(async (req: Reque
   res.json({ success: true, scope: 'workspace', workspaceId });
 }));
 
-router.post('/usage/increment', validate(UsageIncrementSchema), asyncHandler(async (req: Request, res: Response) => {
+router.post('/usage/increment', authz('billing:manage'), validate(UsageIncrementSchema), asyncHandler(async (req: Request, res: Response) => {
   const payload = req.body as {
     resource: 'transactions' | 'aiQueries' | 'bankConnections';
     amount?: number;
@@ -154,19 +165,19 @@ router.post('/usage/increment', validate(UsageIncrementSchema), asyncHandler(asy
   });
 }));
 
-router.post('/usage/reset', validate(UsageResetSchema), asyncHandler(async (req: Request, res: Response) => {
+router.post('/usage/reset', authz('billing:manage'), validate(UsageResetSchema), asyncHandler(async (req: Request, res: Response) => {
   const payload = req.body as { monthKey?: string };
   const workspaceId = await requireAuthorizedWorkspace(req);
   await resetWorkspaceUsage(workspaceId, payload.monthKey);
   res.json({ success: true, scope: 'workspace', workspaceId, monthKey: payload.monthKey || null });
 }));
 
-router.get('/plans', asyncHandler(async (req: Request, res: Response) => {
+router.get('/plans', authz('billing:read'), asyncHandler(async (req: Request, res: Response) => {
   const workspaceId = await requireAuthorizedWorkspace(req);
   res.json({ scope: 'workspace', workspaceId, ...(await getWorkspacePlanCatalog(workspaceId)) });
 }));
 
-router.get('/metering', asyncHandler(async (req: Request, res: Response) => {
+router.get('/metering', authz('billing:read'), asyncHandler(async (req: Request, res: Response) => {
   const workspaceId = await requireAuthorizedWorkspace(req);
   const filters = {
     from: typeof req.query.from === 'string' ? req.query.from : undefined,
@@ -181,20 +192,29 @@ router.get('/metering', asyncHandler(async (req: Request, res: Response) => {
     limit: parseSafeLimit(req.query.limit, 100),
   };
 
+  const summaryEvents = isPostgresStateStoreEnabled()
+    ? await queryWorkspaceUsageEvents(workspaceId, filters)
+    : getWorkspaceUsageEvents(workspaceId, filters);
+
+  const sourceEvents = isPostgresStateStoreEnabled()
+    ? await queryWorkspaceUsageEvents(workspaceId, eventFilters)
+    : getWorkspaceUsageEvents(workspaceId, eventFilters);
+
   res.json({
     scope: 'workspace',
     workspaceId,
     filters,
-    summary: isPostgresStateStoreEnabled()
-      ? await queryWorkspaceMeteringSummary(workspaceId, filters)
-      : getWorkspaceMeteringSummary(workspaceId, filters),
-    events: isPostgresStateStoreEnabled()
-      ? await queryWorkspaceUsageEvents(workspaceId, eventFilters)
-      : getWorkspaceUsageEvents(workspaceId, eventFilters),
+    summary: {
+      ...(isPostgresStateStoreEnabled()
+        ? await queryWorkspaceMeteringSummary(workspaceId, filters)
+        : getWorkspaceMeteringSummary(workspaceId, filters)),
+      aiCost: getWorkspaceAICostSummaryFromEvents(workspaceId, summaryEvents),
+    },
+    events: enrichWorkspaceUsageEventsWithAICost(workspaceId, sourceEvents),
   });
 }));
 
-router.post('/stripe/checkout-session', validate(StripeCheckoutSchema), asyncHandler(async (req: Request, res: Response) => {
+router.post('/stripe/checkout-session', authz('billing:manage'), validate(StripeCheckoutSchema), asyncHandler(async (req: Request, res: Response) => {
   const workspaceId = await requireAuthorizedWorkspace(req);
   const userId = req.userId as string;
   const returnUrl = String(req.body.returnUrl);
@@ -209,7 +229,7 @@ router.post('/stripe/checkout-session', validate(StripeCheckoutSchema), asyncHan
   res.json(session);
 }));
 
-router.post('/stripe/portal-session', validate(StripePortalSchema), asyncHandler(async (req: Request, res: Response) => {
+router.post('/stripe/portal-session', authz('billing:manage'), validate(StripePortalSchema), asyncHandler(async (req: Request, res: Response) => {
   const workspaceId = await requireAuthorizedWorkspace(req);
   const userId = req.userId as string;
   const returnUrl = String(req.body.returnUrl);
@@ -217,7 +237,7 @@ router.post('/stripe/portal-session', validate(StripePortalSchema), asyncHandler
   res.json(session);
 }));
 
-router.post('/plan', validate(PlanChangeSchema), asyncHandler(async (req: Request, res: Response) => {
+router.post('/plan', authz('billing:manage'), validate(PlanChangeSchema), asyncHandler(async (req: Request, res: Response) => {
   const payload = req.body as { plan: 'free' | 'pro' };
   const workspaceId = await requireAuthorizedWorkspace(req);
 
@@ -237,7 +257,7 @@ router.post('/plan', validate(PlanChangeSchema), asyncHandler(async (req: Reques
   res.json({ scope: 'workspace', ...result });
 }));
 
-router.post('/billing-hooks', validate(BillingHookSchema), asyncHandler(async (req: Request, res: Response) => {
+router.post('/billing-hooks', authz('billing:manage'), validate(BillingHookSchema), asyncHandler(async (req: Request, res: Response) => {
   const payload = req.body as {
     plan: 'free' | 'pro';
     event: 'usage_recorded' | 'limit_reached' | 'upgrade_required' | 'plan_changed';

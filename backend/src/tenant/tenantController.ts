@@ -6,7 +6,7 @@ import { getLastWorkspaceForUserAsync } from '../services/admin/workspaceStore';
 
 const tenantService = new TenantService();
 
-export const createTenant = (req: Request, res: Response) => {
+export const createTenant = asyncHandler(async (req: Request, res: Response) => {
   const name = typeof req.body?.name === 'string' ? req.body.name : '';
   const ownerUserId = req.userId;
 
@@ -14,14 +14,14 @@ export const createTenant = (req: Request, res: Response) => {
     throw new AppError(401, 'Authorization required');
   }
 
-  const { tenant, workspace } = tenantService.createTenant(name, ownerUserId);
+  const { tenant, workspace } = await tenantService.createTenant(name, ownerUserId);
   res.status(201).json({
     tenantId: tenant.tenantId,
     tenant,
     workspaceId: workspace.workspaceId,
     workspace,
   });
-};
+});
 
 export const selectTenant = asyncHandler(async (req: Request, res: Response) => {
   const tenantId = typeof req.body?.tenantId === 'string' ? req.body.tenantId : '';

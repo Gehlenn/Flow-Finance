@@ -1,0 +1,37 @@
+{
+  "verified": true,
+  "date": "2026-06-05",
+  "backendUrl": "https://flow-finance-backend.vercel.app",
+  "summary": "Published Stripe flow closed with real hosted checkout, real Stripe events delivered, workspace currentPlan=pro, hasBillingCustomer=true, stripePortalEnabled=true, and portal-session returning a valid URL.",
+  "evidence": {
+    "health": {
+      "/health": 200,
+      "/api/health": 200,
+      "/api/version": 200,
+      "workspacePersistence": {
+        "mode": "firebase",
+        "durable": true,
+        "status": "healthy"
+      }
+    },
+    "checkout": {
+      "hostedCheckoutCompleted": true,
+      "returnUrlReached": "https://flow-finance-frontend-nine.vercel.app/?billing=return&tab=workspaceadmin&billing=success"
+    },
+    "stripe": {
+      "sessionStatus": "complete",
+      "paymentStatus": "paid",
+      "eventsDelivered": [
+        "checkout.session.completed",
+        "customer.subscription.created",
+        "invoice.payment_succeeded"
+      ]
+    },
+    "workspace": {
+      "currentPlan": "pro",
+      "hasBillingCustomer": true,
+      "stripePortalEnabled": true,
+      "portalSessionReturnedUrl": true
+    }
+  }
+}

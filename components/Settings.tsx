@@ -20,11 +20,12 @@ import {
 } from '../src/services/workspaceSession';
 import { getWorkspaceBillingOverview } from '../src/services/firestoreBillingStore';
 import {
+  buildBillingReturnUrl,
   createWorkspaceCheckoutSession,
   createWorkspacePortalSession,
   getWorkspacePlanCatalog,
   type WorkspacePlanCatalog,
-} from '../src/saas/billingClient';
+} from '../src/saas';
 import {
   canManageWorkspaceBilling,
   canManageWorkspaceMembers,
@@ -32,6 +33,7 @@ import {
 } from '../src/security/workspacePermissions';
 import { logWarn } from '../src/utils/logger';
 import { FREE_LIMITS, MONETIZATION_PRICING } from '../src/app/monetizationPlan';
+import { trackProductEvent } from '../src/app/productAnalytics';
 import { getDemoBootstrapPlan } from '../src/demo/demoBootstrap';
 
 function buildSettingsDiagnostic(message: string): { title: string; message: string; suggestion: string } {
@@ -378,18 +380,31 @@ const Settings: React.FC<SettingsProps> = ({
     setBillingActionBusy(true);
     setBillingActionError(null);
 
+    let checkoutSessionUrl: string | null | undefined;
     try {
       const session = await createWorkspaceCheckoutSession({
         workspaceId: activeWorkspace.workspaceId,
-        returnUrl: window.location.href,
+        returnUrl: buildBillingReturnUrl({ tab: 'settings' }),
+        source: 'settings',
       });
+      checkoutSessionUrl = session.url;
 
-      if (!session.url) {
+      if (!checkoutSessionUrl) {
         throw new Error('Stripe checkout session returned no URL');
       }
 
-      window.location.assign(session.url);
+      trackProductEvent('billing_checkout_redirected', {
+        source: 'settings',
+        plan: 'pro',
+      });
+      window.location.assign(checkoutSessionUrl);
     } catch (error) {
+      if (checkoutSessionUrl !== undefined) {
+        trackProductEvent('billing_checkout_failed', {
+          source: 'settings',
+          plan: 'pro',
+        });
+      }
       logWarn('[Settings] Failed to open Stripe checkout', {
         error,
         workspaceId: activeWorkspace.workspaceId,
@@ -410,14 +425,27 @@ const Settings: React.FC<SettingsProps> = ({
     setBillingActionBusy(true);
     setBillingActionError(null);
 
+    let portalSessionUrl: string | undefined;
     try {
       const session = await createWorkspacePortalSession({
         workspaceId: activeWorkspace.workspaceId,
-        returnUrl: window.location.href,
+        returnUrl: buildBillingReturnUrl({ tab: 'settings' }),
+        source: 'settings',
       });
+      portalSessionUrl = session.url;
 
-      window.location.assign(session.url);
+      trackProductEvent('billing_portal_redirected', {
+        source: 'settings',
+        plan: currentPlan,
+      });
+      window.location.assign(portalSessionUrl);
     } catch (error) {
+      if (portalSessionUrl !== undefined) {
+        trackProductEvent('billing_portal_failed', {
+          source: 'settings',
+          plan: currentPlan,
+        });
+      }
       logWarn('[Settings] Failed to open Stripe billing portal', {
         error,
         workspaceId: activeWorkspace.workspaceId,

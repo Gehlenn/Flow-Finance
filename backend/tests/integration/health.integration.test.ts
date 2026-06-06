@@ -4,6 +4,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 
 const checkDatabaseHealthMock = vi.fn();
 const hasDatabaseConfigMock = vi.fn();
+const initializePostgresStateStoreMock = vi.fn();
+const isPostgresStateStoreEnabledMock = vi.fn();
 
 vi.mock('../../src/config/database', () => ({
   query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
@@ -32,8 +34,8 @@ vi.mock('../../src/config/database', () => ({
 }));
 
 vi.mock('../../src/services/persistence/postgresStateStore', () => ({
-  isPostgresStateStoreEnabled: vi.fn().mockReturnValue(false),
-  initializePostgresStateStore: vi.fn().mockResolvedValue(false),
+  isPostgresStateStoreEnabled: (...args: unknown[]) => isPostgresStateStoreEnabledMock(...args),
+  initializePostgresStateStore: (...args: unknown[]) => initializePostgresStateStoreMock(...args),
   saveWorkspaceStoreState: vi.fn().mockResolvedValue(undefined),
   loadWorkspaceStoreState: vi.fn().mockResolvedValue(null),
   saveWorkspaceSaasState: vi.fn().mockResolvedValue(undefined),
@@ -72,6 +74,7 @@ vi.mock('../../src/config/gemini', () => ({
 let app: Express;
 const originalOpenAiApiKey = process.env.OPENAI_API_KEY;
 const originalGeminiApiKey = process.env.GEMINI_API_KEY;
+const originalVercel = process.env.VERCEL;
 
 describe('Health endpoints', () => {
   beforeAll(async () => {
@@ -82,8 +85,10 @@ describe('Health endpoints', () => {
     process.env.FEATURE_OPEN_FINANCE = 'true';
     delete process.env.OPENAI_API_KEY;
     delete process.env.GEMINI_API_KEY;
+    isPostgresStateStoreEnabledMock.mockReturnValue(false);
+    initializePostgresStateStoreMock.mockResolvedValue(false);
     ({ default: app } = await import('../../src/index'));
-  }, 20_000);
+  }, 60_000);
 
   afterAll(() => {
     if (originalOpenAiApiKey === undefined) {
@@ -97,11 +102,24 @@ describe('Health endpoints', () => {
     } else {
       process.env.GEMINI_API_KEY = originalGeminiApiKey;
     }
+
+    if (originalVercel === undefined) {
+      delete process.env.VERCEL;
+    } else {
+      process.env.VERCEL = originalVercel;
+    }
   });
 
   beforeEach(() => {
     hasDatabaseConfigMock.mockReset();
     checkDatabaseHealthMock.mockReset();
+    isPostgresStateStoreEnabledMock.mockReset();
+    initializePostgresStateStoreMock.mockReset();
+    process.env.POSTGRES_STATE_STORE_ENABLED = 'false';
+    process.env.DISABLE_LEGACY_STATE_BLOBS = 'true';
+    delete process.env.VERCEL;
+    isPostgresStateStoreEnabledMock.mockReturnValue(false);
+    initializePostgresStateStoreMock.mockResolvedValue(false);
   });
 
   it('GET /health returns 200 when database is not configured', async () => {
@@ -114,6 +132,14 @@ describe('Health endpoints', () => {
     expect(res.body.requestId).toBeTruthy();
     expect(res.body.routeScope).toBe('public');
     expect(res.body.checks.database).toEqual({ status: 'healthy', configured: false, required: false });
+    expect(res.body.checks.workspacePersistence).toEqual({
+      status: 'healthy',
+      configured: false,
+      required: false,
+      durable: false,
+      mode: 'memory',
+      reason: 'no-durable-store-configured',
+    });
     expect(res.body.checks.aiProviders).toEqual({ status: 'healthy', configured: false, required: false });
     expect(res.body.checks.observability).toEqual({ status: 'healthy', configured: false, required: false });
     expect(res.headers['x-request-id']).toBe(res.body.requestId);
@@ -130,5 +156,66 @@ describe('Health endpoints', () => {
     expect(res.body.checks.database.status).toBe('unhealthy');
     expect(res.body.checks.database.configured).toBe(true);
     expect(res.body.checks.database.required).toBe(true);
+  });
+
+  it('GET /health returns 503 when durable workspace persistence is required but unavailable', async () => {
+    hasDatabaseConfigMock.mockReturnValue(false);
+    process.env.VERCEL = '1';
+    process.env.POSTGRES_STATE_STORE_ENABLED = 'true';
+    isPostgresStateStoreEnabledMock.mockReturnValue(true);
+    initializePostgresStateStoreMock.mockResolvedValue(false);
+
+    const res = await request(app).get('/health');
+
+    expect(res.status).toBe(503);
+    expect(res.body.status).toBe('degraded');
+    expect(res.body.checks.workspacePersistence).toEqual({
+      status: 'unhealthy',
+      configured: false,
+      required: true,
+      durable: false,
+      mode: 'memory',
+      reason: 'no-durable-store-configured',
+    });
+  });
+
+  it('GET /api/health exposes workspace persistence details for probes', async () => {
+    hasDatabaseConfigMock.mockReturnValue(false);
+    process.env.VERCEL = '1';
+    process.env.POSTGRES_STATE_STORE_ENABLED = 'true';
+    isPostgresStateStoreEnabledMock.mockReturnValue(true);
+    initializePostgresStateStoreMock.mockResolvedValue(false);
+
+    const res = await request(app).get('/api/health');
+
+    expect(res.status).toBe(200);
+    expect(res.body.workspacePersistence).toEqual({
+      status: 'unhealthy',
+      configured: false,
+      required: true,
+      durable: false,
+      mode: 'memory',
+      reason: 'no-durable-store-configured',
+    });
+  });
+
+  it('GET /api/version exposes workspace persistence details for release probes', async () => {
+    hasDatabaseConfigMock.mockReturnValue(false);
+    process.env.VERCEL = '1';
+    process.env.POSTGRES_STATE_STORE_ENABLED = 'true';
+    isPostgresStateStoreEnabledMock.mockReturnValue(true);
+    initializePostgresStateStoreMock.mockResolvedValue(false);
+
+    const res = await request(app).get('/api/version');
+
+    expect(res.status).toBe(200);
+    expect(res.body.workspacePersistence).toEqual({
+      status: 'unhealthy',
+      configured: false,
+      required: true,
+      durable: false,
+      mode: 'memory',
+      reason: 'no-durable-store-configured',
+    });
   });
 });
