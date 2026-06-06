@@ -1,6 +1,6 @@
 import React from 'react';
-import { render } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
 type ErrorBoundaryProps = {
@@ -8,15 +8,8 @@ type ErrorBoundaryProps = {
   onError?: (error: Error, info: { componentStack?: string }) => void;
 };
 
-const appBootstrapDemoMocks = vi.hoisted(() => ({
-  logErrorMock: vi.fn(),
-  configureBillingTransportMock: vi.fn(),
-  configureUsageStoreAdapterMock: vi.fn(),
-  resetUsageStoreAdapterMock: vi.fn(),
-}));
-
 vi.mock('../../src/utils/logger', () => ({
-  logError: appBootstrapDemoMocks.logErrorMock,
+  logError: vi.fn(),
 }));
 
 vi.mock('../../src/components/ErrorBoundary', () => ({
@@ -36,29 +29,28 @@ vi.mock('../../src/config/sentry', () => ({
 }));
 
 vi.mock('../../src/saas', () => ({
-  configureBillingTransport: appBootstrapDemoMocks.configureBillingTransportMock,
-  configureUsageStoreAdapter: appBootstrapDemoMocks.configureUsageStoreAdapterMock,
-  createFirestoreBillingTransport: vi.fn(() => ({})),
+  configureBillingTransport: vi.fn(),
+  configureUsageStoreAdapter: vi.fn(),
   createFirestoreUsageStoreAdapter: vi.fn(() => ({})),
   createHttpBillingTransport: vi.fn(() => ({})),
-  resetUsageStoreAdapter: appBootstrapDemoMocks.resetUsageStoreAdapterMock,
+  resetUsageStoreAdapter: vi.fn(),
 }));
 
 vi.mock('../../hooks/useAuthAndWorkspace', () => ({
   useAuthAndWorkspace: () => ({
-    user: { id: 'demo-user-1', name: 'Demo', email: 'demo@flow.dev' },
+    user: { id: 'user-1', name: 'Ada', email: 'ada@flow.test' },
     activeWorkspace: {
-      tenantId: 'tenant-demo-1',
-      workspaceId: 'ws-demo-1',
-      tenantName: 'Tenant Demo',
-      name: 'Workspace Demo',
+      tenantId: 'tenant-1',
+      workspaceId: 'workspace-1',
+      tenantName: 'Tenant',
+      name: 'Workspace',
       plan: 'free',
       role: 'owner',
     },
     isE2EBootstrapActive: false,
-    isDemoBootstrapActive: true,
-    cloudSyncEnabled: false,
-    backendSyncEnabled: false,
+    isDemoBootstrapActive: false,
+    cloudSyncEnabled: true,
+    backendSyncEnabled: true,
     isInitialLoading: false,
     isLoggedIn: true,
     setCloudSyncEnabled: vi.fn(),
@@ -77,6 +69,8 @@ vi.mock('../../hooks/useFinancialState', () => ({
     alerts: [],
     reminders: [],
     goals: [],
+    latestLeaks: [],
+    latestReport: null,
     addTransactions: vi.fn(),
     deleteTransaction: vi.fn(),
     deleteTransactions: vi.fn(),
@@ -107,10 +101,11 @@ vi.mock('../../hooks/useNavigationTabs', () => ({
 
 vi.mock('../../hooks/useSyncEngine', () => ({
   useSyncEngine: () => ({
-    profile: { name: 'Demo', theme: 'light' },
+    profile: { name: 'Ada', theme: 'light' },
     isProfileReady: true,
-    hasLoadedEntities: true,
-    syncStatus: 'synced',
+    hasLoadedEntities: false,
+    syncStatus: 'idle',
+    backendSyncEnabled: true,
     syncProfile: vi.fn(),
   }),
 }));
@@ -118,12 +113,15 @@ vi.mock('../../hooks/useSyncEngine', () => ({
 vi.mock('../../src/app/mainNavigation', () => ({
   getActiveNavigationSection: () => ({
     id: 'cash',
-    label: 'Dashboard',
+    label: 'Caixa',
     defaultTab: 'dashboard',
-    items: [{ tab: 'dashboard', label: 'Dashboard' }],
+    items: [{ tab: 'dashboard', label: 'Visao geral' }],
   }),
   getMainNavigationItems: () => [
-    { tab: 'dashboard', label: 'Dashboard' },
+    { tab: 'dashboard', label: 'Caixa' },
+    { tab: 'history', label: 'Transacoes' },
+    { tab: 'flow', label: 'Receitas' },
+    { tab: 'cfo', label: 'IA' },
   ],
 }));
 
@@ -145,19 +143,12 @@ vi.mock('../../components/dev/AITaskQueueMonitor', () => ({
 
 import App from '../../App';
 
-describe('App bootstrap demo mode', () => {
-  beforeEach(() => {
-    appBootstrapDemoMocks.logErrorMock.mockReset();
-    appBootstrapDemoMocks.configureBillingTransportMock.mockReset();
-    appBootstrapDemoMocks.configureUsageStoreAdapterMock.mockReset();
-    appBootstrapDemoMocks.resetUsageStoreAdapterMock.mockReset();
-  });
-
-  it('desliga os adaptadores do Firestore no bootstrap demo', () => {
+describe('App shell loading gate', () => {
+  it('permite renderizar o shell quando o perfil ja carregou, mesmo com entidades ainda em bootstrap', () => {
     render(<App />);
 
-    expect(appBootstrapDemoMocks.configureBillingTransportMock).toHaveBeenCalledWith(null);
-    expect(appBootstrapDemoMocks.resetUsageStoreAdapterMock).toHaveBeenCalled();
-    expect(appBootstrapDemoMocks.configureUsageStoreAdapterMock).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Iniciando Flow Financas/i)).toBeNull();
+    expect(screen.getByTestId('active-tab')).toBeTruthy();
+    expect(screen.getByRole('navigation', { name: 'Navegacao principal' })).toBeTruthy();
   });
 });

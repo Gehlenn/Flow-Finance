@@ -167,11 +167,7 @@ const App: React.FC = () => {
 
   const isAppLoading =
     authState.isInitialLoading ||
-    (authState.isLoggedIn && !syncEngine.isProfileReady) ||
-    (authState.isLoggedIn &&
-      authState.backendSyncEnabled &&
-      Boolean(authState.activeWorkspace.workspaceId) &&
-      !syncEngine.hasLoadedEntities);
+    (authState.isLoggedIn && !syncEngine.isProfileReady);
 
   useEffect(() => {
     if (theme === "dark") {

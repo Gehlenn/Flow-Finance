@@ -1,6 +1,6 @@
 # Auditoria pre-mortem Flow Finance - 2026-06-03
 
-Status: documento de auditoria e checklist de correcao. Atualizado em 2026-06-05 com fechamento dos P1 resolviveis por codigo/teste, fechamento local do P2 em exportacao Pro N/A, fechamento do gate externo de ativacao/retencao com evidencia real em `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/report.json`, `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/events.jsonl`, `test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.json`, `test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.md` e `test-results/activation-retention-export/published-export-verified.json`, custo estimado de IA por workspace/resposta, carga multi-tenant sintetica, fechamento real do gate externo de performance em ambiente alvo, fechamento real do gate externo de Stripe com checkout/webhook/plan sync/portal no runtime publicado e ressalva de um issue separado no frontend publicado preso em loading pos-signup.  
+Status: documento de auditoria e checklist de correcao. Atualizado em 2026-06-05 com fechamento dos P1 resolviveis por codigo/teste, fechamento local do P2 em exportacao Pro N/A, fechamento do gate externo de ativacao/retencao com evidencia real em `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/report.json`, `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/events.jsonl`, `test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.json`, `test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.md` e `test-results/activation-retention-export/published-export-verified.json`, custo estimado de IA por workspace/resposta, carga multi-tenant sintetica, fechamento real do gate externo de performance em ambiente alvo, fechamento real do gate externo de Stripe com checkout/webhook/plan sync/portal no runtime publicado e ajuste do shell pos-signup do frontend para nao prender a experiencia em loading apos o perfil carregar.
 Escopo: SaaS fintech de fluxo de caixa para empresas de servico, conectado a operacao real.  
 Modo: pre-mortem. Premissa: o produto foi lancado e falhou; a auditoria identifica por que.
 
@@ -16,7 +16,7 @@ Modo: pre-mortem. Premissa: o produto foi lancado e falhou; a auditoria identifi
 
 O Flow Finance tem um nucleo de produto correto e os P1 de codigo encontrados nesta auditoria foram tratados: promessa Pro falsa removida, auth/billing endurecidos, onboarding acionavel criado, zero-state corrigido, IA reancorada no caixa operacional, mobile/FAB ajustados e gates criticos executados.
 
-Nao ha P0 confirmado nesta auditoria. Em 2026-06-05, nao ha P1 de codigo aberto com a evidencia local revisada. O gate P1 operacional de Stripe foi fechado no runtime publicado: o backend agora responde com `workspacePersistence.mode=firebase`, checkout Stripe hosted real concluiu com `payment_status=paid`, a API do Stripe mostrou eventos reais com `pending_webhooks=0`, o workspace publicado passou a retornar `currentPlan=pro`, `hasBillingCustomer=true` e `stripePortalEnabled=true`, e `POST /api/saas/stripe/portal-session` retornou URL valida. O gate externo de ativacao/retencao tambem foi fechado no backend publicado com export real autenticado e checker PASS; o bug separado do frontend publicado continua sendo apenas o shell pos-signup preso em loading.
+Nao ha P0 confirmado nesta auditoria. Em 2026-06-05, nao ha P1 de codigo aberto com a evidencia local revisada. O gate P1 operacional de Stripe foi fechado no runtime publicado: o backend agora responde com `workspacePersistence.mode=firebase`, checkout Stripe hosted real concluiu com `payment_status=paid`, a API do Stripe mostrou eventos reais com `pending_webhooks=0`, o workspace publicado passou a retornar `currentPlan=pro`, `hasBillingCustomer=true` e `stripePortalEnabled=true`, e `POST /api/saas/stripe/portal-session` retornou URL valida. O gate externo de ativacao/retencao tambem foi fechado no backend publicado com export real autenticado e checker PASS; o shell pos-signup do frontend foi reduzido para liberar a experiencia apos o perfil carregar.
 
 Veredito comercial: eu ainda nao chamaria de SaaS pronto para escala, porque o fechamento do gate de ativacao/retencao nao prova recorrencia ampla nem corrige o shell do frontend publicado. Mas eu liberaria piloto privado controlado com billing publicado real ja validado e com a evidencia de coorte real anexada.
 
@@ -56,7 +56,7 @@ Veredito comercial: eu ainda nao chamaria de SaaS pronto para escala, porque o f
 
 8. O produto nao provou habito em escala, mas o gate operacional de ativacao/retencao foi fechado.
    - Evidencia: `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/report.json`, `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/events.jsonl`, `test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.json`, `test-results/activation-retention-export/published-export-verified.json`.
-   - Problema: o fechamento prova uma coorte real publicada, mas nao substitui prova de uso recorrente amplo nem elimina o issue separado do frontend publicado.
+   - Problema: o fechamento prova uma coorte real publicada, mas nao substitui prova de uso recorrente amplo nem elimina a necessidade de acompanhar a experiencia do shell em producao.
 
 ## 3. Evidencia por tipo
 
@@ -514,14 +514,14 @@ Falhou ou ficou bloqueado:
 - [x] Runtime web/mobile passa.
 - [x] Health de Vercel passa.
 - [x] Eventos de ativacao e billing sao monitorados.
-- [x] Gates externos possuem runners locais com artefato e motivo de bloqueio. Evidencia: `scripts/check-public-launch-gates.mjs`, `scripts/check-target-performance-evidence.mjs`, `scripts/check-stripe-live-smoke.mjs`, `scripts/check-activation-retention-evidence.mjs`, `docs/TARGET_PERFORMANCE_EVIDENCE_2026-06-04.md`, `docs/STRIPE_LIVE_SMOKE_2026-06-04.md`, `docs/ACTIVATION_RETENTION_EVIDENCE_2026-06-04.md`. Ressalva atual: performance, Stripe e activation/retention ja estao fechados com evidencia real; o que continua em aberto e o issue separado do frontend publicado.
+- [x] Gates externos possuem runners locais com artefato e motivo de bloqueio. Evidencia: `scripts/check-public-launch-gates.mjs`, `scripts/check-target-performance-evidence.mjs`, `scripts/check-stripe-live-smoke.mjs`, `scripts/check-activation-retention-evidence.mjs`, `docs/TARGET_PERFORMANCE_EVIDENCE_2026-06-04.md`, `docs/STRIPE_LIVE_SMOKE_2026-06-04.md`, `docs/ACTIVATION_RETENTION_EVIDENCE_2026-06-04.md`. Ressalva atual: performance, Stripe e activation/retention ja estao fechados com evidencia real; o shell do frontend foi ajustado e nao constitui mais bloqueio de launch.
 
 ## 11. Veredito final: eu investiria, pagaria ou apostaria?
 
 Eu nao investiria como SaaS pronto para escala agora.
 
-Eu pagaria apenas em piloto privado, agora com billing publicado real e o gate de ativacao/retencao fechado com evidencia real ja validada, mas ainda exigindo prova de recorrencia ampla e corrigindo o issue separado do frontend antes de apostar em escala.
+Eu pagaria apenas em piloto privado, agora com billing publicado real e o gate de ativacao/retencao fechado com evidencia real ja validada, mas ainda exigindo prova de recorrencia ampla antes de apostar em escala.
 
-Eu apostaria em piloto privado porque os P1 de codigo foram fechados e o gate de ativacao/retencao tambem foi fechado. Eu nao apostaria em lancamento publico ate resolver o issue separado do frontend publicado e provar recorrencia ampla em ambiente configurado.
+Eu apostaria em piloto privado porque os P1 de codigo foram fechados e o gate de ativacao/retencao tambem foi fechado. Eu nao apostaria em lancamento publico sem provar recorrencia ampla em ambiente configurado.
 
 O criterio de verdade nao e "tem IA", "tem dashboard" ou "tem integracao". O criterio e: uma empresa de servico abre o Flow toda semana porque ele mostra claramente o dinheiro que entrou, o que ainda nao entrou, o que vai sair, o risco da semana e a proxima acao.

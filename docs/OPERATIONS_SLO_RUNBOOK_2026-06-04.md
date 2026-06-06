@@ -29,7 +29,7 @@ Se o baseline nao foi repetido no ambiente alvo, a renovacao de evidencia fica p
 
 ## Gates externos para public launch
 
-Os gates externos de launch foram fechados. O issue separado que continua em aberto e o shell pos-signup do frontend publicado preso em loading; isso nao reabre activation/retencao.
+Os gates externos de launch foram fechados. O shell pos-signup do frontend foi ajustado para nao prender a experiencia em loading quando o perfil ja carregou; isso nao reabre activation/retencao.
 
 - [GO_LIVE_CHECKLIST_EXTERNAL_GATES_2026-06-04.md](./GO_LIVE_CHECKLIST_EXTERNAL_GATES_2026-06-04.md)
 - [STRIPE_LIVE_SMOKE_2026-06-04.md](./STRIPE_LIVE_SMOKE_2026-06-04.md)

@@ -1,13 +1,13 @@
 # Flow Finance - go-live checklist for external gates
 
 Data: 2026-06-04  
-Status: activation/retention closed with real backend-published evidence on 2026-06-05. The Stripe gate and the performance gate are already closed with real target-environment evidence. The published frontend still has a separate post-signup shell loading issue; that bug does not reopen the activation/retention gate.
+Status: activation/retention closed with real backend-published evidence on 2026-06-05. The Stripe gate and the performance gate are already closed with real target-environment evidence. The published frontend shell-loading issue was addressed separately and does not reopen the activation/retention gate.
 
 ## What this document is for
 
 Use this checklist to decide whether Flow Finance can move from internal readiness to public launch.
 
-The activation/retention gate is closed with direct evidence from a real backend-authenticated usage cohort. The Stripe gate and the performance gate below are already evidenced and no longer block launch. The remaining published frontend shell-loading issue is separate from gate closure.
+The activation/retention gate is closed with direct evidence from a real backend-authenticated usage cohort. The Stripe gate and the performance gate below are already evidenced and no longer block launch. The frontend shell-loading issue was handled separately and is not part of the gate status.
 
 As of 2026-06-05, the Stripe gate is closed with real published evidence. The path to closure was: Firebase signup + backend session exchange published, CORS/tracing fix, fail-closed workspace persistence hardening, Firestore-backed durable workspace persistence published, then a second billing fix in Stripe metadata/persistence so the real checkout flow could reconcile the workspace back from Stripe events. The published backend now proves `/health`, `/api/health`, and `/api/version` with `workspacePersistence.mode=firebase`, and the real Stripe flow proved checkout, webhook-driven plan sync, and portal-open behavior for a real published workspace.
 
@@ -107,7 +107,7 @@ As of 2026-06-05, the Stripe gate is closed with real published evidence. The pa
 - unit or integration tests without target-environment evidence
 - synthetic or seeded activation/retention numbers
 - local-only performance baselines
-- the separate frontend published shell-loading issue
+- the frontend shell-loading issue, which was handled separately and no longer blocks the gates
 
 ## Evidence runners available
 
@@ -122,7 +122,7 @@ For activation/retention evidence collection, use `node scripts/export-activatio
 
 ## Close criteria
 
-Public launch is not blocked on activation/retention anymore. The gate is closed with attached evidence and referenced in the live operations docs. The Stripe gate and the performance gate are already closed and referenced in the operations docs. The separate frontend published shell issue remains a frontend fix, not a gate reopen.
+Public launch is not blocked on activation/retention anymore. The gate is closed with attached evidence and referenced in the live operations docs. The Stripe gate and the performance gate are already closed and referenced in the operations docs. The frontend shell-loading fix is a separate UI correction, not a gate reopen.
 
 ## Related docs
 

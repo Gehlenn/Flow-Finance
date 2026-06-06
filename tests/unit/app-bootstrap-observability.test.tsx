@@ -37,6 +37,7 @@ vi.mock('../../src/saas', () => ({
   configureUsageStoreAdapter: vi.fn(),
   createFirestoreBillingTransport: vi.fn(() => ({})),
   createFirestoreUsageStoreAdapter: vi.fn(() => ({})),
+  createHttpBillingTransport: vi.fn(() => ({})),
   resetUsageStoreAdapter: vi.fn(),
 }));
 

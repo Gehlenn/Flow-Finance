@@ -14,7 +14,7 @@ Este arquivo concentra os documentos de operacao atual do Flow Finance. Ele sepa
 - suite global: `verde`
 - billing Stripe sandbox: `validado localmente`
 - backend oficial: `0.9.7` revalidado em `2026-05-25`
-- pendencia operacional atual: o gate de ativacao/retencao foi fechado em 2026-06-05 com evidencia real no backend publicado; performance de alvo ja esta evidenciada; Stripe real smoke foi fechado em 2026-06-05 com checkout real, webhook real reconciliado, `currentPlan=pro` no workspace publicado e portal Stripe abrindo com sucesso; o frontend publicado ainda tem um issue separado de shell pos-signup preso em loading, mas isso nao reabre o gate
+- pendencia operacional atual: os gates de ativacao/retencao, performance e Stripe foram fechados com evidencia real em 2026-06-05; o shell pos-signup do frontend foi reduzido a renderizacao imediata do shell apos o perfil carregar, sem reabrir gate nenhum
 - evidencias de ativacao/retencao:
   - `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/report.json`
   - `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/events.jsonl`
