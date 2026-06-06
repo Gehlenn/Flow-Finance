@@ -1,13 +1,13 @@
 # Flow Finance - go-live checklist for external gates
 
 Data: 2026-06-04  
-Status: activation/retention closed with real backend-published evidence on 2026-06-05. The Stripe gate and the performance gate are already closed with real target-environment evidence. The published frontend shell-loading issue was addressed separately and does not reopen the activation/retention gate.
+Status: activation/retention closed with real backend-published evidence on 2026-06-05. The Stripe gate and the performance gate are already closed with real target-environment evidence. The published frontend post-signup shell issue was revalidated on 2026-06-06 and does not reopen any launch gate.
 
 ## What this document is for
 
 Use this checklist to decide whether Flow Finance can move from internal readiness to public launch.
 
-The activation/retention gate is closed with direct evidence from a real backend-authenticated usage cohort. The Stripe gate and the performance gate below are already evidenced and no longer block launch. The frontend shell-loading issue was handled separately and is not part of the gate status.
+The activation/retention gate is closed with direct evidence from a real backend-authenticated usage cohort. The Stripe gate and the performance gate below are already evidenced and no longer block launch. The frontend post-signup shell issue was handled separately and is not part of the gate status.
 
 As of 2026-06-05, the Stripe gate is closed with real published evidence. The path to closure was: Firebase signup + backend session exchange published, CORS/tracing fix, fail-closed workspace persistence hardening, Firestore-backed durable workspace persistence published, then a second billing fix in Stripe metadata/persistence so the real checkout flow could reconcile the workspace back from Stripe events. The published backend now proves `/health`, `/api/health`, and `/api/version` with `workspacePersistence.mode=firebase`, and the real Stripe flow proved checkout, webhook-driven plan sync, and portal-open behavior for a real published workspace.
 
@@ -122,7 +122,27 @@ For activation/retention evidence collection, use `node scripts/export-activatio
 
 ## Close criteria
 
-Public launch is not blocked on activation/retention anymore. The gate is closed with attached evidence and referenced in the live operations docs. The Stripe gate and the performance gate are already closed and referenced in the operations docs. The frontend shell-loading fix is a separate UI correction, not a gate reopen.
+Public launch is not blocked on activation/retention anymore. The gate is closed with attached evidence and referenced in the live operations docs. The Stripe gate and the performance gate are already closed and referenced in the operations docs. The frontend post-signup fix is a separate UI correction, not a gate reopen.
+
+## Separate published frontend validation on 2026-06-06
+
+- public alias re-promoted: `https://flow-finance-frontend-nine.vercel.app`
+- verified production deploy: `https://flow-finance-frontend-4zh4scvhe-danielgehlenn-1312s-projects.vercel.app`
+- first failed deployment root cause: Vercel blocked CLI production promotion because commit author `dev@flowfinance.local` does not belong to the Vercel team
+- second failed deployment root cause: an older clean snapshot did not contain later committed `src/saas/index.ts` exports and failed remote build
+- final published smoke artifact:
+  - `test-results/published-workspace-bootstrap/post-signup-nameflow-retry-1780712240110.json`
+  - `test-results/published-workspace-bootstrap/post-signup-nameflow-retry-1780712240110.png`
+- published result:
+  - signup completed against Firebase
+  - `POST /api/auth/firebase` returned `200`
+  - `GET /api/workspace` returned `200`
+  - `POST /api/workspace` returned `201`
+  - `active_workspace_id` was persisted as `RsxUPkDYPFBBKY9FieWT`
+  - authenticated shell rendered with dashboard/navigation instead of remaining on `Iniciando Flow Financas...`
+- residual note:
+  - the same run still emitted `FirebaseError: Missing or insufficient permissions.` from the Firestore-backed sync path
+  - the warning did not block workspace creation, backend sync pull, or shell entry, so it is not treated as a launch-gate reopen
 
 ## Related docs
 

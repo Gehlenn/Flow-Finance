@@ -18,13 +18,14 @@ Estado:
 
 - publicado no Vercel
 - acessivel nos dominios conhecidos
+- alias publico `flow-finance-frontend-nine.vercel.app` revalidado em `2026-06-06`
 
 Observacao:
 
-- a validacao local de runtime foi aprovada
-- os envs criticos ja estao provisionados no Vercel; o fechamento honesto no ambiente alvo agora depende de acesso de verificacao e consolidacao da evidencia final
-- o polimento visual principal foi fechado no repo sem impacto nos contratos de deploy
-- a entrada do app foi conferida em desktop e mobile, confirmando que o acabamento final preserva hierarquia e leitura sem abrir regressao funcional
+- a validacao publicada do fluxo pos-signup agora esta fechada com evidencia real em `test-results/published-workspace-bootstrap/post-signup-nameflow-retry-1780712240110.json`
+- nessa execucao real, `POST /api/auth/firebase` retornou `200`, `GET /api/workspace` retornou `200`, `POST /api/workspace` retornou `201`, `active_workspace_id` foi persistido e a shell autenticada abriu no dashboard
+- a regressao de loading infinito pos-signup nao se reproduziu mais no alias publico
+- houve warning residual de permissao Firestore no caminho legado de sync, mas ele nao bloqueou workspace, backend sync nem entrada na shell
 
 ### Backend
 
@@ -49,8 +50,8 @@ Estado:
 
 ## Bloqueios atuais
 
-1. Consolidar a evidencia final de readiness no deploy publicado
-2. Liberar ou compartilhar o preview protegido, quando aplicavel
+1. Nenhum bloqueio publicado confirmado para o shell pos-signup
+2. Manter acompanhamento do warning residual de permissao Firestore como item separado de hardening
 
 ## O que ja esta fechado
 
@@ -66,8 +67,7 @@ Estado:
 ## O que falta para marcar o deploy como pronto
 
 1. Reexecutar a validacao externa em qualquer novo deploy relevante.
-2. Liberar ou compartilhar o preview protegido, quando aplicavel.
-3. Executar:
+2. Executar:
 
 ```bash
 VERCEL_TARGET_URL=https://seu-preview.vercel.app npm run health:vercel
@@ -90,7 +90,8 @@ Leitura operacional:
 
 - o contrato minimo do backend foi restaurado e esta validavel externamente
 - o alinhamento de versao publicada do backend foi fechado no deploy oficial
-- os envs criticos do projeto ja aparecem provisionados em producao; o que falta e fechar a trilha de evidencias
+- os envs criticos do projeto ja aparecem provisionados em producao
+- a trilha de evidencia do shell publicado pos-signup foi fechada em `2026-06-06`
 
 ## Referencias relacionadas
 
