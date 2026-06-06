@@ -16,6 +16,7 @@ import {
   syncEntityCollectionResult,
   syncReminderCollections,
 } from './financeServiceSyncHelpers';
+import { trackProductEventOnce } from './productAnalytics';
 
 export { createDefaultAccount } from './financeServiceHelpers';
 export type {
@@ -55,6 +56,15 @@ export async function createTransactions(
     syncResult.idMaps.transactions,
   );
   reconciledTransactions.forEach((transaction) => context.emitTransactionCreated?.(transaction));
+
+  if (context.collections.transactions.length === 0 && reconciledTransactions.length > 0) {
+    trackProductEventOnce('activation_first_transaction', context.workspaceId || context.tenantId || context.userId || 'local', {
+      workspace: context.workspaceId || null,
+      tenant: context.tenantId || null,
+      created_count: reconciledTransactions.length,
+      source: 'finance_service',
+    });
+  }
 
   return {
     nextTransactions: syncResult.entities.transactions,

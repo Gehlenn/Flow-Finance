@@ -51,12 +51,16 @@ export class OpenAIProvider extends IAIProvider {
 
       const latencyMs = Date.now() - startTime;
       const tokensUsed = response.usage?.total_tokens || 0;
+      const inputTokens = response.usage?.prompt_tokens || 0;
+      const outputTokens = response.usage?.completion_tokens || 0;
 
       logger.info('OpenAI request succeeded', {
         provider: 'openai',
         model: modelName,
         modelType: request.model,
         tokensUsed,
+        inputTokens,
+        outputTokens,
         latencyMs,
       });
 
@@ -65,6 +69,8 @@ export class OpenAIProvider extends IAIProvider {
         provider: 'openai',
         model: modelName,
         tokensUsed,
+        inputTokens,
+        outputTokens,
         latencyMs,
         wasFallback: false,
       };

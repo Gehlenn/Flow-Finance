@@ -157,7 +157,8 @@ describe('WorkspaceAdminPage', () => {
     await waitFor(() => {
       expect(workspaceAdminMocks.createWorkspaceCheckoutSession).toHaveBeenCalledWith({
         workspaceId: 'ws-1',
-        returnUrl: 'http://localhost:3000/',
+        returnUrl: 'http://localhost:3000/?billing=return&tab=workspaceadmin',
+        source: 'workspace_admin',
       });
       expect(workspaceAdminMocks.locationAssign).toHaveBeenCalledWith('https://billing.example/checkout');
     });
@@ -186,7 +187,8 @@ describe('WorkspaceAdminPage', () => {
     await waitFor(() => {
       expect(workspaceAdminMocks.createWorkspacePortalSession).toHaveBeenCalledWith({
         workspaceId: 'ws-1',
-        returnUrl: 'http://localhost:3000/',
+        returnUrl: 'http://localhost:3000/?billing=return&tab=workspaceadmin',
+        source: 'workspace_admin',
       });
       expect(workspaceAdminMocks.locationAssign).toHaveBeenCalledWith('https://billing.example/portal');
     });

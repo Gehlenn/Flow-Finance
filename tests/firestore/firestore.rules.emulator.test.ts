@@ -168,6 +168,19 @@ describe('firestore rules emulator', () => {
     }));
   });
 
+  it('blocks client writes to billing hooks even for workspace owners', async () => {
+    const db = testEnv.authenticatedContext('owner-1').firestore();
+    await assertFails(setDoc(doc(db, 'workspaces', 'ws-1', 'billing_hooks', 'hook-1'), {
+      workspaceId: 'ws-1',
+      tenantId: 'tenant-1',
+      userId: 'owner-1',
+      plan: 'pro',
+      event: 'plan_changed',
+      amount: 1,
+      at: '2026-04-02T00:00:00.000Z',
+    }));
+  });
+
   it('blocks outsiders from reading audit events', async () => {
     const db = testEnv.authenticatedContext('outsider-1').firestore();
     await assertFails(getDoc(doc(db, 'audit_logs', 'tenant-1', 'events', 'evt-1')));

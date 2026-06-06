@@ -4,6 +4,7 @@ const apiMocks = vi.hoisted(() => ({
   apiRequest: vi.fn(),
   logWarn: vi.fn(),
   demoPlan: { value: null as 'free' | 'pro' | null },
+  trackProductEvent: vi.fn(),
 }));
 
 vi.mock('../../src/config/api.config', () => ({
@@ -34,8 +35,12 @@ vi.mock('../../src/demo/demoBootstrap', () => ({
   getDemoBootstrapPlan: () => apiMocks.demoPlan.value,
 }));
 
+vi.mock('../../src/app/productAnalytics', () => ({
+  trackProductEvent: (...args: unknown[]) => apiMocks.trackProductEvent(...args),
+}));
+
 import { ApiRequestError } from '../../src/config/api.config';
-import { getWorkspacePlanCatalog } from '../../src/saas/billingClient';
+import { createWorkspaceCheckoutSession, createWorkspacePortalSession, getWorkspacePlanCatalog } from '../../src/saas/billingClient';
 
 describe('billingClient', () => {
   beforeEach(() => {
@@ -94,5 +99,44 @@ describe('billingClient', () => {
     expect(catalog.stripeConfigured).toBe(false);
     expect(catalog.stripePortalEnabled).toBe(false);
     expect(catalog.manualPlanChangeAllowed).toBe(false);
+  });
+
+  it('tracks checkout lifecycle and preserves the request failure signal', async () => {
+    apiMocks.apiRequest.mockRejectedValueOnce(new ApiRequestError({
+      statusCode: 503,
+      message: 'checkout down',
+    }));
+
+    await expect(createWorkspaceCheckoutSession({
+      workspaceId: 'ws-1',
+      returnUrl: 'https://app.flow.test/settings',
+      source: 'settings',
+    })).rejects.toThrow('checkout down');
+
+    expect(apiMocks.trackProductEvent).toHaveBeenNthCalledWith(1, 'billing_checkout_started', expect.objectContaining({
+      source: 'settings',
+    }));
+    expect(apiMocks.trackProductEvent).toHaveBeenNthCalledWith(2, 'billing_checkout_failed', expect.objectContaining({
+      source: 'settings',
+      error_type: 'http_503',
+    }));
+  });
+
+  it('tracks portal lifecycle and request failures', async () => {
+    apiMocks.apiRequest.mockRejectedValueOnce(new Error('portal down'));
+
+    await expect(createWorkspacePortalSession({
+      workspaceId: 'ws-2',
+      returnUrl: 'https://app.flow.test/settings',
+      source: 'workspace_admin',
+    })).rejects.toThrow('portal down');
+
+    expect(apiMocks.trackProductEvent).toHaveBeenNthCalledWith(1, 'billing_portal_started', expect.objectContaining({
+      source: 'workspace_admin',
+    }));
+    expect(apiMocks.trackProductEvent).toHaveBeenNthCalledWith(2, 'billing_portal_failed', expect.objectContaining({
+      source: 'workspace_admin',
+      error_type: 'request_failed',
+    }));
   });
 });

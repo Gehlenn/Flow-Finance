@@ -8,7 +8,7 @@ Este arquivo registra bugs, regressões e decisões de correção relevantes na 
 
 - Use este documento para investigar regressões antigas, decisões de correção e padrões recorrentes.
 - Não use este documento como source of truth de release atual.
-- Para estado vivo, consulte `README`, `docs/README.md`, `docs/OPERATIONS_README.md`, `docs/DEPLOYMENT_STATUS.md` e `docs/CHANGELOG.md`.
+- Para estado vivo, consulte `README`, `../README.md`, `../OPERATIONS_README.md`, `../DEPLOYMENT_STATUS.md` e `../CHANGELOG.md`.
 
 ## Legenda de status
 

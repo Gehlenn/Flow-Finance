@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeCFORequestInput } from '../../src/controllers/aiController';
+import { buildCfoPrompt } from '../../src/controllers/aiControllerHelpers';
 import { AppError } from '../../src/middleware/errorHandler';
 
 describe('normalizeCFORequestInput', () => {
@@ -38,5 +39,20 @@ describe('normalizeCFORequestInput', () => {
     });
 
     expect(normalized.context.length).toBe(20000);
+  });
+
+  it('builds CFO prompt around operational cash-flow decisions', () => {
+    const prompt = buildCfoPrompt({
+      context: 'Saldo confirmado: 1000. Recebiveis pendentes: 2500.',
+      intent: 'cash_position',
+      question: 'O que faco esta semana?',
+    });
+
+    expect(prompt).toContain('consultor de caixa operacional');
+    expect(prompt).toContain('empresas de servico');
+    expect(prompt).toContain('caixa confirmado');
+    expect(prompt).toContain('previsto');
+    expect(prompt).toContain('proxima acao semanal');
+    expect(prompt).not.toContain('Assistente Financeiro');
   });
 });

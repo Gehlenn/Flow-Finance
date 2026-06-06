@@ -27,7 +27,7 @@ describe('Billing API', () => {
     expect(res.body.entitlements.features).toContain('billingManagement');
   });
 
-  it('GET /api/billing/export deve exportar dados do workspace autenticado', async () => {
+  it('GET /api/billing/export deve declarar indisponivel enquanto exportacao real nao existe', async () => {
     const ownerUserId = 'owner-export';
     const created = await request(app)
       .post('/api/tenant')
@@ -39,8 +39,8 @@ describe('Billing API', () => {
       .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', created.body.workspaceId);
 
-    expect(res.status).toBe(200);
-    expect(res.body.url).toContain(created.body.workspaceId);
+    expect(res.status).toBe(501);
+    expect(res.body.message).toContain('not yet implemented');
   });
 });
 

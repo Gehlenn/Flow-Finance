@@ -15,6 +15,8 @@ const aicfoMocks = vi.hoisted(() => ({
   getCurrentWorkspaceIdentity: vi.fn(),
   getWorkspaceBillingOverview: vi.fn(),
   incrementWorkspaceUsage: vi.fn(),
+  trackProductEvent: vi.fn(),
+  trackProductEventOnce: vi.fn(() => true),
   demoPlan: { value: null as 'free' | 'pro' | null },
 }));
 
@@ -62,6 +64,11 @@ vi.mock('../../src/ai/aiCFO', () => ({
   })),
   learnFromConversation: vi.fn(async () => undefined),
   buildFinancialContext: vi.fn(() => 'contexto'),
+}));
+
+vi.mock('../../src/app/productAnalytics', () => ({
+  trackProductEvent: (...args: unknown[]) => aicfoMocks.trackProductEvent(...args),
+  trackProductEventOnce: (...args: unknown[]) => aicfoMocks.trackProductEventOnce(...args),
 }));
 
 vi.mock('../../src/utils/logger', () => ({
@@ -186,7 +193,7 @@ describe('AICFO plan render', () => {
 
     expect(screen.queryByText(/Modo Free/i)).toBeNull();
     expect(screen.getAllByRole('button').length).toBeGreaterThanOrEqual(6);
-    expect(screen.getByText(/Perguntas rápidas do caixa/i)).toBeTruthy();
+    expect(screen.getByText(/Perguntas r.*idas do caixa/i)).toBeTruthy();
   });
 
   it('usa o plano pro do demo mesmo quando o workspace chega como free', () => {
@@ -265,11 +272,24 @@ describe('AICFO plan render', () => {
       />,
     );
 
+    await waitFor(() => {
+      expect(aicfoMocks.getWorkspaceBillingOverview).toHaveBeenCalled();
+    });
+
     fireEvent.click(screen.getByRole('button', { name: /Posso pagar a semana\?/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Diagnóstico da IA/i)).toBeTruthy();
+      expect(screen.getByText(/Diagnostico da IA/i)).toBeTruthy();
     });
+    expect(aicfoMocks.trackProductEventOnce).not.toHaveBeenCalled();
+    expect(aicfoMocks.trackProductEvent).toHaveBeenCalledWith(
+      'ai_fallback_observed',
+      expect.objectContaining({
+        source: 'aicfo',
+        intent: 'monthly_summary',
+        fallback_kind: 'ai_unavailable',
+      }),
+    );
     expect(screen.getAllByText(/Nao foi possivel gerar uma resposta no momento/i).length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText(/Tente novamente em alguns instantes ou verifique a sessao do workspace/i)).toBeTruthy();
   });
@@ -288,6 +308,10 @@ describe('AICFO plan render', () => {
         onCreateReminder={vi.fn()}
       />,
     );
+
+    await waitFor(() => {
+      expect(aicfoMocks.getWorkspaceBillingOverview).toHaveBeenCalled();
+    });
 
     fireEvent.click(screen.getByRole('button', { name: /Posso pagar a semana\?/i }));
 
@@ -318,11 +342,24 @@ describe('AICFO plan render', () => {
       />,
     );
 
+    await waitFor(() => {
+      expect(aicfoMocks.getWorkspaceBillingOverview).toHaveBeenCalled();
+    });
+
     fireEvent.click(screen.getByRole('button', { name: /Posso pagar a semana\?/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/Resposta consultiva\./i)).toBeTruthy();
     });
+
+    expect(aicfoMocks.trackProductEventOnce).toHaveBeenCalledWith(
+      'ai_consultation_completed',
+      'ws-1',
+      expect.objectContaining({
+        source: 'aicfo',
+        intent: 'monthly_summary',
+      }),
+    );
 
     fireEvent.click(screen.getAllByRole('button', { name: /Criar lembrete/i }).at(-1)!);
     expect(onCreateReminder).toHaveBeenCalledWith(expect.objectContaining({
@@ -353,7 +390,19 @@ describe('AICFO plan render', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Posso pagar a semana\?/i }));
 
-    expect(await screen.findByText(/não consegui processar esta consulta agora/i)).toBeTruthy();
+    expect(await screen.findByText(/nao consegui processar esta consulta agora/i)).toBeTruthy();
+    expect(screen.getAllByText(/Diagnostico da IA/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Nivel de confianca desta resposta: Baixa/i)).toBeTruthy();
+    expect(screen.getByText(/Profundidade reduzida/i)).toBeTruthy();
+    expect(aicfoMocks.trackProductEvent).toHaveBeenCalledWith(
+      'ai_fallback_observed',
+      expect.objectContaining({
+        source: 'aicfo',
+        intent: 'monthly_summary',
+        fallback_kind: 'ai_unavailable',
+        response_depth: 'reduced',
+      }),
+    );
     expect(aicfoMocks.logWarn).toHaveBeenCalledWith(
       '[AICFO] Failed to generate CFO response',
       expect.objectContaining({

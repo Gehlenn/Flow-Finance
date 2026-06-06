@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  claimExternalEventProcessed,
   hasProcessedExternalEvent,
   markExternalEventProcessed,
   resetExternalIdempotencyStoreForTests,
@@ -18,6 +19,11 @@ describe('external idempotency store', () => {
   it('detects an event after it is marked processed', async () => {
     await markExternalEventProcessed('workspace-1', 'evt-1');
     expect(await hasProcessedExternalEvent('workspace-1', 'evt-1')).toBe(true);
+  });
+
+  it('claims an event only once', async () => {
+    expect(await claimExternalEventProcessed('workspace-1', 'evt-claim')).toBe(true);
+    expect(await claimExternalEventProcessed('workspace-1', 'evt-claim')).toBe(false);
   });
 
   it('does not leak processed events across workspaces', async () => {

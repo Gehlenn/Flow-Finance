@@ -1295,7 +1295,7 @@ export const OPENAPI_PATHS = {
       '/api/banking/disconnect': { post: { tags: ['Banking'], summary: 'Disconnect banking connection', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Disconnected' } } } },
       '/api/banking/webhooks/pluggy': { post: { tags: ['Banking'], summary: 'Pluggy webhook receiver', responses: { '200': { description: 'Webhook accepted' } } } },
       '/api/billing/subscription': { post: { tags: ['Billing'], summary: 'Create or change subscription', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Subscription updated' } } } },
-      '/api/billing/export': { get: { tags: ['Billing'], summary: 'Export workspace data', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Export link' } } } },
+      '/api/billing/export': { get: { tags: ['Billing'], summary: 'Export workspace data (not yet available)', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '501': { description: 'Export not implemented yet' } } } },
       '/api/admin/users': { get: { tags: ['Admin'], summary: 'List workspace users', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'User list' } } } },
       '/api/admin/audit-logs': { get: { tags: ['Admin'], summary: 'List audit logs', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Audit log list' } } } },
       '/api/admin/audit-logs/export': { get: { tags: ['Admin'], summary: 'Export audit logs', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Audit export' } } } },

@@ -7,8 +7,16 @@ import {
 import { logWarn } from '../../src/utils/logger';
 import type { BillingHookPayload } from '../../src/saas/types';
 
+const billingMocks = vi.hoisted(() => ({
+  trackProductEvent: vi.fn(),
+}));
+
 vi.mock('../../src/utils/logger', () => ({
   logWarn: vi.fn(),
+}));
+
+vi.mock('../../src/app/productAnalytics', () => ({
+  trackProductEvent: (...args: unknown[]) => billingMocks.trackProductEvent(...args),
 }));
 
 describe('billingHooks', () => {
@@ -148,6 +156,14 @@ describe('billingHooks', () => {
         error: transportError,
         payload,
         fallback: 'billing-hook-transport-failed',
+      }),
+    );
+    expect(billingMocks.trackProductEvent).toHaveBeenCalledWith(
+      'integration_error_observed',
+      expect.objectContaining({
+        integration: 'billing_hooks',
+        stage: 'transport',
+        resource: 'transactions',
       }),
     );
     expect(vi.mocked(logWarn)).toHaveBeenCalledWith(

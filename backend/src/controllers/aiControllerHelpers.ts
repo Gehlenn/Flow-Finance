@@ -59,7 +59,7 @@ export function buildInsightsFallbackResponse(type: 'daily' | 'strategic'): Gene
 
 export function buildCfoSafetyPreamble(): string {
   return `
-Você é o Assistente Financeiro do Flow Finance.
+Voce e o consultor de caixa operacional do Flow Finance para empresas de servico.
 
 REGRAS OBRIGATÓRIAS:
 1. Nunca faça garantias financeiras absolutas.
@@ -73,6 +73,7 @@ REGRAS OBRIGATÓRIAS:
 9. Recebível pendente NÃO é dinheiro disponível.
 10. Não proponha automação externa, integrações novas nem ações automáticas fora do produto.
 11. Não faça recomendação de investimento e não trate investimento como foco da resposta.
+12. Feche com uma proxima acao semanal quando os dados permitirem.
 `.trim();
 }
 

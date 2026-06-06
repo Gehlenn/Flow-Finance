@@ -32,7 +32,7 @@
 - `obsidian-vault/Flow/Documentation Map.md`, `obsidian-vault/Flow/Operational Context.md` e `obsidian-vault/Flow/Release Status.md` foram adicionados para espelhar no vault a organizacao documental, o contexto operacional e o estado atual do ciclo.
 - `docs/SETUP_GUIA_PT.md` e `docs/RESUMO_SETUP.md` deixaram de competir com o guia principal e passaram a apontar explicitamente para `docs/SETUP_GUIDE.md` como fonte canônica.
 - `obsidian-vault/Flow/Environment Checklist.md` foi adicionado para resumir a trilha correta de ambiente, Vercel e validacao operacional.
-- `docs/OPERATIONS_README.md` e `docs/HISTORICAL_README.md` foram adicionados para separar explicitamente operacao atual de material historico/auditoria.
+- `../OPERATIONS_README.md` e `../HISTORICAL_README.md` foram adicionados para separar explicitamente operacao atual de material historico/auditoria.
 - `obsidian-vault/Flow/Operations Map.md` e `obsidian-vault/Flow/Historical Map.md` passaram a espelhar essa separacao no vault.
 - `docs/archive/BUGLOG.md` e `docs/archive/GDD.md` foram reescritos como documentos historicos compactos, removendo duplicacao, encoding ruim e competicao com a documentacao viva.
 - `docs/VERCEL_CONFIG.md` foi reescrito para o mesmo padrao editorial do restante da base, com papel do documento, checklist operacional e leitura correta do ambiente alvo.

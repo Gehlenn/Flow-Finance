@@ -21,11 +21,16 @@ describe('monetization plan', () => {
   it('bloqueia recursos pro no free e libera no pro', () => {
     expect(canAccessFeature('free', 'unlimitedConsultorIa')).toBe(false);
     expect(canAccessFeature('free', 'multipleWorkspaces')).toBe(false);
-    expect(canAccessFeature('free', 'reportExport')).toBe(false);
+    expect(canAccessFeature('free', 'advancedCashflowAnalysis')).toBe(false);
 
     expect(canAccessFeature('pro', 'unlimitedConsultorIa')).toBe(true);
     expect(canAccessFeature('pro', 'multipleWorkspaces')).toBe(true);
-    expect(canAccessFeature('pro', 'reportExport')).toBe(true);
+    expect(canAccessFeature('pro', 'advancedCashflowAnalysis')).toBe(true);
+  });
+
+  it('mantem exportacao de relatorios fora do Pro ate existir backend real', () => {
+    expect(canAccessFeature('free', 'reportExport')).toBe(false);
+    expect(canAccessFeature('pro', 'reportExport')).toBe(false);
   });
 
   it('aplica o limite do plano free no consultor IA', () => {

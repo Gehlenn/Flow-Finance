@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  claimExternalEventProcessed,
   hasProcessedExternalEvent,
   markExternalEventProcessed,
   resetExternalIdempotencyStoreForTests,
@@ -16,6 +17,11 @@ describe('externalIdempotencyStore', () => {
     await markExternalEventProcessed('ws_1', 'evt_1');
 
     expect(await hasProcessedExternalEvent('ws_1', 'evt_1')).toBe(true);
+  });
+
+  it('claims duplicate events only once', async () => {
+    await expect(claimExternalEventProcessed('ws_1', 'evt_claim')).resolves.toBe(true);
+    await expect(claimExternalEventProcessed('ws_1', 'evt_claim')).resolves.toBe(false);
   });
 
   it('isolates by workspace id', async () => {

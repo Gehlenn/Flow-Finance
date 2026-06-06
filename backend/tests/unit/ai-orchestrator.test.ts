@@ -24,6 +24,9 @@ class MockAIProvider extends IAIProvider {
       content: `Mock response for ${request.model}`,
       provider: this.config.name,
       model: this.config.models[request.model] || 'mock-model',
+      tokensUsed: 1500,
+      inputTokens: 1000,
+      outputTokens: 500,
       latencyMs: 100,
       wasFallback: false,
     };
@@ -220,6 +223,23 @@ describe('AIOrchestrator', () => {
 
       expect(openaiMetrics.length).toBeGreaterThan(0);
       expect(openaiMetrics.every((m) => m.provider === 'openai')).toBe(true);
+    });
+
+    it('records estimated AI cost by workspace when workspace context is present', async () => {
+      const request: GenerateContentRequest = {
+        systemPrompt: 'You are helpful',
+        userMessage: 'Hello',
+        model: 'chat',
+      };
+
+      await orchestrator.generateContent(request, { model: 'chat', workspaceId: 'workspace-cost-1' });
+
+      const [metric] = orchestrator.getMetrics('openai');
+      expect(metric.workspaceId).toBe('workspace-cost-1');
+      expect(metric.inputTokens).toBe(1000);
+      expect(metric.outputTokens).toBe(500);
+      expect(metric.estimatedCostUsd).toBe(0.00000045);
+      expect(metric.costEvidence).toBe('provider_usage_tokens');
     });
   });
 

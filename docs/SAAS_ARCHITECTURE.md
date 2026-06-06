@@ -117,7 +117,7 @@ Este texto e um mapa sintetico da arquitetura SaaS. Para estado de release, depl
 
 - `README.md`
 - `docs/ARCHITECTURE.md`
-- `docs/OPERATIONS_README.md`
+- `./OPERATIONS_README.md`
 - `docs/DEPLOYMENT_STATUS.md`
 - `docs/AUDIT_AND_EVIDENCE_INDEX.md`
 

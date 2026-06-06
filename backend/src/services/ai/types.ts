@@ -11,6 +11,7 @@ export interface AIRequestOptions {
   maxTokens?: number;
   temperature?: number;
   timeout?: number; // milliseconds
+  workspaceId?: string; // optional context for per-workspace AI cost monitoring
 }
 
 export interface AIResponse {
@@ -18,6 +19,8 @@ export interface AIResponse {
   provider: AIProvider;
   model: string;
   tokensUsed?: number;
+  inputTokens?: number;
+  outputTokens?: number;
   latencyMs?: number;
   wasFallback?: boolean; // true if primary provider failed
 }
@@ -53,7 +56,12 @@ export interface AIMetrics {
   isAnalysis: boolean;
   isOcr: boolean;
   tokensUsed: number;
+  inputTokens?: number;
+  outputTokens?: number;
   latencyMs: number;
   status: 'success' | 'fallback' | 'error';
+  workspaceId?: string;
+  estimatedCostUsd?: number;
+  costEvidence?: string;
   errorType?: string;
 }

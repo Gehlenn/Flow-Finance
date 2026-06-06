@@ -916,7 +916,7 @@ Definir 3 features Pro concretas, conectar paywall na UI, criar página de prici
 - S4 concluída (escopo já enxuto, definição clara do que está no Free vs Pro).
 - Acesso ao Stripe Dashboard para criar produtos e price IDs reais.
 - Definir antes de codar:
-  - Quais 3 features são Pro? Recomendado: (a) Consultor IA ilimitado, (b) múltiplos workspaces, (c) exportação de relatórios PDF.
+  - Quais 3 features são Pro? Recomendado: (a) Consultor IA ilimitado, (b) múltiplos workspaces, (c) análises históricas de caixa.
   - Preço? Recomendado: R$ 49/mês ou R$ 490/ano.
 
 #### Arquivos afetados
@@ -951,13 +951,12 @@ Documentação:
    export const FREE_LIMITS = {
      workspaces: 1,
      consultorIaQueriesPerMonth: 20,
-     reportExportPerMonth: 0,
    };
 
    export const PRO_FEATURES = {
      unlimitedConsultorIa: true,
      multipleWorkspaces: true,
-     reportExport: true,
+     advancedCashflowAnalysis: true,
    };
 
    export function canAccessFeature(
@@ -979,7 +978,7 @@ Documentação:
    ```
 
 2. `components/UpgradePromptCard.tsx`:
-   - Copy curto e operacional: "Consultor IA ilimitado, mais workspaces, exportação. R$ 49/mês."
+   - Copy curto e operacional: "Consultor IA ilimitado, mais workspaces, análises históricas. R$ 49/mês."
    - Botão chama `POST /api/saas/stripe/checkout-session` com priceId mensal.
    - Mostra estado de loading e erro com toast.
 
@@ -1008,7 +1007,7 @@ Documentação:
 8. `docs/CHANGELOG.md`:
    ```
    ## 2026-05-15 - Paywall ativo e pricing publico
-   - 3 features Pro definidas: Consultor IA ilimitado, multi-workspace, exportacao
+   - 3 features Pro definidas: Consultor IA ilimitado, multi-workspace, analises historicas de caixa
    - UpgradePromptCard inline na tela do Consultor IA quando limite Free atingido
    - pages/Pricing.tsx publicado
    ```

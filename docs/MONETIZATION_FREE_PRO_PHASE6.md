@@ -9,14 +9,16 @@ Fechar um paywall simples, audivel e comercializavel sem bloquear o core do prod
 ### Free
 - 1 workspace
 - 20 consultas do Consultor IA por mes
-- exportacao de relatorios bloqueada
-- core financeiro liberado: lancamentos, dashboard, transacoes e lembretes
+- dashboard de caixa, previsto e realizado
+- lancamentos, recebiveis, vencimentos, transacoes e lembretes essenciais liberados
 
 ### Pro
-- Consultor IA ilimitado
-- multiplos workspaces
-- exportacao de relatorios em PDF
-- mantem acesso aos recursos premium ja existentes do app
+- Consultor IA ilimitado para revisao semanal de caixa
+- multiplos workspaces para operacoes, unidades ou clientes separados
+- historico de fluxo de caixa, previsto vs realizado e risco recorrente
+- contexto estendido para analises de caixa menos rasas
+
+Observacao: exportacao de relatorios/PDF nao e feature vendavel do Pro nesta fase. O backend ainda retorna `501` para exportacao real, entao a promessa fica fora do pricing ate a geracao existir.
 
 ## Preco desta fase
 

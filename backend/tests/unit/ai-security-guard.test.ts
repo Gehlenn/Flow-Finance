@@ -116,7 +116,7 @@ describe('AISecurityGuard', () => {
       const response = AISecurityGuard.getSafeResponse('out-of-scope');
 
       expect(response).toContain('outside');
-      expect(response).toContain('financial');
+      expect(response).toContain('cash flow');
     });
 
     it('should provide safe response for empty input', () => {
@@ -203,15 +203,18 @@ describe('AISecurityGuard', () => {
 
       expect(prompt).toBeDefined();
       expect(prompt.length).toBeGreaterThan(0);
-      expect(prompt).toContain('Financial Assistant');
+      expect(prompt).toContain('cash-flow assistant');
       expect(prompt).toContain('Flow Finance');
     });
 
     it('should specify role and scope', () => {
       const prompt = AISecurityGuard.SYSTEM_PROMPT;
 
-      expect(prompt).toContain('finance');
-      expect(prompt).toContain('budget');
+      expect(prompt).toContain('service businesses');
+      expect(prompt).toContain('Projected vs realized revenue');
+      expect(prompt).toContain('confirmed cash');
+      expect(prompt).not.toContain('personal finance');
+      expect(prompt).not.toContain('budgeting');
     });
 
     it('should include security guardrails', () => {

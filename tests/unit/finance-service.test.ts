@@ -15,6 +15,14 @@ import {
   updateTransaction,
 } from '../../src/app/financeService';
 
+const analyticsMocks = vi.hoisted(() => ({
+  trackProductEventOnce: vi.fn(() => true),
+}));
+
+vi.mock('../../src/app/productAnalytics', () => ({
+  trackProductEventOnce: analyticsMocks.trackProductEventOnce,
+}));
+
 function createContext(overrides?: Partial<FinanceServiceContext>): FinanceServiceContext {
   return {
     userId: 'user-1',
@@ -83,6 +91,16 @@ describe('financeService', () => {
       { transactions: [] },
     );
     expect(context.emitTransactionCreated).toHaveBeenCalledWith(result.createdTransactions[0]);
+    expect(analyticsMocks.trackProductEventOnce).toHaveBeenCalledWith(
+      'activation_first_transaction',
+      'workspace-1',
+      expect.objectContaining({
+        workspace: 'workspace-1',
+        tenant: 'tenant-1',
+        created_count: 1,
+        source: 'finance_service',
+      }),
+    );
   });
 
   it('nao permite excluir a ultima conta ativa', async () => {

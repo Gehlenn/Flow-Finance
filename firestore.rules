@@ -240,13 +240,7 @@ service cloud.firestore {
 
       match /billing_hooks/{eventId} {
         allow read: if canManageWorkspace(workspaceId);
-        allow create: if isSignedIn()
-          && canEditWorkspaceData(workspaceId)
-          && request.resource.data.workspaceId == workspaceId
-          && request.resource.data.tenantId == workspaceDoc(workspaceId).data.tenantId
-          && memberMatchesWorkspaceTenant(workspaceId)
-          && request.resource.data.userId == request.auth.uid;
-        allow update, delete: if false;
+        allow create, update, delete: if false;
       }
     }
 

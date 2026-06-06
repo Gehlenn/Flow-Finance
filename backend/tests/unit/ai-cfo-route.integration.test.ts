@@ -4,7 +4,18 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { createTestAuthorizationHeader } from '../helpers/auth';
 
 const { generateContentMock } = vi.hoisted(() => ({
-  generateContentMock: vi.fn(async () => 'Resposta CFO de teste'),
+  generateContentMock: vi.fn(async () => ({
+    content: 'Resposta CFO de teste',
+    provider: 'openai',
+    model: 'gpt-4o-mini',
+    inputTokens: 42,
+    outputTokens: 18,
+    tokensUsed: 60,
+    latencyMs: 12,
+    workspaceId: 'ws-1',
+    estimatedCostUsd: 0.000006,
+    costEvidence: 'provider_usage_tokens',
+  })),
 }));
 
 vi.mock('../../src/middleware/authz', () => ({
@@ -150,6 +161,9 @@ describe('AI CFO route integration', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.answer).toContain('Nao consegui gerar a resposta consultiva');
+    expect(response.body.response_depth).toBe('reduced');
+    expect(response.body.diagnostic).toEqual(expect.objectContaining({ kind: 'ai_unavailable' }));
+    expect(response.body.explainability).toEqual(expect.objectContaining({ confidence_band: 'low' }));
   });
 });
 

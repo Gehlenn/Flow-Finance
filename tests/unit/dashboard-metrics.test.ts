@@ -1,6 +1,7 @@
 ﻿import { describe, expect, it } from 'vitest';
 import {
   buildDashboardFocusNote,
+  buildDashboardActivationStatus,
   buildDashboardReminderStateSummary,
   calculateDashboardMetrics,
 } from '../../components/Dashboard';
@@ -124,6 +125,72 @@ describe('dashboard metrics', () => {
 
     expect(note.title).toBe('Recebiveis vencidos pedem acao');
     expect(note.description).toMatch(/R\$\s*320,00/);
+  });
+
+  it('does not report cash as controlled when the financial base is empty', () => {
+    const note = buildDashboardFocusNote({
+      currentBalance: 0,
+      inflowMonth: 0,
+      outflowMonth: 0,
+      projectedRevenueMonth: 0,
+      pendingRevenueMonth: 0,
+      overdueRevenueAmount: 0,
+      confirmedRevenueMonth: 0,
+      activeAlerts: 0,
+    });
+
+    expect(note.title).toBe('Faltam dados para ler o caixa');
+    expect(note.description).toMatch(/previsto vs realizado/i);
+  });
+
+  it('tracks activation completeness across balance, inflow, outflow and receivable', () => {
+    const status = buildDashboardActivationStatus(
+      [
+        {
+          id: 'income-1',
+          amount: 500,
+          type: TransactionType.RECEITA,
+          category: Category.NEGOCIO,
+          description: 'Entrada',
+          date: '2026-04-03T12:00:00.000Z',
+        },
+        {
+          id: 'expense-1',
+          amount: 120,
+          type: TransactionType.DESPESA,
+          category: Category.NEGOCIO,
+          description: 'Saida',
+          date: '2026-04-03T12:00:00.000Z',
+        },
+      ],
+      [{
+        id: 'acc-1',
+        user_id: 'user-1',
+        name: 'Conta principal',
+        type: 'cash',
+        balance: 1000,
+        currency: 'BRL',
+        created_at: '2026-04-01T00:00:00.000Z',
+      }],
+      [{
+        id: 'rec-1',
+        title: 'Recebivel',
+        date: '2026-04-10T12:00:00.000Z',
+        type: ReminderType.NEGOCIO,
+        amount: 800,
+        completed: false,
+        priority: 'alta',
+      }],
+    );
+
+    expect(status).toMatchObject({
+      hasInitialBalance: true,
+      hasInflow: true,
+      hasOutflow: true,
+      hasReceivable: true,
+      completedSteps: 4,
+      isComplete: true,
+    });
   });
 
   it('falls back to alert review when there is no pending or overdue revenue', () => {

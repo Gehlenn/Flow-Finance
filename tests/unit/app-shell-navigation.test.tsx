@@ -36,8 +36,8 @@ vi.mock('../../src/config/sentry', () => ({
 vi.mock('../../src/saas', () => ({
   configureBillingTransport: vi.fn(),
   configureUsageStoreAdapter: vi.fn(),
-  createFirestoreBillingTransport: vi.fn(() => ({})),
   createFirestoreUsageStoreAdapter: vi.fn(() => ({})),
+  createHttpBillingTransport: vi.fn(() => ({})),
   resetUsageStoreAdapter: vi.fn(),
 }));
 
@@ -156,12 +156,15 @@ describe('App shell navigation', () => {
     const subsectionTabs = screen.getByRole('tablist', { name: 'Caixa subsecoes' });
     const activeSectionTab = screen.getByRole('tab', { name: 'Visao geral' });
     const mainNav = screen.getByRole('navigation', { name: 'Navegacao principal' });
+    const fab = screen.getByRole('button', { name: /Adicionar lançamento/i });
 
     expect(subsectionTabs.className).toContain('grid');
     expect(subsectionTabs.className).not.toContain('overflow-x-auto');
     expect(subsectionTabs.getAttribute('style')).toContain('repeat(auto-fit, minmax(8.5rem, 1fr))');
     expect(activeSectionTab.getAttribute('aria-selected')).toBe('true');
     expect(mainNav.className).toContain('grid-cols-4');
+    expect(mainNav.className).toContain('safe-area-inset-bottom');
+    expect(fab.className).toContain('safe-area-inset-bottom');
     expect(screen.getByRole('button', { name: 'Caixa' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Transacoes' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Receitas' })).toBeTruthy();

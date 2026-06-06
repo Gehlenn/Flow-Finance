@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { buildProductFinancialIntelligence } from '../src/app/productFinancialIntelligence';
 import { AI_CFO_COPY } from '../src/app/assistantCopy';
+import { trackProductEvent, trackProductEventOnce } from '../src/app/productAnalytics';
 import {
   FREE_LIMITS,
   MONETIZATION_PRICING,
@@ -58,11 +59,11 @@ const QUICK_PROMPTS: { label: string; question: string; icon: React.ReactNode }[
 // ─── Intent badge ─────────────────────────────────────────────────────────────
 
 const INTENT_LABEL: Record<CFOIntent, { label: string; color: string }> = {
-  spending_advice:  { label: 'Gasto', color: 'bg-rose-100 dark:bg-rose-500/10 text-rose-600' },
+  spending_advice:  { label: 'Gasto', color: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300' },
   cash_position: { label: 'Caixa', color: 'bg-slate-50 dark:bg-slate-800/70 text-slate-600 dark:text-slate-300' },
-  risk_question:    { label: 'Risco', color: 'bg-amber-100 dark:bg-amber-500/10 text-amber-600' },
-  receivables_question:{ label: 'Recebiveis', color: 'bg-cyan-100 dark:bg-cyan-500/10 text-cyan-600' },
-  savings_question: { label: 'Economia', color: 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600' },
+  risk_question:    { label: 'Risco', color: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300' },
+  receivables_question:{ label: 'Recebiveis', color: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300' },
+  savings_question: { label: 'Economia', color: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300' },
   monthly_summary:  { label: 'Resumo', color: 'bg-slate-50 dark:bg-slate-800/70 text-slate-600 dark:text-slate-300' },
 };
 
@@ -101,6 +102,33 @@ const buildConversationLearningDiagnostic = (): { title: string; message: string
   message: 'Nao foi possivel atualizar o aprendizado do CFO em segundo plano agora.',
   suggestion: 'Envie uma nova pergunta ou tente novamente quando a conexao do workspace estiver estável.',
 });
+
+function buildGenerationFailureMessage(intent: CFOIntent, hasStrongGrounding: boolean): Message {
+  return {
+    id: makeId(),
+    role: 'assistant',
+    intent,
+    text: 'Nao consegui processar esta consulta agora. A IA ficou indisponivel nesta tentativa, entao nao vou inferir uma recomendacao.',
+    timestamp: new Date().toISOString(),
+    responseDepth: 'reduced',
+    diagnostic: {
+      kind: 'ai_unavailable',
+      message: 'A geracao da resposta falhou antes de concluir a analise.',
+      suggestion: 'Tente novamente e, se persistir, use o dashboard de caixa para decidir pelos valores confirmados.',
+    },
+    explainability: {
+      reasons_used: [
+        'Fallback operacional da IA',
+        hasStrongGrounding ? 'Dados financeiros existem, mas a resposta nao foi gerada' : 'Base financeira limitada ou incompleta',
+      ],
+      evidence: {
+        data_quality_note: 'Resposta consultiva nao foi produzida pelo modelo nesta tentativa.',
+        base_sufficiency: hasStrongGrounding ? 'strong' : 'limited',
+      },
+      confidence_band: 'low',
+    },
+  };
+}
 
 function buildResponseReminder(message: Message): Partial<Reminder> {
   const highPriority = message.intent === 'risk_question' || message.intent === 'cash_position';
@@ -150,11 +178,11 @@ const AssistantBubble: React.FC<{ msg: Message; onCreateReminder?: (reminder: Pa
           )}
           {msg.diagnostic && (
             <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
-              <p className="text-xs font-semibold uppercase tracking-[0.08em]">Diagnóstico da IA</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.08em]">Diagnostico da IA</p>
               <p className="mt-1 text-xs leading-relaxed">{msg.diagnostic.message}</p>
               {msg.diagnostic.suggestion && (
                 <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] opacity-90">
-                  Próximo passo: {msg.diagnostic.suggestion}
+                  Proximo passo: {msg.diagnostic.suggestion}
                 </p>
               )}
             </div>
@@ -512,28 +540,50 @@ const AICFO: React.FC<AICFOProps> = ({
 
     try {
       const response = await generateCFOResponse(question, financialContext, intent);
-        const cfoMsg: Message = {
-          id: makeId(),
-          role: 'assistant',
-          text: response.answer,
+      if (!response.diagnostic && response.answer.trim()) {
+        trackProductEventOnce('ai_consultation_completed', workspaceId || userId, {
+          source: 'aicfo',
           intent,
-          responseDepth: response.response_depth,
-          timestamp: response.timestamp,
-          diagnostic: response.diagnostic,
-          explainability: response.explainability,
-        };
+          plan: effectiveWorkspacePlan,
+          confidence_band: response.explainability?.confidence_band ?? 'unknown',
+          response_depth: response.response_depth ?? 'unknown',
+          grounded: hasStrongGrounding,
+        });
+      } else if (response.diagnostic) {
+        trackProductEvent('ai_fallback_observed', {
+          source: 'aicfo',
+          intent,
+          plan: effectiveWorkspacePlan,
+          fallback_kind: response.diagnostic.kind,
+          response_depth: response.response_depth ?? 'unknown',
+          grounded: hasStrongGrounding,
+        });
+      }
+      const cfoMsg: Message = {
+        id: makeId(),
+        role: 'assistant',
+        text: response.answer,
+        intent,
+        responseDepth: response.response_depth,
+        timestamp: response.timestamp,
+        diagnostic: response.diagnostic,
+        explainability: response.explainability,
+      };
       setMessages(prev => [...prev, cfoMsg]);
     } catch (error) {
       logWarn('[AICFO] Failed to generate CFO response', {
         error,
         fallback: 'aicfo-generate-response-failed',
       });
-      setMessages(prev => [...prev, {
-        id: makeId(),
-        role: 'assistant',
-        text: 'Com base nos seus dados, não consegui processar esta consulta agora. Tente novamente.',
-        timestamp: new Date().toISOString(),
-      }]);
+      trackProductEvent('ai_fallback_observed', {
+        source: 'aicfo',
+        intent,
+        plan: effectiveWorkspacePlan,
+        fallback_kind: 'ai_unavailable',
+        response_depth: 'reduced',
+        grounded: hasStrongGrounding,
+      });
+      setMessages(prev => [...prev, buildGenerationFailureMessage(intent, hasStrongGrounding)]);
     } finally {
       setIsLoading(false);
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -558,7 +608,7 @@ const AICFO: React.FC<AICFOProps> = ({
       <div className={`mb-2 flex items-center justify-between gap-3 ${PANEL_SURFACE} px-3 py-2.5 sm:px-5 sm:py-4`}>
         <div className="min-w-0">
           <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white sm:text-xl">{AI_CFO_COPY.headerTitle}</h2>
-          <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 sm:text-xs">{AI_CFO_COPY.headerSubtitle}</p>
+          <p className="mt-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">{AI_CFO_COPY.headerSubtitle}</p>
         </div>
         <div className="flex items-center gap-2">
           {messages.length > 0 && (
@@ -578,9 +628,9 @@ const AICFO: React.FC<AICFOProps> = ({
 
       {learningDiagnostic && (
         <div role="status" className="mb-2 rounded-2xl border border-amber-100 bg-amber-50/80 p-2.5 dark:border-amber-500/20 dark:bg-amber-500/10 sm:p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-600">{learningDiagnostic.title}</p>
-          <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">{learningDiagnostic.message}</p>
-          <p className="mt-1 text-[11px] font-semibold text-amber-500">{learningDiagnostic.suggestion}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-600">{learningDiagnostic.title}</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300">{learningDiagnostic.message}</p>
+          <p className="mt-1 text-xs font-semibold text-amber-500">{learningDiagnostic.suggestion}</p>
         </div>
       )}
 
@@ -593,7 +643,7 @@ const AICFO: React.FC<AICFOProps> = ({
         ].map(({ label, value }) => (
           <div key={label} className={SOFT_SURFACE + ' p-2.5 text-center sm:p-3'}>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">{label}</p>
-            <p className={`text-[11px] font-semibold mt-0.5 ${value >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>
+            <p className={`text-xs font-semibold mt-0.5 ${value >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>
               {hideValues ? '••••' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)}
             </p>
           </div>
@@ -602,8 +652,8 @@ const AICFO: React.FC<AICFOProps> = ({
 
       {isFreePlan && (
         <div className="mb-2 rounded-2xl border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-700 dark:bg-slate-800/60 sm:mb-3 sm:p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">Modo Free</p>
-          <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">Modo Free</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
             O Consultor IA segue liberado no Free com as mesmas respostas consultivas, mas para em {queryLimit} consultas por mes. No Pro, o uso fica ilimitado por {proMonthlyPriceLabel}.
           </p>
         </div>
@@ -611,9 +661,9 @@ const AICFO: React.FC<AICFOProps> = ({
 
       {usageDiagnostic && (
         <div role="status" className="mb-2 rounded-2xl border border-amber-100 bg-amber-50/80 p-2.5 dark:border-amber-500/20 dark:bg-amber-500/10 sm:mb-3 sm:p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-600">{usageDiagnostic.title}</p>
-          <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">{usageDiagnostic.message}</p>
-          <p className="mt-1 text-[11px] font-semibold text-amber-500">{usageDiagnostic.suggestion}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-600">{usageDiagnostic.title}</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300">{usageDiagnostic.message}</p>
+          <p className="mt-1 text-xs font-semibold text-amber-500">{usageDiagnostic.suggestion}</p>
         </div>
       )}
 
@@ -648,11 +698,11 @@ const AICFO: React.FC<AICFOProps> = ({
         {paywallVisible && (
           <UpgradePromptCard
             title="Consultor IA ilimitado"
-            description="Voce chegou ao limite mensal do Free. O Pro libera consultas sem travar, mais workspaces e exportacao de relatorios."
+            description="Voce chegou ao limite mensal do Free. O Pro libera consultas sem travar, mais workspaces e mais contexto historico."
             bullets={[
               'consultor IA sem bloqueio mensal',
               'multiplos workspaces para operacoes separadas',
-              'exportacao de relatorios para repasse e auditoria',
+              'analises historicas para comparar caixa e risco',
             ]}
             workspaceId={workspaceId}
             showUpgradeAction

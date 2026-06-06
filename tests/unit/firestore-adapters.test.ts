@@ -62,10 +62,10 @@ describe('firestore SaaS adapters', () => {
     });
   });
 
-  it('records billing hooks with resolved tenant and workspace ids', async () => {
+  it('blocks direct Firestore billing hook writes from the client', async () => {
     const transport = createFirestoreBillingTransport();
 
-    await transport({
+    await expect(transport({
       userId: 'user-1',
       plan: 'pro',
       event: 'plan_changed',
@@ -73,17 +73,8 @@ describe('firestore SaaS adapters', () => {
       amount: 0,
       at: '2026-04-02T00:00:00.000Z',
       metadata: { source: 'test' },
-    });
+    })).rejects.toThrow('Firestore billing hook transport is disabled');
 
-    expect(adapterMocks.recordWorkspaceBillingHook).toHaveBeenCalledWith({
-      tenantId: 'tenant-1',
-      workspaceId: 'ws-1',
-      payload: expect.objectContaining({
-        userId: 'user-1',
-        workspaceId: 'ws-1',
-        plan: 'pro',
-        event: 'plan_changed',
-      }),
-    });
+    expect(adapterMocks.recordWorkspaceBillingHook).not.toHaveBeenCalled();
   });
 });

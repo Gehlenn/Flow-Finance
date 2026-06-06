@@ -2,7 +2,6 @@
 import {
   incrementWorkspaceUsage,
   readWorkspaceUsage,
-  recordWorkspaceBillingHook,
   resetWorkspaceUsage,
   writeWorkspaceUsage,
 } from '../services/firestoreBillingStore';
@@ -54,18 +53,7 @@ export function createFirestoreUsageStoreAdapter(): UsageStoreAdapter {
 }
 
 export function createFirestoreBillingTransport(): BillingHookTransport {
-  return async (payload: BillingHookPayload): Promise<void> => {
-    const identity = getCurrentWorkspaceIdentity();
-    const workspace = await ensureActiveWorkspace(identity);
-
-    await recordWorkspaceBillingHook({
-      tenantId: workspace.tenantId,
-      workspaceId: workspace.workspaceId,
-      payload: {
-        ...payload,
-        userId: payload.userId || identity?.userId || 'unknown',
-        workspaceId: workspace.workspaceId,
-      },
-    });
+  return async (_payload: BillingHookPayload): Promise<void> => {
+    throw new Error('Firestore billing hook transport is disabled; use createHttpBillingTransport.');
   };
 }

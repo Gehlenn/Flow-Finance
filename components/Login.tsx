@@ -206,7 +206,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
               Flow
             </h1>
             <p className="text-[14px] font-black text-slate-500 uppercase tracking-[0.6em] mt-2">Finance</p>
-            <p className="text-xs text-slate-400 mt-1">Flow Finance</p>
+            <p className="mt-2 max-w-[280px] text-sm font-semibold leading-snug text-slate-600 dark:text-slate-300">
+              Fluxo de caixa para empresas de servico: veja caixa real, previsto e recebiveis antes de decidir a semana.
+            </p>
+            <p className="mt-1 max-w-[260px] text-xs font-medium leading-relaxed text-slate-400">
+              Exemplo: saber se entra dinheiro suficiente antes dos vencimentos.
+            </p>
           </div>
         </div>
 

@@ -18,6 +18,7 @@ import {
   AIMetrics,
 } from './types';
 import { AppError } from '../../middleware/errorHandler';
+import { estimateAICost } from './aiCostMonitor';
 
 export interface OrchestratorConfig {
   primaryProvider: AIProviderType;
@@ -65,7 +66,7 @@ export class AIOrchestrator {
         this.config.maxRetries
       );
 
-      this.recordMetric(this.config.primaryProvider, response, 'success');
+      this.recordMetric(this.config.primaryProvider, response, 'success', options);
       return response;
     } catch (primaryError) {
       const primaryErrorMessage = primaryError instanceof Error ? primaryError.message : String(primaryError);
@@ -91,7 +92,7 @@ export class AIOrchestrator {
             );
 
             response.wasFallback = true;
-            this.recordMetric(this.config.fallbackProvider, response, 'fallback');
+            this.recordMetric(this.config.fallbackProvider, response, 'fallback', options);
             return response;
           } catch (fallbackError) {
             const fallbackErrorMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
@@ -192,9 +193,20 @@ export class AIOrchestrator {
   private recordMetric(
     providerName: string,
     response: AIResponse,
-    status: 'success' | 'fallback' | 'error'
+    status: 'success' | 'fallback' | 'error',
+    options?: AIRequestOptions,
   ): void {
     if (!this.config.enableMetrics) return;
+
+    const costEstimate = estimateAICost({
+      workspaceId: options?.workspaceId,
+      provider: response.provider as AIProviderType,
+      model: response.model,
+      inputTokens: response.inputTokens,
+      outputTokens: response.outputTokens,
+      tokensUsed: response.tokensUsed,
+      status,
+    });
 
     const metric: AIMetrics = {
       provider: response.provider as AIProviderType,
@@ -203,8 +215,13 @@ export class AIOrchestrator {
       isAnalysis: response.model.includes('4') || response.model.includes('pro'),
       isOcr: response.model.includes('vision'),
       tokensUsed: response.tokensUsed || 0,
+      inputTokens: response.inputTokens,
+      outputTokens: response.outputTokens,
       latencyMs: response.latencyMs || 0,
       status,
+      workspaceId: options?.workspaceId,
+      estimatedCostUsd: costEstimate.estimatedCostUsd,
+      costEvidence: costEstimate.evidence,
     };
 
     if (!this.metrics.has(providerName)) {

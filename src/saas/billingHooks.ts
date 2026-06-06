@@ -1,4 +1,5 @@
 import { BillingHookPayload } from './types';
+import { trackProductEvent } from '../app/productAnalytics';
 import { logWarn } from '../utils/logger';
 
 type BillingHookListener = (payload: BillingHookPayload) => void;
@@ -91,6 +92,12 @@ export function emitBillingHook(payload: BillingHookPayload): void {
 
   if (transport) {
     void transport(payload).catch((error) => {
+      trackProductEvent('integration_error_observed', {
+        integration: 'billing_hooks',
+        stage: 'transport',
+        workspace_id: payload.workspaceId || null,
+        resource: payload.resource,
+      });
       logWarn('[BillingHooks] Transport failed', {
         error,
         payload,

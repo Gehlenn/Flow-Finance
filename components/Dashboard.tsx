@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -12,7 +12,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { Account } from '../models/Account';
-import { Receivable, Reminder, Transaction, TransactionType } from '../types';
+import { Category, Receivable, Reminder, ReminderType, Transaction, TransactionType } from '../types';
 import { isReceivablesSourceOfTruthEnabled } from '../src/finance/receivableFeatureFlag';
 import {
   buildDashboardReceivableAggregate,
@@ -20,12 +20,14 @@ import {
   isReceivablePending,
   isReceivableRealized,
 } from '../src/finance/receivableService';
+import { trackProductEventOnce } from '../src/app/productAnalytics';
 import { addMoney, compareMoney, sumTransactions } from '../src/security/moneyMath';
 
 interface DashboardProps {
   userName?: string | null;
   userEmail?: string | null;
   userId?: string | null;
+  activeWorkspaceId?: string | null;
   activeWorkspaceName?: string | null;
   activeWorkspacePlan?: 'free' | 'pro';
   transactions?: Transaction[];
@@ -34,10 +36,14 @@ interface DashboardProps {
   reminders?: Reminder[];
   receivables?: Receivable[];
   hideValues?: boolean;
+  onCreateAccount?: (account: { name: string; type: Account['type']; balance: number }) => void | Promise<void>;
+  onAddTransactions?: (transactions: Partial<Transaction>[]) => void | Promise<void>;
+  onAddReminder?: (reminder: Partial<Reminder>) => void | Promise<void>;
   onNavigateToInsights?: () => void;
   onNavigateToHistory?: () => void;
   onNavigateToFlow?: () => void;
   onNavigateToSettings?: () => void;
+  onOpenEntryCapture?: () => void;
 }
 
 export interface DashboardMetrics {
@@ -69,6 +75,61 @@ export interface DashboardNextReceivableSummary {
   amount: number;
   dueLabel: string;
   note: string;
+}
+
+export interface DashboardActivationStatus {
+  hasInitialBalance: boolean;
+  hasInflow: boolean;
+  hasOutflow: boolean;
+  hasReceivable: boolean;
+  completedSteps: number;
+  totalSteps: number;
+  isComplete: boolean;
+}
+
+export function hasDashboardFinancialBase(metrics: DashboardMetrics): boolean {
+  return metrics.currentBalance !== 0
+    || metrics.inflowMonth !== 0
+    || metrics.outflowMonth !== 0
+    || metrics.pendingRevenueMonth !== 0
+    || metrics.overdueRevenueAmount !== 0
+    || metrics.activeAlerts > 0;
+}
+
+export function buildDashboardActivationStatus(
+  transactions: Transaction[],
+  accounts: Account[],
+  reminders: Reminder[],
+  receivables: Receivable[] = [],
+): DashboardActivationStatus {
+  const hasInitialBalance = accounts.some((account) => account.balance !== 0);
+  const hasInflow = transactions.some((transaction) => transaction.type === TransactionType.RECEITA && !transaction.generated);
+  const hasOutflow = transactions.some((transaction) => transaction.type === TransactionType.DESPESA && !transaction.generated);
+  const hasReceivable = receivables.some((receivable) => isReceivablePending(receivable) || isReceivableOverdue(receivable))
+    || reminders.some((reminder) => hasFinancialImpact(reminder));
+  const completedSteps = [hasInitialBalance, hasInflow, hasOutflow, hasReceivable].filter(Boolean).length;
+
+  return {
+    hasInitialBalance,
+    hasInflow,
+    hasOutflow,
+    hasReceivable,
+    completedSteps,
+    totalSteps: 4,
+    isComplete: completedSteps === 4,
+  };
+}
+
+function parseMoneyInput(value: string): number {
+  const normalized = value.trim().replace(/\./g, '').replace(',', '.');
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function buildDefaultReceivableDate(): string {
+  const dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + 7);
+  return dueDate.toISOString();
 }
 
 function parseDate(value: string): Date | null {
@@ -276,6 +337,13 @@ export function calculateDashboardMetrics(
 }
 
 export function buildDashboardFocusNote(metrics: DashboardMetrics): DashboardFocusNote {
+  if (!hasDashboardFinancialBase(metrics)) {
+    return {
+      title: 'Faltam dados para ler o caixa',
+      description: 'Cadastre saldo inicial, entradas/saidas ou recebiveis para comparar previsto vs realizado, enxergar risco e definir a proxima acao.',
+    };
+  }
+
   if (metrics.overdueRevenueAmount > 0) {
     return {
       title: 'Recebiveis vencidos pedem acao',
@@ -359,7 +427,9 @@ export function buildDashboardReminderStateSummary(
 
 const Dashboard: React.FC<DashboardProps> = ({
   userName,
+  userId,
   activeWorkspaceName,
+  activeWorkspaceId,
   activeWorkspacePlan = 'free',
   transactions = [],
   accounts = [],
@@ -367,10 +437,14 @@ const Dashboard: React.FC<DashboardProps> = ({
   reminders = [],
   receivables = [],
   hideValues = false,
+  onCreateAccount,
+  onAddTransactions,
+  onAddReminder,
   onNavigateToInsights,
   onNavigateToHistory,
   onNavigateToFlow,
   onNavigateToSettings,
+  onOpenEntryCapture,
 }) => {
   const metrics = useMemo(
     () => calculateDashboardMetrics(transactions, accounts, reminders, alerts.length, new Date(), receivables),
@@ -385,6 +459,104 @@ const Dashboard: React.FC<DashboardProps> = ({
     () => buildDashboardReminderStateSummary(reminders, new Date(), receivables),
     [reminders, receivables],
   );
+  const activationStatus = useMemo(
+    () => buildDashboardActivationStatus(transactions, accounts, reminders, receivables),
+    [accounts, receivables, reminders, transactions],
+  );
+  const [activationForm, setActivationForm] = useState({
+    initialBalance: '',
+    inflow: '',
+    outflow: '',
+    receivable: '',
+  });
+  const [activationError, setActivationError] = useState<string | null>(null);
+  const [activationSuccess, setActivationSuccess] = useState<string | null>(null);
+  const [isActivationSubmitting, setIsActivationSubmitting] = useState(false);
+
+  const canSubmitActivation = Boolean(onCreateAccount || onAddTransactions || onAddReminder);
+
+  const handleActivationSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!canSubmitActivation) {
+      setActivationError('A captura guiada nao esta disponivel neste contexto.');
+      return;
+    }
+
+    const initialBalance = parseMoneyInput(activationForm.initialBalance);
+    const inflow = parseMoneyInput(activationForm.inflow);
+    const outflow = parseMoneyInput(activationForm.outflow);
+    const receivable = parseMoneyInput(activationForm.receivable);
+
+    if (initialBalance <= 0 && inflow <= 0 && outflow <= 0 && receivable <= 0) {
+      setActivationError('Preencha pelo menos um valor para montar a primeira leitura.');
+      return;
+    }
+
+    setIsActivationSubmitting(true);
+    setActivationError(null);
+    setActivationSuccess(null);
+
+    try {
+      if (!activationStatus.hasInitialBalance && initialBalance > 0 && onCreateAccount) {
+        await onCreateAccount({
+          name: 'Saldo inicial',
+          type: 'cash',
+          balance: initialBalance,
+        });
+      }
+
+      const nextTransactions: Partial<Transaction>[] = [];
+      if (!activationStatus.hasInflow && inflow > 0) {
+        nextTransactions.push({
+          amount: inflow,
+          type: TransactionType.RECEITA,
+          category: Category.NEGOCIO,
+          description: 'Entrada inicial',
+          date: new Date().toISOString(),
+          source: 'manual',
+        });
+      }
+
+      if (!activationStatus.hasOutflow && outflow > 0) {
+        nextTransactions.push({
+          amount: outflow,
+          type: TransactionType.DESPESA,
+          category: Category.NEGOCIO,
+          description: 'Saida inicial',
+          date: new Date().toISOString(),
+          source: 'manual',
+        });
+      }
+
+      if (nextTransactions.length > 0 && onAddTransactions) {
+        await onAddTransactions(nextTransactions);
+      }
+
+      if (!activationStatus.hasReceivable && receivable > 0 && onAddReminder) {
+        await onAddReminder({
+          title: 'Recebivel inicial',
+          date: buildDefaultReceivableDate(),
+          type: ReminderType.NEGOCIO,
+          amount: receivable,
+          priority: 'alta',
+          completed: false,
+        });
+      }
+
+      setActivationForm({
+        initialBalance: '',
+        inflow: '',
+        outflow: '',
+        receivable: '',
+      });
+      setActivationSuccess('Base inicial registrada. Revise o dashboard apos a sincronizacao.');
+    } catch (error) {
+      setActivationError(error instanceof Error ? error.message : 'Nao foi possivel registrar a base inicial.');
+    } finally {
+      setIsActivationSubmitting(false);
+    }
+  };
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -397,6 +569,32 @@ const Dashboard: React.FC<DashboardProps> = ({
     ? 'Abra analises profundas e comparativos historicos do periodo.'
     : 'Abra sinais principais para validar sua leitura de caixa.';
   const PANEL_SURFACE = 'rounded-3xl border border-slate-200 bg-white shadow-[0_18px_45px_-24px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800';
+  const hasFinancialBase = hasDashboardFinancialBase(metrics);
+
+  useEffect(() => {
+    if (!hasFinancialBase) {
+      return;
+    }
+
+    trackProductEventOnce('activation_first_dashboard_useful', activeWorkspaceId || userId || activeWorkspaceName || 'dashboard', {
+      workspace: activeWorkspaceName || null,
+      transactions_count: transactions.filter((transaction) => !transaction.generated).length,
+      inflow_month: metrics.inflowMonth,
+      outflow_month: metrics.outflowMonth,
+      pending_revenue_month: metrics.pendingRevenueMonth,
+      overdue_revenue_amount: metrics.overdueRevenueAmount,
+    });
+  }, [
+    activeWorkspaceId,
+    activeWorkspaceName,
+    hasFinancialBase,
+    metrics.inflowMonth,
+    metrics.outflowMonth,
+    metrics.overdueRevenueAmount,
+    metrics.pendingRevenueMonth,
+    transactions,
+    userId,
+  ]);
 
   return (
     <div className="flex flex-col gap-5 pb-8">
@@ -429,6 +627,89 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {!activationStatus.isComplete && (
+        <section className={`${PANEL_SURFACE} p-5`}>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Ativacao</p>
+              <h3 className="mt-1 text-lg font-semibold tracking-tight text-slate-900 dark:text-white">Monte a primeira leitura de caixa</h3>
+              <p className="mt-2 max-w-2xl text-sm font-semibold text-slate-500 dark:text-slate-300">
+                Registre saldo, entrada, saida e recebivel para o Flow separar caixa real, previsto e risco da semana.
+              </p>
+              <p className="mt-3 inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-900 dark:text-slate-300">
+                {activationStatus.completedSteps}/{activationStatus.totalSteps} sinais prontos
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+              {onOpenEntryCapture && (
+                <button
+                  type="button"
+                  onClick={onOpenEntryCapture}
+                  className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+                >
+                  Adicionar lancamento
+                </button>
+              )}
+              {onNavigateToFlow && (
+                <button
+                  type="button"
+                  onClick={onNavigateToFlow}
+                  className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"
+                >
+                  Ver fluxo previsto
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <ActivationStep completed={activationStatus.hasInitialBalance} label="1" title="Saldo inicial" description="Quanto existe hoje nas contas." />
+            <ActivationStep completed={activationStatus.hasInflow} label="2" title="Entrada confirmada" description="Dinheiro que ja entrou no mes." />
+            <ActivationStep completed={activationStatus.hasOutflow} label="3" title="Saida registrada" description="Custo real ja assumido no mes." />
+            <ActivationStep completed={activationStatus.hasReceivable} label="4" title="Recebivel pendente" description="Valor previsto fora do caixa atual." />
+          </div>
+
+          <form onSubmit={handleActivationSubmit} className="mt-5 grid gap-3 rounded-3xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/30 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
+            <ActivationMoneyField
+              label="Saldo hoje"
+              value={activationForm.initialBalance}
+              disabled={activationStatus.hasInitialBalance}
+              onChange={(value) => setActivationForm((current) => ({ ...current, initialBalance: value }))}
+            />
+            <ActivationMoneyField
+              label="Entrada"
+              value={activationForm.inflow}
+              disabled={activationStatus.hasInflow}
+              onChange={(value) => setActivationForm((current) => ({ ...current, inflow: value }))}
+            />
+            <ActivationMoneyField
+              label="Saida"
+              value={activationForm.outflow}
+              disabled={activationStatus.hasOutflow}
+              onChange={(value) => setActivationForm((current) => ({ ...current, outflow: value }))}
+            />
+            <ActivationMoneyField
+              label="Recebivel"
+              value={activationForm.receivable}
+              disabled={activationStatus.hasReceivable}
+              onChange={(value) => setActivationForm((current) => ({ ...current, receivable: value }))}
+            />
+            <button
+              type="submit"
+              disabled={isActivationSubmitting || !canSubmitActivation}
+              className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white dark:disabled:bg-slate-700"
+            >
+              {isActivationSubmitting ? 'Salvando...' : 'Salvar base'}
+            </button>
+            {(activationError || activationSuccess) && (
+              <p className={`lg:col-span-5 text-sm font-semibold ${activationError ? 'text-rose-600 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300'}`} role="status">
+                {activationError || activationSuccess}
+              </p>
+            )}
+          </form>
+        </section>
+      )}
 
       <section className={`${PANEL_SURFACE} p-6`}>
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.18fr)_minmax(280px,0.82fr)] lg:items-start">
@@ -483,7 +764,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       </section>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,0.95fr)]">
-        <section className={`${PANEL_SURFACE} p-5`}>
+        <section className={`${PANEL_SURFACE} order-2 p-5 lg:order-1`}>
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Estados financeiros</p>
@@ -516,12 +797,32 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </section>
 
-        <section className="rounded-3xl border border-amber-200 bg-amber-50/80 p-5 shadow-[0_18px_45px_-28px_rgba(245,158,11,0.45)] dark:border-amber-500/20 dark:bg-amber-500/10">
+        <section className="order-1 rounded-3xl border border-amber-200 bg-amber-50/80 p-5 shadow-[0_18px_45px_-28px_rgba(245,158,11,0.45)] dark:border-amber-500/20 dark:bg-amber-500/10 lg:order-2">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">O que pede atencao</p>
               <p className="mt-1 text-xl font-semibold tracking-tight text-slate-900 dark:text-white">{focusNote.title}</p>
               <p className="mt-2 text-sm font-semibold text-slate-600 dark:text-slate-300">{focusNote.description}</p>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                {onNavigateToHistory && (
+                  <button
+                    type="button"
+                    onClick={onNavigateToHistory}
+                    className="inline-flex min-h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+                  >
+                    Revisar transacoes
+                  </button>
+                )}
+                {onNavigateToFlow && (
+                  <button
+                    type="button"
+                    onClick={onNavigateToFlow}
+                    className="inline-flex min-h-10 items-center justify-center rounded-2xl border border-amber-200 bg-white/70 px-4 py-2 text-sm font-semibold text-amber-800 transition-colors hover:bg-white dark:border-amber-500/20 dark:bg-slate-900/20 dark:text-amber-200"
+                  >
+                    Ver previsto vs realizado
+                  </button>
+                )}
+              </div>
             </div>
             <div className="rounded-2xl bg-amber-100 p-2.5 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
               <CircleAlert size={16} />
@@ -556,7 +857,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           )}
         </section>
 
-        <section className={`${PANEL_SURFACE} p-5`}>
+        <section className={`${PANEL_SURFACE} order-3 p-5`}>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Leitura de recebiveis</p>
           <div className="mt-4 space-y-3">
             <MiniSummaryRow
@@ -638,6 +939,50 @@ const MINI_SUMMARY_TONE_CLASS_MAP = {
   pending: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
   overdue: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300',
 };
+
+const ActivationMoneyField: React.FC<{
+  label: string;
+  value: string;
+  disabled?: boolean;
+  onChange: (value: string) => void;
+}> = ({
+  label,
+  value,
+  disabled = false,
+  onChange,
+}) => (
+  <label className="flex min-w-0 flex-col gap-1.5">
+    <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{label}</span>
+    <input
+      type="text"
+      inputMode="decimal"
+      value={value}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.value)}
+      placeholder={disabled ? 'Registrado' : '0,00'}
+      className="min-h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition-colors placeholder:text-slate-300 focus:border-slate-400 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-600 dark:focus:border-slate-500 dark:disabled:bg-slate-800"
+    />
+  </label>
+);
+
+const ActivationStep: React.FC<{
+  label: string;
+  title: string;
+  description: string;
+  completed?: boolean;
+}> = ({ label, title, description, completed = false }) => (
+  <div className={`rounded-2xl border p-4 ${completed ? 'border-emerald-200 bg-emerald-50/80 dark:border-emerald-500/20 dark:bg-emerald-500/10' : 'border-slate-200 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/30'}`}>
+    <div className="flex items-start gap-3">
+      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-xs font-semibold ${completed ? 'bg-emerald-600 text-white dark:bg-emerald-400 dark:text-slate-950' : 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'}`}>
+        {completed ? 'OK' : label}
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-slate-900 dark:text-white">{title}</p>
+        <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500 dark:text-slate-300">{description}</p>
+      </div>
+    </div>
+  </div>
+);
 
 const ComparisonMetricCard: React.FC<{
   label: string;

@@ -7,7 +7,7 @@ Este changelog registra mudancas relevantes no repositorio. Ele nao e a fonte de
 Para status real do ciclo e pendencias operacionais atuais, consultar:
 
 - `docs/DEPLOYMENT_STATUS.md`
-- `docs/OPERATIONS_README.md`
+- `./OPERATIONS_README.md`
 - vault canonico (fora do repo): `E:\app e jogos criados\obsidian-vault\Projetos\` (ver `../README.md`)
 
 ## Ultima revisao editorial

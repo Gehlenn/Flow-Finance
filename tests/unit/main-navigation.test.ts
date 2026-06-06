@@ -34,11 +34,30 @@ describe('main navigation focus', () => {
     expect(ai?.items.map((item) => item.tab)).toEqual([
       'cfo',
       'assistant',
+    ]);
+    expect(getActiveNavigationSection('accounts', false).id).toBe('operation');
+    expect(getActiveNavigationSection('workspaceaudit', false).id).toBe('cash');
+  });
+
+  it('exposes workspace administration only to workspace admins', () => {
+    const sections = getNavigationSections({
+      canAccessDevTools: false,
+      canAccessWorkspaceAdmin: true,
+    });
+    const ai = sections.find((section) => section.id === 'ai');
+
+    expect(ai?.items.map((item) => item.tab)).toEqual([
+      'cfo',
+      'assistant',
       'workspaceadmin',
       'workspaceaudit',
     ]);
-    expect(getActiveNavigationSection('accounts', false).id).toBe('operation');
-    expect(getActiveNavigationSection('workspaceaudit', false).id).toBe('ai');
+    expect(
+      getActiveNavigationSection('workspaceaudit', {
+        canAccessDevTools: false,
+        canAccessWorkspaceAdmin: true,
+      }).id,
+    ).toBe('ai');
   });
 
   it('exposes dev tools only when the account has dev access', () => {
@@ -49,6 +68,8 @@ describe('main navigation focus', () => {
 
     expect(regularAi?.items.some((item) => item.tab === 'aicontrol')).toBe(false);
     expect(regularAi?.items.some((item) => item.tab === 'performance')).toBe(false);
+    expect(regularAi?.items.some((item) => item.tab === 'workspaceadmin')).toBe(false);
+    expect(regularAi?.items.some((item) => item.tab === 'workspaceaudit')).toBe(false);
     expect(items.map((item) => item.tab)).toEqual(['dashboard', 'history', 'flow', 'cfo']);
     expect(aiItems[aiItems.length - 2]?.tab).toBe('aicontrol');
     expect(aiItems[aiItems.length - 2]?.label).toBe('Lab IA');

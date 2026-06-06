@@ -5,6 +5,7 @@ import {
   getAuthHeaders,
 } from '../config/api.config';
 import { getDemoBootstrapPlan } from '../demo/demoBootstrap';
+import { trackProductEvent } from '../app/productAnalytics';
 import { logWarn } from '../utils/logger';
 
 export type WorkspacePlanCatalog = {
@@ -39,6 +40,8 @@ type StripeSessionResponse = {
 type StripePortalResponse = {
   url: string;
 };
+
+type BillingAnalyticsSource = 'pricing' | 'upgrade_prompt' | 'settings' | 'workspace_admin' | 'unknown';
 
 function createFallbackPlanCatalog(workspaceId: string, currentPlan: 'free' | 'pro' = 'free'): WorkspacePlanCatalog {
   return {
@@ -105,21 +108,47 @@ export async function getWorkspacePlanCatalog(input: {
 export async function createWorkspaceCheckoutSession(input: {
   workspaceId: string;
   returnUrl: string;
+  source?: BillingAnalyticsSource;
 }): Promise<StripeSessionResponse> {
+  trackProductEvent('billing_checkout_started', {
+    workspace_id: input.workspaceId,
+    source: input.source || 'unknown',
+  });
+
   return await apiRequest<StripeSessionResponse>(API_ENDPOINTS.SAAS.STRIPE_CHECKOUT_SESSION, {
     method: 'POST',
     headers: getAuthHeaders({ workspaceId: input.workspaceId }),
     body: JSON.stringify({ returnUrl: input.returnUrl }),
+  }).catch((error) => {
+    trackProductEvent('billing_checkout_failed', {
+      workspace_id: input.workspaceId,
+      source: input.source || 'unknown',
+      error_type: error instanceof ApiRequestError ? `http_${error.statusCode}` : 'request_failed',
+    });
+    throw error;
   });
 }
 
 export async function createWorkspacePortalSession(input: {
   workspaceId: string;
   returnUrl: string;
+  source?: BillingAnalyticsSource;
 }): Promise<StripePortalResponse> {
+  trackProductEvent('billing_portal_started', {
+    workspace_id: input.workspaceId,
+    source: input.source || 'unknown',
+  });
+
   return await apiRequest<StripePortalResponse>(API_ENDPOINTS.SAAS.STRIPE_PORTAL_SESSION, {
     method: 'POST',
     headers: getAuthHeaders({ workspaceId: input.workspaceId }),
     body: JSON.stringify({ returnUrl: input.returnUrl }),
+  }).catch((error) => {
+    trackProductEvent('billing_portal_failed', {
+      workspace_id: input.workspaceId,
+      source: input.source || 'unknown',
+      error_type: error instanceof ApiRequestError ? `http_${error.statusCode}` : 'request_failed',
+    });
+    throw error;
   });
 }

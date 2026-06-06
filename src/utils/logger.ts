@@ -3,7 +3,8 @@ import { addBreadcrumb, reportError, reportMessage } from '../config/sentry';
 type LogLevel = 'INFO' | 'WARN' | 'ERROR' | 'DEBUG';
 
 const REDACTED_VALUE = '[REDACTED]';
-const SENSITIVE_KEY_PATTERN = /(password|token|authorization|secret|api[-_]?key|access[-_]?key)/i;
+const SENSITIVE_KEY_PATTERN = /(password|token|authorization|secret|apikey|accesskey)/i;
+const SENSITIVE_ID_SUFFIXES = ['workspaceid', 'tenantid', 'userid', 'memberuserid', 'invitedbyuserid', 'removedbyuserid'];
 
 export interface LogMeta {
   correlationId?: string;
@@ -35,6 +36,19 @@ function toSentryLevel(level: LogLevel): 'error' | 'warning' | 'info' | 'debug' 
   return 'info';
 }
 
+function normalizeKey(key: string): string {
+  return key.replace(/[^a-z0-9]/gi, '').toLowerCase();
+}
+
+function isSensitiveKey(key: string): boolean {
+  const normalized = normalizeKey(key);
+  return (
+    SENSITIVE_KEY_PATTERN.test(normalized) ||
+    normalized.endsWith('email') ||
+    SENSITIVE_ID_SUFFIXES.some((suffix) => normalized === suffix || normalized.endsWith(suffix))
+  );
+}
+
 function sanitizeData(input: unknown): unknown {
   if (Array.isArray(input)) {
     return input.map((item) => sanitizeData(item));
@@ -43,7 +57,7 @@ function sanitizeData(input: unknown): unknown {
   if (input && typeof input === 'object') {
     const sanitized: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
-      if (SENSITIVE_KEY_PATTERN.test(key)) {
+      if (isSensitiveKey(key)) {
         sanitized[key] = REDACTED_VALUE;
       } else {
         sanitized[key] = sanitizeData(value);

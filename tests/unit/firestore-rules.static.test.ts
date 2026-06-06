@@ -12,6 +12,10 @@ describe('firestore.rules multi-tenant coverage', () => {
     expect(rules).toContain('match /billing_hooks/{eventId}');
   });
 
+  it('keeps billing hook writes server-only', () => {
+    expect(rules).toContain('match /billing_hooks/{eventId} {\n        allow read: if canManageWorkspace(workspaceId);\n        allow create, update, delete: if false;');
+  });
+
   it('covers future workspace-scoped collections', () => {
     expect(rules).toContain('match /insights/{insightId}');
     expect(rules).toContain('match /imports/{importId}');

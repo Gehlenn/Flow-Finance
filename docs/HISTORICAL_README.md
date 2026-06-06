@@ -11,7 +11,7 @@ Este arquivo agrupa materiais úteis como evidência, contexto ou memória técn
 
 ## Estado vivo atual
 
-- o baseline operacional atual do projeto esta em `0.9.7` e deve ser lido nos documentos vivos: `README.md`, `docs/README.md`, `docs/OPERATIONS_README.md`, `docs/ROADMAP.md` e `docs/DEPLOYMENT_STATUS.md`
+- o baseline operacional atual do projeto esta em `0.9.7` e deve ser lido nos documentos vivos: `README.md`, `./README.md`, `./OPERATIONS_README.md`, `./ROADMAP.md` e `./DEPLOYMENT_STATUS.md`
 - esta trilha existe para memoria, auditoria e rastreabilidade
 - se um achado aqui ainda for operacionalmente relevante, ele precisa ser promovido explicitamente para a trilha viva
 
@@ -48,5 +48,5 @@ Este arquivo agrupa materiais úteis como evidência, contexto ou memória técn
 
 ## Regra de leitura
 
-- documentos desta trilha não substituem o estado atual descrito em `README.md`, `docs/README.md`, `docs/OPERATIONS_README.md`, `docs/ROADMAP.md` e `docs/DEPLOYMENT_STATUS.md`
+- documentos desta trilha não substituem o estado atual descrito em `README.md`, `./README.md`, `./OPERATIONS_README.md`, `./ROADMAP.md` e `./DEPLOYMENT_STATUS.md`
 - se uma informação histórica ainda for importante operacionalmente, ela deve ser promovida explicitamente para a trilha viva
