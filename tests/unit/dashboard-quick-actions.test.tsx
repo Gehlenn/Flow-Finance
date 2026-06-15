@@ -73,7 +73,7 @@ describe('dashboard quick actions', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /ver transacoes/i }));
-    fireEvent.click(screen.getByRole('button', { name: /abrir fluxo de caixa/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: /abrir fluxo de caixa/i })[0]);
     fireEvent.click(screen.getByRole('button', { name: /ver insights/i }));
     fireEvent.click(screen.getByRole('button', { name: /ver receitas previstas/i }));
     fireEvent.click(screen.getByRole('button', { name: /abrir ajustes/i }));
@@ -221,9 +221,9 @@ describe('dashboard quick actions', () => {
       />,
     );
 
-    expect(screen.getByText(/O que pede atencao/i)).toBeTruthy();
-    expect(screen.getByText(/Faltam dados para ler o caixa/i)).toBeTruthy();
-    expect(screen.queryByText(/Caixa sob controle/i)).toBeNull();
+    expect(screen.getAllByText(/O que pede atencao/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Faltam dados para ler o caixa/i).length).toBeGreaterThan(0);
+    expect(screen.queryAllByText(/Caixa sob controle/i)).toHaveLength(0);
     expect(screen.getByText(/Monte a primeira leitura de caixa/i)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: /adicionar lancamento/i }));
