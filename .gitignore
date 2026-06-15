@@ -67,6 +67,10 @@ android-sdk-tools.zip
 firebase-debug.log
 flow-finance-current.zip
 .gstack/
+.playwright-mcp/
+browser-auth-events-*.json
+backend/data/workspaces.json
+backend/data/saas-store.json
 
 # Obsidian vault for local notes only
 obsidian-vault/

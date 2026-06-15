@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import crypto from 'node:crypto';
-import fs from 'node:fs/promises';
+import fs from 'node:fs';
+import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -14,6 +15,7 @@ const DEFAULT_MAX_PAGES = 20;
 const RELEVANT_EVENTS = [
   'activation_first_transaction',
   'activation_first_dashboard_useful',
+  'activation_financial_base_completed',
   'weekly_cash_review_completed',
 ];
 
@@ -25,6 +27,12 @@ const COOKIE_ENV = 'ACTIVATION_RETENTION_EXPORT_COOKIE_HEADER';
 const COOKIE_ALIASES = ['STRIPE_LIVE_SMOKE_COOKIE_HEADER'];
 const WORKSPACE_ENV = 'ACTIVATION_RETENTION_EXPORT_WORKSPACE_ID';
 const WORKSPACE_ALIASES = ['STRIPE_LIVE_SMOKE_WORKSPACE_ID'];
+const EMAIL_ENV = 'ACTIVATION_RETENTION_EXPORT_EMAIL';
+const EMAIL_ALIASES = ['STRIPE_LIVE_SMOKE_EMAIL', 'SCALE_READINESS_EMAIL'];
+const PASSWORD_ENV = 'ACTIVATION_RETENTION_EXPORT_PASSWORD';
+const PASSWORD_ALIASES = ['STRIPE_LIVE_SMOKE_PASSWORD', 'SCALE_READINESS_PASSWORD'];
+const FIREBASE_API_KEY_ENV = 'VITE_FIREBASE_API_KEY';
+const LOCAL_ENV_FILE = path.resolve(process.cwd(), '.env.local');
 
 function normalizeSlashes(value) {
   return value.replaceAll('\\', '/');
@@ -39,14 +47,42 @@ function readEnv(name) {
   return typeof value === 'string' && value.trim() ? value.trim() : '';
 }
 
+function readLocalEnvFile() {
+  if (!fs.existsSync(LOCAL_ENV_FILE)) {
+    return {};
+  }
+
+  const raw = fs.readFileSync(LOCAL_ENV_FILE, 'utf8');
+  const env = {};
+  for (const line of raw.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const idx = trimmed.indexOf('=');
+    if (idx <= 0) continue;
+    const key = trimmed.slice(0, idx).trim();
+    const value = trimmed.slice(idx + 1).trim().replace(/^['"]|['"]$/g, '');
+    env[key] = value;
+  }
+
+  return env;
+}
+
+function loadMergedEnv() {
+  return {
+    ...readLocalEnvFile(),
+    ...Object.fromEntries(Object.entries(process.env).filter(([, value]) => typeof value === 'string')),
+  };
+}
+
 function readFirstEnv(name, aliases = []) {
-  const value = readEnv(name);
+  const env = loadMergedEnv();
+  const value = typeof env[name] === 'string' && env[name].trim() ? env[name].trim() : '';
   if (value) {
     return { value, source: name };
   }
 
   for (const alias of aliases) {
-    const aliasValue = readEnv(alias);
+    const aliasValue = typeof env[alias] === 'string' && env[alias].trim() ? env[alias].trim() : '';
     if (aliasValue) {
       return { value: aliasValue, source: alias };
     }
@@ -136,6 +172,28 @@ function parseArgs(argv) {
 
     if (token.startsWith('--cookie-header=')) {
       args.cookieHeader = token.slice('--cookie-header='.length);
+      continue;
+    }
+
+    if (token === '--email') {
+      args.email = argv[index + 1];
+      index += 1;
+      continue;
+    }
+
+    if (token.startsWith('--email=')) {
+      args.email = token.slice('--email='.length);
+      continue;
+    }
+
+    if (token === '--password') {
+      args.password = argv[index + 1];
+      index += 1;
+      continue;
+    }
+
+    if (token.startsWith('--password=')) {
+      args.password = token.slice('--password='.length);
       continue;
     }
 
@@ -314,6 +372,112 @@ function resolveAuthContext(args) {
   };
 }
 
+function resolveLoginCredentials(args) {
+  const explicitEmail = typeof args.email === 'string' ? args.email.trim() : '';
+  const explicitPassword = typeof args.password === 'string' ? args.password.trim() : '';
+
+  return {
+    email: explicitEmail ? { value: explicitEmail, source: '--email' } : readFirstEnv(EMAIL_ENV, EMAIL_ALIASES),
+    password: explicitPassword ? { value: explicitPassword, source: '--password' } : readFirstEnv(PASSWORD_ENV, PASSWORD_ALIASES),
+  };
+}
+
+function resolveFirebaseApiKey() {
+  return readFirstEnv(FIREBASE_API_KEY_ENV).value;
+}
+
+function extractWorkspaceIdFromPayload(payload) {
+  if (!payload || typeof payload !== 'object') {
+    return '';
+  }
+
+  const directCandidates = [
+    payload.workspaceId,
+    payload.id,
+    payload.workspace_id,
+  ];
+
+  for (const candidate of directCandidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  const nestedCandidates = [
+    payload.workspace,
+    payload.data,
+    payload.result,
+  ];
+
+  for (const nested of nestedCandidates) {
+    const nestedId = extractWorkspaceIdFromPayload(nested);
+    if (nestedId) {
+      return nestedId;
+    }
+  }
+
+  return '';
+}
+
+async function exchangeFirebaseIdentity({ apiKey, email, password }) {
+  if (!apiKey || !email || !password) {
+    return {
+      ok: false,
+      idToken: '',
+      source: null,
+      reasons: ['missing firebase api key, email, or password'],
+    };
+  }
+
+  const endpoints = [
+    {
+      source: 'firebase-signin',
+      url: `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(apiKey)}`,
+      payload: { email, password, returnSecureToken: true },
+    },
+    {
+      source: 'firebase-signup',
+      url: `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${encodeURIComponent(apiKey)}`,
+      payload: { email, password, returnSecureToken: true },
+    },
+  ];
+
+  const reasons = [];
+  for (const endpoint of endpoints) {
+    const response = await fetchWithTimeout(endpoint.url, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(endpoint.payload),
+    });
+
+    const payload = await response.json().catch(() => null);
+    const idToken = typeof payload?.idToken === 'string' ? payload.idToken.trim() : '';
+    if (response.ok && idToken) {
+      return {
+        ok: true,
+        idToken,
+        source: endpoint.source,
+        reasons: [],
+      };
+    }
+
+    const errorMessage = typeof payload?.error?.message === 'string'
+      ? payload.error.message
+      : `HTTP ${response.status}`;
+    reasons.push(`${endpoint.source} failed with ${errorMessage}`);
+  }
+
+  return {
+    ok: false,
+    idToken: '',
+    source: null,
+    reasons,
+  };
+}
+
 function resolveOutputDir(args) {
   const explicit = typeof args.outputDir === 'string' ? args.outputDir.trim() : '';
   if (explicit) {
@@ -331,8 +495,11 @@ function resolveOutputDir(args) {
 function buildHeaders(authContext, workspaceId) {
   const headers = {
     Accept: 'application/json,text/plain;q=0.8,*/*;q=0.5',
-    'x-workspace-id': workspaceId,
   };
+
+  if (workspaceId) {
+    headers['x-workspace-id'] = workspaceId;
+  }
 
   if (authContext.mode === 'bearer') {
     headers.Authorization = `Bearer ${authContext.value}`;
@@ -341,6 +508,252 @@ function buildHeaders(authContext, workspaceId) {
   }
 
   return headers;
+}
+
+function sanitizeUrl(candidate) {
+  if (!candidate) return '';
+
+  try {
+    const url = new URL(candidate);
+    if (url.pathname === '/' || !url.pathname) {
+      return url.origin;
+    }
+    if (url.pathname.startsWith('/api/')) {
+      return url.origin;
+    }
+    return `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
+  } catch {
+    return '';
+  }
+}
+
+function extractCookieHeader(response) {
+  const direct = typeof response.headers.getSetCookie === 'function'
+    ? response.headers.getSetCookie()
+    : [];
+  const rawCookies = direct.length > 0
+    ? direct
+    : [response.headers.get('set-cookie')].filter(Boolean);
+
+  if (rawCookies.length === 0) {
+    return '';
+  }
+
+  const normalized = rawCookies
+    .flatMap((cookieLine) => String(cookieLine).split(/,(?=\s*[^;,\s]+=)/))
+    .map((cookie) => cookie.split(';')[0]?.trim())
+    .filter(Boolean);
+
+  return normalized.join('; ');
+}
+
+async function loginPublishedContext({ backendUrl, email, password }) {
+  if (!backendUrl || !email || !password) {
+    return {
+      ok: false,
+      authContext: { mode: null, source: null, value: '', masked: 'absent' },
+      workspaceId: '',
+      reasons: ['missing backend url, email, or password for activation/retention published login bootstrap'],
+    };
+  }
+
+  const firebaseApiKey = resolveFirebaseApiKey();
+  if (firebaseApiKey) {
+    const firebaseIdentity = await exchangeFirebaseIdentity({ apiKey: firebaseApiKey, email, password });
+
+    if (firebaseIdentity.ok && firebaseIdentity.idToken) {
+      const firebaseSessionResponse = await fetchWithTimeout(new URL('/api/auth/firebase', backendUrl), {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ idToken: firebaseIdentity.idToken }),
+      });
+
+      const firebaseSessionPayload = await firebaseSessionResponse.json().catch(() => null);
+      const cookieHeader = extractCookieHeader(firebaseSessionResponse);
+      const bearerToken = typeof firebaseSessionPayload?.token === 'string' ? firebaseSessionPayload.token.trim() : '';
+
+      let authContext = { mode: null, source: null, value: '', masked: 'absent' };
+      if (cookieHeader) {
+        authContext = {
+          mode: 'cookie',
+          source: 'published-firebase-cookie',
+          value: cookieHeader,
+          masked: maskCookieHeader(cookieHeader),
+        };
+      } else if (bearerToken) {
+        authContext = {
+          mode: 'bearer',
+          source: 'published-firebase-token',
+          value: bearerToken,
+          masked: maskGeneric(bearerToken),
+        };
+      }
+
+      if (firebaseSessionResponse.ok && authContext.mode) {
+        const workspaceResponse = await fetchWithTimeout(new URL('/api/workspace', backendUrl), {
+          method: 'GET',
+          headers: buildHeaders(authContext, ''),
+        });
+        const workspacePayload = await workspaceResponse.json().catch(() => null);
+        let workspaceId = Array.isArray(workspacePayload?.workspaces)
+          ? String(workspacePayload.workspaces[0]?.id || '').trim()
+          : '';
+
+        if (!workspaceId) {
+          const createWorkspaceResponse = await fetchWithTimeout(new URL('/api/workspace', backendUrl), {
+            method: 'POST',
+            headers: {
+              ...buildHeaders(authContext, ''),
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name: 'Flow Finance Audit' }),
+          });
+          const createWorkspacePayload = await createWorkspaceResponse.json().catch(() => null);
+          workspaceId = extractWorkspaceIdFromPayload(createWorkspacePayload);
+
+          if (createWorkspaceResponse.ok && workspaceId) {
+            return {
+              ok: true,
+              authContext,
+              workspaceId,
+              loginStatus: firebaseSessionResponse.status,
+              workspaceStatus: createWorkspaceResponse.status,
+              reasons: [],
+            };
+          }
+
+          return {
+            ok: false,
+            authContext,
+            workspaceId: '',
+            loginStatus: firebaseSessionResponse.status,
+            workspaceStatus: createWorkspaceResponse.status,
+            reasons: !createWorkspaceResponse.ok
+              ? [`published workspace create failed with HTTP ${createWorkspaceResponse.status}`]
+              : ['published workspace create succeeded but returned no workspace id'],
+          };
+        }
+
+        if (workspaceResponse.ok && workspaceId) {
+          return {
+            ok: true,
+            authContext,
+            workspaceId,
+            loginStatus: firebaseSessionResponse.status,
+            workspaceStatus: workspaceResponse.status,
+            reasons: [],
+          };
+        }
+
+        return {
+          ok: false,
+          authContext,
+          workspaceId: '',
+          loginStatus: firebaseSessionResponse.status,
+          workspaceStatus: workspaceResponse.status,
+          reasons: !workspaceResponse.ok
+            ? [`published workspace lookup failed with HTTP ${workspaceResponse.status}`]
+            : ['published workspace lookup succeeded but returned no workspace id'],
+        };
+      }
+
+      return {
+        ok: false,
+        authContext,
+        workspaceId: '',
+        loginStatus: firebaseSessionResponse.status,
+        reasons: !firebaseSessionResponse.ok
+          ? [`published firebase session exchange failed with HTTP ${firebaseSessionResponse.status}`]
+          : ['published firebase session exchange succeeded but returned neither reusable cookie nor bearer token'],
+      };
+    }
+
+    return {
+      ok: false,
+      authContext: { mode: null, source: null, value: '', masked: 'absent' },
+      workspaceId: '',
+      loginStatus: 400,
+      reasons: firebaseIdentity.reasons.length > 0
+        ? firebaseIdentity.reasons.map((reason) => `firebase identity bootstrap failed: ${reason}`)
+        : ['firebase identity bootstrap failed for an unknown reason'],
+    }
+  }
+
+  const loginResponse = await fetchWithTimeout(new URL('/api/auth/login', backendUrl), {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const loginPayload = await loginResponse.json().catch(() => null);
+  const cookieHeader = extractCookieHeader(loginResponse);
+  const bearerToken = typeof loginPayload?.token === 'string' ? loginPayload.token.trim() : '';
+
+  let authContext = { mode: null, source: null, value: '', masked: 'absent' };
+  if (cookieHeader) {
+    authContext = {
+      mode: 'cookie',
+      source: 'published-login-cookie',
+      value: cookieHeader,
+      masked: maskCookieHeader(cookieHeader),
+    };
+  } else if (bearerToken) {
+    authContext = {
+      mode: 'bearer',
+      source: 'published-login-token',
+      value: bearerToken,
+      masked: maskGeneric(bearerToken),
+    };
+  }
+
+  if (!loginResponse.ok || !authContext.mode) {
+    return {
+      ok: false,
+      authContext,
+      workspaceId: '',
+      loginStatus: loginResponse.status,
+      reasons: !loginResponse.ok
+        ? [`published login failed with HTTP ${loginResponse.status}`]
+        : ['published login succeeded but returned neither reusable cookie nor bearer token'],
+    };
+  }
+
+  const workspaceResponse = await fetchWithTimeout(new URL('/api/workspace', backendUrl), {
+    method: 'GET',
+    headers: buildHeaders(authContext, ''),
+  });
+  const workspacePayload = await workspaceResponse.json().catch(() => null);
+  const workspaceId = Array.isArray(workspacePayload?.workspaces)
+    ? String(workspacePayload.workspaces[0]?.id || '').trim()
+    : '';
+
+  if (!workspaceResponse.ok || !workspaceId) {
+    return {
+      ok: false,
+      authContext,
+      workspaceId: '',
+      loginStatus: loginResponse.status,
+      workspaceStatus: workspaceResponse.status,
+      reasons: !workspaceResponse.ok
+        ? [`published workspace lookup failed with HTTP ${workspaceResponse.status}`]
+        : ['published workspace lookup succeeded but returned no workspace id'],
+    };
+  }
+
+  return {
+    ok: true,
+    authContext,
+    workspaceId,
+    loginStatus: loginResponse.status,
+    workspaceStatus: workspaceResponse.status,
+    reasons: [],
+  };
 }
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = 15_000) {
@@ -471,8 +884,9 @@ async function collectEvents(targetUrl, authContext, workspaceId, { limit, maxPa
 
 function buildNormalization(rawEvents) {
   const normalizedRows = rawEvents.map(normalizeFinanceEvent);
-  const invalidRows = normalizedRows.filter((row) => !row.valid);
-  const exportRows = normalizedRows
+  const relevantRows = normalizedRows.filter((row) => isRelevantEventName(row.event_name));
+  const invalidRows = relevantRows.filter((row) => !row.valid);
+  const exportRows = relevantRows
     .filter((row) => row.valid)
     .map((row) => ({
       event_name: row.event_name,
@@ -482,7 +896,11 @@ function buildNormalization(rawEvents) {
     }))
     .sort(sortNormalizedRows);
 
-  const activationRows = exportRows.filter((row) => row.event_name === 'activation_first_transaction' || row.event_name === 'activation_first_dashboard_useful');
+  const activationRows = exportRows.filter((row) => (
+    row.event_name === 'activation_first_transaction'
+    || row.event_name === 'activation_first_dashboard_useful'
+    || row.event_name === 'activation_financial_base_completed'
+  ));
   const retentionRows = exportRows.filter((row) => row.event_name === 'weekly_cash_review_completed');
 
   return {
@@ -563,16 +981,16 @@ function renderMarkdownReport(payload) {
 
 async function writeArtifact(outputDir, baseName, payload, exportRows) {
   const runDir = path.join(outputDir, baseName);
-  await fs.mkdir(runDir, { recursive: true });
+  await fsp.mkdir(runDir, { recursive: true });
 
   const exportPath = path.join(runDir, 'events.jsonl');
   const reportJsonPath = path.join(runDir, 'report.json');
   const reportMarkdownPath = path.join(runDir, 'report.md');
 
   const exportBody = `${exportRows.map((row) => JSON.stringify(row)).join('\n')}${exportRows.length > 0 ? '\n' : ''}`;
-  await fs.writeFile(exportPath, exportBody, 'utf8');
-  await fs.writeFile(reportJsonPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
-  await fs.writeFile(reportMarkdownPath, `${renderMarkdownReport(payload)}\n`, 'utf8');
+  await fsp.writeFile(exportPath, exportBody, 'utf8');
+  await fsp.writeFile(reportJsonPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+  await fsp.writeFile(reportMarkdownPath, `${renderMarkdownReport(payload)}\n`, 'utf8');
 
   return {
     runDir,
@@ -591,6 +1009,7 @@ export {
   parseArgs,
   resolveAuthContext,
   resolveBackendTarget,
+  resolveLoginCredentials,
   resolveOutputDir,
   resolveWorkspaceId,
   RELEVANT_EVENTS,
@@ -599,24 +1018,29 @@ export {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const backendTarget = resolveBackendTarget(args);
-  const authContext = resolveAuthContext(args);
-  const workspaceTarget = resolveWorkspaceId(args);
+  let authContext = resolveAuthContext(args);
+  let workspaceTarget = resolveWorkspaceId(args);
+  const loginCredentials = resolveLoginCredentials(args);
   const outputTarget = resolveOutputDir(args);
   const limit = parsePositiveInteger(args.limit, DEFAULT_PAGE_LIMIT);
   const maxPages = parsePositiveInteger(args.maxPages, DEFAULT_MAX_PAGES);
+  const backendBaseUrl = sanitizeUrl(backendTarget.value);
+  let publishedLoginBootstrap = null;
 
   if (args.help) {
     process.stdout.write([
       'Flow Finance activation/retention export runner',
       '',
       'Usage:',
-      '  node scripts/export-activation-retention-events.mjs --backend-url <url> --workspace-id <id> [--bearer-token <token> | --cookie-header <cookie>]',
+      '  node scripts/export-activation-retention-events.mjs --backend-url <url> [--workspace-id <id>] [--bearer-token <token> | --cookie-header <cookie> | --email <email> --password <password>]',
       '',
       'Env:',
       `  ${BACKEND_URL_ENV}`,
       `  ${BEARER_ENV}`,
       `  ${COOKIE_ENV}`,
       `  ${WORKSPACE_ENV}`,
+      `  ${EMAIL_ENV}`,
+      `  ${PASSWORD_ENV}`,
       '  ACTIVATION_RETENTION_EXPORT_OUTPUT_DIR',
       '',
       'Aliases:',
@@ -624,6 +1048,8 @@ async function main() {
       `  ${BEARER_ALIASES.join(', ')}`,
       `  ${COOKIE_ALIASES.join(', ')}`,
       `  ${WORKSPACE_ALIASES.join(', ')}`,
+      `  ${EMAIL_ALIASES.join(', ')}`,
+      `  ${PASSWORD_ALIASES.join(', ')}`,
       '',
       'Output:',
       `  ${DEFAULT_OUTPUT_ROOT}/<timestamp>/events.jsonl`,
@@ -632,10 +1058,30 @@ async function main() {
     return;
   }
 
+  if ((!authContext.mode || !workspaceTarget.value) && backendBaseUrl && loginCredentials.email.value && loginCredentials.password.value) {
+    publishedLoginBootstrap = await loginPublishedContext({
+      backendUrl: backendBaseUrl,
+      email: loginCredentials.email.value,
+      password: loginCredentials.password.value,
+    });
+
+    if (publishedLoginBootstrap.ok) {
+      if (!authContext.mode) {
+        authContext = publishedLoginBootstrap.authContext;
+      }
+      if (!workspaceTarget.value) {
+        workspaceTarget = {
+          value: publishedLoginBootstrap.workspaceId,
+          source: 'published-login-bootstrap',
+        };
+      }
+    }
+  }
+
   const timestamp = formatTimestamp();
-  const canFetch = backendTarget.value && workspaceTarget.value && authContext.mode;
+  const canFetch = backendBaseUrl && workspaceTarget.value && authContext.mode;
   const fetchState = canFetch
-    ? await collectEvents(backendTarget.value, authContext, workspaceTarget.value, { limit, maxPages })
+    ? await collectEvents(backendBaseUrl, authContext, workspaceTarget.value, { limit, maxPages })
     : {
         ok: false,
         pages: [],
@@ -663,12 +1109,28 @@ async function main() {
     result,
     inputs: {
       backendUrl: backendTarget,
+      backendBaseUrl,
       workspaceId: workspaceTarget,
       auth: {
         mode: authContext.mode,
         source: authContext.source,
         masked: authContext.masked,
       },
+      loginCredentials: {
+        emailSource: loginCredentials.email.source,
+        passwordSource: loginCredentials.password.source,
+      },
+      publishedLoginBootstrap: publishedLoginBootstrap
+        ? {
+            ok: publishedLoginBootstrap.ok,
+            loginStatus: publishedLoginBootstrap.loginStatus ?? null,
+            workspaceStatus: publishedLoginBootstrap.workspaceStatus ?? null,
+            authMode: publishedLoginBootstrap.authContext.mode,
+            authSource: publishedLoginBootstrap.authContext.source,
+            workspaceIdDiscovered: publishedLoginBootstrap.workspaceId || null,
+            reasons: publishedLoginBootstrap.reasons,
+          }
+        : null,
       outputDir: outputTarget,
       limit,
       maxPages,
@@ -706,8 +1168,8 @@ async function main() {
     markdownRelative: rel(artifacts.reportMarkdownPath),
   };
 
-  await fs.writeFile(artifacts.reportJsonPath, `${JSON.stringify(reportPayload, null, 2)}\n`, 'utf8');
-  await fs.writeFile(artifacts.reportMarkdownPath, `${renderMarkdownReport(reportPayload)}\n`, 'utf8');
+  await fsp.writeFile(artifacts.reportJsonPath, `${JSON.stringify(reportPayload, null, 2)}\n`, 'utf8');
+  await fsp.writeFile(artifacts.reportMarkdownPath, `${renderMarkdownReport(reportPayload)}\n`, 'utf8');
 
   process.stdout.write('Flow Finance - activation and retention export\n');
   process.stdout.write('==============================================\n');

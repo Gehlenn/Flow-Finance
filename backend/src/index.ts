@@ -37,6 +37,7 @@ import {
   initializePersistenceStoresForServerlessColdStart,
 } from './bootstrap/runtimeInitialization';
 import { getWorkspacePersistenceHealthCheck } from './services/admin/workspaceStore';
+import { getDomainEventPersistenceHealthCheck } from './services/finance/eventStore';
 
 // ─── INITIALIZATION ──────────────────────────────────────────────────────────
 
@@ -189,6 +190,16 @@ app.get('/health', async (req: Request, res: Response) => {
     reason: workspacePersistence.reason,
   };
 
+  const domainEventPersistence = await getDomainEventPersistenceHealthCheck();
+  checks.domainEventPersistence = {
+    status: domainEventPersistence.status,
+    configured: domainEventPersistence.configured,
+    required: domainEventPersistence.required,
+    durable: domainEventPersistence.durable,
+    mode: domainEventPersistence.mode,
+    reason: domainEventPersistence.reason,
+  };
+
   // Check Redis (if configured)
   if (process.env.REDIS_URL) {
     const redisStart = Date.now();
@@ -254,12 +265,14 @@ app.get('/health', async (req: Request, res: Response) => {
 app.get('/api/version', asyncHandler(async (req: Request, res: Response) => {
   const requestContext = getRequestContext(req);
   const workspacePersistence = await getWorkspacePersistenceHealthCheck();
+  const domainEventPersistence = await getDomainEventPersistenceHealthCheck();
   res.json({
     version: process.env.APP_VERSION || '0.9.7',
     environment: process.env.NODE_ENV || 'development',
     requestId: requestContext.requestId,
     routeScope: requestContext.routeScope,
     workspacePersistence,
+    domainEventPersistence,
   });
 }));
 
@@ -267,6 +280,7 @@ app.get('/api/version', asyncHandler(async (req: Request, res: Response) => {
 app.get('/api/health', asyncHandler(async (req: Request, res: Response) => {
   const requestContext = getRequestContext(req);
   const workspacePersistence = await getWorkspacePersistenceHealthCheck();
+  const domainEventPersistence = await getDomainEventPersistenceHealthCheck();
   res.json({
     status: 'ok',
     service: 'flow-finance-api',
@@ -277,6 +291,7 @@ app.get('/api/health', asyncHandler(async (req: Request, res: Response) => {
       sentryConfigured: isSentryConfigured(),
     },
     workspacePersistence,
+    domainEventPersistence,
   });
 }));
 

@@ -13,6 +13,8 @@ const syncEngineMocks = vi.hoisted(() => ({
   }),
   mockSubscribeToUserProfile: vi.fn(),
   mockSaveUserProfile: vi.fn().mockResolvedValue(undefined),
+  mockLoadLocalProfileState: vi.fn(),
+  mockSaveLocalProfileState: vi.fn((_, profile) => profile),
   logWarn: vi.fn(),
 }));
 
@@ -28,6 +30,17 @@ vi.mock('../../src/services/firestoreWorkspaceStore', () => ({
   saveUserProfile: syncEngineMocks.mockSaveUserProfile,
 }));
 
+vi.mock('../../src/services/localProfileStore', () => ({
+  createDefaultLocalProfileState: () => ({
+    name: null,
+    theme: 'light',
+    alerts: [],
+    reminders: [],
+  }),
+  loadLocalProfileState: syncEngineMocks.mockLoadLocalProfileState,
+  saveLocalProfileState: syncEngineMocks.mockSaveLocalProfileState,
+}));
+
 vi.mock('../../src/utils/logger', () => ({
   logWarn: syncEngineMocks.logWarn,
 }));
@@ -35,6 +48,7 @@ vi.mock('../../src/utils/logger', () => ({
 describe('useSyncEngine', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    syncEngineMocks.mockLoadLocalProfileState.mockReturnValue(null);
     syncEngineMocks.mockSubscribeToUserProfile.mockImplementation((_userId, onNext) => {
       onNext({
         name: 'Flow User',
@@ -84,7 +98,11 @@ describe('useSyncEngine', () => {
     expect(result.current.entities.accounts[0].id).toBe('acc-1');
     expect(result.current.entities.transactions[0].id).toBe('tx-1');
     expect(result.current.entities.reminders[0].id).toBe('rem-1');
-    expect(syncEngineMocks.mockPullSyncEntities).toHaveBeenCalledWith({ workspaceId: 'ws-1' });
+    expect(syncEngineMocks.mockPullSyncEntities).toHaveBeenCalledWith(
+      { workspaceId: 'ws-1' },
+      undefined,
+      undefined,
+    );
   });
 
   it('sincroniza perfil e entidades pelo Firestore helpers', async () => {
@@ -121,6 +139,7 @@ describe('useSyncEngine', () => {
       expect.any(Array),
       expect.any(Array),
       { userId: 'user-1', tenantId: 'tenant-1', workspaceId: 'ws-1' },
+      undefined,
     );
   });
 
@@ -299,5 +318,109 @@ describe('useSyncEngine', () => {
       }),
     );
     expect(onDisableCloudSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('usa cache local de profile quando backend sync esta ativo, sem assinar Firestore', async () => {
+    syncEngineMocks.mockLoadLocalProfileState.mockReturnValueOnce({
+      name: 'Cached User',
+      theme: 'dark',
+      alerts: [],
+      reminders: [],
+    });
+
+    const onDisableCloudSync = vi.fn();
+    const onDisableBackendSync = vi.fn();
+
+    const { result } = renderHook(() => useSyncEngine({
+      userId: 'user-1',
+      activeTenantId: 'tenant-1',
+      activeWorkspaceId: 'ws-1',
+      isE2EBootstrapActive: false,
+      isDemoBootstrapActive: false,
+      cloudSyncEnabled: true,
+      backendSyncEnabled: true,
+      onDisableCloudSync,
+      onDisableBackendSync,
+    }));
+
+    await waitFor(() => {
+      expect(result.current.isProfileReady).toBe(true);
+      expect(result.current.hasLoadedEntities).toBe(true);
+    });
+
+    expect(result.current.profile.name).toBe('Cached User');
+    expect(syncEngineMocks.mockSubscribeToUserProfile).not.toHaveBeenCalled();
+    expect(syncEngineMocks.mockPullSyncEntities).toHaveBeenCalledWith(
+      { workspaceId: 'ws-1' },
+      undefined,
+      { driver: 'backend' },
+    );
+  });
+
+  it('persiste profile no cache local quando backend sync esta ativo', async () => {
+    const onDisableCloudSync = vi.fn();
+    const onDisableBackendSync = vi.fn();
+
+    const { result } = renderHook(() => useSyncEngine({
+      userId: 'user-1',
+      activeTenantId: 'tenant-1',
+      activeWorkspaceId: 'ws-1',
+      isE2EBootstrapActive: false,
+      isDemoBootstrapActive: false,
+      cloudSyncEnabled: true,
+      backendSyncEnabled: true,
+      onDisableCloudSync,
+      onDisableBackendSync,
+    }));
+
+    await waitFor(() => {
+      expect(result.current.isProfileReady).toBe(true);
+    });
+
+    await act(async () => {
+      await result.current.syncProfile({ name: 'Backend User', theme: 'dark' });
+    });
+
+    expect(syncEngineMocks.mockSaveLocalProfileState).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({
+        name: 'Backend User',
+        theme: 'dark',
+      }),
+    );
+    expect(syncEngineMocks.mockSaveUserProfile).not.toHaveBeenCalled();
+  });
+
+  it('usa cache local e nao toca Firestore quando cloud sync e backend sync estao desligados', async () => {
+    syncEngineMocks.mockLoadLocalProfileState.mockReturnValueOnce({
+      name: 'Local Only User',
+      theme: 'light',
+      alerts: [],
+      reminders: [],
+    });
+
+    const onDisableCloudSync = vi.fn();
+    const onDisableBackendSync = vi.fn();
+
+    const { result } = renderHook(() => useSyncEngine({
+      userId: 'user-1',
+      activeTenantId: 'tenant-1',
+      activeWorkspaceId: 'ws-1',
+      isE2EBootstrapActive: false,
+      isDemoBootstrapActive: false,
+      cloudSyncEnabled: false,
+      backendSyncEnabled: false,
+      onDisableCloudSync,
+      onDisableBackendSync,
+    }));
+
+    await waitFor(() => {
+      expect(result.current.isProfileReady).toBe(true);
+      expect(result.current.hasLoadedEntities).toBe(true);
+    });
+
+    expect(result.current.profile.name).toBe('Local Only User');
+    expect(syncEngineMocks.mockSubscribeToUserProfile).not.toHaveBeenCalled();
+    expect(syncEngineMocks.mockPullSyncEntities).not.toHaveBeenCalled();
   });
 });

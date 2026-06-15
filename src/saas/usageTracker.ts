@@ -1,3 +1,4 @@
+import { logWarn } from '../utils/logger';
 import { ResourceKind } from './types';
 
 export interface UsageSnapshot {
@@ -57,7 +58,16 @@ async function ensureLoaded(): Promise<void> {
     return;
   }
 
-  fromRecord(await usageAdapter.read());
+  try {
+    fromRecord(await usageAdapter.read());
+  } catch (error) {
+    usageStore.clear();
+    logWarn('[UsageTracker] Failed to load usage adapter state; falling back to empty usage store', {
+      error,
+      fallback: 'usage-tracker-load-failed',
+    });
+  }
+
   usageLoaded = true;
 }
 

@@ -3,6 +3,7 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const routeMocks = vi.hoisted(() => ({
+  getDomainEventPersistenceHealthCheck: vi.fn(),
   getPendingEvents: vi.fn(),
   appendDomainEvent: vi.fn(),
   acknowledgeEvent: vi.fn(),
@@ -39,6 +40,7 @@ vi.mock('../../src/controllers/financeController', () => ({
 
 vi.mock('../../src/services/finance/eventStore', () => ({
   appendDomainEvent: routeMocks.appendDomainEvent,
+  getDomainEventPersistenceHealthCheck: routeMocks.getDomainEventPersistenceHealthCheck,
   getDomainEvents: vi.fn(),
 }));
 
@@ -67,6 +69,14 @@ function createApp() {
 describe('finance routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    routeMocks.getDomainEventPersistenceHealthCheck.mockResolvedValue({
+      status: 'healthy',
+      mode: 'firebase',
+      durable: true,
+      configured: true,
+      required: true,
+      reason: 'firebase-ready',
+    });
   });
 
   it('returns queued retry response and logs warning when finance event persistence fails', async () => {

@@ -9,6 +9,11 @@ import {
   subscribeToUserProfile,
 } from '../src/services/firestoreWorkspaceStore';
 import {
+  createDefaultLocalProfileState,
+  loadLocalProfileState,
+  saveLocalProfileState,
+} from '../src/services/localProfileStore';
+import {
   createEmptyWorkspaceSyncEntities,
   mapPulledWorkspaceSyncEntities,
   WorkspaceSyncEntities,
@@ -49,12 +54,7 @@ interface UseSyncEngineOptions {
   onDisableBackendSync: () => void;
 }
 
-const DEFAULT_PROFILE: SyncProfileState = {
-  name: null,
-  theme: 'light',
-  alerts: [],
-  reminders: [],
-};
+const DEFAULT_PROFILE: SyncProfileState = createDefaultLocalProfileState();
 
 function applyIdMapToCollection<TItem extends { id: string }>(
   items: TItem[],
@@ -90,15 +90,21 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
   const [hasLoadedEntities, setHasLoadedEntities] = useState(false);
 
   const entityRef = useRef<SyncEntityState>(createEmptyWorkspaceSyncEntities());
+  const profileRef = useRef<SyncProfileState>(DEFAULT_PROFILE);
   const bootstrapContext = useMemo(() => ({
     userId,
     tenantId: activeTenantId,
     workspaceId: activeWorkspaceId,
   }), [activeTenantId, activeWorkspaceId, userId]);
+  const prefersBackendSync = backendSyncEnabled && !isE2EBootstrapActive && !isDemoBootstrapActive;
 
   useEffect(() => {
     entityRef.current = entities;
   }, [entities]);
+
+  useEffect(() => {
+    profileRef.current = profile;
+  }, [profile]);
 
   useEffect(() => {
     if (isE2EBootstrapActive) {
@@ -131,10 +137,16 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
       return;
     }
 
+    if (!cloudSyncEnabled && !backendSyncEnabled) {
+      setHasLoadedEntities(true);
+      setSyncStatus('idle');
+      return;
+    }
+
     const loadEntities = async () => {
       try {
         if (cloudSyncEnabled || backendSyncEnabled) {
-          const nextEntities = await mapPulledWorkspaceSyncEntities(activeWorkspaceId);
+          const nextEntities = await mapPulledWorkspaceSyncEntities(activeWorkspaceId, prefersBackendSync ? { driver: 'backend' } : undefined);
           entityRef.current = nextEntities;
           setEntities(nextEntities);
           setHasLoadedEntities(true);
@@ -144,7 +156,9 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
           error,
           fallback: 'use-sync-engine-load-entities-failed',
         });
-        if (cloudSyncEnabled) {
+        if (prefersBackendSync) {
+          onDisableBackendSync();
+        } else if (cloudSyncEnabled) {
           onDisableCloudSync();
         } else {
           onDisableBackendSync();
@@ -163,6 +177,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
     isE2EBootstrapActive,
     onDisableBackendSync,
     onDisableCloudSync,
+    prefersBackendSync,
     userId,
   ]);
 
@@ -184,10 +199,24 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
       return;
     }
 
+    if (prefersBackendSync) {
+      setProfile(loadLocalProfileState(userId) || DEFAULT_PROFILE);
+      setIsProfileReady(true);
+      return;
+    }
+
+    if (!cloudSyncEnabled) {
+      setProfile(loadLocalProfileState(userId) || DEFAULT_PROFILE);
+      setIsProfileReady(true);
+      setSyncStatus('idle');
+      return;
+    }
+
     const unsubscribe = subscribeToUserProfile(
       userId,
       (nextProfile) => {
         setProfile(nextProfile);
+        saveLocalProfileState(userId, nextProfile);
         setSyncStatus('synced');
         setTimeout(() => setSyncStatus('idle'), 2000);
         setIsProfileReady(true);
@@ -198,6 +227,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
             error,
             fallback: 'use-sync-engine-firestore-permission-denied',
           });
+          setProfile(loadLocalProfileState(userId) || DEFAULT_PROFILE);
           onDisableCloudSync();
         } else {
           logWarn('[useSyncEngine] Firestore connection error while subscribing to user profile', {
@@ -217,7 +247,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
     );
 
     return () => unsubscribe();
-  }, [isDemoBootstrapActive, isE2EBootstrapActive, onDisableCloudSync, userId]);
+  }, [isDemoBootstrapActive, isE2EBootstrapActive, onDisableCloudSync, prefersBackendSync, userId]);
 
   const syncProfile = useCallback(async (
     updates: Partial<{ name: string; theme: 'light' | 'dark'; alerts: Alert[]; reminders: Reminder[] }>,
@@ -228,14 +258,24 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
 
     setSyncStatus('syncing');
     try {
+      const nextProfile = {
+        ...profileRef.current,
+        ...updates,
+      };
+
+      if (prefersBackendSync) {
+        const persistedProfile = saveLocalProfileState(userId, nextProfile);
+        setProfile(persistedProfile);
+        setSyncStatus('synced');
+        setTimeout(() => setSyncStatus('idle'), 2000);
+        return;
+      }
+
       if (cloudSyncEnabled && Object.keys(updates).length > 0 && !isDemoBootstrapActive && !isE2EBootstrapActive) {
         await saveUserProfile(userId, updates);
       }
 
-      setProfile((current) => ({
-        ...current,
-        ...updates,
-      }));
+      setProfile(nextProfile);
       setSyncStatus('synced');
       setTimeout(() => setSyncStatus('idle'), 2000);
     } catch (error) {
@@ -252,7 +292,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
         setSyncStatus('idle');
       }
     }
-  }, [cloudSyncEnabled, isDemoBootstrapActive, isE2EBootstrapActive, onDisableCloudSync, userId]);
+  }, [cloudSyncEnabled, isDemoBootstrapActive, isE2EBootstrapActive, onDisableCloudSync, prefersBackendSync, userId]);
 
   const syncEntities = useCallback(async (
     updates: Partial<SyncEntityState>,
@@ -287,6 +327,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
           updates.accounts,
           previous?.accounts || entityRef.current.accounts,
           { userId, tenantId: activeTenantId, workspaceId: activeWorkspaceId },
+          prefersBackendSync ? { driver: 'backend' } : undefined,
         );
         idMaps.accounts = Object.fromEntries(result.reconciledIds.map((entry) => [entry.clientId, entry.serverId]));
       }
@@ -297,6 +338,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
           updates.transactions,
           previous?.transactions || entityRef.current.transactions,
           { userId, tenantId: activeTenantId, workspaceId: activeWorkspaceId },
+          prefersBackendSync ? { driver: 'backend' } : undefined,
         );
         idMaps.transactions = Object.fromEntries(result.reconciledIds.map((entry) => [entry.clientId, entry.serverId]));
       }
@@ -307,6 +349,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
           updates.goals,
           previous?.goals || entityRef.current.goals,
           { userId, tenantId: activeTenantId, workspaceId: activeWorkspaceId },
+          prefersBackendSync ? { driver: 'backend' } : undefined,
         );
         idMaps.goals = Object.fromEntries(result.reconciledIds.map((entry) => [entry.clientId, entry.serverId]));
       }
@@ -317,6 +360,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
           updates.reminders,
           previous?.reminders || entityRef.current.reminders,
           { userId, tenantId: activeTenantId, workspaceId: activeWorkspaceId },
+          prefersBackendSync ? { driver: 'backend' } : undefined,
         );
         idMaps.reminders = Object.fromEntries(result.reconciledIds.map((entry) => [entry.clientId, entry.serverId]));
       }
@@ -327,6 +371,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
           updates.receivables,
           previous?.receivables || entityRef.current.receivables,
           { userId, tenantId: activeTenantId, workspaceId: activeWorkspaceId },
+          prefersBackendSync ? { driver: 'backend' } : undefined,
         );
         idMaps.receivables = Object.fromEntries(result.reconciledIds.map((entry) => [entry.clientId, entry.serverId]));
       }
@@ -379,6 +424,7 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
     isE2EBootstrapActive,
     onDisableBackendSync,
     onDisableCloudSync,
+    prefersBackendSync,
     userId,
   ]);
 

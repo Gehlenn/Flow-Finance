@@ -3,6 +3,7 @@ import { initGemini } from '../config/gemini';
 import { initOpenAI } from '../config/openai';
 import { initializeWorkspaceStorePersistence } from '../services/admin/workspaceStore';
 import { initializeAuditLogPersistence } from '../services/admin/auditLog';
+import { initializeDomainEventStorePersistence } from '../services/finance/eventStore';
 import { initializeSaasStorePersistence } from '../utils/saasStore';
 
 export type AIHealthStatus = Record<string, 'healthy' | 'unhealthy'>;
@@ -12,12 +13,13 @@ export interface AIInitializationResult {
   aiProviders: string[];
 }
 
-const PERSISTENCE_TASKS = ['workspaceStore', 'auditLog', 'saasStore'] as const;
+const PERSISTENCE_TASKS = ['workspaceStore', 'auditLog', 'domainEventStore', 'saasStore'] as const;
 
 export async function initializePersistenceStores(): Promise<void> {
   await Promise.all([
     initializeWorkspaceStorePersistence(),
     initializeAuditLogPersistence(),
+    initializeDomainEventStorePersistence(),
     initializeSaasStorePersistence(),
   ]);
 }

@@ -2,13 +2,18 @@ import { track } from '@vercel/analytics';
 import { API_ENDPOINTS, getAuthHeaders, getStoredWorkspaceId } from '../config/api.config';
 import { addBreadcrumb } from '../config/sentry';
 import { logWarn } from '../utils/logger';
+import { sanitizeAnalyticsPropertiesForEvent } from './productAnalyticsContract';
 
 type AnalyticsValue = string | number | boolean | null | undefined;
 
 export type ProductAnalyticsEvent =
   | 'activation_first_transaction'
   | 'activation_first_dashboard_useful'
+  | 'activation_financial_base_completed'
+  | 'ai_question_submitted'
   | 'ai_consultation_completed'
+  | 'ai_response_action_created'
+  | 'ai_response_flow_opened'
   | 'ai_fallback_observed'
   | 'weekly_cash_review_completed'
   | 'billing_checkout_started'
@@ -20,27 +25,7 @@ export type ProductAnalyticsEvent =
   | 'integration_error_observed';
 
 export type ProductAnalyticsProperties = Record<string, AnalyticsValue>;
-
 const STORAGE_PREFIX = 'flow:product-analytics:v1';
-const SENSITIVE_PROPERTY_PATTERN = /(^id$|_id$|workspace|tenant|user|email|name)/i;
-
-function sanitizeProperties(properties: ProductAnalyticsProperties = {}): ProductAnalyticsProperties {
-  return Object.fromEntries(
-    Object.entries(properties).filter(([key, value]) => {
-      if (SENSITIVE_PROPERTY_PATTERN.test(key)) {
-        return false;
-      }
-
-      return (
-        value === null ||
-        value === undefined ||
-        typeof value === 'string' ||
-        typeof value === 'number' ||
-        typeof value === 'boolean'
-      );
-    }),
-  );
-}
 
 function getStorageKey(eventName: ProductAnalyticsEvent, scope: string): string {
   return `${STORAGE_PREFIX}:${eventName}:${hashScope(scope)}`;
@@ -123,7 +108,7 @@ export function trackProductEvent(
   eventName: ProductAnalyticsEvent,
   properties: ProductAnalyticsProperties = {},
 ): void {
-  const sanitized = sanitizeProperties(properties);
+  const sanitized = sanitizeAnalyticsPropertiesForEvent(eventName, properties);
   addBreadcrumb(eventName, 'product-analytics', 'info');
 
   try {

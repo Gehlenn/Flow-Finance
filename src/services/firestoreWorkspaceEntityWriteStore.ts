@@ -8,6 +8,23 @@ import {
   stampEntityContext,
 } from './firestoreWorkspaceEntityHelpers';
 
+function stripUndefinedDeep<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => item !== undefined)
+      .map((item) => stripUndefinedDeep(item)) as T;
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .map(([key, item]) => [key, stripUndefinedDeep(item)]);
+    return Object.fromEntries(entries) as T;
+  }
+
+  return value;
+}
+
 function workspaceEntityCollection(workspaceId: string, entity: WorkspaceScopedEntity) {
   return collection(db, 'workspaces', workspaceId, entity);
 }
@@ -35,7 +52,7 @@ export async function upsertWorkspaceCollectionDocument<T extends {
     throw new Error('Workspace sync requires a workspaceId and tenantId.');
   }
 
-  const stamped = stampEntityContext(documentInput, context);
+  const stamped = stripUndefinedDeep(stampEntityContext(documentInput, context));
   await setDoc(
     doc(workspaceEntityCollection(context.workspaceId, entity), String(stamped.id)),
     stamped,
@@ -85,10 +102,10 @@ export async function replaceWorkspaceEntityCollection<T extends { id: string } 
       reconciledIds.push({ clientId: originalId, serverId });
     }
 
-    return stampEntityContext({
+    return stripUndefinedDeep(stampEntityContext({
       ...item,
       id: serverId,
-    }, context);
+    }, context));
   });
 
   const nextIdSet = new Set(normalizedNextItems.map((item) => String(item.id)));

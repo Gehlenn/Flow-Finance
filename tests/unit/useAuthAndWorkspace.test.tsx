@@ -111,6 +111,7 @@ describe('useAuthAndWorkspace', () => {
     });
 
     expect(result.current.user.id).toBe('user-1');
+    expect(result.current.cloudSyncEnabled).toBe(false);
     expect(result.current.activeWorkspace.workspaceId).toBe('ws_1');
     expect(result.current.activeWorkspace.tenantId).toBe('tenant_1');
     expect(localStorage.getItem('auth_token')).toBeNull();

@@ -9,11 +9,18 @@ const syncMocks = vi.hoisted(() => ({
     latestServerUpdatedAt: '2026-05-08T00:00:00.000Z',
     reconciledIds: [],
   }),
+  pullFromCloudMock: vi.fn(),
+  pushToCloudMock: vi.fn(),
 }));
 
 vi.mock('../../src/services/firestoreWorkspaceStore', () => ({
   loadWorkspaceEntities: syncMocks.loadWorkspaceEntitiesMock,
   replaceWorkspaceEntityCollection: syncMocks.replaceWorkspaceEntityCollectionMock,
+}));
+
+vi.mock('../../src/services/localSyncService', () => ({
+  pullFromCloud: syncMocks.pullFromCloudMock,
+  pushToCloud: syncMocks.pushToCloudMock,
 }));
 
 import {
@@ -62,5 +69,54 @@ describe('cloudSyncClient', () => {
     await pullSyncEntities({ workspaceId: 'ws-1' });
 
     expect(syncMocks.loadWorkspaceEntitiesMock).toHaveBeenCalledWith('ws-1');
+  });
+
+  it('uses backend pull when backend driver is requested', async () => {
+    syncMocks.pullFromCloudMock.mockResolvedValueOnce({
+      since: null,
+      serverTime: '2026-05-09T00:00:00.000Z',
+      entities: {
+        accounts: [],
+        transactions: [],
+        goals: [],
+        reminders: [],
+        receivables: [],
+        subscriptions: [],
+      },
+    });
+
+    await pullSyncEntities({ workspaceId: 'ws-1' }, undefined, { driver: 'backend' });
+
+    expect(syncMocks.pullFromCloudMock).toHaveBeenCalledWith(undefined);
+    expect(syncMocks.loadWorkspaceEntitiesMock).not.toHaveBeenCalled();
+  });
+
+  it('uses backend push when backend driver is requested', async () => {
+    syncMocks.pushToCloudMock.mockResolvedValueOnce({
+      success: true,
+      upserted: 1,
+      deleted: 0,
+      latestServerUpdatedAt: '2026-05-09T00:00:00.000Z',
+      reconciledIds: [],
+    });
+
+    await replaceSyncEntityCollection(
+      'accounts',
+      [{ id: 'acc-1', name: 'Banco' }],
+      [],
+      { userId: 'user-1', tenantId: 'tenant-1', workspaceId: 'ws-1' },
+      { driver: 'backend' },
+    );
+
+    expect(syncMocks.pushToCloudMock).toHaveBeenCalledWith(
+      'accounts',
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'acc-1',
+          payload: expect.objectContaining({ id: 'acc-1', name: 'Banco' }),
+        }),
+      ]),
+    );
+    expect(syncMocks.replaceWorkspaceEntityCollectionMock).not.toHaveBeenCalled();
   });
 });

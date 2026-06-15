@@ -76,10 +76,25 @@ export function quotaMiddleware(
       return;
     }
 
-    if (workspaceId) {
-      await incrementWorkspaceMonthlyUsage(workspaceId, resource, amount);
-    } else {
-      await incrementMonthlyUsage(userId!, resource, amount);
+    try {
+      if (workspaceId) {
+        await incrementWorkspaceMonthlyUsage(workspaceId, resource, amount);
+      } else {
+        await incrementMonthlyUsage(userId!, resource, amount);
+      }
+    } catch (error) {
+      logger.warn(
+        {
+          error,
+          userId,
+          workspaceId,
+          plan,
+          resource,
+          scope,
+          fallback: 'quota-increment-failed',
+        },
+        'Quota tracking failed; continuing request without persistence',
+      );
     }
 
     logger.debug({ userId, workspaceId, plan, resource, newTotal: current + amount, limit, scope }, 'Quota incremented');

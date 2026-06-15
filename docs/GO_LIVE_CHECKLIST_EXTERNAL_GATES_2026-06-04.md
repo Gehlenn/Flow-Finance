@@ -1,13 +1,13 @@
 # Flow Finance - go-live checklist for external gates
 
 Data: 2026-06-04  
-Status: activation/retention closed with real backend-published evidence on 2026-06-05. The Stripe gate and the performance gate are already closed with real target-environment evidence. The published frontend post-signup shell issue was revalidated on 2026-06-06 and does not reopen any launch gate.
+Status: technical activation/retention gate closed with real backend-published evidence on 2026-06-05; this does not prove broad commercial retention or durable habit. The Stripe gate and the performance gate are already closed with real target-environment evidence. The published frontend post-signup shell issue was revalidated on 2026-06-06 and the later published `429` bootstrap noise was closed on 2026-06-10, so neither item reopens any launch gate.
 
 ## What this document is for
 
 Use this checklist to decide whether Flow Finance can move from internal readiness to public launch.
 
-The activation/retention gate is closed with direct evidence from a real backend-authenticated usage cohort. The Stripe gate and the performance gate below are already evidenced and no longer block launch. The frontend post-signup shell issue was handled separately and is not part of the gate status.
+The technical activation/retention gate is closed with direct evidence from a real backend-authenticated usage cohort. This does not prove broad commercial retention or durable habit. The Stripe gate and the performance gate below are already evidenced and no longer block launch. The frontend post-signup shell issue and the later rate-limit noise were handled separately and are not part of the gate status.
 
 As of 2026-06-05, the Stripe gate is closed with real published evidence. The path to closure was: Firebase signup + backend session exchange published, CORS/tracing fix, fail-closed workspace persistence hardening, Firestore-backed durable workspace persistence published, then a second billing fix in Stripe metadata/persistence so the real checkout flow could reconcile the workspace back from Stripe events. The published backend now proves `/health`, `/api/health`, and `/api/version` with `workspacePersistence.mode=firebase`, and the real Stripe flow proved checkout, webhook-driven plan sync, and portal-open behavior for a real published workspace.
 
@@ -16,7 +16,7 @@ As of 2026-06-05, the Stripe gate is closed with real published evidence. The pa
 | Gate | What must exist | Minimum evidence | Status |
 | --- | --- | --- | --- |
 | Stripe real smoke | Real checkout, webhook, plan change, and portal flow with live or target launch credentials | checkout session URL, successful payment or equivalent live smoke step, webhook receipt, workspace plan change, portal open, and rollback or revert proof if applicable | CLOSED / EVIDENCED |
-| Activation and retention cohorts | Real cohort evidence for activation and retention, not demo or seeded data | defined activation event, cohort window, real workspace/user data, retention measurement, and dated output artifact or report | CLOSED / EVIDENCED |
+| Activation technical cohort gate | Real cohort evidence for activation/retention gate mechanics, not demo or seeded data | defined activation event, cohort window, real workspace/user data, retention measurement, and dated output artifact or report; does not prove habit | CLOSED / EVIDENCED technical gate |
 | Performance in target environment | Baseline repeated in the target environment, not only locally | Playwright baseline JSON or equivalent artifact from target env, timestamp, target URL, and comparison against local baseline | CLOSED / EVIDENCED |
 
 ## Performance evidence
@@ -118,7 +118,18 @@ As of 2026-06-05, the Stripe gate is closed with real published evidence. The pa
 
 These runners do not close the gates on their own. They exist to generate dated artifacts, expose missing inputs, and keep the blocking reason explicit.
 
+For post-deploy published revalidation of auth, billing, workspace, sync, or Vercel-sensitive changes, use `docs/PUBLISHED_REVALIDATION_CHECKLIST_2026-06-11.md`. That checklist is operational follow-up; it is not itself a launch gate.
+
 For activation/retention evidence collection, use `node scripts/export-activation-retention-events.mjs` to pull normalized rows from `GET /api/finance/events`. The reviewed export can be promoted through `test-results/activation-retention-export/published-export-verified.json` when `verified: true` is present; that promotion is now the closed, audited path, not an open gate.
+
+Atualizacao de 2026-06-12:
+
+- o backend publicado voltou a expor `domainEventPersistence = firebase / durable / required / healthy`
+- o gate foi revalidado depois do hardening do event store publicado com:
+  - `test-results/activation-retention-refresh/2026-06-12T20-44-49-665Z/report.json`
+  - `test-results/activation-retention-export/2026-06-12T20-44-52-284Z/report.json`
+  - `test-results/activation-retention-evidence/2026-06-12T20-44-53-217Z-events/report.json`
+  - `test-results/activation-retention-export/published-export-verified.json`
 
 ## Close criteria
 
@@ -144,10 +155,31 @@ Public launch is not blocked on activation/retention anymore. The gate is closed
   - the same run still emitted `FirebaseError: Missing or insufficient permissions.` from the Firestore-backed sync path
   - the warning did not block workspace creation, backend sync pull, or shell entry, so it is not treated as a launch-gate reopen
 
+## Separate published bootstrap revalidation on 2026-06-10
+
+- official frontend alias: `https://flow-finance-frontend-nine.vercel.app/`
+- official backend alias: `https://flow-finance-backend.vercel.app/`
+- production deploys validated:
+  - backend `dpl_751avBUXL4BYVKwZquPVDgxpN2J4`
+  - frontend `dpl_33iCP5GZVAXfkB8wDKYiJW7Vvssy`
+- clean-browser runtime result:
+  - `POST /api/auth/firebase` => `200`
+  - `GET /api/workspace` => `200`
+  - `POST /api/workspace` => `201`
+  - `GET /api/sync/pull` => `200`
+  - `active_workspace_id` persisted as `uNnjpeqnpsFTjsLVc6WN`
+  - final UI state reached the first-name prompt instead of stalling on bootstrap
+  - `consoleIssues: []`
+  - `pageErrors: []`
+- reading:
+  - the previously observed published `429` noise on aggressive probes does not reproduce in the audited bootstrap path after the rate-limit split in the backend and the probe guard tightening in the frontend
+  - this closes the separate operational follow-up, but it does not substitute for broader recurrence proof or scale proof
+
 ## Related docs
 
 - [OPERATIONS_README.md](./OPERATIONS_README.md)
 - [OPERATIONS_SLO_RUNBOOK_2026-06-04.md](./OPERATIONS_SLO_RUNBOOK_2026-06-04.md)
+- [PUBLISHED_REVALIDATION_CHECKLIST_2026-06-11.md](./PUBLISHED_REVALIDATION_CHECKLIST_2026-06-11.md)
 - [PERFORMANCE_BASELINE_2026-06-04.md](./PERFORMANCE_BASELINE_2026-06-04.md)
 - [TARGET_PERFORMANCE_EVIDENCE_2026-06-04.md](./TARGET_PERFORMANCE_EVIDENCE_2026-06-04.md)
 - [STRIPE_LIVE_SMOKE_2026-06-04.md](./STRIPE_LIVE_SMOKE_2026-06-04.md)

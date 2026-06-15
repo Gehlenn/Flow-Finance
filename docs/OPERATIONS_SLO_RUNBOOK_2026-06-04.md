@@ -20,7 +20,7 @@ Status: documento operacional vivo. Estes SLOs sao alvos de operacao; ainda nao 
 5. `npm run health:vercel`
 6. `npm run test:firestore:rules` em Java 21+
 7. `npm run health:stripe-live-smoke` com ambiente configurado e evidencia real anexada
-8. `npm run health:activation-retention -- --input <export-real> --cohort-window-days <dias>` com export real de usuarios/workspaces; gate fechado em 2026-06-05 com `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/report.json`, `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/events.jsonl`, `test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.json`, `test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.md` e `test-results/activation-retention-export/published-export-verified.json`; use o runner apenas para refresh/comparacao
+8. `npm run health:activation-retention -- --input <export-real> --cohort-window-days <dias>` com export real de usuarios/workspaces; gate fechado em 2026-06-05 e revalidado em 2026-06-12 com `test-results/activation-retention-refresh/2026-06-12T20-44-49-665Z/report.json`, `test-results/activation-retention-export/2026-06-12T20-44-52-284Z/report.json`, `test-results/activation-retention-export/2026-06-12T20-44-52-284Z/events.jsonl`, `test-results/activation-retention-evidence/2026-06-12T20-44-53-217Z-events/report.json`, `test-results/activation-retention-evidence/2026-06-12T20-44-53-217Z-events/report.md` e `test-results/activation-retention-export/published-export-verified.json`
 9. `npm run health:target-performance` com URL alvo e baseline local comparavel, mais artefato anexado; o gate externo correspondente ja foi evidenciado em 2026-06-04 e este runner serve para renovar/comparar a evidencia
 
 Se o smoke Stripe real nao rodou, nao cobrar cliente real.
@@ -36,7 +36,7 @@ Os gates externos de launch foram fechados. O shell pos-signup do frontend foi a
 - [ACTIVATION_RETENTION_EVIDENCE_2026-06-04.md](./ACTIVATION_RETENTION_EVIDENCE_2026-06-04.md)
 - o checklist de activation/retention agora e registro de gate fechado, nao bloqueio aberto
 - Stripe real smoke
-- ativacao e retencao por cohort real ja fechada em 2026-06-05
+- gate tecnico de ativacao/retencao por cohort real ja fechado em 2026-06-05; nao prova retencao comercial ampla ou habito duravel
 
 Nao tratar sandbox, testes locais ou harness local como fechamento desses gates.
 
@@ -88,7 +88,7 @@ npm run health:activation-retention
 Primeiro diagnostico:
 - o relatorio semanal deve separar entradas confirmadas, saidas confirmadas, recebiveis previstos, recebiveis vencidos e proximas acoes.
 - o historico deve ser escopado por workspace e deduplicado por semana.
-- o evento `weekly_cash_review_completed` mede conclusao do ritual; o gate de activation/retention foi fechado em 2026-06-05 com export real backend-autenticado, entao a prova de coorte real agora esta nos artefatos publicados acima.
+- o evento `weekly_cash_review_completed` mede conclusao do ritual; o gate tecnico de activation/retention foi fechado em 2026-06-05 e revalidado com coorte fresca em 2026-06-12, mas isso nao prova retencao comercial ampla ou habito duravel.
 - `npm run health:activation-retention` deve gerar artefato em `test-results/activation-retention-evidence/` e manter `SEM EVIDENCIA SUFICIENTE` quando faltar export real.
 
 ### Login e sessao
@@ -234,6 +234,7 @@ Primeiro diagnostico:
 - `/` com `404` em backend API-only pode ser esperado.
 - `/health`, `/api/health` e `/api/version` precisam responder contrato.
 - quando o risco for billing/workspace persistence, o contrato minimo agora inclui `workspacePersistence` nesses endpoints; se o backend published estiver sem store duravel, o status esperado e `unhealthy`, nao sucesso falso.
+- quando o risco for o ritual semanal, analytics de ativacao/retencao ou consistencia do event store, o contrato minimo tambem inclui `domainEventPersistence`; sem esse campo saudavel, nao considerar o refresh publicado como valido.
 - se health retornar HTML ou 404, checar alias/projeto Vercel antes de alterar Express.
 - baseline de performance local continua em `test-results/performance-baseline/chromium-dashboard.json`; o gate externo foi fechado com evidence real em `test-results/target-performance-evidence/2026-06-04T22-01-40-962Z/report.json`.
 - `npm run health:target-performance` continua gerando artefato em `test-results/target-performance-evidence/` para refresh/comparacao quando rerodado.
@@ -251,7 +252,7 @@ Primeiro diagnostico:
 ## Lacunas assumidas
 
 - SEM EVIDENCIA SUFICIENTE de SLO historico por fluxo.
-- Relatorio semanal e evento de ritual existem localmente; a retencao por coorte real foi fechada em 2026-06-05 com os artefatos publicados em `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/report.json`, `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/events.jsonl`, `test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.json` e `test-results/activation-retention-export/published-export-verified.json`.
+- Relatorio semanal e evento de ritual existem localmente; o gate tecnico de ativacao/retencao por coorte real foi fechado em 2026-06-05 e revalidado em 2026-06-12 com os artefatos publicados em `test-results/activation-retention-refresh/2026-06-12T20-44-49-665Z/report.json`, `test-results/activation-retention-export/2026-06-12T20-44-52-284Z/report.json`, `test-results/activation-retention-evidence/2026-06-12T20-44-53-217Z-events/report.json` e `test-results/activation-retention-export/published-export-verified.json`; nao prova retencao comercial ampla ou habito duravel.
 - Custo por workspace e custo por resposta IA ainda dependem de evidencia real de provedor/fatura e repeticao em ambiente alvo; a evidencia local atual e apenas estimativa baseada em tokens.
 - Gate de performance no alvo fechado com evidencia real em `test-results/target-performance-evidence/2026-06-04T22-01-40-962Z/report.json`; SEM EVIDENCIA SUFICIENTE ainda para carga multi-tenant sintetica em ambiente alvo.
 - Em 2026-06-05 o smoke Stripe real ponta a ponta foi fechado no ambiente publicado: checkout hosted pago, eventos reais do Stripe com `pending_webhooks=0`, `currentPlan=pro` no workspace publicado, `hasBillingCustomer=true` e `POST /api/saas/stripe/portal-session` retornando URL valida do portal.
@@ -261,4 +262,4 @@ Gate ja fechado com evidencia:
 - [TARGET_PERFORMANCE_EVIDENCE_2026-06-04.md](./TARGET_PERFORMANCE_EVIDENCE_2026-06-04.md)
 - baseline de performance repetido no ambiente alvo com PASS real em `test-results/target-performance-evidence/2026-06-04T22-01-40-962Z/report.json`
 - [ACTIVATION_RETENTION_EVIDENCE_2026-06-04.md](./ACTIVATION_RETENTION_EVIDENCE_2026-06-04.md)
-- activation/retention fechado com PASS real em `test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.json`
+- activation/retention tecnico fechado com PASS real em `test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.json`; nao prova retencao comercial ampla

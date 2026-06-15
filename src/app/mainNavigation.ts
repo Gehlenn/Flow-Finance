@@ -20,9 +20,9 @@ const NAVIGATION_SECTIONS: NavigationSection[] = [
     label: 'Caixa',
     defaultTab: 'dashboard',
     items: [
-      { tab: 'dashboard', label: 'Visao geral' },
-      { tab: 'insights', label: 'Insights' },
-      { tab: 'settings', label: 'Ajustes' },
+      { tab: 'dashboard', label: 'Resumo' },
+      { tab: 'insights', label: 'Sinais do caixa' },
+      { tab: 'settings', label: 'Conta e plano' },
     ],
   },
   {
@@ -33,7 +33,7 @@ const NAVIGATION_SECTIONS: NavigationSection[] = [
       { tab: 'history', label: 'Transacoes' },
       { tab: 'import', label: 'Importar' },
       { tab: 'accounts', label: 'Contas' },
-      { tab: 'goals', label: 'Metas' },
+      { tab: 'goals', label: 'Metas de caixa' },
     ],
   },
   {
@@ -41,8 +41,8 @@ const NAVIGATION_SECTIONS: NavigationSection[] = [
     label: 'Receitas',
     defaultTab: 'flow',
     items: [
-      { tab: 'flow', label: 'Fluxo' },
-      { tab: 'analytics', label: 'Analises' },
+      { tab: 'flow', label: 'Previsto vs realizado' },
+      { tab: 'analytics', label: 'Historico de receita' },
     ],
   },
   {
@@ -50,8 +50,8 @@ const NAVIGATION_SECTIONS: NavigationSection[] = [
     label: 'IA',
     defaultTab: 'cfo',
     items: [
-      { tab: 'cfo', label: 'Consultor' },
-      { tab: 'assistant', label: 'Tarefas' },
+      { tab: 'cfo', label: 'Consultor de caixa' },
+      { tab: 'assistant', label: 'Plano de acao' },
       { tab: 'workspaceadmin', label: 'Workspace', requiresWorkspaceAdmin: true },
       { tab: 'workspaceaudit', label: 'Auditoria', requiresWorkspaceAdmin: true },
       { tab: 'aicontrol', label: 'Lab IA', requiresDevMode: true },

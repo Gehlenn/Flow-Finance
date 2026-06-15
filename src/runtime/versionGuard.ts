@@ -36,7 +36,7 @@ function isLocalNetworkTarget(url: string): boolean {
   }
 }
 
-const SHOULD_SKIP_NETWORK_PROBES = isLocalNetworkTarget(API_BASE_URL) && (IS_AUTOMATED_BROWSER || IS_DEV);
+const SHOULD_SKIP_NETWORK_PROBES = IS_AUTOMATED_BROWSER || (isLocalNetworkTarget(API_BASE_URL) && IS_DEV);
 
 let lastVersionCheck = 0;
 const VERSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes

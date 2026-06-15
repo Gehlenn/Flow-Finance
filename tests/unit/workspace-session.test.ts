@@ -138,7 +138,7 @@ describe('workspaceSession', () => {
       email: 'user@test.dev',
     });
     expect(workspaceSessionLoggerMocks.logWarnMock).toHaveBeenCalledWith(
-      '[WorkspaceSession] Backend workspace bootstrap failed; falling back to Firestore bootstrap',
+      '[WorkspaceSession] Backend workspace bootstrap failed',
       expect.objectContaining({
         endpoint: 'https://backend.flow.test/api/workspace',
         fallback: 'workspace-bootstrap-backend-to-firestore',
@@ -186,6 +186,19 @@ describe('workspaceSession', () => {
     const listener = vi.fn();
     window.addEventListener(WORKSPACE_CHANGED_EVENT, listener as EventListener);
 
+    setActiveWorkspaceId('ws_selected');
+
+    expect(localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY)).toBe('ws_selected');
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener(WORKSPACE_CHANGED_EVENT, listener as EventListener);
+  });
+
+  it('does not emit a browser event again when the workspace id stays the same', () => {
+    const listener = vi.fn();
+    window.addEventListener(WORKSPACE_CHANGED_EVENT, listener as EventListener);
+
+    setActiveWorkspaceId('ws_selected');
     setActiveWorkspaceId('ws_selected');
 
     expect(localStorage.getItem(ACTIVE_WORKSPACE_STORAGE_KEY)).toBe('ws_selected');

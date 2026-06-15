@@ -11,6 +11,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { quotaMiddleware } from '../../backend/src/middleware/quota';
+import * as saasStore from '../../backend/src/utils/saasStore';
 import {
   PLAN_LIMITS,
   getMonthlyCount,
@@ -138,6 +139,16 @@ describe('quotaMiddleware — plano free', () => {
     expect(res.setHeader).toHaveBeenCalledWith('X-RateLimit-Limit', String(PLAN_LIMITS.free.aiQueries));
     expect(res.setHeader).toHaveBeenCalledWith('X-RateLimit-Remaining', expect.any(String));
     expect(res.setHeader).toHaveBeenCalledWith('X-RateLimit-Reset', expect.any(String));
+  });
+
+  it('continua a requisicao se a persistencia de quota falhar', async () => {
+    const spy = vi.spyOn(saasStore, 'incrementMonthlyUsage').mockRejectedValueOnce(new Error('quota store failed'));
+
+    const { next, res } = await runMiddleware('aiQueries', 'user-quota-fallback');
+
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalledWith(500);
+    spy.mockRestore();
   });
 
   it('inclui headers X-RateLimit em respostas 429', async () => {

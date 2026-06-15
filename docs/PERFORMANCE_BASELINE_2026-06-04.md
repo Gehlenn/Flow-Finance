@@ -84,6 +84,14 @@ Evidencia real capturada em 2026-06-04:
 - report: `test-results/target-performance-evidence/2026-06-04T22-01-40-962Z/report.md`
 - metrics: `navigationDurationMs 1656ms`, `domContentLoadedMs 1656ms`, `loadEventMs 1656ms`, `resourceCount 61`
 
+Refresh publicado em 2026-06-11:
+
+- target url: `https://flow-finance-frontend-nine.vercel.app`
+- artifact: `test-results/target-performance-evidence/2026-06-11T03-23-06-276Z/report.json`
+- report: `test-results/target-performance-evidence/2026-06-11T03-23-06-276Z/report.md`
+- metrics: `navigationDurationMs 330ms`, `domContentLoadedMs 330ms`, `loadEventMs 330ms`, `resourceCount 62`
+- leitura: o dashboard benchmark publicado segue saudavel, mas isso ainda nao prova throughput sob carga para login, bootstrap, sync pull ou IA
+
 ## Criterio atendido
 
 1. Rodar o comando de baseline em ambiente alvo acessivel: concluido em 2026-06-04.

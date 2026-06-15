@@ -8,7 +8,12 @@ import { workspaceContextMiddleware } from '../middleware/workspaceContext';
 import { financeEventsLimiterByUser } from '../middleware/rateLimit';
 import { financeMetricsController } from '../controllers/financeController';
 import { asyncHandler } from '../middleware/errorHandler';
-import { appendDomainEvent, getDomainEvents } from '../services/finance/eventStore';
+import { AppError } from '../shared/AppError';
+import {
+  appendDomainEvent,
+  getDomainEventPersistenceHealthCheck,
+  getDomainEvents,
+} from '../services/finance/eventStore';
 import { acknowledgeEvent, enqueueEvent, getPendingEvents, retryEvent } from '../events/eventQueue';
 import logger from '../config/logger';
 
@@ -18,6 +23,15 @@ router.use(authMiddleware);
 router.use(workspaceContextMiddleware);
 
 type QueuedDomainEventInput = Parameters<typeof appendDomainEvent>[0];
+
+async function assertDurableDomainEventPersistence(): Promise<void> {
+  const persistence = await getDomainEventPersistenceHealthCheck();
+  if (persistence.required && !persistence.durable) {
+    throw new AppError(503, 'Persistencia duravel de eventos indisponivel', {
+      domainEventPersistence: persistence,
+    });
+  }
+}
 
 async function flushQueuedDomainEvents(): Promise<void> {
   const pending = await getPendingEvents();
@@ -66,6 +80,7 @@ router.post('/events', authz('finance:read'), financeEventsLimiterByUser, asyncH
     return;
   }
 
+  await assertDurableDomainEventPersistence();
   await flushQueuedDomainEvents();
 
   const eventInput: QueuedDomainEventInput = {
@@ -89,6 +104,10 @@ router.post('/events', authz('finance:read'), financeEventsLimiterByUser, asyncH
     res.status(201).json({ event });
     return;
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
     logger.warn({
       error,
       eventId: queueItem.id,
@@ -105,6 +124,8 @@ router.post('/events', authz('finance:read'), financeEventsLimiterByUser, asyncH
 }));
 
 router.get('/events', authz('finance:read'), asyncHandler(async (req: Request, res: Response) => {
+  await assertDurableDomainEventPersistence();
+
   const events = await getDomainEvents({
     workspaceId: req.workspaceId!,
     aggregateId: typeof req.query.aggregateId === 'string' ? req.query.aggregateId : undefined,

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth';
 import { workspaceContextMiddleware } from '../middleware/workspaceContext';
+import { workspaceLimiterByUser } from '../middleware/rateLimit';
 import {
   createWorkspaceAsync,
   listWorkspaceSummariesForUserAsync,
@@ -14,6 +15,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 const router = Router();
 
 router.use(authMiddleware);
+router.use(workspaceLimiterByUser);
 
 function normalizeParam(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) {

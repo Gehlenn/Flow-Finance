@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { ReminderType, type Reminder, Transaction } from '../types';
 import { runAIPipelineSync } from '../src/ai/aiOrchestrator';
 import { AIInsight } from '../src/ai/insightGenerator';
@@ -45,13 +45,17 @@ const RISK_ICON: Record<string, React.ReactNode> = {
   negative_forecast:     <ShieldAlert size={16} />,
 };
 
+const PAGE_SURFACE = 'rounded-xl border border-slate-200 bg-white shadow-none dark:border-slate-700 dark:bg-slate-800';
+const SOFT_SURFACE = 'rounded-xl border border-slate-100 bg-slate-50 shadow-none dark:border-slate-700 dark:bg-slate-900/50';
+const ICON_SURFACE = 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300';
+
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 const InsightCard: React.FC<{ insight: AIInsight }> = ({ insight }) => {
   const s = SEVERITY_STYLES[insight.severity ?? 'low'];
   return (
-    <div className={`${s.bg} border ${s.border} rounded-[1.8rem] p-5 flex gap-4 items-start`}>
-      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${s.bg} ${s.icon}`}>
+    <div className={`${s.bg} border ${s.border} rounded-xl p-4 flex gap-3 items-start shadow-none`}>
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${s.bg} ${s.icon}`}>
         {INSIGHT_ICON[insight.type]}
       </div>
       <div className="flex-1 min-w-0">
@@ -74,8 +78,8 @@ const RiskCard: React.FC<{
 }> = ({ alert, onCreateReminder, onNavigateToTab }) => {
   const s = SEVERITY_STYLES[alert.severity];
   return (
-    <div className={`${s.bg} border ${s.border} rounded-[1.8rem] p-5 flex gap-4 items-start`}>
-      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${s.bg} ${s.icon}`}>
+    <div className={`${s.bg} border ${s.border} rounded-xl p-4 flex gap-3 items-start shadow-none`}>
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${s.bg} ${s.icon}`}>
         {RISK_ICON[alert.type]}
       </div>
       <div className="flex-1 min-w-0">
@@ -87,7 +91,7 @@ const RiskCard: React.FC<{
           <button
             type="button"
             onClick={() => onCreateReminder(alert)}
-            className="mt-3 inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="mt-3 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             <Sparkles size={14} />
             Acompanhar risco
@@ -97,7 +101,7 @@ const RiskCard: React.FC<{
           <button
             type="button"
             onClick={() => onNavigateToTab('flow')}
-            className="mt-2 inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+            className="mt-2 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
           >
             <BarChart3 size={14} />
             Ver fluxo
@@ -236,219 +240,274 @@ const Insights: React.FC<InsightsProps> = ({
   const canShowActions = typeof onNavigateToTab === 'function' || typeof onCreateReminder === 'function';
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-700 pb-24">
-
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+    <div className="flex flex-col gap-4 animate-in fade-in duration-700 pb-24">
+      <header className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-none dark:border-slate-700 dark:bg-slate-800 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="min-w-0">
-          <h2 className="text-2xl font-semibold tracking-tight leading-none text-slate-900 dark:text-white">Leituras financeiras</h2>
-          <p className="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+          <h2 className="text-xl font-semibold tracking-tight leading-tight text-slate-900 dark:text-white sm:text-2xl">Leituras financeiras</h2>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
             Workspace: {activeWorkspaceName || 'Carregando workspace'}
           </p>
           <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Leitura operacional do caixa</p>
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+        <div className={ICON_SURFACE}>
           <Brain size={20} />
         </div>
-      </div>
+      </header>
 
-      {isEmpty && (
-        <div className="flex flex-col items-center py-16 gap-4 text-slate-300 dark:text-slate-600">
+      {isEmpty ? (
+        <div className="flex flex-col items-center gap-4 py-16 text-slate-300 dark:text-slate-600">
           <Sparkles size={40} />
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-center">
+          <p className="text-center text-xs font-semibold uppercase tracking-[0.08em]">
             Adicione transações para ver as leituras do caixa
           </p>
         </div>
-      )}
-
-      {!isEmpty && (
+      ) : (
         <>
-          {/* ── Health Score ────────────────────────────────────────────── */}
-          <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Activity size={16} className={hs.text} />
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">Saúde do caixa</p>
+          <div className="grid gap-3">
+            <section className={`${PAGE_SURFACE} p-4 sm:p-5`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className={ICON_SURFACE}>
+                    <Activity size={15} className={hs.text} />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Saúde do caixa</h3>
+                    <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Visão curta do estado atual.</p>
+                  </div>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-white ${hs.bg}`}>
+                  {health_label}
+                </span>
               </div>
-              <span className={`text-xs font-semibold uppercase tracking-[0.08em] px-3 py-1 rounded-full text-white ${hs.bg}`}>
-                {health_label}
-              </span>
-            </div>
-            <div className="flex items-end gap-3 mb-3">
-              <p className={`text-5xl font-semibold leading-none ${hs.text}`}>{health_score}</p>
-              <p className="text-slate-400 font-semibold text-lg mb-1">/100</p>
-            </div>
-            <div className="w-full h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-              <div
-                className={`h-full ${hs.bar} rounded-full transition-all duration-1000`}
-                style={{ width: `${health_score}%` }}
-              />
-            </div>
-            <p className="text-xs text-slate-400 mt-2">
-              {pipeline.processing_ms}ms · pipeline v{pipeline.computed_at ? '0.3' : '—'}
-            </p>
-            <div className="mt-4 flex items-start gap-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 p-4 border border-slate-100 dark:border-slate-700">
-              <Zap size={16} className="text-slate-500 shrink-0 mt-0.5" />
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Próxima ação</p>
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-200 leading-snug mt-1">
-                  {nextActionSummary}
-                </p>
+
+              <div className="mt-4 flex items-end gap-3">
+                <p className={`text-4xl font-semibold leading-none sm:text-5xl ${hs.text}`}>{health_score}</p>
+                <p className="mb-1 text-base font-semibold text-slate-400 sm:text-lg">/100</p>
               </div>
-            </div>
-            {canShowActions && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => onNavigateToTab?.('assistant')}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
-                >
-                  <MessageSquare size={14} />
-                  Abrir assistente
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onNavigateToTab?.('goals')}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 transition-colors hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                >
-                  <Target size={14} />
-                  Ver metas
-                </button>
-                {typeof onCreateReminder === 'function' && (
+
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                <div
+                  className={`h-full ${hs.bar} rounded-full transition-all duration-1000`}
+                  style={{ width: `${health_score}%` }}
+                />
+              </div>
+
+              <p className="mt-2 text-xs text-slate-400">
+                {pipeline.processing_ms}ms · pipeline v{pipeline.computed_at ? '0.3' : '—'}
+              </p>
+
+              <div className={`${SOFT_SURFACE} mt-4 flex items-start gap-3 p-3`}>
+                <Zap size={16} className="mt-0.5 shrink-0 text-slate-500" />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Próxima ação</p>
+                  <p className="mt-1 text-sm font-medium leading-snug text-slate-700 dark:text-slate-200">
+                    {nextActionSummary}
+                  </p>
+                </div>
+              </div>
+
+              {canShowActions && (
+                <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={handleCreateReminder}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+                    onClick={() => onNavigateToTab?.('assistant')}
+                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
                   >
-                    <Sparkles size={14} />
-                    Criar lembrete
+                    <MessageSquare size={14} />
+                    Abrir assistente
                   </button>
-                )}
-              </div>
-            )}
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToTab?.('goals')}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  >
+                    <Target size={14} />
+                    Ver metas
+                  </button>
+                  {typeof onCreateReminder === 'function' && (
+                    <button
+                      type="button"
+                      onClick={handleCreateReminder}
+                      className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+                    >
+                      <Sparkles size={14} />
+                      Criar lembrete
+                    </button>
+                  )}
+                </div>
+              )}
+            </section>
+
+            <div className="space-y-3">
+              <section className={`${PAGE_SURFACE} p-4 sm:p-5`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className={ICON_SURFACE}>
+                      <BarChart3 size={15} />
+                    </span>
+                    <div className="min-w-0">
+                      <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Projeção rápida</h3>
+                      <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Saldo confirmado no curto prazo.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+                  {[
+                    { label: 'Hoje', value: prediction.currentBalance },
+                    { label: '7 dias', value: prediction.in7Days },
+                    { label: '30 dias', value: prediction.in30Days },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-center dark:border-slate-700 dark:bg-slate-900/40">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{label}</p>
+                      <p className={`mt-2 text-[13px] font-semibold tabular-nums whitespace-nowrap sm:text-sm ${value >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300'}`}>
+                        {hideValues ? '••••' : fmt(value)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {canUseAdvancedInsights && (
+                <section className={`${PAGE_SURFACE} p-4 sm:p-5`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className={ICON_SURFACE}>
+                        <Brain size={15} />
+                      </span>
+                      <div className="min-w-0">
+                        <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Contexto avançado</h3>
+                        <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Sinais adicionais para leitura comparativa do caixa.</p>
+                      </div>
+                    </div>
+                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                      {Math.round(intelligence.context.confidence.overall * 100)}%
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
+                      Confianca {Math.round(intelligence.context.confidence.overall * 100)}%
+                    </span>
+                    <span className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                      Recorrencias {intelligence.recurringCount}
+                    </span>
+                    <span className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                      Dados {intelligence.merchantCoveragePercent}%
+                    </span>
+                    {intelligence.dominantCategoryLabel && (
+                      <span className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
+                        {intelligence.dominantCategoryLabel}
+                      </span>
+                    )}
+                  </div>
+                </section>
+              )}
+            </div>
           </div>
 
-          {/* ── Projeção Rápida ─────────────────────────────────────────── */}
-          <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 grid grid-cols-3 gap-3 border border-slate-100 dark:border-slate-700 shadow-sm">
-            {[
-              { label: 'Hoje', value: prediction.currentBalance },
-              { label: '7 dias', value: prediction.in7Days },
-              { label: '30 dias', value: prediction.in30Days },
-            ].map(({ label, value }) => (
-              <div key={label} className="flex flex-col gap-1 items-center text-center">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">{label}</p>
-                <p className={`text-sm font-semibold ${value >= 0 ? 'text-white' : 'text-rose-400'}`}>
-                  {hideValues ? '••••' : fmt(value)}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {canUseAdvancedInsights && (
-            <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-5 border border-slate-100 dark:border-slate-700 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <Brain size={16} className="text-slate-500" />
-                <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Contexto avançado</h3>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1 rounded-full bg-slate-50 dark:bg-slate-900/50 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">
-                  Confianca {Math.round(intelligence.context.confidence.overall * 100)}%
+          <section className={`${PAGE_SURFACE} p-4 sm:p-5`}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className={ICON_SURFACE}>
+                  <Lightbulb size={15} />
                 </span>
-                <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-300">
-                  Recorrencias {intelligence.recurringCount}
-                </span>
-                <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-300">
-                  Dados {intelligence.merchantCoveragePercent}%
-                </span>
-                {intelligence.dominantCategoryLabel && (
-                  <span className="px-3 py-1 rounded-full bg-slate-50 dark:bg-slate-900/50 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">
-                    {intelligence.dominantCategoryLabel}
-                  </span>
-                )}
+                <div className="min-w-0">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Sinais do caixa</h3>
+                  <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Leituras curtas para agir no caixa agora.</p>
+                </div>
               </div>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                {visibleInsights.length}
+              </span>
             </div>
-          )}
-
-          {/* ── Seção 1: Insights Financeiros ───────────────────────────── */}
-          <section>
-            <div className="flex items-center gap-2 mb-3">
-              <Lightbulb size={16} className="text-slate-500" />
-              <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Sinais do caixa</h3>
-              <span className="ml-auto text-xs font-semibold bg-slate-50 dark:bg-slate-900/50 text-slate-500 px-2 py-0.5 rounded-full">{visibleInsights.length}</span>
-            </div>
-            <div className="flex flex-col gap-3">
+            <div className="mt-4 flex flex-col gap-3">
               {visibleInsights.length === 0 ? (
-                <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl border border-emerald-100 dark:border-emerald-500/20">
-                  <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
+                <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+                  <CheckCircle2 size={18} className="shrink-0 text-emerald-500" />
                   <p className="text-sm font-medium text-slate-700 dark:text-white">Tudo sob controle! Nenhum padrão crítico detectado.</p>
                 </div>
               ) : (
-                visibleInsights.map(i => <InsightCard key={i.id} insight={i} />)
+                visibleInsights.map((i) => <InsightCard key={i.id} insight={i} />)
               )}
             </div>
           </section>
 
-          {/* ── Seção 2: Perfil Financeiro ───────────────────────────────── */}
           {canUseHistoricalComparisons && (
-            <section>
-              <div className="flex items-center gap-2 mb-3">
-                <BarChart3 size={16} className="text-slate-500" />
-              <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Perfil de fluxo</h3>
-              </div>
-              <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
-                <div className="flex items-center gap-4 mb-4">
-                  <span className="text-4xl">{profileResult.emoji}</span>
-                  <div>
-                    <p className="text-lg font-semibold text-slate-900 dark:text-white">{profileResult.label}</p>
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-[0.08em]">{profileResult.profile}</p>
+            <section className={`${PAGE_SURFACE} p-4 sm:p-5`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className={ICON_SURFACE}>
+                    <BarChart3 size={15} />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Perfil de fluxo</h3>
+                    <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Comparação do comportamento financeiro.</p>
                   </div>
                 </div>
-                <p className="text-sm text-slate-600 dark:text-slate-400 font-medium leading-relaxed mb-4">
-                  {profileResult.description}
-                </p>
+              </div>
 
-                <div className="flex flex-col gap-2 mt-2">
-                  {(Object.entries(profileResult.score) as [string, number][])
-                    .sort(([, a], [, b]) => b - a)
-                    .map(([key, score]) => {
-                      const allScores = Object.values(profileResult.score) as number[];
-                      const maxScore = Math.max(...allScores, 1);
-                      const pct = Math.round((score / maxScore) * 100);
-                      return (
-                        <div key={key} className="flex items-center gap-3">
-                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-tight w-28 shrink-0 truncate">{key.replace('_', ' ')}</p>
-                          <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-slate-500 rounded-full transition-all duration-700"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <p className="text-xs font-semibold text-slate-400 w-8 text-right">{pct}%</p>
-                        </div>
-                      );
-                    })}
+              <div className="mt-4 flex items-start gap-3">
+                <span className="text-3xl sm:text-4xl">{profileResult.emoji}</span>
+                <div className="min-w-0">
+                  <p className="text-base font-semibold text-slate-900 dark:text-white">{profileResult.label}</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">{profileResult.profile}</p>
                 </div>
+              </div>
+
+              <p className="mt-3 text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-400">
+                {profileResult.description}
+              </p>
+
+              <div className="mt-4 flex flex-col gap-2">
+                {(Object.entries(profileResult.score) as [string, number][])
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([key, score]) => {
+                    const allScores = Object.values(profileResult.score) as number[];
+                    const maxScore = Math.max(...allScores, 1);
+                    const pct = Math.round((score / maxScore) * 100);
+                    return (
+                      <div key={key} className="flex items-center gap-3">
+                        <p className="w-28 shrink-0 truncate text-xs font-semibold uppercase tracking-tight text-slate-400">{key.replace('_', ' ')}</p>
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                          <div
+                            className="h-full rounded-full bg-slate-500 transition-all duration-700"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <p className="w-8 text-right text-xs font-semibold text-slate-400">{pct}%</p>
+                      </div>
+                    );
+                  })}
               </div>
             </section>
           )}
 
-          {/* ── Seção 3: Alertas de Risco ────────────────────────────────── */}
-          <section>
-            <div className="flex items-center gap-2 mb-3">
-              <ShieldAlert size={16} className="text-rose-500" />
-              <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Riscos do caixa</h3>
+          <section className={`${PAGE_SURFACE} p-4 sm:p-5`}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className={ICON_SURFACE}>
+                  <ShieldAlert size={15} className="text-rose-500" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Riscos do caixa</h3>
+                  <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Alertas de curto prazo que exigem atenção.</p>
+                </div>
+              </div>
               {visibleRisks.length > 0 && (
-                <span className="ml-auto text-xs font-semibold bg-rose-50 dark:bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-full">{visibleRisks.length}</span>
+                <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-rose-500 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
+                  {visibleRisks.length}
+                </span>
               )}
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="mt-4 flex flex-col gap-3">
               {visibleRisks.length === 0 ? (
-                <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl border border-emerald-100 dark:border-emerald-500/20">
-                  <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
+                <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+                  <CheckCircle2 size={18} className="shrink-0 text-emerald-500" />
                   <p className="text-sm font-medium text-slate-700 dark:text-white">Nenhum risco detectado no horizonte.</p>
                 </div>
               ) : (
-                visibleRisks.map(r => (
+                visibleRisks.map((r) => (
                   <RiskCard
                     key={r.id}
                     alert={r}
@@ -473,10 +532,9 @@ const Insights: React.FC<InsightsProps> = ({
             />
           )}
 
-          {/* Footer note */}
-          <div className="flex items-start gap-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-            <Info size={14} className="text-slate-400 shrink-0 mt-0.5" />
-            <p className="text-xs text-slate-400 font-medium leading-relaxed">
+          <div className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+            <Info size={14} className="mt-0.5 shrink-0 text-slate-400" />
+            <p className="text-xs font-medium leading-relaxed text-slate-400">
               Análises geradas dinamicamente com base nas suas transações. Nenhum dado é enviado para servidores externos.
             </p>
           </div>
@@ -487,8 +545,3 @@ const Insights: React.FC<InsightsProps> = ({
 };
 
 export default Insights;
-
-
-
-
-

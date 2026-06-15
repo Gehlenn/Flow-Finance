@@ -10,6 +10,7 @@ const defaultOutputRoot = 'test-results/activation-retention-evidence';
 const requiredActivationEvents = [
   'activation_first_transaction',
   'activation_first_dashboard_useful',
+  'activation_financial_base_completed',
 ];
 const requiredRetentionEvents = [
   'weekly_cash_review_completed',

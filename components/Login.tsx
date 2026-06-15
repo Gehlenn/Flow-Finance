@@ -13,6 +13,7 @@ import {
   sendPasswordResetEmail,
   AuthProvider,
 } from 'firebase/auth';
+import { VISUAL_MOTION, VISUAL_SURFACES } from '../src/app/visualSystem';
 
 interface LoginProps {
   onLogin: (email: string) => void;
@@ -193,35 +194,46 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
   };
 
   return (
-    <div className="h-screen w-full bg-slate-50 dark:bg-[#020617] flex flex-col items-center justify-between py-6 px-4 overflow-hidden transition-colors duration-500 relative text-slate-900 dark:text-white">
+    <div className="min-h-screen w-full bg-slate-50 dark:bg-[#020617] flex flex-col items-center justify-between px-4 py-5 overflow-x-hidden transition-colors duration-500 relative text-slate-900 dark:text-white">
 
-      <div className={`w-full max-w-[360px] flex flex-col flex-1 justify-between transition-all duration-700 relative z-10 ${isAnimating ? 'opacity-0 scale-95 blur-md' : 'opacity-100'}`}>
+      <div className={`w-full max-w-[380px] flex flex-col flex-1 justify-between transition-all duration-700 relative z-10 ${isAnimating ? 'opacity-0 scale-95 blur-md' : 'opacity-100'}`}>
         
-        <div className="text-center flex flex-col items-center animate-in fade-in zoom-in-95 duration-1000 mt-4 overflow-visible">
-          <div className="transform scale-[1.35] mb-6 overflow-visible">
-            <Logo size="md" showText={false} />
-          </div>
-          <div className="flex flex-col items-center mt-2">
-            <h1 className="text-6xl font-black tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-b from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
-              Flow
-            </h1>
-            <p className="text-[14px] font-black text-slate-500 uppercase tracking-[0.6em] mt-2">Finance</p>
-            <p className="mt-2 max-w-[280px] text-sm font-semibold leading-snug text-slate-600 dark:text-slate-300">
-              Fluxo de caixa para empresas de servico: veja caixa real, previsto e recebiveis antes de decidir a semana.
-            </p>
-            <p className="mt-1 max-w-[260px] text-xs font-medium leading-relaxed text-slate-400">
-              Exemplo: saber se entra dinheiro suficiente antes dos vencimentos.
-            </p>
+        <div className={VISUAL_MOTION.entrance}>
+          <div className={`mx-auto flex w-full max-w-[340px] flex-col items-start ${VISUAL_SURFACES.workspace} px-5 py-5`}>
+            <div className="mb-4 flex items-center gap-3">
+              <div className="scale-[0.9] overflow-visible">
+                <Logo size="sm" showText={false} />
+              </div>
+              <div>
+                <p className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">Flow Finance</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Workspace financeiro</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
+                Revisao de caixa da semana
+              </h1>
+              <p className="max-w-[300px] text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-300">
+                Acesse saldo confirmado, previsto e recebiveis antes de decidir pagamentos, cobrancas e prioridades.
+              </p>
+              <div className="grid w-full grid-cols-3 gap-2 pt-1">
+                {['Caixa real', 'Previsto', 'Recebiveis'].map(item => (
+                  <span key={item} className={`${VISUAL_SURFACES.interactiveCard} px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-300`}>
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="bg-white/90 dark:bg-slate-900/95 px-6 py-6 rounded-[3rem] shadow-[0_30px_80px_-15px_rgba(0,0,0,0.12)] dark:shadow-[0_40px_100px_-20px_rgba(0,0,0,0.7)] border border-white/50 dark:border-slate-800/50 backdrop-blur-3xl my-4">
+        <div className={`my-4 ${VISUAL_SURFACES.workspace} px-5 py-5`}>
           
           {error?.code === 'auth/unauthorized-domain' ? (
             <div className="animate-in slide-in-from-top-4 duration-500 space-y-3">
-              <div className="p-4 bg-slate-500/5 border border-slate-200 rounded-[2rem] space-y-2 text-center dark:border-slate-700">
+              <div className={`${VISUAL_SURFACES.section} p-4 space-y-2 text-center`}>
                 <FlaskConical size={24} className="mx-auto text-slate-500" />
-                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 leading-tight">
+                <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 leading-tight">
                   OAuth restrito. Use a demonstração segura para explorar o Flow.
                 </p>
                 <button 
@@ -229,7 +241,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
                     setIsAnimating(true);
                     setTimeout(() => onLogin('teste@flow.com'), 400);
                   }}
-                  className="w-full py-3.5 bg-slate-900 text-white rounded-2xl font-black text-[9px] uppercase tracking-widest shadow-xl active:scale-95 transition-all dark:bg-slate-100 dark:text-slate-900"
+                  className={`w-full rounded-xl bg-slate-900 py-3.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white ${VISUAL_MOTION.action} dark:bg-slate-100 dark:text-slate-900`}
                 >
                   <ShieldCheck size={14} className="mr-2 inline" /> Iniciar Modo Demo
                 </button>
@@ -238,13 +250,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
           ) : (
             <div className="space-y-4">
               {error && (
-                <div role="alert" aria-live="polite" className="flex items-center gap-2 rounded-2xl border border-rose-500/20 bg-rose-500/5 p-3 text-rose-500 animate-in shake">
+                <div role="alert" aria-live="polite" className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 text-rose-500 animate-in shake">
                   <AlertCircle size={13} className="shrink-0" />
                   <p className="text-xs font-medium">{error.message}</p>
                 </div>
               )}
               {error && getAuthDiagnostic(error.code) && (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+                <div className={`${VISUAL_SURFACES.alert} p-4`}>
                   <p className="text-xs font-semibold uppercase tracking-[0.08em]">{getAuthDiagnostic(error.code)?.title}</p>
                   <p className="mt-1 text-xs font-medium leading-relaxed">{getAuthDiagnostic(error.code)?.message}</p>
                   <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] opacity-90">
@@ -266,7 +278,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
                           aria-label="E-mail de acesso"
                           placeholder="E-mail"
                           data-testid="email"
-                          className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent focus:border-slate-400/30 focus:bg-white dark:focus:bg-slate-800 text-xs font-bold outline-none transition-all shadow-inner"
+                          className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-11 py-3.5 text-sm font-medium outline-none placeholder:text-slate-400 focus:border-slate-400/40 focus:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:focus:bg-slate-800 ${VISUAL_MOTION.state}`}
                         />
                       </div>
                       <div className="relative group">
@@ -278,27 +290,27 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
                           aria-label="Senha de acesso"
                           placeholder="Senha"
                           data-testid="password"
-                          className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent focus:border-slate-400/30 focus:bg-white dark:focus:bg-slate-800 text-xs font-bold outline-none transition-all shadow-inner"
+                          className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-11 py-3.5 text-sm font-medium outline-none placeholder:text-slate-400 focus:border-slate-400/40 focus:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:focus:bg-slate-800 ${VISUAL_MOTION.state}`}
                         />
                       </div>
-                      <button type="button" onClick={() => setView('recover')} className="block w-full text-right text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Esqueci a senha</button>
+                      <button type="button" onClick={() => setView('recover')} className="block w-full px-1 text-right text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Esqueci a senha</button>
                     </div>
-                  <button type="submit" disabled={isLoading} data-testid="login-button" className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/20 active:scale-95 disabled:opacity-50 transition-all dark:bg-slate-100 dark:text-slate-900">
+                  <button type="submit" disabled={isLoading} data-testid="login-button" className={`w-full rounded-xl bg-slate-900 py-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-white shadow-sm disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 ${VISUAL_MOTION.action}`}>
                     {isLoading ? 'Autenticando...' : 'Acessar Conta'} <ArrowRight size={14} className="inline ml-1" />
                   </button>
                 </form>
                   
                   <div className="flex items-center gap-3 py-1">
-                    <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>
-                    <span className="text-[7px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-widest">OU</span>
-                    <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>
+                    <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
+                    <span className="text-[8px] font-semibold text-slate-300 dark:text-slate-600 uppercase tracking-[0.12em]">OU</span>
+                    <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
                   </div>
 
-                  <button onClick={() => handleSocialLogin(googleProvider)} className="w-full py-3.5 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200 active:scale-95 transition-all shadow-sm">
+                  <button onClick={() => handleSocialLogin(googleProvider)} className={`flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-3.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 ${VISUAL_MOTION.action}`}>
                     <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-4 h-4" /> Entrar com Google
                   </button>
 
-                  <button onClick={() => setView('signup')} className="w-full text-center text-[9px] font-black text-slate-400 uppercase tracking-widest pt-1.5 group">
+                  <button onClick={() => setView('signup')} className="w-full pt-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400 group">
                     Novo por aqui? <span className="text-slate-600 group-hover:underline dark:text-slate-300">Cadastre-se</span>
                   </button>
                 </>
@@ -306,13 +318,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
 
               {view === 'signup' && (
                 <form onSubmit={handleSignup} className="space-y-3 animate-in slide-in-from-right-4 duration-500">
-                  <button type="button" onClick={() => setView('login')} className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase mb-1"><ChevronLeft size={14} /> Voltar</button>
+                  <button type="button" onClick={() => setView('login')} className="mb-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400"><ChevronLeft size={14} /> Voltar</button>
                   <div className="space-y-2">
-                    <input type="text" required aria-label="Nome completo" placeholder="Seu nome" value={name} onChange={e => setName(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-slate-400/30 shadow-inner" />
-                    <input type="email" required aria-label="E-mail para cadastro" placeholder="Seu e-mail" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-slate-400/30 shadow-inner" />
-                    <input type="password" required aria-label="Senha para cadastro" placeholder="Senha (min 6 car.)" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-slate-400/30 shadow-inner" />
+                    <input type="text" required aria-label="Nome completo" placeholder="Seu nome" value={name} onChange={e => setName(e.target.value)} className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-5 py-3.5 text-sm font-medium outline-none placeholder:text-slate-400 focus:border-slate-400/40 focus:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:focus:bg-slate-800 ${VISUAL_MOTION.state}`} />
+                    <input type="email" required aria-label="E-mail para cadastro" placeholder="Seu e-mail" value={email} onChange={e => setEmail(e.target.value)} className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-5 py-3.5 text-sm font-medium outline-none placeholder:text-slate-400 focus:border-slate-400/40 focus:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:focus:bg-slate-800 ${VISUAL_MOTION.state}`} />
+                    <input type="password" required aria-label="Senha para cadastro" placeholder="Senha (min 6 car.)" value={password} onChange={e => setPassword(e.target.value)} className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-5 py-3.5 text-sm font-medium outline-none placeholder:text-slate-400 focus:border-slate-400/40 focus:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:focus:bg-slate-800 ${VISUAL_MOTION.state}`} />
                   </div>
-                  <button type="submit" disabled={isLoading} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase shadow-xl active:scale-95 transition-all dark:bg-slate-100 dark:text-slate-900">
+                  <button type="submit" disabled={isLoading} className={`w-full rounded-xl bg-slate-900 py-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-white dark:bg-slate-100 dark:text-slate-900 ${VISUAL_MOTION.action}`}>
                     Criar meu Acesso <UserPlus size={16} className="ml-2 inline" />
                   </button>
                 </form>
@@ -320,12 +332,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
 
               {view === 'recover' && (
                 <form onSubmit={handleRecoverPassword} className="space-y-4 animate-in slide-in-from-right-4 duration-500">
-                  <button type="button" onClick={() => setView('login')} className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase mb-1"><ChevronLeft size={14} /> Voltar</button>
+                  <button type="button" onClick={() => setView('login')} className="mb-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400"><ChevronLeft size={14} /> Voltar</button>
                   <div className="space-y-3">
-                    <p className="text-[10px] font-bold text-slate-500 text-center leading-relaxed px-2">Enviaremos um link de recuperação para o e-mail cadastrado.</p>
-                    <input type="email" required aria-label="E-mail para recuperar senha" placeholder="E-mail cadastrado" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-4 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl text-xs font-bold outline-none border-2 border-transparent focus:border-slate-400/30 shadow-inner" />
+                    <p className="px-2 text-center text-[11px] font-medium leading-relaxed text-slate-500">Enviaremos um link de recuperação para o e-mail cadastrado.</p>
+                    <input type="email" required aria-label="E-mail para recuperar senha" placeholder="E-mail cadastrado" value={email} onChange={e => setEmail(e.target.value)} className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-medium outline-none placeholder:text-slate-400 focus:border-slate-400/40 focus:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:focus:bg-slate-800 ${VISUAL_MOTION.state}`} />
                   </div>
-                  <button type="submit" className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all dark:bg-slate-100 dark:text-slate-900">Recuperar Senha</button>
+                  <button type="submit" className={`w-full rounded-xl bg-slate-900 py-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-white dark:bg-slate-100 dark:text-slate-900 ${VISUAL_MOTION.action}`}>Recuperar Senha</button>
                 </form>
               )}
 
@@ -334,25 +346,25 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
                   <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto shadow-inner border border-emerald-500/20">
                     <CheckCircle2 size={36} />
                   </div>
-                  <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 px-2 leading-relaxed">{successMessage}</p>
-                  <button onClick={() => setView('login')} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all">Voltar ao Login</button>
+                  <p className="px-2 text-[11px] font-medium leading-relaxed text-slate-600 dark:text-slate-300">{successMessage}</p>
+                  <button onClick={() => setView('login')} className={`w-full rounded-xl bg-slate-900 py-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-white ${VISUAL_MOTION.action}`}>Voltar ao Login</button>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        <div className="flex flex-col items-center gap-3 mb-4">
+        <div className="mb-4 flex flex-col items-center gap-2">
           <button 
             onClick={() => {
               setIsAnimating(true);
               setTimeout(() => onLogin('teste@flow.com'), 400);
             }}
-            className="flex items-center gap-2 px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 rounded-full border border-slate-200 dark:border-slate-700 text-[9px] font-black uppercase tracking-[0.2em] transition-all active:scale-90"
+            className={`flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 ${VISUAL_MOTION.action}`}
           >
             <ShieldCheck size={13} /> Sessão protegida
           </button>
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Firebase, login local e recuperação</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">Firebase, login local e recuperacao</p>
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AICFO from '../../pages/AICFO';
 import { Category, ReminderType, TransactionType, type Transaction } from '../../types';
 import { Account } from '../../models/Account';
-import { generateCFOResponse, learnFromConversation } from '../../src/ai/aiCFO';
+import { analyzeFinancialQuestion, generateCFOResponse, learnFromConversation } from '../../src/ai/aiCFO';
 
 Element.prototype.scrollIntoView = vi.fn();
 
@@ -64,6 +64,14 @@ vi.mock('../../src/ai/aiCFO', () => ({
   })),
   learnFromConversation: vi.fn(async () => undefined),
   buildFinancialContext: vi.fn(() => 'contexto'),
+  buildCFOExplainability: vi.fn(() => ({
+    reasons_used: ['Base de teste'],
+    evidence: {
+      base_sufficiency: 'limited',
+    },
+    confidence_band: 'medium',
+  })),
+  buildCFOResponseDepth: vi.fn(() => 'standard'),
 }));
 
 vi.mock('../../src/app/productAnalytics', () => ({
@@ -194,6 +202,26 @@ describe('AICFO plan render', () => {
     expect(screen.queryByText(/Modo Free/i)).toBeNull();
     expect(screen.getAllByRole('button').length).toBeGreaterThanOrEqual(6);
     expect(screen.getByText(/Perguntas r.*idas do caixa/i)).toBeTruthy();
+  });
+
+  it('reserva espaco inferior na lista de respostas para o nav fixo mobile', () => {
+    const { container } = render(
+      <AICFO
+        transactions={baseTransactions}
+        accounts={baseAccounts}
+        userId="u1"
+        workspacePlan="pro"
+        hideValues={false}
+        onNavigateToTab={vi.fn()}
+        onCreateReminder={vi.fn()}
+      />,
+    );
+
+    const scrollArea = Array.from(container.querySelectorAll('div')).find(
+      (element) => element.className.includes('overflow-y-auto') && element.className.includes('pb-[calc(6.5rem+env(safe-area-inset-bottom))]'),
+    );
+
+    expect(scrollArea).toBeTruthy();
   });
 
   it('usa o plano pro do demo mesmo quando o workspace chega como free', () => {
@@ -329,6 +357,11 @@ describe('AICFO plan render', () => {
   it('oferece acao operacional na resposta do CFO', async () => {
     const onNavigateToTab = vi.fn();
     const onCreateReminder = vi.fn();
+    vi.mocked(analyzeFinancialQuestion).mockReturnValueOnce('risk_question');
+    vi.mocked(generateCFOResponse).mockResolvedValueOnce({
+      answer: 'Resposta consultiva.',
+      timestamp: new Date().toISOString(),
+    });
 
     render(
       <AICFO
@@ -352,25 +385,62 @@ describe('AICFO plan render', () => {
       expect(screen.getByText(/Resposta consultiva\./i)).toBeTruthy();
     });
 
+    expect(screen.getAllByText(/Base da resposta/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Proxima acao obrigatoria/i)).toBeTruthy();
+    expect(aicfoMocks.trackProductEvent).toHaveBeenCalledWith(
+      'ai_question_submitted',
+      expect.objectContaining({
+        source: 'aicfo',
+        intent: 'risk_question',
+        plan: 'pro',
+        base_sufficiency: 'limited',
+        action_required: true,
+      }),
+    );
+
     expect(aicfoMocks.trackProductEventOnce).toHaveBeenCalledWith(
       'ai_consultation_completed',
       'ws-1',
       expect.objectContaining({
         source: 'aicfo',
-        intent: 'monthly_summary',
+        intent: 'risk_question',
+        base_sufficiency: 'limited',
+        action_required: true,
       }),
     );
 
     fireEvent.click(screen.getAllByRole('button', { name: /Criar lembrete/i }).at(-1)!);
     expect(onCreateReminder).toHaveBeenCalledWith(expect.objectContaining({
-      title: 'Revisar recomendacao do CFO',
-      priority: 'media',
+      title: 'Acompanhar risco do CFO',
+      priority: 'alta',
       type: ReminderType.NEGOCIO,
       completed: false,
     }));
+    expect(aicfoMocks.trackProductEvent).toHaveBeenCalledWith(
+      'ai_response_action_created',
+      expect.objectContaining({
+        source: 'aicfo',
+        intent: 'risk_question',
+        plan: 'pro',
+        target: 'reminder',
+        action_required: true,
+        base_sufficiency: 'limited',
+      }),
+    );
 
     fireEvent.click(screen.getAllByRole('button', { name: /Ver fluxo/i }).at(-1)!);
     expect(onNavigateToTab).toHaveBeenCalledWith('flow');
+    expect(aicfoMocks.trackProductEvent).toHaveBeenCalledWith(
+      'ai_response_flow_opened',
+      expect.objectContaining({
+        source: 'aicfo',
+        intent: 'risk_question',
+        plan: 'pro',
+        target: 'flow',
+        action_required: true,
+        base_sufficiency: 'limited',
+      }),
+    );
   });
 
   it('mostra diagnostico visivel quando a geracao do CFO falha', async () => {

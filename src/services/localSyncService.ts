@@ -10,7 +10,7 @@
  *   3. Pull nuvem on-load -> hidrata localStorage ao carregar workspace
  *
  * Entidades suportadas (espelho do SyncEntity do backend):
- *   goals | accounts | transactions | reminders | subscriptions
+ *   goals | accounts | transactions | reminders | receivables | subscriptions
  *
  * AI memory e task queue ficam apenas locais (são contexto efêmero).
  */
@@ -19,7 +19,7 @@ import { API_ENDPOINTS, apiRequest } from '../config/api.config';
 import { logWarn } from '../utils/logger';
 import { hydrateGoalsFromCloud as hydrateGoalsFromCloudImpl } from './localSyncGoalsHydrator';
 
-export type LocalSyncEntity = 'goals' | 'accounts' | 'transactions' | 'reminders' | 'subscriptions';
+export type LocalSyncEntity = 'goals' | 'accounts' | 'transactions' | 'reminders' | 'receivables' | 'subscriptions';
 
 export interface SyncItem {
   id: string;
@@ -49,6 +49,7 @@ export interface SyncPullResult {
     accounts: SyncItem[];
     transactions: SyncItem[];
     reminders: SyncItem[];
+    receivables: SyncItem[];
     subscriptions: SyncItem[];
   };
 }
@@ -56,15 +57,16 @@ export interface SyncPullResult {
 export async function pushToCloud(
   entity: LocalSyncEntity,
   items: SyncItem[],
-): Promise<void> {
-  if (!items.length) return;
+): Promise<SyncPushResult | null> {
+  if (!items.length) return null;
 
   try {
     const payload: SyncPushPayload = { entity, items };
-    await apiRequest<SyncPushResult>(API_ENDPOINTS.SYNC.PUSH, {
+    return await apiRequest<SyncPushResult>(API_ENDPOINTS.SYNC.PUSH, {
       method: 'POST',
       body: JSON.stringify(payload),
       credentials: 'include',
+      retries: 0,
       silent: true,
     });
   } catch (error) {
@@ -74,6 +76,7 @@ export async function pushToCloud(
       error,
       fallback: 'local-sync-push-failed',
     });
+    return null;
   }
 }
 
@@ -83,6 +86,7 @@ export async function pullFromCloud(since?: string): Promise<SyncPullResult | nu
     return await apiRequest<SyncPullResult>(`${API_ENDPOINTS.SYNC.PULL}${qs}`, {
       method: 'GET',
       credentials: 'include',
+      retries: 0,
       silent: true,
     });
   } catch (error) {

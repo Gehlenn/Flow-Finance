@@ -34,7 +34,7 @@ test.describe('Billing Flow', () => {
       token: ownerBootstrap.token,
     });
 
-    await clickWithRetry(() => page.getByRole('button', { name: /Ajustes|Settings/i }));
+    await clickWithRetry(() => page.getByRole('button', { name: /Ajustes|Settings|Conta e plano/i }));
 
     await expect(page.locator('body')).toContainText(/Resumo do workspace|Perfil e workspace|Workspace ativo/i, { timeout: 15000 });
 
@@ -54,7 +54,7 @@ test.describe('Billing Flow', () => {
       token: ownerBootstrap.token,
     });
 
-    await clickWithRetry(() => page.getByRole('button', { name: /Ajustes|Settings/i }));
+    await clickWithRetry(() => page.getByRole('button', { name: /Ajustes|Settings|Conta e plano/i }));
     await expect(page.locator('body')).toContainText(/Resumo do workspace|Perfil e workspace|Workspace ativo/i, { timeout: 15000 });
 
     const workspaceAdminButton = page.getByRole('button', {

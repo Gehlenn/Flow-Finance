@@ -56,6 +56,7 @@ export type {
 
 export const WORKSPACE_CHANGED_EVENT = 'flow:workspace-changed';
 const DEFAULT_WORKSPACE_NAME = 'Workspace Pessoal';
+const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
 
 export function getCurrentWorkspaceIdentity(): UserIdentity | undefined {
   const currentUser = auth.currentUser;
@@ -92,6 +93,18 @@ function buildDefaultWorkspaceName(identity: UserIdentity): string {
 function buildDefaultTenantName(identity: UserIdentity): string {
   const trimmed = identity.name?.trim();
   return trimmed && trimmed.length > 0 ? `Tenant de ${trimmed}` : 'Tenant Pessoal';
+}
+
+function canUseFirestoreWorkspaceFallback(): boolean {
+  if (import.meta.env.DEV) {
+    return true;
+  }
+
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return LOCAL_HOSTNAMES.has(window.location.hostname);
 }
 
 type BackendWorkspaceListResponse = {
@@ -188,6 +201,11 @@ async function ensureActiveWorkspaceFromBackend(identity: UserIdentity): Promise
 }
 
 export function setActiveWorkspaceId(workspaceId: string | null): void {
+  const currentWorkspaceId = getStoredWorkspaceId();
+  if (currentWorkspaceId === workspaceId) {
+    return;
+  }
+
   setStoredWorkspaceId(workspaceId);
 
   if (typeof window !== 'undefined') {
@@ -245,11 +263,17 @@ export async function ensureActiveWorkspace(identity?: UserIdentity): Promise<Wo
   try {
     return await ensureActiveWorkspaceFromBackend(resolvedIdentity);
   } catch (error) {
-    logWarn('[WorkspaceSession] Backend workspace bootstrap failed; falling back to Firestore bootstrap', {
+    logWarn('[WorkspaceSession] Backend workspace bootstrap failed', {
       endpoint: API_ENDPOINTS.WORKSPACE.ROOT,
       error,
-      fallback: 'workspace-bootstrap-backend-to-firestore',
+      fallback: canUseFirestoreWorkspaceFallback()
+        ? 'workspace-bootstrap-backend-to-firestore'
+        : 'workspace-bootstrap-backend-failed',
     });
+
+    if (!canUseFirestoreWorkspaceFallback()) {
+      throw error;
+    }
   }
 
   const storedWorkspaceId = getStoredWorkspaceId();

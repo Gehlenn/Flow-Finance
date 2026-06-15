@@ -25,7 +25,7 @@ export type SyncOwnershipContext = {
   workspaceId: string;
 };
 
-export const ENTITIES: SyncEntity[] = ['accounts', 'transactions', 'goals', 'reminders', 'subscriptions'];
+export const ENTITIES: SyncEntity[] = ['accounts', 'transactions', 'goals', 'reminders', 'receivables', 'subscriptions'];
 
 export function createEmptyEntities(): SyncEntityPayload {
   return {
@@ -33,6 +33,7 @@ export function createEmptyEntities(): SyncEntityPayload {
     transactions: [],
     goals: [],
     reminders: [],
+    receivables: [],
     subscriptions: [],
   };
 }

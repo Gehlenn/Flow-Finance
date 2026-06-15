@@ -1,15 +1,27 @@
 {
   "verified": true,
-  "date": "2026-06-05",
-  "backendUrl": "https://flow-finance-backend.vercel.app",
-  "summary": "Published activation/retention gate closed with real backend-authenticated workspace cohort export and PASS evidence artifact.",
-  "evidence": {
-    "exportArtifact": "test-results/activation-retention-export/2026-06-05T20-20-29-124Z/report.json",
-    "exportRows": "test-results/activation-retention-export/2026-06-05T20-20-29-124Z/events.jsonl",
-    "checkerArtifact": "test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.json",
-    "checkerStatus": "PASS",
-    "cohortWindowDays": 7,
-    "activationCohorts": 1,
-    "retainedCohortsWithinWindow": 1
-  }
+  "verifiedAt": "2026-06-12T20:44:53.217Z",
+  "gate": "activation-retention",
+  "summary": "Published activation/retention path revalidated after backend event-store hardening; export, checker, and consolidated refresh all passed on a fresh durable cohort.",
+  "deployments": {
+    "backend": {
+      "alias": "https://flow-finance-backend.vercel.app",
+      "deploymentId": "dpl_46ZmG79ppY9Vk3pDcBWKNUR3KN3g"
+    },
+    "frontend": {
+      "alias": "https://flow-finance-xi.vercel.app"
+    }
+  },
+  "workspaceId": "ZcNI85emhBPTU02EeFPA",
+  "artifacts": {
+    "exportReport": "test-results/activation-retention-export/2026-06-12T20-44-52-284Z/report.json",
+    "exportRows": "test-results/activation-retention-export/2026-06-12T20-44-52-284Z/events.jsonl",
+    "checkerReport": "test-results/activation-retention-evidence/2026-06-12T20-44-53-217Z-events/report.json",
+    "refreshReport": "test-results/activation-retention-refresh/2026-06-12T20-44-49-665Z/report.json"
+  },
+  "notes": [
+    "domainEventPersistence now reports firebase / durable / required / healthy in published health endpoints",
+    "fresh published cohort was created after the serverless local-file event-store fallback was removed from the production read/write path",
+    "pre-hardening local-file event histories were not backfilled and should not be reused as proof"
+  ]
 }

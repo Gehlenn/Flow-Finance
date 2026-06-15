@@ -64,6 +64,50 @@ function formatBRL(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
+type CfoContextSummary = {
+  confirmedCash?: string;
+  forecast30Days?: string;
+  monthResult?: string;
+  dataQuality?: string;
+};
+
+function extractContextValue(context: string, label: string): string | undefined {
+  const matchedLine = context.split('\n').find(line => line.trim().startsWith(`${label}:`));
+  if (!matchedLine) return undefined;
+  return matchedLine.split(':').slice(1).join(':').trim();
+}
+
+function extractCfoContextSummary(context: string): CfoContextSummary {
+  return {
+    confirmedCash: extractContextValue(context, 'Confirmado (disponivel hoje)'),
+    forecast30Days: extractContextValue(context, 'Em 30 dias'),
+    monthResult: extractContextValue(context, '- Resultado'),
+    dataQuality: extractContextValue(context, 'QUALIDADE DOS DADOS (merchant coverage)'),
+  };
+}
+
+function buildCfoBaseSummary(summary: CfoContextSummary): string {
+  const parts: string[] = [];
+
+  if (summary.confirmedCash) {
+    parts.push(`caixa confirmado ${summary.confirmedCash}`);
+  }
+
+  if (summary.forecast30Days) {
+    parts.push(`previsao 30 dias ${summary.forecast30Days}`);
+  }
+
+  if (summary.monthResult) {
+    parts.push(`resultado do mes ${summary.monthResult}`);
+  }
+
+  if (summary.dataQuality) {
+    parts.push(`qualidade do dado ${summary.dataQuality}`);
+  }
+
+  return parts.length > 0 ? parts.join(', ') : 'dados locais da demonstracao';
+}
+
 function buildLocalStrategicReport(transactions: Transaction[], reason = 'demo-local'): StrategicReportLike {
   const summary = summarizeTransactions(transactions);
   const runwaySignal = summary.balance >= 0
@@ -89,41 +133,46 @@ function buildLocalStrategicReport(transactions: Transaction[], reason = 'demo-l
   };
 }
 
-function buildLocalCFOAnswer(question: string, context: string, intent: string): string {
+export function buildLocalCFOAnswer(question: string, context: string, intent: string): string {
   const normalizedQuestion = normalizeInput(question);
   const asksRisk = intent === 'risk_question' || /risco|perigo|atras/.test(normalizedQuestion);
   const asksCash = intent === 'cash_position' || /caixa|saldo|posicao/.test(normalizedQuestion);
   const asksReceivables = intent === 'receivables_question' || /receber|recebivel|pendente|vencido/.test(normalizedQuestion);
-  const contextHint = context.trim().slice(0, 360);
+  const summary = extractCfoContextSummary(context);
+  const baseSummary = buildCfoBaseSummary(summary);
 
   if (asksReceivables) {
     return [
-      'Leitura demo: separe recebiveis pendentes de caixa confirmado. Pendente ainda nao e dinheiro disponivel.',
-      'Prioridade: cobrar o item vencido primeiro, confirmar data do proximo recebimento e so depois liberar novas despesas.',
-      contextHint ? `Base usada: ${contextHint}` : 'Base usada: dados locais da demonstracao premium.',
+      `Leitura demo: pendencias ainda nao contam como ${summary.confirmedCash ? `caixa confirmado de ${summary.confirmedCash}` : 'caixa confirmado'}.`,
+      'Risco: confundir previsao com dinheiro disponivel pode apertar o caixa.',
+      'Proxima acao: cobre o vencido primeiro e valide a data do proximo recebimento.',
+      `Base resumida: ${baseSummary}.`,
     ].join('\n\n');
   }
 
   if (asksRisk) {
     return [
-      'Leitura demo: o maior risco nao e o volume vendido, e a distancia entre previsao e recebimento confirmado.',
-      'Acao recomendada: travar gastos nao essenciais ate os recebiveis de curto prazo serem confirmados.',
-      contextHint ? `Base usada: ${contextHint}` : 'Base usada: dados locais da demonstracao premium.',
+      `Leitura demo: o risco esta na distancia entre ${summary.confirmedCash ? `caixa confirmado de ${summary.confirmedCash}` : 'caixa confirmado'} e ${summary.forecast30Days ? `previsao de ${summary.forecast30Days} em 30 dias` : 'previsao de 30 dias'}.`,
+      'Risco: se a entrada atrasar, segure gastos nao essenciais.',
+      'Proxima acao: confirme os recebiveis antes de liberar nova despesa.',
+      `Base resumida: ${baseSummary}.`,
     ].join('\n\n');
   }
 
   if (asksCash) {
     return [
-      'Leitura demo: trate o saldo confirmado como limite operacional e use a previsao apenas para planejamento.',
-      'Proximo passo: olhe entradas confirmadas, pendentes e vencidas antes de decidir qualquer novo compromisso.',
-      contextHint ? `Base usada: ${contextHint}` : 'Base usada: dados locais da demonstracao premium.',
+      `Leitura demo: caixa confirmado de ${summary.confirmedCash ?? 'indisponivel'} e previsao de ${summary.forecast30Days ?? 'indisponivel'} em 30 dias.`,
+      'Risco: a previsao ajuda, mas nao substitui o caixa confirmado.',
+      'Proxima acao: confirme entradas e segure compromissos novos ate o caixa ficar claro.',
+      `Base resumida: ${baseSummary}.`,
     ].join('\n\n');
   }
 
   return [
-    'Leitura demo: mantenha a decisao no caixa de curto prazo, nao em faturamento bruto.',
-    'Prioridade: confirmar recebiveis, reduzir saidas recorrentes dispensaveis e manter uma acao clara para cada pendencia.',
-    contextHint ? `Base usada: ${contextHint}` : 'Base usada: dados locais da demonstracao premium.',
+    `Leitura demo: caixa confirmado de ${summary.confirmedCash ?? 'indisponivel'} e previsao de ${summary.forecast30Days ?? 'indisponivel'} em 30 dias.`,
+    'Risco: a previsao so ajuda quando os recebiveis de curto prazo estiverem claros.',
+    'Proxima acao: confirme entradas, corte saidas dispensaveis e avance com prudencia.',
+    `Base resumida: ${baseSummary}.`,
   ].join('\n\n');
 }
 

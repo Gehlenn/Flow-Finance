@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   User, LogOut, Moon, Sliders, Sun, Edit2,
   ChevronRight, Phone, BrainCircuit, X, Loader2, Send,
@@ -578,20 +578,20 @@ const Settings: React.FC<SettingsProps> = ({
     || canViewWorkspaceAudit(activeWorkspaceRole || activeWorkspace?.role);
 
   return (
-    <div className="max-w-3xl mx-auto space-y-5 animate-in fade-in duration-500 pb-20">
-      <div className="flex items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-5 py-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+    <div className="max-w-3xl mx-auto space-y-5 animate-in fade-in duration-500 pb-24 sm:pb-20">
+      <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-none dark:border-slate-700 dark:bg-slate-800 sm:px-5 sm:py-4">
         <div className="min-w-0">
-          <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">Operacao do workspace</h2>
+          <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white sm:text-xl">Operacao do workspace</h2>
           <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Perfil, acesso e faturamento</p>
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
           <Sliders size={18} />
         </div>
       </div>
 
-      <div className="space-y-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-        <div className="flex items-center gap-4 border-b border-slate-50 pb-5 dark:border-slate-700">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 shadow-inner dark:bg-slate-800 dark:text-slate-300">
+      <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-none dark:border-slate-700 dark:bg-slate-800 sm:p-5">
+        <div className="flex items-center gap-3 border-b border-slate-50 pb-4 dark:border-slate-700 sm:gap-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
             <User size={30} />
           </div>
           <div className="flex-1">
@@ -781,23 +781,23 @@ const Settings: React.FC<SettingsProps> = ({
             <h4 className="text-sm font-semibold text-slate-800 dark:text-white uppercase tracking-[0.16em]">Tema</h4>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
-            <button onClick={() => handleThemeChange('light')} className={`flex-1 py-4 rounded-3xl flex flex-col items-center gap-1.5 border-2 transition-all ${theme === 'light' ? 'bg-slate-100 dark:bg-slate-700 border-slate-400 text-slate-800 dark:text-white shadow-sm' : 'bg-slate-50 dark:bg-slate-900 border-transparent text-slate-400 hover:border-slate-200'}`}>
+            <button onClick={() => handleThemeChange('light')} className={`flex-1 py-4 rounded-2xl flex flex-col items-center gap-1.5 border-2 transition-all ${theme === 'light' ? 'bg-slate-100 dark:bg-slate-700 border-slate-400 text-slate-800 dark:text-white shadow-none' : 'bg-slate-50 dark:bg-slate-900 border-transparent text-slate-400 hover:border-slate-200'}`}>
               <Sun size={22} className={`transition-all duration-700 ${theme === 'light' && isAnimatingTheme ? 'rotate-[360deg] scale-110' : ''}`} />
               <span className="text-xs font-semibold uppercase tracking-[0.16em]">Claro</span>
             </button>
-            <button onClick={() => handleThemeChange('dark')} className={`flex-1 py-4 rounded-3xl flex flex-col items-center gap-1.5 border-2 transition-all ${theme === 'dark' ? 'bg-slate-100 dark:bg-slate-700 border-slate-400 text-slate-800 dark:text-white shadow-sm' : 'bg-slate-50 dark:bg-slate-900 border-transparent text-slate-400 hover:border-slate-200'}`}>
+            <button onClick={() => handleThemeChange('dark')} className={`flex-1 py-4 rounded-2xl flex flex-col items-center gap-1.5 border-2 transition-all ${theme === 'dark' ? 'bg-slate-100 dark:bg-slate-700 border-slate-400 text-slate-800 dark:text-white shadow-none' : 'bg-slate-50 dark:bg-slate-900 border-transparent text-slate-400 hover:border-slate-200'}`}>
               <Moon size={22} className={`transition-all duration-700 ${theme === 'dark' && isAnimatingTheme ? '-rotate-12 scale-110' : ''}`} />
               <span className="text-xs font-semibold uppercase tracking-[0.16em]">Escuro</span>
             </button>
           </div>
         </div>
 
-        <button onClick={onLogout} className="w-full py-5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-100 rounded-3xl font-semibold text-sm uppercase tracking-[0.16em] flex items-center justify-center gap-3 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all border border-slate-200 dark:border-slate-600">
+        <button onClick={onLogout} className="w-full py-5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-100 rounded-2xl font-semibold text-sm uppercase tracking-[0.16em] flex items-center justify-center gap-3 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all border border-slate-200 dark:border-slate-600">
           <LogOut size={18} /> Sair
         </button>
       </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800 space-y-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-none dark:border-slate-700 dark:bg-slate-800 space-y-3">
           <div className="flex items-center gap-3 border-b border-slate-50 pb-2 dark:border-slate-700">
             <Zap size={14} className="text-slate-500 dark:text-slate-300" />
             <h4 className="text-sm font-semibold text-slate-800 dark:text-white uppercase tracking-[0.16em]">Integracoes</h4>
@@ -991,14 +991,14 @@ const Settings: React.FC<SettingsProps> = ({
         </div>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800 space-y-3">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-none dark:border-slate-700 dark:bg-slate-800 space-y-3">
         <h4 className="text-sm font-semibold text-slate-800 dark:text-white uppercase tracking-[0.16em] border-b border-slate-50 pb-2 dark:border-slate-700">Suporte operacional</h4>
         <div className="grid grid-cols-1 gap-2.5">
           <button
             onClick={() => setShowAiSupport(true)}
             className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4 flex items-center gap-3 group hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800 transition-all text-left"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 shadow-lg dark:bg-slate-800 dark:text-slate-300"><BrainCircuit size={18} /></div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 shadow-sm dark:bg-slate-800 dark:text-slate-300"><BrainCircuit size={18} /></div>
             <div className="flex-1">
               <h5 className="text-sm font-semibold text-slate-800 dark:text-white uppercase tracking-[0.12em]">Guia com IA</h5>
               <p className="text-xs text-slate-400 font-medium">Tire dúvidas sobre caixa, integrações ou fluxo do produto</p>
@@ -1011,7 +1011,7 @@ const Settings: React.FC<SettingsProps> = ({
             rel="noopener noreferrer"
             className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4 flex items-center gap-3 group hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800 transition-all text-left"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 shadow-lg dark:bg-slate-800 dark:text-slate-300"><Phone size={18} /></div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 shadow-sm dark:bg-slate-800 dark:text-slate-300"><Phone size={18} /></div>
             <div className="flex-1">
               <h5 className="text-sm font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Suporte humano</h5>
               <p className="text-xs text-slate-400 font-medium">Fale com a equipe pelo WhatsApp</p>
@@ -1023,7 +1023,7 @@ const Settings: React.FC<SettingsProps> = ({
             onClick={() => setLegalModalType('privacy_terms')}
             className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4 flex items-center gap-3 group hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800 transition-all text-left"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-200 text-slate-600 shadow-lg dark:bg-slate-700 dark:text-slate-300"><Scale size={18} /></div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-200 text-slate-600 shadow-sm dark:bg-slate-700 dark:text-slate-300"><Scale size={18} /></div>
             <div className="flex-1">
               <h5 className="text-sm font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Termos e privacidade</h5>
               <p className="text-xs text-slate-400 font-medium">Consulte as politicas de uso e protecao de dados</p>
@@ -1055,17 +1055,17 @@ const Settings: React.FC<SettingsProps> = ({
 
       {showAiSupport && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-lg max-h-[85vh] rounded-[3rem] overflow-hidden flex flex-col shadow-2xl">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-800 w-full max-w-lg max-h-[85vh] rounded-3xl overflow-hidden flex flex-col shadow-xl">
+            <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-100 text-slate-600 rounded-xl shadow-md dark:bg-slate-800 dark:text-slate-300"><BrainCircuit size={16} /></div>
+                <div className="p-2 bg-slate-100 text-slate-600 rounded-xl shadow-sm dark:bg-slate-800 dark:text-slate-300"><BrainCircuit size={16} /></div>
                 <h3 className="text-lg font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Guia com IA</h3>
               </div>
               <button onClick={() => { setShowAiSupport(false); setSupportResponse(''); setSupportQuery(''); setSupportDiagnostic(null); }} className="p-2 text-slate-400"><X size={20} /></button>
             </div>
-            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+            <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-5">
               {supportDiagnostic && (
-                <div className="rounded-[2rem] border border-amber-200 bg-amber-50 p-5 text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
                   <p className="text-sm font-semibold uppercase tracking-[0.16em]">Diagnóstico do guia com IA</p>
                   <p className="mt-2 text-sm font-medium leading-relaxed">{supportDiagnostic.message}</p>
                   <p className="mt-2 text-sm font-semibold uppercase tracking-[0.16em] opacity-90">
@@ -1084,18 +1084,18 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
               )}
               {isGeneratingSupport && (
-                <div className="py-20 flex flex-col items-center gap-4 text-center">
+                <div className="py-16 flex flex-col items-center gap-4 text-center">
                   <Loader2 size={32} className="animate-spin text-slate-600" />
                   <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-600 animate-pulse">Processando...</p>
                 </div>
               )}
               {supportResponse && (
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-[2rem] border border-slate-200 dark:border-slate-700 animate-in slide-in-from-bottom-2">
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-700 animate-in slide-in-from-bottom-2">
                   <p className="text-sm font-medium text-slate-700 dark:text-slate-200 leading-relaxed">{supportResponse}</p>
                 </div>
               )}
             </div>
-            <div className="p-6 border-t border-slate-100 dark:border-slate-700 flex gap-2">
+            <div className="p-5 sm:p-6 border-t border-slate-100 dark:border-slate-700 flex gap-2">
               <input
                 type="text"
                 value={supportQuery}
@@ -1108,7 +1108,7 @@ const Settings: React.FC<SettingsProps> = ({
                 type="button"
                 aria-label="Enviar pergunta ao guia IA"
                 onClick={() => void handleAiSupport(supportQuery)}
-                className="p-4 bg-slate-900 text-white rounded-2xl shadow-lg active:scale-95 transition-all dark:bg-slate-100 dark:text-slate-900"
+                className="p-4 bg-slate-900 text-white rounded-2xl shadow-sm active:scale-95 transition-all dark:bg-slate-100 dark:text-slate-900"
               >
                 <Send size={20} />
               </button>

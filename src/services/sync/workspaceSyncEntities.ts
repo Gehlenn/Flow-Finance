@@ -1,6 +1,7 @@
 import { Account } from '../../../models/Account';
 import { Goal, Receivable, Reminder, Transaction } from '../../../types';
 import { extractSyncPayloads, pullSyncEntities } from './cloudSyncClient';
+import type { SyncDriver } from './cloudSyncClient';
 
 export interface WorkspaceSyncEntities {
   accounts: Account[];
@@ -24,8 +25,9 @@ export function createEmptyWorkspaceSyncEntities(): WorkspaceSyncEntities {
 
 export async function mapPulledWorkspaceSyncEntities(
   workspaceId: string,
+  options?: { driver?: SyncDriver },
 ): Promise<WorkspaceSyncEntities> {
-  const syncData = await pullSyncEntities<WorkspaceSyncPayload>({ workspaceId });
+  const syncData = await pullSyncEntities<WorkspaceSyncPayload>({ workspaceId }, undefined, options);
   const entities = syncData.entities || {};
 
   return {

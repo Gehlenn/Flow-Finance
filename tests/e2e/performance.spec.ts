@@ -34,7 +34,7 @@ test.describe('Performance Monitor', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    const navToSettings = page.getByRole('button', { name: 'Ajustes' });
+    const navToSettings = page.getByRole('button', { name: 'Conta e plano' });
     if (await navToSettings.count()) {
       await clickWithRetry(() => navToSettings);
     }

@@ -318,7 +318,7 @@ export function useAuthAndWorkspace() {
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        setCloudSyncEnabled(true);
+        setCloudSyncEnabled(false);
         setBackendSyncEnabled(false);
         setCurrentUser({
           id: firebaseUser.uid,

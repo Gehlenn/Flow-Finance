@@ -1,6 +1,6 @@
 # Auditoria pre-mortem Flow Finance - 2026-06-03
 
-Status: documento de auditoria e checklist de correcao. Atualizado em 2026-06-06 com fechamento dos P1 resolviveis por codigo/teste, fechamento local do P2 em exportacao Pro N/A, fechamento do gate externo de ativacao/retencao com evidencia real em `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/report.json`, `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/events.jsonl`, `test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.json`, `test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.md` e `test-results/activation-retention-export/published-export-verified.json`, custo estimado de IA por workspace/resposta, carga multi-tenant sintetica, fechamento real do gate externo de performance em ambiente alvo, fechamento real do gate externo de Stripe com checkout/webhook/plan sync/portal no runtime publicado e revalidacao publicada do shell pos-signup do frontend em `test-results/published-workspace-bootstrap/post-signup-nameflow-retry-1780712240110.json`.
+Status: documento de auditoria e checklist de correcao. Atualizado em 2026-06-12 com fechamento dos P1 resolviveis por codigo/teste, fechamento local do P2 em exportacao Pro N/A, fechamento do gate externo de ativacao/retencao com evidencia real em `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/report.json`, `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/events.jsonl`, `test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.json`, `test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.md` e `test-results/activation-retention-export/published-export-verified.json`, custo estimado de IA por workspace/resposta, carga multi-tenant sintetica, fechamento real do gate externo de performance em ambiente alvo, fechamento real do gate externo de Stripe com checkout/webhook/plan sync/portal no runtime publicado, revalidacao publicada do shell pos-signup do frontend em `test-results/published-workspace-bootstrap/post-signup-nameflow-retry-1780712240110.json`, fechamento da revalidacao publicada do bootstrap sem `429`, sem `consoleIssues` e sem `pageErrors` em 2026-06-10, e fechamento publicado de `R1`/`R2` consolidado em 2026-06-12.
 Escopo: SaaS fintech de fluxo de caixa para empresas de servico, conectado a operacao real.  
 Modo: pre-mortem. Premissa: o produto foi lancado e falhou; a auditoria identifica por que.
 
@@ -18,7 +18,7 @@ O Flow Finance tem um nucleo de produto correto e os P1 de codigo encontrados ne
 
 Nao ha P0 confirmado nesta auditoria. Em 2026-06-06, nao ha P1 de codigo aberto com a evidencia local revisada. O gate P1 operacional de Stripe foi fechado no runtime publicado: o backend agora responde com `workspacePersistence.mode=firebase`, checkout Stripe hosted real concluiu com `payment_status=paid`, a API do Stripe mostrou eventos reais com `pending_webhooks=0`, o workspace publicado passou a retornar `currentPlan=pro`, `hasBillingCustomer=true` e `stripePortalEnabled=true`, e `POST /api/saas/stripe/portal-session` retornou URL valida. O gate externo de ativacao/retencao tambem foi fechado no backend publicado com export real autenticado e checker PASS; e o shell pos-signup do frontend foi revalidado no alias publico, persistindo `active_workspace_id` e renderizando a shell autenticada.
 
-Veredito comercial: eu ainda nao chamaria de SaaS pronto para escala, porque o fechamento do gate de ativacao/retencao nao prova recorrencia ampla. Mas eu liberaria piloto privado controlado com billing publicado real ja validado, evidencia de coorte real anexada e o shell publicado de signup/onboarding revalidado.
+Veredito comercial: eu ainda nao chamaria de SaaS pronto para escala, porque o fechamento do gate de ativacao/retencao nao prova recorrencia ampla e o fechamento do bootstrap publicado nao prova escala. Mas eu liberaria piloto privado controlado com billing publicado real ja validado, evidencia de coorte real anexada, shell publicado de signup/onboarding revalidado e a trilha de `429` operacional fechada no caminho auditado.
 
 ## 2. Pre-mortem: por que falhou
 
@@ -525,3 +525,44 @@ Eu pagaria apenas em piloto privado, agora com billing publicado real e o gate d
 Eu apostaria em piloto privado porque os P1 de codigo foram fechados e o gate de ativacao/retencao tambem foi fechado. Eu nao apostaria em lancamento publico sem provar recorrencia ampla em ambiente configurado.
 
 O criterio de verdade nao e "tem IA", "tem dashboard" ou "tem integracao". O criterio e: uma empresa de servico abre o Flow toda semana porque ele mostra claramente o dinheiro que entrou, o que ainda nao entrou, o que vai sair, o risco da semana e a proxima acao.
+
+## 12. Proxima fase executavel
+
+Os bloqueios publicados revisados nesta auditoria estao fechados, mas isso nao encerra o risco de fracasso do produto.
+
+O plano residual agora esta separado na trilha operacional viva:
+
+- `docs/POST_AUDIT_EXECUTION_PLAN_2026-06-11.md`
+- `docs/DEPLOYMENT_STATUS.md`
+- `docs/GO_LIVE_CHECKLIST_EXTERNAL_GATES_2026-06-04.md`
+
+Frentes residuais no ponto de partida:
+
+- `R1`: provar recorrencia ampla de uso
+- `R2`: provar comportamento em escala
+- `R3`: blindar o foco do produto
+- `R4`: tornar a revalidacao publicada repetivel
+
+Evidencia adicional da fase residual:
+
+- `docs/PRODUCT_FOCUS_SURFACE_REVIEW_2026-06-11.md` revisou a superficie ativa contra a tese do produto e fechou `R3` apos a renomeacao da navegacao principal para labels mais explicitamente financeiros, validada por `tests/unit/main-navigation.test.ts`, `tests/unit/app-shell-navigation.test.tsx`, `tests/e2e/performance.spec.ts` e `tests/e2e/runtime-console-health.spec.ts`
+- `components/Dashboard.tsx` agora expõe o ritual semanal `Registrar revisao semanal` e emite `weekly_cash_review_completed`; isso remove a lacuna de superficie de retenção, mas ainda nao substitui a prova publicada de coorte real
+- `test-results/activation-retention-evidence/2026-06-11T03-22-16-244Z-no-input/report.json` confirmou um `BLOCK: SEM EVIDENCIA SUFICIENTE` historico antes do fechamento da frente `R1`
+- `test-results/activation-retention-export/2026-06-12T03-57-00-028Z/report.json` estreitou o bloqueio historico de `R1` antes do fechamento final; o export ja subia via Firebase + workspace create
+- `test-results/activation-retention-refresh/2026-06-11T16-53-01-310Z/report.json` consolidou a leitura operacional historica de `R1` em um unico artefato: preflight bloqueado, export pulado e checker pulado por falta de contexto publicado
+- `test-results/scale-readiness-evidence/2026-06-12T15-30-39-687Z/report.json` fechou `R2` com leitura objetiva: `L2 PASS`, `L3 PASS`, `L4 PASS`, `L1/L5 DOCUMENTED_ONLY`; na rodada seguinte, `R1` tambem foi fechado no gate tecnico publicado
+- `flow-finance-xi.vercel.app` recebeu o ritual semanal publicado e a mitigacao do runtime de sync em `2026-06-12`; uma nova aba passou a abrir sem a avalanche anterior de `429` em `/api/sync/pull`, reduzindo o bloqueio historico de `R1` para persistencia backend e nao mais para superficie ou tempestade de sync
+- a mesma sessao publicada confirmou `active_workspace_id = Dybo9Ov2DuXiYy3JQbRR`, exibiu `Registrar revisao semanal` e atualizou o status local do ritual; esse era o ponto de transicao antes do fechamento final, que veio depois com `PASS` no export, checker e refresh
+- a rodada seguinte em `flow-finance-xi.vercel.app` corrigiu o bug do primeiro lancamento publicado (`payment_method: undefined` no sync do Firestore) e voltou a persistir `activation_first_transaction`, mas expôs um risco mais grave para a auditoria: o mesmo `workspaceId` passou a devolver historicos diferentes em `/api/finance/events` entre requests autenticados
+- evidencia usada nessa nova leitura: `src/services/firestoreWorkspaceEntityWriteStore.ts`, `tests/unit/firestore-workspace-store.test.ts`, deploy `dpl_12mx8gQjJGYqZimSBhMrbHP2e3o8`, browser-auth fetches na sessao publicada do workspace `RbL6hMO4Smd9N0dg5ReA`, e o fallback em `backend/src/services/finance/eventStore.ts`
+- leitura brutal historica de `R1` antes do hardening final: a superficie publicada e a ativacao publicada ja nao eram o gargalo principal; o gargalo tinha virado durabilidade/consistencia do store de eventos no backend publicado
+- a rodada final do mesmo dia fechou esse gargalo tecnico: `backend/src/services/finance/eventStore.ts` passou a usar o mesmo contrato de durabilidade do resto do backend (`postgres -> firestore -> falha explicita em producao`), `backend/src/services/finance/eventStoreFirestore.ts` assumiu o fallback compartilhado, e `backend/src/routes/finance.ts` passou a rejeitar o path nao duravel com `503`
+- o backend publicado `flow-finance-backend.vercel.app` passou a expor `domainEventPersistence = firebase / durable / required / healthy` em `/api/health` e `/health` apos os deploys `dpl_3ifZRqnikVUXPP9Caatp5SfdkXaE` e `dpl_46ZmG79ppY9Vk3pDcBWKNUR3KN3g`
+- uma coorte publicada fresca no workspace `ZcNI85emhBPTU02EeFPA` voltou a fechar o gate real: export `PASS` em `test-results/activation-retention-export/2026-06-12T20-44-52-284Z/report.json`, checker `PASS` em `test-results/activation-retention-evidence/2026-06-12T20-44-53-217Z-events/report.json`, refresh consolidado `PASS` em `test-results/activation-retention-refresh/2026-06-12T20-44-49-665Z/report.json`, e handoff promovido em `test-results/activation-retention-export/published-export-verified.json`
+- leitura honesta atual: o bloqueio tecnico de `R1` esta fechado no runtime publicado. O que sobra volta a ser risco de negocio e habito de longo prazo, nao integridade do runner ou inconsistencia do store
+- leitura consolidada desta fase residual: `R1`, `R2`, `R3` e `R4` ficaram fechados como frentes tecnicas/publicadas. O residual atual nao e mais um gap de prontidao tecnica; e risco de produto ao longo do tempo.
+
+Regra de leitura:
+
+- auditoria principal = diagnostico e veredito
+- post-audit execution plan = trilha ativa do que ainda falta provar

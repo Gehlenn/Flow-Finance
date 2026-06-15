@@ -44,7 +44,7 @@ test.describe('Runtime Console Health', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    const navLabels = ['Início', 'AI CFO', 'Insights', 'Open Bank', 'Ajustes'];
+    const navLabels = ['Início', 'AI CFO', 'Sinais do caixa', 'Open Bank', 'Conta e plano'];
     for (const label of navLabels) {
       const button = page.getByRole('button', { name: label });
       if (await button.count()) {

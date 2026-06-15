@@ -1,5 +1,5 @@
 import rateLimit from 'express-rate-limit';
-import type { RequestHandler } from 'express';
+import type { Request, RequestHandler } from 'express';
 import env from '../config/env';
 import { createRateLimitByUser } from './rateLimitByUser';
 
@@ -11,16 +11,33 @@ const devNoopLimiter: RequestHandler = (req, res, next) => {
   next();
 };
 
+function shouldSkipGlobalApiLimiter(req: Request): boolean {
+  if (req.method === 'OPTIONS') {
+    return true;
+  }
+
+  if (req.path === '/health' || req.path === '/api/health' || req.path === '/api/version') {
+    return true;
+  }
+
+  if (req.path === '/api/auth/firebase') {
+    return true;
+  }
+
+  if (req.path === '/api/workspace' || req.path.startsWith('/api/workspace/')) {
+    return true;
+  }
+
+  return false;
+}
+
 export const apiLimiter = isDev ? devNoopLimiter : rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS, // 15 minutes
   max: env.RATE_LIMIT_MAX_REQUESTS, // Limit each IP to 100 requests per windowMs
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  skip: (req) => {
-    // Don't rate limit health checks
-    return req.path === '/health';
-  },
+  skip: shouldSkipGlobalApiLimiter,
 });
 
 export const aiLimiter = isDev ? devNoopLimiter : rateLimit({
@@ -50,6 +67,11 @@ export const authLimiterByUser = isDev ? devNoopLimiter : createRateLimitByUser(
   max: 5,
 });
 
+export const firebaseSessionLimiterByUser = isDev ? devNoopLimiter : createRateLimitByUser({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+});
+
 export const authRefreshLimiterByUser = isDev ? devNoopLimiter : createRateLimitByUser({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -67,6 +89,11 @@ export const bankingLimiterByUser = isDev ? devNoopLimiter : createRateLimitByUs
 });
 
 export const financeEventsLimiterByUser = isDev ? devNoopLimiter : createRateLimitByUser({
+  windowMs: 60 * 1000,
+  max: 120,
+});
+
+export const workspaceLimiterByUser = isDev ? devNoopLimiter : createRateLimitByUser({
   windowMs: 60 * 1000,
   max: 120,
 });

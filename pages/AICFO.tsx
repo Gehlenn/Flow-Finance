@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ReminderType, type Reminder, Transaction } from '../types';
 import { Account } from '../models/Account';
 import { makeId } from '../src/utils/helpers';
@@ -6,6 +6,8 @@ import {
   CFOIntent,
   buildFinancialContext,
   analyzeFinancialQuestion,
+  buildCFOExplainability,
+  buildCFOResponseDepth,
   generateCFOResponse,
   learnFromConversation,
   type AICFOExplainability,
@@ -80,6 +82,14 @@ const RESPONSE_DEPTH_LABEL: Record<'standard' | 'reduced', string> = {
 const PANEL_SURFACE = 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900';
 const SOFT_SURFACE = 'rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900';
 
+function formatCurrency(value: number, hideValues: boolean): string {
+  if (hideValues) {
+    return '••••';
+  }
+
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+}
+
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
 type Message = Omit<CFOConversationMessage, 'intent'> & {
@@ -145,6 +155,34 @@ function buildResponseReminder(message: Message): Partial<Reminder> {
   };
 }
 
+function isOperationalActionIntent(intent?: CFOIntent): boolean {
+  return intent === 'risk_question' || intent === 'cash_position';
+}
+
+function buildResponseActionCopy(intent?: CFOIntent): string {
+  if (intent === 'risk_question') {
+    return 'Crie um lembrete para revisar o risco e abra o fluxo para confirmar saidas, entradas e recebiveis antes de executar qualquer decisao.';
+  }
+
+  if (intent === 'cash_position') {
+    return 'Crie um lembrete para revisar o caixa e abra o fluxo para confirmar saidas e recebiveis antes de executar qualquer decisao.';
+  }
+
+  return 'Crie um lembrete ou abra o fluxo quando precisar transformar a leitura em uma decisao operacional.';
+}
+
+function resolveAssistantExplainability(msg: Message, financialContext: string): AICFOExplainability {
+  if (msg.explainability) {
+    return msg.explainability;
+  }
+
+  return buildCFOExplainability(financialContext, msg.intent ?? 'monthly_summary');
+}
+
+function resolveAssistantResponseDepth(msg: Message, explainability: AICFOExplainability): 'standard' | 'reduced' {
+  return msg.responseDepth ?? buildCFOResponseDepth(explainability);
+}
+
 
 const UserBubble: React.FC<{ msg: Message }> = ({ msg }) => (
   <div className="flex justify-end gap-3 animate-in slide-in-from-right-4 duration-300">
@@ -162,8 +200,21 @@ const UserBubble: React.FC<{ msg: Message }> = ({ msg }) => (
   </div>
 );
 
-const AssistantBubble: React.FC<{ msg: Message; onCreateReminder?: (reminder: Partial<Reminder>) => void; onNavigateToTab?: (tab: Tab) => void; }> = ({ msg, onCreateReminder, onNavigateToTab }) => {
+const AssistantBubble: React.FC<{
+  msg: Message;
+  financialContext: string;
+  plan: 'free' | 'pro';
+  hasStrongGrounding: boolean;
+  onCreateReminder?: (reminder: Partial<Reminder>) => void;
+  onNavigateToTab?: (tab: Tab) => void;
+}> = ({ msg, financialContext, plan, hasStrongGrounding, onCreateReminder, onNavigateToTab }) => {
+  const intent = msg.intent ?? 'monthly_summary';
   const intentStyle = msg.intent ? INTENT_LABEL[msg.intent] : null;
+  const resolvedExplainability = resolveAssistantExplainability(msg, financialContext);
+  const responseDepth = resolveAssistantResponseDepth(msg, resolvedExplainability);
+  const actionRequired = isOperationalActionIntent(msg.intent);
+  const actionCopy = buildResponseActionCopy(msg.intent);
+  const isFallbackExplainability = !msg.explainability;
   return (
     <div className="flex gap-3 animate-in slide-in-from-left-4 duration-300">
       <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-1 border border-slate-200 bg-white text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
@@ -187,45 +238,69 @@ const AssistantBubble: React.FC<{ msg: Message; onCreateReminder?: (reminder: Pa
               )}
             </div>
           )}
-          {msg.explainability && (
-            <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-900/50">
-              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">Base da resposta</p>
-              <ul className="mt-1 space-y-1">
-                {msg.explainability.reasons_used.map(reason => (
-                  <li key={reason} className="text-xs text-slate-600 dark:text-slate-300">• {reason}</li>
-                ))}
-              </ul>
-              <p className="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Sinais usados</p>
-              <div className="mt-1 grid gap-1">
-                {Object.entries(msg.explainability.evidence)
-                  .filter(([, value]) => Boolean(value))
-                  .map(([key, value]) => (
-                    <p key={key} className="text-xs text-slate-600 dark:text-slate-300">
-                      {key.replace(/_/g, ' ')}: {String(value)}
-                    </p>
-                  ))}
-              </div>
-              <p className="mt-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                Nivel de confianca desta resposta: {CONFIDENCE_BAND_LABEL[msg.explainability.confidence_band]}
+          <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-900/50">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">Base da resposta</p>
+            {isFallbackExplainability && (
+              <p className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                Base reconstruida do contexto atual porque a resposta nao trouxe explicabilidade.
               </p>
+            )}
+            <ul className="mt-1 space-y-1">
+              {resolvedExplainability.reasons_used.map(reason => (
+                <li key={reason} className="text-xs text-slate-600 dark:text-slate-300">• {reason}</li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Sinais usados</p>
+            <div className="mt-1 grid gap-1">
+              {Object.entries(resolvedExplainability.evidence)
+                .filter(([, value]) => Boolean(value))
+                .map(([key, value]) => (
+                  <p key={key} className="text-xs text-slate-600 dark:text-slate-300">
+                    {key.replace(/_/g, ' ')}: {String(value)}
+                  </p>
+                ))}
             </div>
-          )}
+            <p className="mt-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+              Nivel de confianca desta resposta: {CONFIDENCE_BAND_LABEL[resolvedExplainability.confidence_band]}
+            </p>
+          </div>
           <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line">{msg.text}</p>
-          {msg.responseDepth && (
+          {responseDepth && (
             <p className={`mt-2 text-xs font-semibold uppercase tracking-[0.08em] ${
-              msg.responseDepth === 'reduced'
+              responseDepth === 'reduced'
                 ? 'text-amber-600 dark:text-amber-300'
                 : 'text-emerald-600 dark:text-emerald-300'
             }`}>
-              {RESPONSE_DEPTH_LABEL[msg.responseDepth]}
+              {RESPONSE_DEPTH_LABEL[responseDepth]}
             </p>
           )}
+          {actionRequired && (
+            <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em]">Proxima acao obrigatoria</p>
+              <p className="mt-1 text-xs leading-relaxed">{actionCopy}</p>
+            </div>
+          )}
           {msg.role === 'assistant' && (onCreateReminder || onNavigateToTab) && (
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-900/50">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">Acoes da resposta</p>
+              <div className="mt-3 flex flex-wrap gap-2">
               {onCreateReminder && (
                 <button
                   type="button"
-                  onClick={() => onCreateReminder(buildResponseReminder(msg))}
+                  onClick={() => {
+                    trackProductEvent('ai_response_action_created', {
+                      source: 'aicfo',
+                      intent,
+                      plan,
+                      target: 'reminder',
+                      action_required: actionRequired,
+                      base_sufficiency: resolvedExplainability.evidence.base_sufficiency,
+                      confidence_band: resolvedExplainability.confidence_band,
+                      response_depth: responseDepth,
+                      grounded: hasStrongGrounding,
+                    });
+                    onCreateReminder(buildResponseReminder(msg));
+                  }}
                   className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
                   <Sparkles size={14} />
@@ -235,13 +310,27 @@ const AssistantBubble: React.FC<{ msg: Message; onCreateReminder?: (reminder: Pa
               {onNavigateToTab && (
                 <button
                   type="button"
-                  onClick={() => onNavigateToTab('flow')}
+                  onClick={() => {
+                    trackProductEvent('ai_response_flow_opened', {
+                      source: 'aicfo',
+                      intent,
+                      plan,
+                      target: 'flow',
+                      action_required: actionRequired,
+                      base_sufficiency: resolvedExplainability.evidence.base_sufficiency,
+                      confidence_band: resolvedExplainability.confidence_band,
+                      response_depth: responseDepth,
+                      grounded: hasStrongGrounding,
+                    });
+                    onNavigateToTab('flow');
+                  }}
                   className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
                 >
                   <Wallet size={14} />
                   Ver fluxo
                 </button>
               )}
+              </div>
             </div>
           )}
         </div>
@@ -274,47 +363,199 @@ const TypingBubble: React.FC = () => (
   </div>
 );
 
+const SnapshotMetric: React.FC<{
+  label: string;
+  value: number;
+  hideValues: boolean;
+}> = ({ label, value, hideValues }) => (
+  <div className={`${SOFT_SURFACE} p-3 sm:p-4`}>
+    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{label}</p>
+    <p className={`mt-1 text-sm font-semibold sm:text-base ${value >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>
+      {formatCurrency(value, hideValues)}
+    </p>
+  </div>
+);
+
+const OperationalSnapshot: React.FC<{
+  currentBalance: number;
+  in7Days: number;
+  in30Days: number;
+  hideValues: boolean;
+  confidencePercent: number;
+  recurringCount: number;
+  productSignals: string[];
+  hasStrongGrounding: boolean;
+  dominantCategoryLabel: string | null;
+  isFreePlan: boolean;
+  monthlyAiQueriesUsed: number;
+  queryLimit: number;
+  paywallVisible: boolean;
+}> = ({
+  currentBalance,
+  in7Days,
+  in30Days,
+  hideValues,
+  confidencePercent,
+  recurringCount,
+  productSignals,
+  hasStrongGrounding,
+  dominantCategoryLabel,
+  isFreePlan,
+  monthlyAiQueriesUsed,
+  queryLimit,
+  paywallVisible,
+}) => {
+  const focusItems = [
+    currentBalance >= 0
+      ? 'Caixa atual sem ruptura aparente no curtissimo prazo.'
+      : 'Caixa atual pede revisao imediata de saidas e cobrancas.',
+    in7Days >= currentBalance
+      ? 'Janela de 7 dias sustenta ou melhora a posicao atual.'
+      : 'Janela de 7 dias projeta compressao de caixa.',
+    productSignals?.[0] || 'Base ainda curta para leituras mais profundas; use perguntas objetivas.',
+  ];
+
+  return (
+    <div className="grid gap-2 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.9fr)] xl:gap-3">
+      <section className={`${PANEL_SURFACE} p-3 sm:p-4`}>
+        <div className="flex flex-col gap-3 sm:gap-4">
+          <div className="flex flex-col gap-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Leitura operacional agora</p>
+            <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-white sm:text-lg">Caixa, horizonte curto e base da resposta</h3>
+            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              O Consultor IA deve partir do dinheiro confirmado, do risco proximo e do que ainda depende de confirmacao.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <SnapshotMetric label="Saldo" value={currentBalance} hideValues={hideValues} />
+            <SnapshotMetric label="7 dias" value={in7Days} hideValues={hideValues} />
+            <SnapshotMetric label="30 dias" value={in30Days} hideValues={hideValues} />
+          </div>
+
+          <div className="grid gap-2 lg:grid-cols-3">
+            {focusItems.map((item) => (
+              <div key={item} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/60">
+                <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <aside className={`${PANEL_SURFACE} p-3 sm:p-4`}>
+        <div className="flex h-full flex-col gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Base usada agora</p>
+            <h3 className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">Estado da leitura consultiva</h3>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
+              Confiança {confidencePercent}%
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-300">
+              Recorrências {recurringCount}
+            </span>
+            <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] ${hasStrongGrounding ? 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300' : 'border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300'}`}>
+              {hasStrongGrounding ? 'Base suficiente' : 'Base incompleta'}
+            </span>
+            {dominantCategoryLabel && (
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
+                {dominantCategoryLabel}
+              </span>
+            )}
+            {isFreePlan && (
+              <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] ${
+                paywallVisible
+                  ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
+                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+              }`}>
+                Consultas Free {Math.min(monthlyAiQueriesUsed, queryLimit)}/{queryLimit}
+              </span>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Postura do consultor</p>
+            <ul className="mt-2 space-y-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+              <li>• Caixa confirmado primeiro.</li>
+              <li>• Recebivel e previsao nao viram saldo realizado.</li>
+              <li>• Quando a base estiver fraca, a resposta precisa mostrar esse limite.</li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+};
+
 // ─── Welcome screen ───────────────────────────────────────────────────────────
 
 const WelcomeScreen: React.FC<{
   onPrompt: (q: string) => void;
   prompts: { label: string; question: string; icon: React.ReactNode }[];
 }> = ({ onPrompt, prompts }) => (
-    <div className="flex flex-col items-center gap-5 py-5 px-2 animate-in fade-in duration-500">
-    <div className="w-20 h-20 rounded-3xl flex items-center justify-center border border-slate-200 bg-white text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-      <BrainCircuit size={36} />
-    </div>
-    <div className="text-center">
-      <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{AI_CFO_COPY.welcomeTitle}</h3>
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-[0.08em] mt-1">{AI_CFO_COPY.welcomeSubtitle}</p>
-      <p className="text-xs text-slate-500 dark:text-slate-400 mt-3 leading-relaxed max-w-xs">
-        {AI_CFO_COPY.welcomeDescription}
-      </p>
-    </div>
+  <div className="grid gap-3 py-1 animate-in fade-in duration-500 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.15fr)]">
+    <section className={`${SOFT_SURFACE} p-4 sm:p-5`}>
+      <div className="flex items-start gap-3">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+          <BrainCircuit size={22} />
+        </div>
+        <div className="min-w-0">
+          <h3 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">{AI_CFO_COPY.welcomeTitle}</h3>
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">{AI_CFO_COPY.welcomeSubtitle}</p>
+          <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+            {AI_CFO_COPY.welcomeDescription}
+          </p>
+        </div>
+      </div>
 
-    <div className="w-full flex flex-col gap-2">
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em] text-center mb-1">Perguntas rápidas do caixa</p>
-      {prompts.map(p => (
-        <button
-          key={p.question}
-          onClick={() => onPrompt(p.question)}
-          className="w-full flex items-center gap-3 p-3.5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl hover:border-slate-200 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-all active:scale-[0.98] group text-left"
-        >
-          <span className="w-8 h-8 bg-slate-50 dark:bg-slate-900/50 text-slate-500 rounded-xl flex items-center justify-center shrink-0">
-            {p.icon}
-          </span>
-          <span className="flex-1 text-sm leading-snug text-slate-700 dark:text-slate-200">{p.label}</span>
-          <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-500 transition-colors" />
-        </button>
-      ))}
-    </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        {[
+          'Pergunte sobre uma decisao curta: pagar, cobrar, segurar ou priorizar.',
+          'Leia a resposta junto com a base usada e o nivel de confianca.',
+          'Transforme a resposta em proximo passo: lembrete ou revisao do fluxo.',
+        ].map((item) => (
+          <div key={item} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
+            <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">{item}</p>
+          </div>
+        ))}
+      </div>
 
-    <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl w-full">
-      <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
-      <p className="text-xs text-slate-400 leading-relaxed">
-        Respostas consultivas com base nos seus dados reais. Nao substituem analise ou orientacao especializada.
-      </p>
-    </div>
+      <div className="mt-4 flex items-start gap-2 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+        <ShieldCheck size={14} className="mt-0.5 shrink-0 text-emerald-500" />
+        <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+          Respostas consultivas com base nos seus dados reais. Nao substituem analise ou orientacao especializada.
+        </p>
+      </div>
+    </section>
+
+    <section className={`${SOFT_SURFACE} p-4 sm:p-5`}>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Perguntas rápidas do caixa</p>
+          <h3 className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">Comece por uma decisao concreta</h3>
+        </div>
+        <Sparkles size={16} className="text-slate-400" />
+      </div>
+
+      <div className="mt-4 grid gap-2 md:grid-cols-2">
+        {prompts.map(p => (
+          <button
+            key={p.question}
+            onClick={() => onPrompt(p.question)}
+            className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 text-left transition-all hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:bg-slate-900/50"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500 dark:bg-slate-900/50">
+              {p.icon}
+            </span>
+            <span className="flex-1 text-sm leading-snug text-slate-700 dark:text-slate-200">{p.label}</span>
+            <ChevronRight size={14} className="text-slate-300 transition-colors group-hover:text-slate-500" />
+          </button>
+        ))}
+      </div>
+    </section>
   </div>
 );
 
@@ -381,6 +622,7 @@ const AICFO: React.FC<AICFOProps> = ({
   );
 
   const hasStrongGrounding = accounts.length > 0 && transactions.length >= 3;
+  const confidencePercent = Math.round(intelligence.context.confidence.overall * 100);
 
   useEffect(() => {
     const storedMessages = loadCFOConversation(userId).map((message) => ({
@@ -479,6 +721,10 @@ const AICFO: React.FC<AICFOProps> = ({
 
   // Auto-scroll
   useEffect(() => {
+    if (messages.length === 0 && !isLoading) {
+      return;
+    }
+
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
@@ -528,6 +774,19 @@ const AICFO: React.FC<AICFOProps> = ({
 
     // Detectar intent
     const intent = analyzeFinancialQuestion(question);
+    const questionExplainability = buildCFOExplainability(financialContext, intent);
+    const questionResponseDepth = buildCFOResponseDepth(questionExplainability);
+
+    trackProductEvent('ai_question_submitted', {
+      source: 'aicfo',
+      intent,
+      plan: effectiveWorkspacePlan,
+      action_required: isOperationalActionIntent(intent),
+      base_sufficiency: questionExplainability.evidence.base_sufficiency,
+      confidence_band: questionExplainability.confidence_band,
+      response_depth: questionResponseDepth,
+      grounded: hasStrongGrounding,
+    });
 
     // Aprender padrões da conversa em background
     learnFromConversation(userId, question, intent).catch(e => {
@@ -540,13 +799,17 @@ const AICFO: React.FC<AICFOProps> = ({
 
     try {
       const response = await generateCFOResponse(question, financialContext, intent);
+      const resolvedExplainability = response.explainability ?? questionExplainability;
+      const resolvedResponseDepth = response.response_depth ?? buildCFOResponseDepth(resolvedExplainability);
       if (!response.diagnostic && response.answer.trim()) {
         trackProductEventOnce('ai_consultation_completed', workspaceId || userId, {
           source: 'aicfo',
           intent,
           plan: effectiveWorkspacePlan,
-          confidence_band: response.explainability?.confidence_band ?? 'unknown',
-          response_depth: response.response_depth ?? 'unknown',
+          confidence_band: resolvedExplainability.confidence_band,
+          response_depth: resolvedResponseDepth,
+          base_sufficiency: resolvedExplainability.evidence.base_sufficiency,
+          action_required: isOperationalActionIntent(intent),
           grounded: hasStrongGrounding,
         });
       } else if (response.diagnostic) {
@@ -564,10 +827,10 @@ const AICFO: React.FC<AICFOProps> = ({
         role: 'assistant',
         text: response.answer,
         intent,
-        responseDepth: response.response_depth,
+        responseDepth: resolvedResponseDepth,
         timestamp: response.timestamp,
         diagnostic: response.diagnostic,
-        explainability: response.explainability,
+        explainability: response.explainability ?? resolvedExplainability,
       };
       setMessages(prev => [...prev, cfoMsg]);
     } catch (error) {
@@ -603,7 +866,7 @@ const AICFO: React.FC<AICFOProps> = ({
   };
 
   return (
-    <div className="flex min-h-[calc(100dvh-9.5rem)] flex-col animate-in fade-in duration-700 md:h-[calc(100vh-8rem)]">
+    <div className="flex min-h-[calc(100dvh-9.5rem)] flex-col animate-in fade-in duration-700 md:min-h-[34rem]">
 
       <div className={`mb-2 flex items-center justify-between gap-3 ${PANEL_SURFACE} px-3 py-2.5 sm:px-5 sm:py-4`}>
         <div className="min-w-0">
@@ -635,20 +898,21 @@ const AICFO: React.FC<AICFOProps> = ({
       )}
 
       {/* Snapshot financeiro rápido */}
-      <div className="grid grid-cols-2 gap-1.5 mb-2 shrink-0 sm:grid-cols-3 sm:gap-2 sm:mb-3">
-        {[
-          { label: 'Saldo', value: intelligence.context.cashflowForecast.currentBalance },
-          { label: '7 dias', value: intelligence.context.cashflowForecast.in7Days },
-          { label: '30 dias', value: intelligence.context.cashflowForecast.in30Days },
-        ].map(({ label, value }) => (
-          <div key={label} className={SOFT_SURFACE + ' p-2.5 text-center sm:p-3'}>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">{label}</p>
-            <p className={`text-xs font-semibold mt-0.5 ${value >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>
-              {hideValues ? '••••' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)}
-            </p>
-          </div>
-        ))}
-      </div>
+      <OperationalSnapshot
+        currentBalance={intelligence.context.cashflowForecast.currentBalance}
+        in7Days={intelligence.context.cashflowForecast.in7Days}
+        in30Days={intelligence.context.cashflowForecast.in30Days}
+        hideValues={hideValues}
+        confidencePercent={confidencePercent}
+        recurringCount={intelligence.recurringCount}
+        productSignals={intelligence.productSignals}
+        hasStrongGrounding={hasStrongGrounding}
+        dominantCategoryLabel={intelligence.dominantCategoryLabel}
+        isFreePlan={isFreePlan}
+        monthlyAiQueriesUsed={monthlyAiQueriesUsed}
+        queryLimit={queryLimit}
+        paywallVisible={paywallVisible}
+      />
 
       {isFreePlan && (
         <div className="mb-2 rounded-2xl border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-700 dark:bg-slate-800/60 sm:mb-3 sm:p-3">
@@ -667,73 +931,70 @@ const AICFO: React.FC<AICFOProps> = ({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 mb-2 shrink-0 pb-1 sm:mb-3 sm:flex-nowrap sm:overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-        <span className="shrink-0 px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
-          Confiança {Math.round(intelligence.context.confidence.overall * 100)}%
-        </span>
-        <span className="shrink-0 px-2.5 py-1 rounded-full border border-slate-200 bg-slate-100 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-300">
-          Recorrências {intelligence.recurringCount}
-        </span>
-        {isFreePlan && (
-        <span className={`shrink-0 px-2 py-1 rounded-full text-[10px] font-semibold sm:px-2.5 sm:text-[11px] ${
-            paywallVisible
-              ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
-              : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-          }`}>
-            Consultas Free {Math.min(monthlyAiQueriesUsed, queryLimit)}/{queryLimit}
-        </span>
-        )}
-        <span className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-[0.08em] border ${hasStrongGrounding ? 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300' : 'border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300'}`}>
-          {hasStrongGrounding ? 'Base suficiente' : 'Base incompleta'}
-        </span>
-        {intelligence.dominantCategoryLabel && (
-          <span className="shrink-0 px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
-            {intelligence.dominantCategoryLabel}
-          </span>
-        )}
-      </div>
-
       {/* Messages area */}
-      <div className="order-2 flex-1 overflow-y-auto flex flex-col gap-4 pb-4 min-h-0 md:order-none">
+      <div className={`${PANEL_SURFACE} order-2 flex min-h-0 flex-1 flex-col overflow-hidden md:order-none`}>
         {paywallVisible && (
-          <UpgradePromptCard
-            title="Consultor IA ilimitado"
-            description="Voce chegou ao limite mensal do Free. O Pro libera consultas sem travar, mais workspaces e mais contexto historico."
-            bullets={[
-              'consultor IA sem bloqueio mensal',
-              'multiplos workspaces para operacoes separadas',
-              'analises historicas para comparar caixa e risco',
-            ]}
-            workspaceId={workspaceId}
-            showUpgradeAction
-            ctaLabel="Assinar Pro agora"
-          />
+          <div className="border-b border-slate-200 p-3 dark:border-slate-800 sm:p-4">
+            <UpgradePromptCard
+              title="Consultor IA ilimitado"
+              description="Voce chegou ao limite mensal do Free. O Pro libera consultas sem travar, mais workspaces e mais contexto historico."
+              bullets={[
+                'consultor IA sem bloqueio mensal',
+                'multiplos workspaces para operacoes separadas',
+                'analises historicas para comparar caixa e risco',
+              ]}
+              workspaceId={workspaceId}
+              showUpgradeAction
+              ctaLabel="Assinar Pro agora"
+            />
+          </div>
         )}
-        {messages.length === 0
-          ? <WelcomeScreen onPrompt={sendMessage} prompts={quickPrompts} />
-          : messages.map(msg =>
-              msg.role === 'user'
-                ? <UserBubble key={msg.id} msg={msg} />
-                : <AssistantBubble key={msg.id} msg={msg} onCreateReminder={onCreateReminder} onNavigateToTab={onNavigateToTab} />
-            )
-        }
-        {isLoading && <TypingBubble />}
-        <div ref={bottomRef} />
+
+        <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:px-5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Workspace consultivo</p>
+          <h3 className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
+            {messages.length === 0 ? 'Escolha uma pergunta operacional para abrir a leitura.' : 'Pergunta, base, resposta e proximo passo.'}
+          </h3>
+        </div>
+
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:px-5 sm:pb-5">
+          {messages.length === 0
+            ? <WelcomeScreen onPrompt={sendMessage} prompts={quickPrompts} />
+            : messages.map(msg =>
+                msg.role === 'user'
+                  ? <UserBubble key={msg.id} msg={msg} />
+                  : <AssistantBubble
+                      key={msg.id}
+                      msg={msg}
+                      financialContext={financialContext}
+                      plan={effectiveWorkspacePlan}
+                      hasStrongGrounding={hasStrongGrounding}
+                      onCreateReminder={onCreateReminder}
+                      onNavigateToTab={onNavigateToTab}
+                    />
+              )
+          }
+          {isLoading && <TypingBubble />}
+          <div ref={bottomRef} />
+        </div>
       </div>
 
       {/* Input */}
-      <div className={`order-1 shrink-0 mt-2 flex items-end gap-2.5 ${PANEL_SURFACE} p-2.5 pl-4 sm:mt-3 sm:gap-3 sm:p-3 sm:pl-5 md:order-none`}>
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={paywallVisible ? 'Limite mensal do Free atingido. Assine o Pro para continuar.' : AI_CFO_COPY.inputPlaceholder}
-          rows={1}
-          disabled={paywallVisible}
-          className="flex-1 max-h-28 resize-none bg-transparent py-1.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 placeholder:font-normal dark:text-white sm:max-h-32 sm:py-2"
-          style={{ scrollbarWidth: 'none' }}
-        />
+      <div className={`order-3 shrink-0 mt-2 flex items-end gap-2.5 ${PANEL_SURFACE} p-2.5 pl-4 sm:mt-3 sm:gap-3 sm:p-3 sm:pl-5 md:order-none`}>
+        <div className="flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Pergunta operacional</p>
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={paywallVisible ? 'Limite mensal do Free atingido. Assine o Pro para continuar.' : AI_CFO_COPY.inputPlaceholder}
+            rows={1}
+            disabled={paywallVisible}
+            className="mt-1 flex-1 max-h-28 w-full resize-none bg-transparent py-1.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 placeholder:font-normal dark:text-white sm:max-h-32 sm:py-2"
+            style={{ scrollbarWidth: 'none' }}
+          />
+        </div>
         <button
           onClick={() => sendMessage(input)}
           disabled={!input.trim() || isLoading || paywallVisible}
@@ -765,9 +1026,3 @@ const AICFO: React.FC<AICFOProps> = ({
 };
 
 export default AICFO;
-
-
-
-
-
-

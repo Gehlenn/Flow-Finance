@@ -38,6 +38,7 @@ vi.mock('../../src/saas', () => ({
   configureUsageStoreAdapter: vi.fn(),
   createFirestoreUsageStoreAdapter: vi.fn(() => ({})),
   createHttpBillingTransport: vi.fn(() => ({})),
+  createHttpUsageStoreAdapter: vi.fn(() => ({})),
   resetUsageStoreAdapter: vi.fn(),
 }));
 
@@ -118,9 +119,9 @@ vi.mock('../../src/app/mainNavigation', () => ({
     label: 'Caixa',
     defaultTab: 'dashboard',
     items: [
-      { tab: 'dashboard', label: 'Visao geral' },
-      { tab: 'insights', label: 'Insights' },
-      { tab: 'settings', label: 'Ajustes' },
+      { tab: 'dashboard', label: 'Resumo' },
+      { tab: 'insights', label: 'Sinais do caixa' },
+      { tab: 'settings', label: 'Conta e plano' },
     ],
   }),
   getMainNavigationItems: () => [
@@ -150,16 +151,17 @@ vi.mock('../../components/dev/AITaskQueueMonitor', () => ({
 import App from '../../App';
 
 describe('App shell navigation', () => {
-  it('exibe a subnav como tablist em grade e reforca a nav principal mobile', () => {
+  it('exibe a subnav compacta no mobile e reforca a nav principal', () => {
     render(<App />);
 
     const subsectionTabs = screen.getByRole('tablist', { name: 'Caixa subsecoes' });
-    const activeSectionTab = screen.getByRole('tab', { name: 'Visao geral' });
+    const activeSectionTab = screen.getByRole('tab', { name: 'Resumo' });
     const mainNav = screen.getByRole('navigation', { name: 'Navegacao principal' });
-    const fab = screen.getByRole('button', { name: /Adicionar lançamento/i });
+    const fab = screen.getByRole('button', { name: /Adicionar lancamento/i });
 
-    expect(subsectionTabs.className).toContain('grid');
-    expect(subsectionTabs.className).not.toContain('overflow-x-auto');
+    expect(subsectionTabs.className).toContain('flex');
+    expect(subsectionTabs.className).toContain('overflow-x-auto');
+    expect(subsectionTabs.className).toContain('md:grid');
     expect(subsectionTabs.getAttribute('style')).toContain('repeat(auto-fit, minmax(8.5rem, 1fr))');
     expect(activeSectionTab.getAttribute('aria-selected')).toBe('true');
     expect(mainNav.className).toContain('grid-cols-4');

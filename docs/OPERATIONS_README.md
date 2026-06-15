@@ -13,13 +13,15 @@ Este arquivo concentra os documentos de operacao atual do Flow Finance. Ele sepa
 
 - suite global: `verde`
 - billing Stripe sandbox: `validado localmente`
-- backend oficial: `0.9.7` revalidado em `2026-05-25`
-- pendencia operacional atual: os gates de ativacao/retencao, performance e Stripe foram fechados com evidencia real em 2026-06-05; o shell pos-signup do frontend foi reduzido a renderizacao imediata do shell apos o perfil carregar, sem reabrir gate nenhum
+- backend oficial: `0.9.7` revalidado novamente em `2026-06-12`
+- pendencia operacional atual: nao ha bloqueio tecnico publicado confirmado; os gates de ativacao/retencao, performance e Stripe estao fechados, e o refresh publicado de `2026-06-12` confirmou a durabilidade do event store
+- pendencia residual de produto: habito real ao longo do tempo agora e acompanhado separadamente em `docs/HABIT_PROOF_PROGRAM_2026-06-13.md` e nao reabre os gates tecnicos ja fechados
 - evidencias de ativacao/retencao:
-  - `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/report.json`
-  - `test-results/activation-retention-export/2026-06-05T20-20-29-124Z/events.jsonl`
-  - `test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.json`
-  - `test-results/activation-retention-evidence/2026-06-05T20-20-36-828Z-events/report.md`
+  - `test-results/activation-retention-refresh/2026-06-12T20-44-49-665Z/report.json`
+  - `test-results/activation-retention-export/2026-06-12T20-44-52-284Z/report.json`
+  - `test-results/activation-retention-export/2026-06-12T20-44-52-284Z/events.jsonl`
+  - `test-results/activation-retention-evidence/2026-06-12T20-44-53-217Z-events/report.json`
+  - `test-results/activation-retention-evidence/2026-06-12T20-44-53-217Z-events/report.md`
   - `test-results/activation-retention-export/published-export-verified.json`
 - polimento visual principal: concluido sem alterar os contratos operacionais
 
@@ -42,12 +44,14 @@ Este arquivo concentra os documentos de operacao atual do Flow Finance. Ele sepa
 - `/api/health` responde `200`
 - `/api/version` responde `200` com `0.9.7`
 - os tres endpoints acima ja expõem `workspacePersistence` no backend publicado endurecido
+- `/health` e `/api/health` agora tambem expõem `domainEventPersistence = healthy` no backend publicado endurecido
 - `/` no backend responde `404` esperado para API-only
 
 ## Billing e observabilidade
 
 - [EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md](./EVIDENCIA_OPERACIONAL_STRIPE_SANDBOX_2026-04-12.md)
 - [TARGET_PERFORMANCE_EVIDENCE_2026-06-04.md](./TARGET_PERFORMANCE_EVIDENCE_2026-06-04.md)
+- [HABIT_PROOF_PROGRAM_2026-06-13.md](./HABIT_PROOF_PROGRAM_2026-06-13.md)
 - [SENTRY_SETUP.md](./SENTRY_SETUP.md)
 - [HTTP_CONTRATOS_SENSIVEIS_CONGELADOS_2026-04-11.md](./HTTP_CONTRATOS_SENSIVEIS_CONGELADOS_2026-04-11.md)
 

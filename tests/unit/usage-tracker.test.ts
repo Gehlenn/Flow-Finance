@@ -1,5 +1,13 @@
-﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { configureUsageStoreAdapter, getCurrentUsage, resetUsageForUser, trackUsage } from '../../src/saas/usageTracker';
+
+const usageTrackerLoggerMocks = vi.hoisted(() => ({
+  logWarn: vi.fn(),
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  logWarn: usageTrackerLoggerMocks.logWarn,
+}));
 
 describe('usageTracker', () => {
   beforeEach(async () => {
@@ -71,5 +79,24 @@ describe('usageTracker', () => {
     expect(await getCurrentUsage('user_1', 'transactions', new Date('2026-05-01T02:00:00.000Z'))).toBe(1);
 
     vi.useRealTimers();
+  });
+
+  it('falls back to an empty usage store when adapter hydration fails', async () => {
+    await configureUsageStoreAdapter({
+      async read() {
+        throw new Error('usage backend unavailable');
+      },
+      async write() {
+        return;
+      },
+    });
+
+    expect(await getCurrentUsage('user_1', 'transactions', new Date('2026-04-10T00:00:00.000Z'))).toBe(0);
+    expect(usageTrackerLoggerMocks.logWarn).toHaveBeenCalledWith(
+      '[UsageTracker] Failed to load usage adapter state; falling back to empty usage store',
+      expect.objectContaining({
+        fallback: 'usage-tracker-load-failed',
+      }),
+    );
   });
 });

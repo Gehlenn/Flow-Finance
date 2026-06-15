@@ -2,7 +2,7 @@
 
 Este documento centraliza auditorias, evidencias operacionais e materiais de comprovacao. A funcao dele e evitar que cada evidencia fique solta e sem contexto.
 
-Ultima revisao estrutural: 2026-05-26
+Ultima revisao estrutural: 2026-06-12
 
 ## Entrada recomendada (historico)
 
@@ -20,12 +20,27 @@ Se o objetivo for entender decisoes antigas, auditorias passadas ou diagnosticos
 
 - [AUDIT_FLOW_FOCUS_2026-04-24.md](./AUDIT_FLOW_FOCUS_2026-04-24.md)
 - [CODE_QUALITY_CLEANUP_2026-04-30.md](./CODE_QUALITY_CLEANUP_2026-04-30.md)
+- [AUDIT_PRE_MORTEM_FLOW_FINANCE_2026-06-03.md](./AUDIT_PRE_MORTEM_FLOW_FINANCE_2026-06-03.md)
+- [AUDIT_CURRENT_SCORECARD_2026-06-13.md](./AUDIT_CURRENT_SCORECARD_2026-06-13.md)
+- [POST_AUDIT_EXECUTION_PLAN_2026-06-11.md](./POST_AUDIT_EXECUTION_PLAN_2026-06-11.md)
+- [HABIT_PROOF_PROGRAM_2026-06-13.md](./HABIT_PROOF_PROGRAM_2026-06-13.md)
+- [UI_UX_AI_PARTIAL_REVIEW_2026-06-13.md](./UI_UX_AI_PARTIAL_REVIEW_2026-06-13.md)
+- [PRODUCT_FOCUS_SURFACE_REVIEW_2026-06-11.md](./PRODUCT_FOCUS_SURFACE_REVIEW_2026-06-11.md)
+- [SCALE_READINESS_REVIEW_2026-06-11.md](./SCALE_READINESS_REVIEW_2026-06-11.md)
+- [LOAD_SCENARIO_MATRIX_2026-06-11.md](./LOAD_SCENARIO_MATRIX_2026-06-11.md)
+- `test-results/scale-readiness-evidence/2026-06-12T15-30-39-687Z/report.json` (runner consolidado: `L2 PASS`, `L3 PASS`, `L4 PASS`, `L1/L5 DOCUMENTED_ONLY`)
+- `test-results/activation-retention-export/2026-06-12T20-44-52-284Z/report.json` (fechamento publicado de `R1`: export `PASS`)
+- `test-results/activation-retention-evidence/2026-06-12T20-44-53-217Z-events/report.json` (fechamento publicado de `R1`: checker `PASS`)
+- `test-results/activation-retention-refresh/2026-06-12T20-44-49-665Z/report.json` (fechamento publicado de `R1`: refresh `PASS`)
+- `test-results/habit-proof-evidence/2026-06-13T14-57-20-595Z/report.json` (primeira leitura longitudinal de habito: `BLOCK` honesto por falta de threshold explicito)
+- `test-results/habit-proof-evidence/2026-06-13T16-13-53-986Z/report.json` (leitura longitudinal com threshold explicito: `BLOCK` por falta de semanas/dias suficientes)
 
 ## Status operacional
 
 - [README.md](../README.md)
 - [VERCEL_CONFIG.md](./VERCEL_CONFIG.md)
 - [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md)
+- [PUBLISHED_REVALIDATION_CHECKLIST_2026-06-11.md](./PUBLISHED_REVALIDATION_CHECKLIST_2026-06-11.md)
 - [ROADMAP.md](./ROADMAP.md)
 - Revalidacao viva de deploy em 2026-05-25: `health:vercel` passou com backend oficial em `0.9.7`.
 - Passada de polimento visual concluida em 2026-05-26: empty states e modais menores foram alinhados a mesma linguagem visual das superficies principais.

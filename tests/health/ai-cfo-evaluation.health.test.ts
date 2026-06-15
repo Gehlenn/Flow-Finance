@@ -1,4 +1,4 @@
-﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { generateCfoMock } = vi.hoisted(() => ({
   generateCfoMock: vi.fn(),
@@ -56,6 +56,6 @@ describe('AI health - CFO evaluation harness', () => {
     expect(failures).toHaveLength(0);
     expect(results.some((result) => result.matchedTraits.includes('uses_reduced_depth_when_limited'))).toBe(true);
     expect(results.some((result) => result.matchedTraits.includes('uses_standard_depth_when_strong'))).toBe(true);
+    expect(results.some((result) => result.matchedTraits.includes('avoids_raw_context_leak'))).toBe(true);
   });
 });
-

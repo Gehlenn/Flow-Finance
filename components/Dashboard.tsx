@@ -1,8 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  ArrowDownRight,
-  ArrowUpRight,
   CalendarClock,
   ChevronRight,
   CircleAlert,
@@ -20,7 +18,14 @@ import {
   isReceivablePending,
   isReceivableRealized,
 } from '../src/finance/receivableService';
+import {
+  generateWeeklyCashReport,
+  loadWeeklyCashReviewHistory,
+  measureWeeklyCashReviewRetention,
+  recordWeeklyCashReview,
+} from '../src/finance/weeklyCashReview';
 import { trackProductEventOnce } from '../src/app/productAnalytics';
+import { VISUAL_SURFACES } from '../src/app/visualSystem';
 import { addMoney, compareMoney, sumTransactions } from '../src/security/moneyMath';
 
 interface DashboardProps {
@@ -463,6 +468,26 @@ const Dashboard: React.FC<DashboardProps> = ({
     () => buildDashboardActivationStatus(transactions, accounts, reminders, receivables),
     [accounts, receivables, reminders, transactions],
   );
+  const weeklyReviewReport = useMemo(
+    () => generateWeeklyCashReport({
+      transactions,
+      receivables,
+      referenceDate: new Date(),
+    }),
+    [receivables, transactions],
+  );
+  const weeklyReviewHistory = useMemo(
+    () => loadWeeklyCashReviewHistory(activeWorkspaceId),
+    [activeWorkspaceId],
+  );
+  const weeklyReviewRetention = useMemo(
+    () => measureWeeklyCashReviewRetention(weeklyReviewHistory, { lookbackWeeks: 4 }),
+    [weeklyReviewHistory],
+  );
+  const currentWeekReview = useMemo(
+    () => weeklyReviewHistory.find((entry) => entry.weekStart === weeklyReviewReport.weekStart) ?? null,
+    [weeklyReviewHistory, weeklyReviewReport.weekStart],
+  );
   const [activationForm, setActivationForm] = useState({
     initialBalance: '',
     inflow: '',
@@ -472,8 +497,12 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [activationError, setActivationError] = useState<string | null>(null);
   const [activationSuccess, setActivationSuccess] = useState<string | null>(null);
   const [isActivationSubmitting, setIsActivationSubmitting] = useState(false);
+  const [weeklyReviewError, setWeeklyReviewError] = useState<string | null>(null);
+  const [weeklyReviewSuccess, setWeeklyReviewSuccess] = useState<string | null>(null);
+  const [isWeeklyReviewSubmitting, setIsWeeklyReviewSubmitting] = useState(false);
 
   const canSubmitActivation = Boolean(onCreateAccount || onAddTransactions || onAddReminder);
+  const canSubmitWeeklyReview = Boolean(activeWorkspaceId && userId);
 
   const handleActivationSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -558,6 +587,36 @@ const Dashboard: React.FC<DashboardProps> = ({
     }
   };
 
+  const handleWeeklyReviewSubmit = useCallback(() => {
+    if (!canSubmitWeeklyReview || !activeWorkspaceId || !userId) {
+      setWeeklyReviewError('A revisao semanal exige workspace ativo e usuario autenticado.');
+      return;
+    }
+
+    setIsWeeklyReviewSubmitting(true);
+    setWeeklyReviewError(null);
+    setWeeklyReviewSuccess(null);
+
+    try {
+      const review = recordWeeklyCashReview(weeklyReviewReport, {
+        workspaceId: activeWorkspaceId,
+        reviewerId: userId,
+      });
+      const refreshedHistory = loadWeeklyCashReviewHistory(activeWorkspaceId);
+      const refreshedRetention = measureWeeklyCashReviewRetention(refreshedHistory, { lookbackWeeks: 4 });
+      const isRepeatReview = Boolean(currentWeekReview);
+      setWeeklyReviewSuccess(
+        isRepeatReview
+          ? `Revisao desta semana atualizada para ${review.weekStart}. ${refreshedRetention.completedWeeks}/${refreshedRetention.expectedWeeks} semanas registradas.`
+          : `Revisao desta semana registrada em ${review.weekStart}. ${refreshedRetention.completedWeeks}/${refreshedRetention.expectedWeeks} semanas registradas.`,
+      );
+    } catch (error) {
+      setWeeklyReviewError(error instanceof Error ? error.message : 'Nao foi possivel registrar a revisao semanal.');
+    } finally {
+      setIsWeeklyReviewSubmitting(false);
+    }
+  }, [activeWorkspaceId, canSubmitWeeklyReview, currentWeekReview, userId, weeklyReviewReport]);
+
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
@@ -568,7 +627,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   const insightsActionDescription = activeWorkspacePlan === 'pro'
     ? 'Abra analises profundas e comparativos historicos do periodo.'
     : 'Abra sinais principais para validar sua leitura de caixa.';
-  const PANEL_SURFACE = 'rounded-3xl border border-slate-200 bg-white shadow-[0_18px_45px_-24px_rgba(15,23,42,0.28)] dark:border-slate-700 dark:bg-slate-800';
+  const PANEL_SURFACE = VISUAL_SURFACES.workspace;
+  const SECTION_DIVIDER = 'border-t border-slate-200/80 dark:border-slate-700/80';
   const hasFinancialBase = hasDashboardFinancialBase(metrics);
 
   useEffect(() => {
@@ -596,37 +656,354 @@ const Dashboard: React.FC<DashboardProps> = ({
     userId,
   ]);
 
+  useEffect(() => {
+    if (!activationStatus.isComplete) {
+      return;
+    }
+
+    trackProductEventOnce(
+      'activation_financial_base_completed',
+      activeWorkspaceId || userId || activeWorkspaceName || 'dashboard-financial-base',
+      {
+        source: 'dashboard_activation',
+        completed_steps: activationStatus.completedSteps,
+        has_initial_balance: activationStatus.hasInitialBalance,
+        has_inflow: activationStatus.hasInflow,
+        has_outflow: activationStatus.hasOutflow,
+        has_receivable: activationStatus.hasReceivable,
+      },
+    );
+  }, [
+    activeWorkspaceId,
+    activeWorkspaceName,
+    activationStatus.completedSteps,
+    activationStatus.hasInitialBalance,
+    activationStatus.hasInflow,
+    activationStatus.hasOutflow,
+    activationStatus.hasReceivable,
+    activationStatus.isComplete,
+    userId,
+  ]);
+
   return (
     <div className="flex flex-col gap-5 pb-8">
-      <div className={`${PANEL_SURFACE} px-6 py-5`}>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Caixa</p>
-            <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">Leitura rapida do caixa</h2>
-            <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-300">
-              {userName ? `${userName}, veja o que entrou, saiu e exige acao.` : 'Veja o que entrou, saiu e exige acao no workspace ativo.'}
-            </p>
-          </div>
-          <div className="flex items-center justify-between gap-2 sm:justify-end">
-            <div className="min-w-0 flex-1 rounded-2xl bg-slate-100 px-4 py-2 text-left dark:bg-slate-700 sm:flex-none sm:text-right">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Workspace ativo</p>
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-100 truncate sm:whitespace-nowrap">
-                {activeWorkspaceName || 'Carregando workspace'}
+      <section className={`${PANEL_SURFACE} overflow-hidden`}>
+        <div className="p-5 sm:p-6 lg:p-7">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Caixa</p>
+                  <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white sm:text-xl">Leitura rapida do caixa</h2>
+                  <p className="mt-1 max-w-2xl text-sm font-medium text-slate-500 dark:text-slate-300">
+                    {userName ? `${userName}, veja caixa real, previsto curto, pendente e vencido antes de abrir o resto.` : 'Veja caixa real, previsto curto, pendente e vencido antes de abrir o resto.'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex max-w-full items-center rounded-full bg-slate-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:bg-slate-900 dark:text-slate-300">
+                    <span className="truncate">{activeWorkspaceName || 'Workspace ativo'}</span>
+                  </span>
+                  {onNavigateToSettings && (
+                    <button
+                      type="button"
+                      onClick={onNavigateToSettings}
+                      aria-label="Abrir ajustes"
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-slate-100"
+                    >
+                      <SettingsIcon size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/85 p-4 xl:hidden dark:border-amber-500/20 dark:bg-amber-500/10">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-xl bg-amber-100 p-2 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                    <CircleAlert size={15} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">O que pede atencao</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{focusNote.title}</p>
+                    <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-300">{focusNote.description}</p>
+                  </div>
+                </div>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                  <CompactSignal label="Hoje" value={String(reminderSummary.dueTodayCount)} />
+                  <CompactSignal label="7 dias" value={String(reminderSummary.dueThisWeekCount)} />
+                  <CompactSignal label="Alertas" value={String(metrics.activeAlerts)} />
+                </div>
+              </div>
+
+              <div className="mt-5 flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Caixa real</p>
+                  <h3 className="mt-2 text-4xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-5xl">
+                    {valueOrHidden(metrics.currentBalance)}
+                  </h3>
+                  <p className="mt-2 max-w-lg text-sm font-semibold text-slate-500 dark:text-slate-300">
+                    Dinheiro confirmado nas contas. Pendencia e atraso ficam fora deste total.
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                  <Wallet size={18} />
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <ComparisonMetricCard
+                  label="Caixa real"
+                  value={valueOrHidden(metrics.currentBalance)}
+                  tone="cash"
+                  icon={<Wallet size={16} />}
+                  description="Dinheiro confirmado agora"
+                />
+                <ComparisonMetricCard
+                  label="Previsto curto"
+                  value={valueOrHidden(weeklyReviewReport.projectedWeekCash)}
+                  tone="forecast"
+                  icon={<CalendarClock size={16} />}
+                  description={nextReceivable.amount > 0 ? `${nextReceivable.dueLabel}. ${nextReceivable.note}` : nextReceivable.note}
+                />
+                <ComparisonMetricCard
+                  label="Pendente"
+                  value={valueOrHidden(metrics.pendingRevenueMonth)}
+                  tone="pending"
+                  icon={<Clock3 size={16} />}
+                  description={`${reminderSummary.pendingCount} itens no curto prazo`}
+                />
+                <ComparisonMetricCard
+                  label="Vencido"
+                  value={valueOrHidden(metrics.overdueRevenueAmount)}
+                  tone="overdue"
+                  icon={<AlertTriangle size={16} />}
+                  description={`${reminderSummary.overdueCount} itens fora do prazo`}
+                />
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleWeeklyReviewSubmit}
+                  disabled={isWeeklyReviewSubmitting || !canSubmitWeeklyReview}
+                  className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white dark:disabled:bg-slate-700"
+                >
+                  {isWeeklyReviewSubmitting ? 'Registrando...' : 'Registrar revisao semanal'}
+                </button>
+                {onNavigateToFlow && (
+                  <button
+                    type="button"
+                    onClick={onNavigateToFlow}
+                    className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"
+                  >
+                    Abrir fluxo de caixa
+                  </button>
+                )}
+                <span className="inline-flex min-h-11 items-center rounded-full bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-300">
+                  {weeklyReviewRetention.completedWeeks}/{weeklyReviewRetention.expectedWeeks} semanas
+                </span>
+              </div>
+
+              <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-900/30">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Leitura rapida</p>
+                <p className="mt-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Priorize caixa real, previsto curto, pendente e vencido antes de abrir o restante.
+                </p>
+              </div>
+            </div>
+
+            <div className="hidden rounded-[1.75rem] border border-amber-200 bg-amber-50/85 p-5 xl:block dark:border-amber-500/20 dark:bg-amber-500/10">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">O que pede atencao</p>
+                  <p className="mt-1 text-xl font-semibold tracking-tight text-slate-900 dark:text-white">{focusNote.title}</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-300">{focusNote.description}</p>
+                </div>
+                <div className="rounded-2xl bg-amber-100 p-2.5 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                  <CircleAlert size={16} />
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                <UrgencyCard
+                  label="Hoje"
+                  value={String(reminderSummary.dueTodayCount)}
+                  description="recebimentos com data de hoje"
+                  tone="today"
+                />
+                <UrgencyCard
+                  label="7 dias"
+                  value={String(reminderSummary.dueThisWeekCount)}
+                  description="recebimentos no curto prazo"
+                  tone="week"
+                />
+                <UrgencyCard
+                  label="Alertas"
+                  value={String(metrics.activeAlerts)}
+                  description="sinais ativos para revisar"
+                  tone="alert"
+                />
+              </div>
+
+              {reminderSummary.pendingCount > 0 && (
+                <p className="mt-4 text-sm font-semibold text-amber-800 dark:text-amber-200">
+                  Recebiveis pendentes no curto prazo: {reminderSummary.pendingCount} · {valueOrHidden(reminderSummary.pendingAmount)}
+                </p>
+              )}
+
+              <p className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-300">
+                {currentWeekReview
+                  ? `Revisao desta semana registrada em ${new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(currentWeekReview.reviewedAt))}.`
+                  : 'Ainda nao ha revisao registrada para a semana atual.'}
               </p>
             </div>
-            {onNavigateToSettings && (
-              <button
-                type="button"
-                onClick={onNavigateToSettings}
-                aria-label="Abrir ajustes"
-                className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-slate-100"
-              >
-                <SettingsIcon size={16} />
-              </button>
+          </div>
+        </div>
+
+        <div className={SECTION_DIVIDER}>
+          <div className="p-5 sm:p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Base da revisao</p>
+                <h3 className="mt-1 text-lg font-semibold tracking-tight text-slate-900 dark:text-white">Confirmado, previsto e vencido da semana</h3>
+                <p className="mt-2 max-w-2xl text-sm font-semibold text-slate-500 dark:text-slate-300">
+                  A acao principal fica no topo. Esta base mostra o que sustenta a revisao semanal de caixa.
+                </p>
+                <p className="mt-3 inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-900 dark:text-slate-300">
+                  {weeklyReviewRetention.completedWeeks}/{weeklyReviewRetention.expectedWeeks} semanas registradas
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+              <StateRow
+                label="Confirmado"
+                description="Entradas e saidas desta semana"
+                value={valueOrHidden(weeklyReviewReport.confirmedIncome)}
+                tone="confirmed"
+                icon={<CircleCheckBig size={16} />}
+              />
+              <StateRow
+                label="Previsto"
+                description="Caixa projetado ate o fechamento"
+                value={valueOrHidden(weeklyReviewReport.projectedWeekCash)}
+                tone="pending"
+                icon={<CalendarClock size={16} />}
+              />
+              <StateRow
+                label="Vencido"
+                description="Recebiveis fora do prazo"
+                value={valueOrHidden(weeklyReviewReport.overdueReceivables)}
+                tone="overdue"
+                icon={<AlertTriangle size={16} />}
+              />
+            </div>
+
+            <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-300">
+              {currentWeekReview
+                ? `Revisao desta semana registrada em ${new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(currentWeekReview.reviewedAt))}.`
+                : 'Ainda nao ha revisao registrada para a semana atual.'}
+            </p>
+
+            {(weeklyReviewError || weeklyReviewSuccess) && (
+              <p className={`mt-3 text-sm font-semibold ${weeklyReviewError ? 'text-rose-600 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300'}`} role="status">
+                {weeklyReviewError || weeklyReviewSuccess}
+              </p>
             )}
           </div>
         </div>
-      </div>
+      </section>
+
+      <section className={`${PANEL_SURFACE} overflow-hidden`}>
+        <div className="grid gap-0 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,0.95fr)]">
+          <div className="p-5 sm:p-6">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Estados financeiros</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">O que ja entrou, o que ainda nao entrou e o que esta atrasado</p>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-3">
+              <StateRow
+                label="Confirmado"
+                description="Ja entrou no caixa neste mes"
+                value={valueOrHidden(metrics.confirmedRevenueMonth)}
+                tone="confirmed"
+                icon={<CircleCheckBig size={16} />}
+              />
+              <StateRow
+                label="Pendente"
+                description="Previsto para este mes, fora do saldo atual"
+                value={valueOrHidden(metrics.pendingRevenueMonth)}
+                tone="pending"
+                icon={<Clock3 size={16} />}
+              />
+              <StateRow
+                label="Vencido"
+                description="Valor fora do prazo e ainda nao recebido"
+                value={valueOrHidden(metrics.overdueRevenueAmount)}
+                tone="overdue"
+                icon={<AlertTriangle size={16} />}
+              />
+            </div>
+          </div>
+
+          <div className="p-5 sm:p-6 lg:border-l lg:border-slate-200/80 dark:lg:border-slate-700/80">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Leitura de recebiveis</p>
+            <div className="mt-4 space-y-3">
+              <MiniSummaryRow
+                label="Pendente"
+                count={reminderSummary.pendingCount}
+                value={valueOrHidden(reminderSummary.pendingAmount)}
+                tone="pending"
+              />
+              <MiniSummaryRow
+                label="Vencido"
+                count={reminderSummary.overdueCount}
+                value={valueOrHidden(reminderSummary.overdueAmount)}
+                tone="overdue"
+              />
+            </div>
+            <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-300">
+              Recebivel pendente nao aparece como dinheiro disponivel. Recebivel vencido pede acao antes de contar com ele.
+            </p>
+          </div>
+        </div>
+
+        <div className={SECTION_DIVIDER}>
+          <div className="p-5 sm:p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Acoes principais</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">Siga para as telas que mudam a decisao do dia</p>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+              <PrimaryActionButton
+                title="Ver transacoes"
+                description="Confira o que entrou, saiu e precisa de ajuste."
+                onClick={onNavigateToHistory}
+              />
+              <PrimaryActionButton
+                title="Abrir fluxo de caixa"
+                description="Leia o movimento do periodo sem sair do core financeiro."
+                onClick={onNavigateToFlow}
+              />
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <QuickActionButton
+                title={insightsActionTitle}
+                description={insightsActionDescription}
+                onClick={onNavigateToInsights}
+              />
+              <QuickActionButton
+                title="Ver receitas previstas"
+                description="Acompanhe o que ainda deve entrar no caixa nos proximos dias."
+                onClick={onNavigateToFlow}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
 
       {!activationStatus.isComplete && (
         <section className={`${PANEL_SURFACE} p-5`}>
@@ -710,217 +1087,15 @@ const Dashboard: React.FC<DashboardProps> = ({
           </form>
         </section>
       )}
-
-      <section className={`${PANEL_SURFACE} p-6`}>
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.18fr)_minmax(280px,0.82fr)] lg:items-start">
-          <div className="min-w-0">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Saldo atual</p>
-                <h3 className="mt-2 text-4xl font-semibold tracking-tight text-slate-950 dark:text-white">
-                  {valueOrHidden(metrics.currentBalance)}
-                </h3>
-                <p className="mt-2 max-w-md text-sm font-semibold text-slate-500 dark:text-slate-300">
-                  Dinheiro confirmado nas contas. Valores pendentes e vencidos nao entram neste total.
-                </p>
-              </div>
-              <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-                <Wallet size={18} />
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/30">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Leitura rapida</p>
-              <p className="mt-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                Priorize saldo confirmado, entradas e saidas do mes, e o proximo recebivel antes de abrir o restante.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            <ComparisonMetricCard
-              label="Entradas"
-              value={valueOrHidden(metrics.inflowMonth)}
-              tone="positive"
-              icon={<ArrowUpRight size={16} />}
-              description="Confirmadas no mes"
-            />
-            <ComparisonMetricCard
-              label="Saidas"
-              value={valueOrHidden(metrics.outflowMonth)}
-              tone="negative"
-              icon={<ArrowDownRight size={16} />}
-              description="Registradas no mes"
-            />
-            <ComparisonMetricCard
-              label="Proximo recebivel"
-              value={valueOrHidden(nextReceivable.amount)}
-              tone={nextReceivable.amount > 0 ? 'scheduled' : 'neutral'}
-              icon={<CalendarClock size={16} />}
-              description={nextReceivable.amount > 0 ? `${nextReceivable.dueLabel}. ${nextReceivable.note}` : nextReceivable.note}
-            />
-          </div>
-        </div>
-      </section>
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,0.95fr)]">
-        <section className={`${PANEL_SURFACE} order-2 p-5 lg:order-1`}>
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Estados financeiros</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">O que ja entrou, o que ainda nao entrou e o que esta atrasado</p>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-col gap-3">
-            <StateRow
-              label="Confirmado"
-              description="Ja entrou no caixa neste mes"
-              value={valueOrHidden(metrics.confirmedRevenueMonth)}
-              tone="confirmed"
-              icon={<CircleCheckBig size={16} />}
-            />
-            <StateRow
-              label="Pendente"
-              description="Previsto para este mes, fora do saldo atual"
-              value={valueOrHidden(metrics.pendingRevenueMonth)}
-              tone="pending"
-              icon={<Clock3 size={16} />}
-            />
-            <StateRow
-              label="Vencido"
-              description="Valor fora do prazo e ainda nao recebido"
-              value={valueOrHidden(metrics.overdueRevenueAmount)}
-              tone="overdue"
-              icon={<AlertTriangle size={16} />}
-            />
-          </div>
-        </section>
-
-        <section className="order-1 rounded-3xl border border-amber-200 bg-amber-50/80 p-5 shadow-[0_18px_45px_-28px_rgba(245,158,11,0.45)] dark:border-amber-500/20 dark:bg-amber-500/10 lg:order-2">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">O que pede atencao</p>
-              <p className="mt-1 text-xl font-semibold tracking-tight text-slate-900 dark:text-white">{focusNote.title}</p>
-              <p className="mt-2 text-sm font-semibold text-slate-600 dark:text-slate-300">{focusNote.description}</p>
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                {onNavigateToHistory && (
-                  <button
-                    type="button"
-                    onClick={onNavigateToHistory}
-                    className="inline-flex min-h-10 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
-                  >
-                    Revisar transacoes
-                  </button>
-                )}
-                {onNavigateToFlow && (
-                  <button
-                    type="button"
-                    onClick={onNavigateToFlow}
-                    className="inline-flex min-h-10 items-center justify-center rounded-2xl border border-amber-200 bg-white/70 px-4 py-2 text-sm font-semibold text-amber-800 transition-colors hover:bg-white dark:border-amber-500/20 dark:bg-slate-900/20 dark:text-amber-200"
-                  >
-                    Ver previsto vs realizado
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="rounded-2xl bg-amber-100 p-2.5 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-              <CircleAlert size={16} />
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <UrgencyCard
-              label="Hoje"
-              value={String(reminderSummary.dueTodayCount)}
-              description="recebimentos com data de hoje"
-              tone="today"
-            />
-            <UrgencyCard
-              label="7 dias"
-              value={String(reminderSummary.dueThisWeekCount)}
-              description="recebimentos no curto prazo"
-              tone="week"
-            />
-            <UrgencyCard
-              label="Alertas"
-              value={String(metrics.activeAlerts)}
-              description="sinais ativos para revisar"
-              tone="alert"
-            />
-          </div>
-
-          {reminderSummary.pendingCount > 0 && (
-            <p className="mt-4 text-sm font-semibold text-amber-800 dark:text-amber-200">
-              Recebiveis pendentes no curto prazo: {reminderSummary.pendingCount} · {valueOrHidden(reminderSummary.pendingAmount)}
-            </p>
-          )}
-        </section>
-
-        <section className={`${PANEL_SURFACE} order-3 p-5`}>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Leitura de recebiveis</p>
-          <div className="mt-4 space-y-3">
-            <MiniSummaryRow
-              label="Pendente"
-              count={reminderSummary.pendingCount}
-              value={valueOrHidden(reminderSummary.pendingAmount)}
-              tone="pending"
-            />
-            <MiniSummaryRow
-              label="Vencido"
-              count={reminderSummary.overdueCount}
-              value={valueOrHidden(reminderSummary.overdueAmount)}
-              tone="overdue"
-            />
-          </div>
-          <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-300">
-            Recebivel pendente nao aparece como dinheiro disponivel. Recebivel vencido pede acao antes de contar com ele.
-          </p>
-        </section>
-      </div>
-
-      <div className={`${PANEL_SURFACE} p-5`}>
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Acoes principais</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">Siga para as telas que mudam a decisao do dia</p>
-          </div>
-        </div>
-        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
-          <PrimaryActionButton
-            title="Ver transacoes"
-            description="Confira o que entrou, saiu e precisa de ajuste."
-            onClick={onNavigateToHistory}
-          />
-          <PrimaryActionButton
-            title="Abrir fluxo de caixa"
-            description="Leia o movimento do periodo sem sair do core financeiro."
-            onClick={onNavigateToFlow}
-          />
-        </div>
-
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <QuickActionButton
-            title={insightsActionTitle}
-            description={insightsActionDescription}
-            onClick={onNavigateToInsights}
-          />
-          <QuickActionButton
-            title="Ver receitas previstas"
-            description="Acompanhe o que ainda deve entrar no caixa nos proximos dias."
-            onClick={onNavigateToFlow}
-          />
-        </div>
-      </div>
     </div>
   );
 };
 
 const COMPARISON_TONE_CLASS_MAP = {
-  positive: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300',
-  negative: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300',
-  scheduled: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300',
-  neutral: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-200',
+  cash: 'border-slate-200/80 bg-slate-50/80 text-slate-700 dark:border-slate-700 dark:bg-slate-900/30 dark:text-slate-200',
+  forecast: 'border-emerald-200/80 bg-emerald-50/80 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300',
+  pending: 'border-amber-200/80 bg-amber-50/80 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300',
+  overdue: 'border-rose-200/80 bg-rose-50/80 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300',
 };
 
 const STATE_TONE_CLASS_MAP = {
@@ -988,7 +1163,7 @@ const ComparisonMetricCard: React.FC<{
   label: string;
   value: string;
   icon: React.ReactNode;
-  tone: 'positive' | 'negative' | 'scheduled' | 'neutral';
+  tone: 'cash' | 'forecast' | 'pending' | 'overdue';
   description?: string;
 }> = ({
   label,
@@ -997,12 +1172,12 @@ const ComparisonMetricCard: React.FC<{
   tone,
   description,
 }) => (
-  <div className={`rounded-2xl border p-4 ${COMPARISON_TONE_CLASS_MAP[tone]}`}>
+  <div className={`rounded-[1.5rem] border px-4 py-3 shadow-none ${COMPARISON_TONE_CLASS_MAP[tone]}`}>
     <div className="flex items-center justify-between">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">{label}</p>
       <span className="rounded-lg p-1.5">{icon}</span>
     </div>
-    <p className="mt-2 text-xl font-semibold tracking-tight text-slate-900 dark:text-white">{value}</p>
+    <p className="mt-2 text-lg font-semibold tracking-tight text-slate-950 dark:text-white sm:text-xl">{value}</p>
     {description && <p className="mt-1 text-sm font-medium opacity-80">{description}</p>}
   </div>
 );
@@ -1047,6 +1222,19 @@ const UrgencyCard: React.FC<{
     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{label}</p>
     <p className="mt-2 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">{value}</p>
     <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-300">{description}</p>
+  </div>
+);
+
+const CompactSignal: React.FC<{
+  label: string;
+  value: string;
+}> = ({
+  label,
+  value,
+}) => (
+  <div className="rounded-2xl border border-white/70 bg-white/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/20">
+    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">{label}</p>
+    <p className="mt-1 text-base font-semibold tracking-tight text-slate-950 dark:text-white">{value}</p>
   </div>
 );
 

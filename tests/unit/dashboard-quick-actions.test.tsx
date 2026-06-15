@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import Dashboard from '../../components/Dashboard';
 import { Account } from '../../models/Account';
-import { ReminderType, type Reminder } from '../../types';
+import { Category, ReminderType, TransactionType, type Receivable, type Reminder, type Transaction } from '../../types';
 
 const analyticsMocks = vi.hoisted(() => ({
   trackProductEventOnce: vi.fn(() => true),
@@ -34,6 +34,19 @@ describe('dashboard quick actions', () => {
     balance: 100,
     currency: 'BRL',
     created_at: new Date().toISOString(),
+  });
+
+  const buildReceivable = (): Receivable => ({
+    id: 'rec-1',
+    description: 'Recebimento futuro',
+    expected_amount: 200,
+    realized_amount: 0,
+    due_date: new Date().toISOString(),
+    realized_at: null,
+    status: 'open',
+    source: 'manual',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   });
 
   it('exposes contextual access to transactions, cash flow, insights and revenue forecast', () => {
@@ -79,7 +92,7 @@ describe('dashboard quick actions', () => {
     );
   });
 
-  it('surfaces next receivable as a first-class dashboard metric', () => {
+  it('surfaces the cash decision strip as a first-class dashboard metric', () => {
     render(
       <Dashboard
         userName="Flow User"
@@ -93,8 +106,102 @@ describe('dashboard quick actions', () => {
       />,
     );
 
-    expect(screen.getAllByText(/Proximo recebivel/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Receita prevista/i)).toBeTruthy();
+    expect(screen.getAllByText(/Caixa real/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Previsto curto/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Pendente/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Vencido/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /registrar revisao semanal/i })).toBeTruthy();
+  });
+
+  it('tracks completed financial activation when the minimum base is present', async () => {
+    render(
+      <Dashboard
+        userName="Flow User"
+        userId="user-1"
+        activeWorkspaceId="workspace-1"
+        activeWorkspaceName="Workspace 1"
+        transactions={[
+          {
+            id: 'tx-income',
+            amount: 800,
+            type: TransactionType.RECEITA,
+            category: Category.NEGOCIO,
+            description: 'Pagamento de servico',
+            date: new Date().toISOString(),
+          } as Transaction,
+          {
+            id: 'tx-expense',
+            amount: 180,
+            type: TransactionType.DESPESA,
+            category: Category.NEGOCIO,
+            description: 'Custo operacional',
+            date: new Date().toISOString(),
+          } as Transaction,
+        ]}
+        accounts={[buildAccount()]}
+        alerts={[]}
+        reminders={[]}
+        receivables={[buildReceivable()]}
+        hideValues={false}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(analyticsMocks.trackProductEventOnce).toHaveBeenCalledWith(
+        'activation_financial_base_completed',
+        'workspace-1',
+        expect.objectContaining({
+          source: 'dashboard_activation',
+          completed_steps: 4,
+          has_initial_balance: true,
+          has_inflow: true,
+          has_outflow: true,
+          has_receivable: true,
+        }),
+      );
+    });
+  });
+
+  it('records the weekly cash review ritual from the dashboard', async () => {
+    render(
+      <Dashboard
+        userName="Flow User"
+        userId="user-1"
+        activeWorkspaceId="workspace-1"
+        activeWorkspaceName="Workspace 1"
+        transactions={[
+          {
+            id: 'tx-1',
+            amount: 800,
+            type: TransactionType.RECEITA,
+            category: Category.NEGOCIO,
+            description: 'Pagamento de servico',
+            date: new Date().toISOString(),
+          } as Transaction,
+        ]}
+        accounts={[buildAccount()]}
+        alerts={[]}
+        reminders={[]}
+        receivables={[buildReceivable()]}
+        hideValues={false}
+      />,
+    );
+
+    analyticsMocks.trackProductEventOnce.mockClear();
+
+    fireEvent.click(screen.getByRole('button', { name: /registrar revisao semanal/i }));
+
+    await waitFor(() => {
+      expect(analyticsMocks.trackProductEventOnce).toHaveBeenCalledWith(
+        'weekly_cash_review_completed',
+        expect.stringContaining('workspace-1'),
+        expect.objectContaining({
+          source: 'weekly_cash_review',
+        }),
+      );
+    });
+
+    expect(screen.getByText(/Revisao desta semana registrada/i)).toBeTruthy();
   });
 
   it('surfaces a focus note for the current period', () => {

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { optionalAuthMiddleware } from '../middleware/auth';
-import { authLimiterByUser, authRefreshLimiterByUser } from '../middleware/rateLimit';
+import { authLimiterByUser, authRefreshLimiterByUser, firebaseSessionLimiterByUser } from '../middleware/rateLimit';
 import {
   loginController,
   firebaseSessionController,
@@ -23,7 +23,7 @@ const router = Router();
  * Returns: { token: string, expiresIn: number, user: { userId: string, email: string } }
  */
 router.post('/login', authLimiterByUser, validate(LoginSchema), loginController);
-router.post('/firebase', authLimiterByUser, validate(FirebaseSessionSchema), firebaseSessionController);
+router.post('/firebase', firebaseSessionLimiterByUser, validate(FirebaseSessionSchema), firebaseSessionController);
 
 /**
  * GET /api/auth/oauth/google/start

@@ -301,6 +301,43 @@ describe('firestoreWorkspaceStore', () => {
     expect(firestoreWorkspaceStoreMocks.batchCommitMock).toHaveBeenCalledTimes(1);
   });
 
+  it('strips undefined optional fields before writing workspace transactions', async () => {
+    await replaceWorkspaceEntityCollection(
+      'transactions',
+      [
+        {
+          id: 'tmp_tx_1',
+          amount: 700,
+          type: 'Despesa',
+          category: 'Negócio',
+          description: 'Entrada inicial teste',
+          date: '2026-06-12T20:04:40.000Z',
+          payment_method: undefined,
+          account_id: undefined,
+        },
+      ],
+      [],
+      {
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+        workspaceId: 'ws-1',
+      },
+    );
+
+    const transactionWrite = firestoreWorkspaceStoreMocks.batchSetMock.mock.calls.find(
+      ([ref]) => ref.path === 'workspaces/ws-1/transactions/generated-1',
+    );
+
+    expect(transactionWrite).toBeTruthy();
+    expect(transactionWrite?.[1]).toEqual(expect.objectContaining({
+      id: 'generated-1',
+      amount: 700,
+      description: 'Entrada inicial teste',
+    }));
+    expect(transactionWrite?.[1]).not.toHaveProperty('payment_method');
+    expect(transactionWrite?.[1]).not.toHaveProperty('account_id');
+  });
+
   it('reads and writes future workspace-scoped collections with tenant context', async () => {
     firestoreWorkspaceStoreMocks.getDocsMock.mockResolvedValueOnce({
       docs: [
@@ -348,6 +385,29 @@ describe('firestoreWorkspaceStore', () => {
         tenant_id: 'tenant-1',
         workspace_id: 'ws-1',
         user_id: 'user-1',
+      }),
+      { merge: true },
+    );
+  });
+
+  it('strips undefined fields before upserting workspace scoped documents', async () => {
+    await upsertWorkspaceCollectionDocument('subscriptions', {
+      id: 'sub-3',
+      name: 'Spotify',
+      amount: 21.9,
+      cycle: 'monthly',
+      status: 'active',
+      notes: undefined,
+    }, {
+      userId: 'user-1',
+      tenantId: 'tenant-1',
+      workspaceId: 'ws-1',
+    });
+
+    expect(firestoreWorkspaceStoreMocks.setDocMock).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'workspaces/ws-1/subscriptions/sub-3' }),
+      expect.not.objectContaining({
+        notes: undefined,
       }),
       { merge: true },
     );

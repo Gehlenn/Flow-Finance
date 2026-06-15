@@ -9,6 +9,7 @@ export interface CFOEvaluationCase {
     | 'mentions_forecast'
     | 'mentions_risk'
     | 'avoids_absolute_promises'
+    | 'avoids_raw_context_leak'
     | 'has_explainability'
     | 'has_low_confidence_fallback'
     | 'uses_reduced_depth_when_limited'
@@ -25,7 +26,23 @@ export interface CFOEvaluationResult {
 }
 
 function normalizeText(text: string): string {
-  return text.toLowerCase();
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+const RAW_CONTEXT_MARKERS = [
+  '=== dados',
+  'contas:',
+  'total de transacoes',
+  'regra operacional',
+  'classificacao de caixa:',
+];
+
+function hasRawContextLeak(answer: string): boolean {
+  const normalized = normalizeText(answer);
+  return RAW_CONTEXT_MARKERS.some((marker) => normalized.includes(marker));
 }
 
 function hasExplainability(explainability?: AICFOExplainability): boolean {
@@ -76,6 +93,9 @@ function evaluateTraits(response: AICFOResponse, traits: CFOEvaluationCase['expe
           && !answer.includes('garantia')
           && !answer.includes('sempre')
           && !answer.includes('nunca');
+        break;
+      case 'avoids_raw_context_leak':
+        ok = !hasRawContextLeak(response.answer || '');
         break;
       case 'has_explainability':
         ok = hasExplainability(explainability);

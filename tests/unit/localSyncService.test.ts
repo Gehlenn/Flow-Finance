@@ -69,6 +69,7 @@ describe('pushToCloud', () => {
           items: [{ id: 'g1', updatedAt: '2026-01-01T00:00:00.000Z' }],
         }),
         credentials: 'include',
+        retries: 0,
         silent: true,
       }),
     );
@@ -79,7 +80,7 @@ describe('pushToCloud', () => {
 
     await expect(
       pushToCloud('goals', [{ id: 'g1', updatedAt: '2026-01-01T00:00:00.000Z' }]),
-    ).resolves.toBeUndefined();
+    ).resolves.toBeNull();
 
     expect(logWarnMock).toHaveBeenCalledWith(
       '[LocalSync] pushToCloud failed; keeping local state as source of truth',
@@ -105,7 +106,7 @@ describe('pullFromCloud', () => {
     const fakeResult = {
       since: null,
       serverTime: '2026-04-06T00:00:00.000Z',
-      entities: { goals: [], accounts: [], transactions: [], reminders: [], subscriptions: [] },
+      entities: { goals: [], accounts: [], transactions: [], reminders: [], receivables: [], subscriptions: [] },
     };
     apiRequestMock.mockResolvedValueOnce(fakeResult);
 
@@ -114,7 +115,7 @@ describe('pullFromCloud', () => {
     expect(result).toEqual(fakeResult);
     expect(apiRequestMock).toHaveBeenCalledWith(
       'http://localhost:3001/api/sync/pull',
-      expect.objectContaining({ method: 'GET', credentials: 'include' }),
+      expect.objectContaining({ method: 'GET', credentials: 'include', retries: 0 }),
     );
   });
 
@@ -137,7 +138,7 @@ describe('pullFromCloud', () => {
     apiRequestMock.mockResolvedValueOnce({
       since: '2026-01-01T00:00:00.000Z',
       serverTime: '2026-04-06T00:00:00.000Z',
-      entities: { goals: [], accounts: [], transactions: [], reminders: [], subscriptions: [] },
+      entities: { goals: [], accounts: [], transactions: [], reminders: [], receivables: [], subscriptions: [] },
     });
 
     await pullFromCloud('2026-01-01T00:00:00.000Z');
@@ -162,6 +163,7 @@ describe('hydrateGoalsFromCloud', () => {
       accounts: [],
       transactions: [],
       reminders: [],
+      receivables: [],
       subscriptions: [],
     },
   });
