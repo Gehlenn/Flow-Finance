@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 
-const ignoredDirs = new Set(['node_modules', 'coverage', 'dist', '.git', '.vercel', 'backend']);
+const ignoredDirs = new Set(['node_modules', 'coverage', 'dist', '.git', '.vercel', '.tmp', 'backend']);
 const defaultExcludedPatterns = [
   'tests/e2e/',
   'tests/firestore/',

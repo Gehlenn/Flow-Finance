@@ -51,14 +51,18 @@ async function openConsultorIA(page: Page): Promise<void> {
 
   expect(openedSection).toBe(true);
 
-  const openedConsultor = await clickFirstAvailable([
-    page.getByRole('tab', { name: /^Consultor$/i }),
-    page.getByRole('button', { name: /^Consultor$/i }),
-    page.getByRole('tab', { name: /^Consultor IA$/i }),
-    page.getByRole('button', { name: /^Consultor IA$/i }),
-  ]);
+  const consultorTab = page.getByRole('tab', {
+    name: /^(Consultor de caixa|Consultor IA|Consultor)$/i,
+  });
 
-  expect(openedConsultor).toBe(true);
+  if (await consultorTab.count()) {
+    await clickWithRetry(() => consultorTab.first());
+  }
+
+  await expect(page.locator('body')).toContainText(
+    /Consultor de caixa|Consultor IA|Plano de acao/i,
+    { timeout: 15000 },
+  );
 }
 
 test.describe('Insights + AI CFO', () => {

@@ -66,7 +66,7 @@ test.describe('Billing Flow', () => {
       await clickWithRetry(() => workspaceAdminButton);
 
       await expect(page.locator('body')).toContainText(
-        /Workspace Admin|Billing and usage|Read-only workspace role|Billing actions are unavailable|view-only for Workspace/i,
+        /Faturamento e uso do workspace|Workspace Admin|Billing and usage|Acesso somente leitura|Read-only workspace role|Billing actions are unavailable|view-only for Workspace/i,
         { timeout: 15000 },
       );
     } else {

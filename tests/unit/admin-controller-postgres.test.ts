@@ -11,6 +11,15 @@ const persistenceMocks = vi.hoisted(() => ({
 vi.mock('../../backend/src/services/persistence/postgresStateStore', () => persistenceMocks);
 vi.mock('../../backend/src/services/admin/workspaceStore', () => ({
   getWorkspaceUsers: vi.fn(() => []),
+  getWorkspaceUsersAsync: vi.fn(async () => []),
+  getWorkspacePersistenceHealthCheck: vi.fn(async () => ({
+    status: 'healthy',
+    mode: 'postgres',
+    durable: true,
+    configured: true,
+    required: false,
+    reason: 'postgres-ready',
+  })),
 }));
 
 async function loadControllerModule() {
@@ -135,7 +144,12 @@ describe('adminController Postgres read path', () => {
       to: '2026-03-31T23:59:59.999Z',
       resource: undefined,
     });
-    expect(persistenceMocks.queryWorkspaceUsageEvents).toHaveBeenCalledWith('ws-1', {
+    expect(persistenceMocks.queryWorkspaceUsageEvents).toHaveBeenNthCalledWith(1, 'ws-1', {
+      from: '2026-03-01T00:00:00.000Z',
+      to: '2026-03-31T23:59:59.999Z',
+      resource: undefined,
+    });
+    expect(persistenceMocks.queryWorkspaceUsageEvents).toHaveBeenNthCalledWith(2, 'ws-1', {
       from: '2026-03-01T00:00:00.000Z',
       to: '2026-03-31T23:59:59.999Z',
       resource: undefined,
@@ -148,11 +162,30 @@ describe('adminController Postgres read path', () => {
         to: '2026-03-31T23:59:59.999Z',
         resource: undefined,
       },
+      workspacePersistence: {
+        status: 'healthy',
+        mode: 'postgres',
+        durable: true,
+        configured: true,
+        required: false,
+        reason: 'postgres-ready',
+      },
       summary: {
         totals: { transactions: 4, aiQueries: 6, bankConnections: 1 },
         months: {
           '2026-03': { transactions: 4, aiQueries: 6, bankConnections: 1 },
         },
+        aiCost: expect.objectContaining({
+          workspaceId: 'ws-1',
+          estimatedCostUsd: 0,
+          totalTokens: 0,
+          requestCount: 0,
+          sampleCount: 0,
+          byProvider: {},
+          evidence: 'estimated_from_tokens',
+          basis: 'estimated_from_tokens',
+          disclaimer: 'Estimated from token metadata in usage events; not a real provider invoice.',
+        }),
       },
       events: [
         {
