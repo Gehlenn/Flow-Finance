@@ -84,7 +84,7 @@ describe('assistant reminder states', () => {
     render(
       <Assistant
         reminders={[
-          makeReminder({ id: 'active-fin', title: 'Receber consulta', amount: 300, date: '2026-06-12T10:00:00.000Z' }),
+          makeReminder({ id: 'active-fin', title: 'Receber consulta', amount: 300, date: '2099-06-12T10:00:00.000Z' }),
           makeReminder({ id: 'overdue-op', title: 'Agendar retorno', date: '2020-01-01T10:00:00.000Z', amount: undefined }),
           makeReminder({ id: 'done-1', title: 'Boleto pago', completed: true }),
         ]}
