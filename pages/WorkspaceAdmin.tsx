@@ -590,17 +590,17 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
                   <Users size={18} className="text-slate-500" />
                   <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-800 dark:text-white">Membros do workspace</h3>
                 </div>
-                <div className="grid grid-cols-[1fr_auto_auto] gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
                   <input
                     value={memberUserId}
                     onChange={(event) => setMemberUserId(event.target.value)}
                     placeholder="ID do usuario do membro"
-                    className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-100"
+                    className="min-w-0 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-100"
                   />
                   <select
                     value={memberRole}
                     onChange={(event) => setMemberRole(event.target.value as WorkspaceRole)}
-                    className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-100"
+                    className="min-w-0 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-100"
                   >
                     <option value="member">member</option>
                     <option value="viewer">viewer</option>
@@ -609,9 +609,9 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
                   <button
                     onClick={() => void handleAddMember()}
                     disabled={busy || !memberUserId.trim()}
-                    className="px-4 rounded-2xl bg-slate-900 text-white text-xs font-semibold uppercase tracking-[0.08em] disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+                    className="min-h-11 w-full rounded-2xl bg-slate-900 px-4 text-xs font-semibold uppercase tracking-[0.08em] text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 sm:w-auto"
                   >
-                    Add
+                    Adicionar
                   </button>
                 </div>
                 <div className="space-y-2">

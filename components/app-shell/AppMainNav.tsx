@@ -19,7 +19,7 @@ export interface AppMainNavProps {
 
 const NAV_BUTTON_CLASS_MAP = {
   buttonBase:
-    "flex min-h-9 min-w-0 flex-1 flex-col items-center justify-center gap-0 rounded-lg px-1 py-1 transition-colors duration-200 md:min-h-12 md:min-w-[7rem] md:flex-none md:flex-row md:gap-2 md:rounded-xl md:px-3 md:py-2 xl:min-w-0 xl:flex-col xl:gap-1 xl:px-1 xl:py-2",
+    "flex min-h-8 min-w-0 flex-1 flex-col items-center justify-center gap-0 rounded-lg px-1 py-1 transition-colors duration-200 md:min-h-12 md:min-w-[7rem] md:flex-none md:flex-row md:gap-2 md:rounded-xl md:px-3 md:py-2 xl:min-w-0 xl:flex-col xl:gap-1 xl:px-1 xl:py-2",
   active:
     "bg-slate-100 text-slate-950 shadow-sm dark:bg-slate-800 dark:text-white",
   inactive:
@@ -85,7 +85,7 @@ export const AppMainNav: React.FC<AppMainNavProps> = ({
 }) => (
   <nav
     aria-label="Navegacao principal"
-    className="flow-nav fixed bottom-[calc(0.35rem+env(safe-area-inset-bottom))] left-3 right-3 z-[60] grid grid-cols-4 items-stretch gap-1 rounded-xl border border-slate-200/80 bg-white/95 px-1 py-1 shadow-[0_14px_34px_-26px_rgba(15,23,42,0.36)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 md:left-1/2 md:right-auto md:bottom-5 md:w-[min(92vw,44rem)] md:-translate-x-1/2 md:justify-center md:gap-1.5 md:rounded-2xl md:px-2 md:py-1.5 md:shadow-[0_16px_40px_-26px_rgba(15,23,42,0.35)] xl:bottom-auto xl:left-5 xl:right-auto xl:top-1/2 xl:w-[5.25rem] xl:-translate-x-0 xl:-translate-y-1/2 xl:grid-cols-1 xl:gap-1.5 xl:px-1.5 xl:py-2"
+    className="flow-nav mb-3 grid grid-cols-4 items-stretch gap-1 rounded-2xl border border-slate-200/80 bg-white/95 px-2 py-1.5 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.35)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 md:justify-center md:gap-1.5 md:px-2 md:py-1.5 xl:fixed xl:bottom-auto xl:left-5 xl:right-auto xl:top-1/2 xl:z-[60] xl:mb-0 xl:w-[5.25rem] xl:-translate-y-1/2 xl:grid-cols-1 xl:gap-1.5 xl:px-1.5 xl:py-2"
   >
     {items.map((item) => (
       <NavButton

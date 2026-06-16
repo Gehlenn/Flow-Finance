@@ -23,7 +23,7 @@ describe('appShellLayout', () => {
     expect(getActiveTabContainerClass('cfo')).toBe('max-w-4xl');
     expect(getActiveTabContainerClass('settings')).toBe('max-w-xl');
 
-    expect(getShellContentSpacingClass(true)).toBe('pt-16 md:pt-16');
+    expect(getShellContentSpacingClass(true)).toBe('pt-12 md:pt-16');
     expect(getShellContentSpacingClass(false)).toBe('pt-4 md:pt-5');
   });
 

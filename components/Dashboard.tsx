@@ -688,19 +688,19 @@ const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className="flex flex-col gap-5 pb-8">
       <section className={`${PANEL_SURFACE} overflow-hidden`}>
-        <div className="p-5 sm:p-6 lg:p-7">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+        <div className="p-4 sm:p-6 lg:p-7">
+          <div className="flex flex-col gap-4 sm:gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div className="min-w-0 flex-1">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Caixa</p>
                   <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white sm:text-xl">Leitura rapida do caixa</h2>
-                  <p className="mt-1 max-w-2xl text-sm font-medium text-slate-500 dark:text-slate-300">
+                  <p className="mt-1 max-w-2xl text-xs font-medium text-slate-500 dark:text-slate-300 sm:text-sm">
                     {userName ? `${userName}, veja caixa real, previsto curto, pendente e vencido antes de abrir o resto.` : 'Veja caixa real, previsto curto, pendente e vencido antes de abrir o resto.'}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex max-w-full items-center rounded-full bg-slate-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:bg-slate-900 dark:text-slate-300">
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="inline-flex max-w-[7rem] items-center rounded-full bg-slate-100 px-2.5 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-900 dark:text-slate-300 sm:max-w-full sm:px-3 sm:text-xs sm:tracking-[0.16em]">
                     <span className="truncate">{activeWorkspaceName || 'Workspace ativo'}</span>
                   </span>
                   {onNavigateToSettings && (
@@ -708,7 +708,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                       type="button"
                       onClick={onNavigateToSettings}
                       aria-label="Abrir ajustes"
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-slate-100"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-slate-100 sm:h-11 sm:w-11"
                     >
                       <SettingsIcon size={16} />
                     </button>
@@ -716,7 +716,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               </div>
 
-              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/85 p-4 xl:hidden dark:border-amber-500/20 dark:bg-amber-500/10">
+              <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50/85 p-3 sm:mt-4 sm:p-4 xl:hidden dark:border-amber-500/20 dark:bg-amber-500/10">
                 <div className="flex items-start gap-3">
                   <div className="rounded-xl bg-amber-100 p-2 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
                     <CircleAlert size={15} />
@@ -724,23 +724,23 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">O que pede atencao</p>
                     <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{focusNote.title}</p>
-                    <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-300">{focusNote.description}</p>
+                    <p className="mt-1 text-xs font-medium text-slate-600 dark:text-slate-300 sm:text-sm">{focusNote.description}</p>
                   </div>
                 </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="mt-2 grid grid-cols-3 gap-1.5 sm:mt-3 sm:gap-2">
                   <CompactSignal label="Hoje" value={String(reminderSummary.dueTodayCount)} />
                   <CompactSignal label="7 dias" value={String(reminderSummary.dueThisWeekCount)} />
                   <CompactSignal label="Alertas" value={String(metrics.activeAlerts)} />
                 </div>
               </div>
 
-              <div className="mt-5 flex items-start justify-between gap-4">
+              <div className="mt-4 flex items-start justify-between gap-3 sm:mt-5 sm:gap-4">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Caixa real</p>
-                  <h3 className="mt-2 text-4xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-5xl">
+                  <h3 className="mt-1 text-3xl font-semibold tracking-tight text-slate-950 dark:text-white sm:mt-2 sm:text-5xl">
                     {valueOrHidden(metrics.currentBalance)}
                   </h3>
-                  <p className="mt-2 max-w-lg text-sm font-semibold text-slate-500 dark:text-slate-300">
+                  <p className="mt-1 max-w-lg text-xs font-semibold text-slate-500 dark:text-slate-300 sm:mt-2 sm:text-sm">
                     Dinheiro confirmado nas contas. Pendencia e atraso ficam fora deste total.
                   </p>
                 </div>
@@ -749,7 +749,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-3 2xl:grid-cols-4">
                 <ComparisonMetricCard
                   label="Caixa real"
                   value={valueOrHidden(metrics.currentBalance)}
@@ -1172,13 +1172,13 @@ const ComparisonMetricCard: React.FC<{
   tone,
   description,
 }) => (
-  <div className={`rounded-[1.5rem] border px-4 py-3 shadow-none ${COMPARISON_TONE_CLASS_MAP[tone]}`}>
+  <div className={`min-h-[76px] rounded-2xl border px-3 py-2.5 shadow-none sm:min-h-[132px] sm:rounded-[1.5rem] sm:px-5 sm:py-5 ${COMPARISON_TONE_CLASS_MAP[tone]}`}>
     <div className="flex items-center justify-between">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">{label}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] opacity-70 sm:text-xs sm:tracking-[0.18em]">{label}</p>
       <span className="rounded-lg p-1.5">{icon}</span>
     </div>
-    <p className="mt-2 text-lg font-semibold tracking-tight text-slate-950 dark:text-white sm:text-xl">{value}</p>
-    {description && <p className="mt-1 text-sm font-medium opacity-80">{description}</p>}
+    <p className="mt-2 text-lg font-semibold tracking-tight text-slate-950 dark:text-white sm:mt-3 sm:text-[1.75rem]">{value}</p>
+    {description && <p className="mt-1 hidden text-sm font-medium opacity-80 sm:block">{description}</p>}
   </div>
 );
 
@@ -1232,7 +1232,7 @@ const CompactSignal: React.FC<{
   label,
   value,
 }) => (
-  <div className="rounded-2xl border border-white/70 bg-white/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/20">
+  <div className="rounded-2xl border border-white/70 bg-white/80 px-2.5 py-1.5 sm:px-3 sm:py-2 dark:border-slate-700 dark:bg-slate-900/20">
     <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">{label}</p>
     <p className="mt-1 text-base font-semibold tracking-tight text-slate-950 dark:text-white">{value}</p>
   </div>

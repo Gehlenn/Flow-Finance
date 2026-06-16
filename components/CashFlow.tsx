@@ -605,10 +605,10 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
                 <div className="h-[220px] w-full" style={{ minHeight: '220px' }}>
                   {categoryData.length > 0 ? (
                     <ResponsiveContainer width="100%" height={220} minWidth={0}>
-                      <BarChart data={categoryData} layout="vertical" margin={{ left: -30, right: 30 }}>
+                      <BarChart data={categoryData} layout="vertical" margin={{ left: 8, right: 16 }}>
                         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={gridColor} />
                         <XAxis type="number" hide />
-                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 600, fill: FLOW_CHART_UI.axis }} />
+                        <YAxis dataKey="name" type="category" width={86} axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 600, fill: FLOW_CHART_UI.axis }} />
                         <Tooltip cursor={{ fill: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(99,102,241,0.05)' }} content={<CustomTooltip hideValues={hideValues} isPercentage total={totalsByPeriod.expenses} />} />
                         <Bar dataKey="value" radius={[0, 10, 10, 0]} barSize={16}>
                           {categoryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}

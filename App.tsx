@@ -340,8 +340,14 @@ const App: React.FC = () => {
         />
 
         <div
-          className={`${activeTabContainerClass} mx-auto px-4 ${getShellContentSpacingClass(showTopStatus)} pb-[calc(9rem+env(safe-area-inset-bottom))] md:pb-44`}
+          className={`${activeTabContainerClass} mx-auto px-4 ${getShellContentSpacingClass(showTopStatus)} pb-10 md:pb-12`}
         >
+          <AppMainNav
+            items={mainNavigationItems}
+            activeSectionTab={activeNavigationSection.defaultTab}
+            onSelectTab={navigation.setActiveTab}
+          />
+
           <AppSubNav
             label={activeNavigationSection.label}
             items={activeNavigationSection.items}
@@ -355,12 +361,6 @@ const App: React.FC = () => {
         <AppFab
           visible={showFloatingEntryButton}
           onClick={() => setShowAIInput(true)}
-        />
-
-        <AppMainNav
-          items={mainNavigationItems}
-          activeSectionTab={activeNavigationSection.defaultTab}
-          onSelectTab={navigation.setActiveTab}
         />
 
         {showAIInput && (

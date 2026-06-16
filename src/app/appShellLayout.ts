@@ -28,5 +28,5 @@ export function shouldShowFloatingEntryButton(activeTab: string): boolean {
 }
 
 export function getShellContentSpacingClass(showTopStatus: boolean): string {
-  return showTopStatus ? 'pt-16 md:pt-16' : 'pt-4 md:pt-5';
+  return showTopStatus ? 'pt-12 md:pt-16' : 'pt-4 md:pt-5';
 }

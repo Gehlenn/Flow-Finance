@@ -162,6 +162,6 @@ describe('App shell demo status spacing', () => {
     expect(screen.getByText(/Demo Pro/i)).toBeTruthy();
 
     const contentWrapper = container.querySelector('div.max-w-4xl');
-    expect(contentWrapper?.className).toContain('pt-16');
+    expect(contentWrapper?.className).toContain('pt-12 md:pt-16');
   });
 });
