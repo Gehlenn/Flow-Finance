@@ -151,7 +151,7 @@ vi.mock('../../components/dev/AITaskQueueMonitor', () => ({
 import App from '../../App';
 
 describe('App shell navigation', () => {
-  it('exibe a subnav compacta no mobile e reforca a nav principal', () => {
+  it('exibe subnav em grid e mantem a nav principal sem sobrepor o conteudo mobile', () => {
     render(<App />);
 
     const subsectionTabs = screen.getByRole('tablist', { name: 'Caixa subsecoes' });
@@ -159,14 +159,15 @@ describe('App shell navigation', () => {
     const mainNav = screen.getByRole('navigation', { name: 'Navegacao principal' });
     const fab = screen.getByRole('button', { name: /Adicionar lancamento/i });
 
-    expect(subsectionTabs.className).toContain('flex');
-    expect(subsectionTabs.className).toContain('overflow-x-auto');
-    expect(subsectionTabs.className).toContain('md:grid');
-    expect(subsectionTabs.getAttribute('style')).toContain('repeat(auto-fit, minmax(8.5rem, 1fr))');
+    expect(subsectionTabs.className).toContain('grid');
+    expect(subsectionTabs.className).toContain('grid-cols-3');
+    expect(subsectionTabs.className).toContain('md:grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))]');
     expect(activeSectionTab.getAttribute('aria-selected')).toBe('true');
     expect(mainNav.className).toContain('grid-cols-4');
-    expect(mainNav.className).toContain('safe-area-inset-bottom');
-    expect(fab.className).toContain('safe-area-inset-bottom');
+    expect(mainNav.className).toContain('mb-3');
+    expect(mainNav.className).toContain('xl:fixed');
+    expect(fab.className).toContain('hidden');
+    expect(fab.className).toContain('xl:flex');
     expect(screen.getByRole('button', { name: 'Caixa' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Transacoes' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Receitas' })).toBeTruthy();
