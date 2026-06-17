@@ -1,6 +1,7 @@
 # Flow Finance - current audit scorecard
 
 Data: 2026-06-13
+Atualizado em: 2026-06-17
 Modo: comparacao contra a auditoria pre-mortem completa.
 Escopo: SaaS de fluxo de caixa para empresas de servico, conectado a operacao real.
 
@@ -29,11 +30,31 @@ Implementado e provado:
 - Operacao viva: `docs/OPERATIONS_README.md`
 - Gate activation/retention: `docs/ACTIVATION_RETENTION_EVIDENCE_2026-06-04.md`
 - Programa de habito: `docs/HABIT_PROOF_PROGRAM_2026-06-13.md`
-- Claims guard: `docs/CLAIMS_GUARD_2026-06-15.md`; `scripts/check-audit-claims.mjs`; `test-results/audit-claims/2026-06-15T16-13-28-811Z/report.json`
-- R1 final: `test-results/activation-retention-refresh/2026-06-12T20-44-49-665Z/report.json`
-- R2 final: `test-results/scale-readiness-evidence/2026-06-12T15-30-39-687Z/report.json`
-- Habit proof atual: `test-results/habit-proof-evidence/2026-06-15T12-59-02-724Z/report.json`
-- Pacote consolidado atual: `test-results/audit-evidence/2026-06-15T16-13-36-386Z/report.json`
+- Claims guard: `docs/CLAIMS_GUARD_2026-06-15.md`; `scripts/check-audit-claims.mjs`; artefatos em `test-results/audit-claims/`
+- R1 revalidado: `test-results/activation-retention-refresh/2026-06-17T03-55-16-207Z/report.json`; handoff `test-results/activation-retention-export/published-export-verified.json`
+- R2 revalidado: `test-results/scale-readiness-evidence/2026-06-17T03-52-38-900Z/report.json`
+- Performance alvo: `test-results/target-performance-evidence/2026-06-17T03-53-15-520Z/report.json`
+- Baseline local de performance: `test-results/performance-baseline/chromium-dashboard.json`
+- Regressao visual atual: `test-results/visual-regression/2026-06-17T03-54-12-212Z/manifest.json`
+- Habit proof atual: `test-results/habit-proof-evidence/2026-06-17T03-54-11-832Z/report.json`
+- Cohort state atual: `test-results/cohort-state/2026-06-17T03-54-11-856Z/report.json`
+- Pacote consolidado atual: `test-results/audit-evidence/2026-06-17T04-01-23-114Z/report.json`
+
+## Atualizacao de evidencia em 2026-06-17
+
+Foi operado o app publicado em `https://flow-finance-xi.vercel.app` com uma conta de auditoria, criando base financeira e registrando uma revisao semanal no workspace `1HqzEic1WemvfAV6nHgu`.
+
+Leitura honesta:
+
+- `health:activation-retention:refresh`: `PASS` como gate tecnico, nao prova retencao comercial, com export publicado e checker fechados em `test-results/activation-retention-refresh/2026-06-17T03-55-16-207Z/report.json`.
+- `health:scale-readiness`: `PASS`, com sync pull, benchmark publicado e AI CFO repetido evidenciados em `test-results/scale-readiness-evidence/2026-06-17T03-52-38-900Z/report.json`.
+- `visual:regression`: `PASS`, com `12` screenshots em `test-results/visual-regression/2026-06-17T03-54-12-212Z/manifest.json`.
+- `health:target-performance`: `PASS`, comparando `https://flow-finance-xi.vercel.app/?bench=dashboard` contra `test-results/performance-baseline/chromium-dashboard.json`.
+- `health:habit-proof`: `BLOCK`, porque ainda ha apenas `1` semana de revisao e menos de `7` dias de observacao.
+- `health:cohort-state`: `BLOCK`, classificando o workspace como `revisao_1_semana`, nao `habito_minimo`.
+- `audit:evidence`: `BLOCK` somente por `Habit proof` e `Cohort state`, com artefato final em `test-results/audit-evidence/2026-06-17T04-01-23-114Z/report.json`.
+
+Isso melhora a evidencia tecnica publicada, mas nao muda o veredito comercial: `SEM EVIDENCIA SUFICIENTE` para retencao real multi-semana, churn, LTV, CAC, conversao paga ou escala ampla.
 
 ## Resumo das notas
 

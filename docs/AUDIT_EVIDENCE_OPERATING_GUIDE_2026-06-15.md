@@ -1,6 +1,7 @@
 # Flow Finance - audit evidence operating guide
 
 Data: 2026-06-15
+Atualizado em: 2026-06-17
 
 ## Purpose
 
@@ -50,8 +51,8 @@ Canonical offline runner:
 
 Latest generated artifact:
 
-- `test-results/ai-quality-evidence/2026-06-15T15-58-50-940Z/report.json`
-- `test-results/ai-quality-evidence/2026-06-15T15-58-50-940Z/report.md`
+- `test-results/ai-quality-evidence/2026-06-17T03-54-00-166Z/report.json`
+- `test-results/ai-quality-evidence/2026-06-17T03-54-00-166Z/report.md`
 
 Current reading:
 
@@ -75,10 +76,9 @@ The guard scans active docs and blocks uncaveated claims such as retention prove
 
 Allowed language must keep the evidence boundary explicit: `SEM EVIDENCIA SUFICIENTE`, `nao prova`, `BLOCK`, `piloto privado controlado`, `validacao parcial`, or `gate tecnico fechado, nao prova comercial`.
 
-Latest generated artifact:
+Generated artifacts:
 
-- `test-results/audit-claims/2026-06-15T16-13-28-811Z/report.json`
-- `test-results/audit-claims/2026-06-15T16-13-28-811Z/report.md`
+- `test-results/audit-claims/`
 
 Current reading:
 
@@ -90,8 +90,8 @@ Current reading:
 
 Latest generated package:
 
-- `test-results/audit-evidence/2026-06-15T16-13-36-386Z/report.json`
-- `test-results/audit-evidence/2026-06-15T16-13-36-386Z/report.md`
+- `test-results/audit-evidence/2026-06-17T04-01-23-114Z/report.json`
+- `test-results/audit-evidence/2026-06-17T04-01-23-114Z/report.md`
 
 Current reading:
 
@@ -102,6 +102,16 @@ Current reading:
 - claims guard: `PASS`
 - habit proof: `BLOCK`
 - cohort state: `BLOCK`
+
+Supporting artifacts from the same 2026-06-17 operating cycle:
+
+- activation/retention refresh: `test-results/activation-retention-refresh/2026-06-17T03-55-16-207Z/report.json`
+- activation export: `test-results/activation-retention-export/2026-06-17T03-55-18-245Z/report.json`
+- activation checker: `test-results/activation-retention-evidence/2026-06-17T03-55-19-183Z-events/report.json`
+- visual regression: `test-results/visual-regression/2026-06-17T03-54-12-212Z/manifest.json`
+- scale readiness: `test-results/scale-readiness-evidence/2026-06-17T03-52-38-900Z/report.json`
+- target performance: `test-results/target-performance-evidence/2026-06-17T03-53-15-520Z/report.json`
+- performance baseline: `test-results/performance-baseline/chromium-dashboard.json`
 
 Interpretation:
 

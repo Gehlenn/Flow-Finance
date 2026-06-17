@@ -2,7 +2,7 @@
 
 Este documento centraliza auditorias, evidencias operacionais e materiais de comprovacao. A funcao dele e evitar que cada evidencia fique solta e sem contexto.
 
-Ultima revisao estrutural: 2026-06-12
+Ultima revisao estrutural: 2026-06-17
 
 ## Entrada recomendada (historico)
 
@@ -34,6 +34,15 @@ Se o objetivo for entender decisoes antigas, auditorias passadas ou diagnosticos
 - `test-results/activation-retention-refresh/2026-06-12T20-44-49-665Z/report.json` (fechamento publicado de `R1`: refresh `PASS`)
 - `test-results/habit-proof-evidence/2026-06-13T14-57-20-595Z/report.json` (primeira leitura longitudinal de habito: `BLOCK` honesto por falta de threshold explicito)
 - `test-results/habit-proof-evidence/2026-06-13T16-13-53-986Z/report.json` (leitura longitudinal com threshold explicito: `BLOCK` por falta de semanas/dias suficientes)
+- `test-results/activation-retention-refresh/2026-06-17T03-55-16-207Z/report.json` (R1 revalidado no app publicado: refresh `PASS` como gate tecnico, nao prova retencao comercial)
+- `test-results/activation-retention-export/2026-06-17T03-55-18-245Z/report.json` (export publicado atual: `PASS`)
+- `test-results/activation-retention-evidence/2026-06-17T03-55-19-183Z-events/report.json` (checker publicado atual: `PASS`)
+- `test-results/scale-readiness-evidence/2026-06-17T03-52-38-900Z/report.json` (scale readiness atual: `PASS`, com `L1/L5 DOCUMENTED_ONLY`)
+- `test-results/target-performance-evidence/2026-06-17T03-53-15-520Z/report.json` (performance alvo atual: `PASS`)
+- `test-results/visual-regression/2026-06-17T03-54-12-212Z/manifest.json` (regressao visual atual: `PASS`, `12` screenshots)
+- `test-results/habit-proof-evidence/2026-06-17T03-54-11-832Z/report.json` (habit proof atual: `BLOCK`, uma semana apenas)
+- `test-results/cohort-state/2026-06-17T03-54-11-856Z/report.json` (cohort state atual: `BLOCK`, workspace em `revisao_1_semana`)
+- `test-results/audit-evidence/2026-06-17T04-01-23-114Z/report.json` (pacote consolidado atual: `BLOCK` somente por habito/coorte)
 
 ## Status operacional
 

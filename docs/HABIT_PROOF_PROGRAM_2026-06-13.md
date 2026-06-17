@@ -95,17 +95,38 @@ The current repository has a fresh durable cohort proof for `2026-06-12`, but on
 
 Latest explicit-threshold run:
 
-- `test-results/habit-proof-evidence/2026-06-15T12-59-02-724Z/report.json`
-- `test-results/habit-proof-evidence/2026-06-15T12-59-02-724Z/report.md`
+- `test-results/habit-proof-evidence/2026-06-17T03-54-11-832Z/report.json`
+- `test-results/habit-proof-evidence/2026-06-17T03-54-11-832Z/report.md`
 
 Reading:
 
 - `BLOCK`
 - only `0` cohort(s) satisfied the declared thresholds
-- one cohort has qualified activation via `activation_first_dashboard_useful`
+- one cohort has qualified activation via the published app path
 - no cohort reached `2` distinct review weeks after qualified activation
 - no cohort reached `7` observation days after qualified activation
 - that is the correct state until another real weekly export arrives
+
+## Published-path refresh on 2026-06-17
+
+The live app was operated with an audit account on `https://flow-finance-xi.vercel.app`.
+
+Generated evidence:
+
+- activation/retention refresh: `test-results/activation-retention-refresh/2026-06-17T03-55-16-207Z/report.json`
+- export: `test-results/activation-retention-export/2026-06-17T03-55-18-245Z/report.json`
+- checker: `test-results/activation-retention-evidence/2026-06-17T03-55-19-183Z-events/report.json`
+- verified handoff: `test-results/activation-retention-export/published-export-verified.json`
+- cohort state: `test-results/cohort-state/2026-06-17T03-54-11-856Z/report.json`
+- consolidated audit package: `test-results/audit-evidence/2026-06-17T03-55-33-511Z/report.json`
+
+Current state:
+
+- activation and one weekly review are evidenced from the published backend
+- the workspace is classified as `revisao_1_semana`
+- `habito_minimo` is still `BLOCK`
+
+Do not use this as proof of durable habit. It is a technical published-path proof plus the first week of the longitudinal habit program.
 
 ## Weekly operating checklist
 

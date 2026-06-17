@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildNormalization,
   determineResult,
+  extractWorkspaceIdFromWorkspaceListPayload,
   normalizeFinanceEvent,
   parseArgs,
   resolveLoginCredentials,
@@ -54,6 +55,20 @@ describe('export-activation-retention-events', () => {
       user_id: 'user-1',
       valid: true,
     });
+  });
+
+  it('extracts workspaceId from published workspace list payloads', () => {
+    const workspaceId = extractWorkspaceIdFromWorkspaceListPayload({
+      workspaces: [
+        {
+          workspaceId: 'ws-published-1',
+          tenantId: 'tenant-1',
+          name: 'Flow Finance Audit',
+        },
+      ],
+    });
+
+    expect(workspaceId).toBe('ws-published-1');
   });
 
   it('keeps completed financial base activation in the export contract', () => {

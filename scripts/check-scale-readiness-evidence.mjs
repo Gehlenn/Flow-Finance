@@ -153,6 +153,17 @@ function extractWorkspaceIdFromPayload(payload) {
     return '';
   }
 
+  if (Array.isArray(payload)) {
+    for (const item of payload) {
+      const workspaceId = extractWorkspaceIdFromPayload(item);
+      if (workspaceId) {
+        return workspaceId;
+      }
+    }
+
+    return '';
+  }
+
   const directCandidates = [
     payload.workspaceId,
     payload.id,
@@ -179,6 +190,14 @@ function extractWorkspaceIdFromPayload(payload) {
   }
 
   return '';
+}
+
+function extractWorkspaceIdFromWorkspaceListPayload(payload) {
+  if (!payload || typeof payload !== 'object') {
+    return '';
+  }
+
+  return extractWorkspaceIdFromPayload(payload.workspaces);
 }
 
 async function exchangeFirebaseIdentity({ apiKey, email, password }) {
@@ -449,9 +468,7 @@ async function loginPublishedContext({ backendUrl, email, password }) {
           headers: buildPublishedHeaders(authContext, ''),
         });
         const workspacePayload = await workspaceResponse.json().catch(() => null);
-        let workspaceId = Array.isArray(workspacePayload?.workspaces)
-          ? String(workspacePayload.workspaces[0]?.id || '').trim()
-          : '';
+        let workspaceId = extractWorkspaceIdFromWorkspaceListPayload(workspacePayload);
 
         if (!workspaceId) {
           const createWorkspaceResponse = await fetchWithTimeout(new URL('/api/workspace', backendUrl), {
@@ -570,9 +587,7 @@ async function loginPublishedContext({ backendUrl, email, password }) {
     headers: buildPublishedHeaders(authContext, ''),
   });
   const workspacePayload = await workspaceResponse.json().catch(() => null);
-  const workspaceId = Array.isArray(workspacePayload?.workspaces)
-    ? String(workspacePayload.workspaces[0]?.id || '').trim()
-    : '';
+  const workspaceId = extractWorkspaceIdFromWorkspaceListPayload(workspacePayload);
 
   if (!workspaceResponse.ok || !workspaceId) {
     return {

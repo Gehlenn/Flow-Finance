@@ -1,27 +1,26 @@
 {
   "verified": true,
-  "verifiedAt": "2026-06-12T20:44:53.217Z",
+  "verifiedAt": "2026-06-17T03:55:16.207Z",
   "gate": "activation-retention",
-  "summary": "Published activation/retention path revalidated after backend event-store hardening; export, checker, and consolidated refresh all passed on a fresh durable cohort.",
+  "summary": "Published activation/retention path revalidated on the current audit workspace; export and checker passed with activation_first_dashboard_useful, activation_first_transaction, activation_financial_base_completed, and weekly_cash_review_completed from the published backend.",
   "deployments": {
     "backend": {
-      "alias": "https://flow-finance-backend.vercel.app",
-      "deploymentId": "dpl_46ZmG79ppY9Vk3pDcBWKNUR3KN3g"
+      "alias": "https://flow-finance-backend.vercel.app"
     },
     "frontend": {
       "alias": "https://flow-finance-xi.vercel.app"
     }
   },
-  "workspaceId": "ZcNI85emhBPTU02EeFPA",
+  "workspaceId": "1HqzEic1WemvfAV6nHgu",
   "artifacts": {
-    "exportReport": "test-results/activation-retention-export/2026-06-12T20-44-52-284Z/report.json",
-    "exportRows": "test-results/activation-retention-export/2026-06-12T20-44-52-284Z/events.jsonl",
-    "checkerReport": "test-results/activation-retention-evidence/2026-06-12T20-44-53-217Z-events/report.json",
-    "refreshReport": "test-results/activation-retention-refresh/2026-06-12T20-44-49-665Z/report.json"
+    "exportReport": "test-results/activation-retention-export/2026-06-17T03-55-18-245Z/report.json",
+    "exportRows": "test-results/activation-retention-export/2026-06-17T03-55-18-245Z/events.jsonl",
+    "checkerReport": "test-results/activation-retention-evidence/2026-06-17T03-55-19-183Z-events/report.json",
+    "refreshReport": "test-results/activation-retention-refresh/2026-06-17T03-55-16-207Z/report.json"
   },
   "notes": [
-    "domainEventPersistence now reports firebase / durable / required / healthy in published health endpoints",
-    "fresh published cohort was created after the serverless local-file event-store fallback was removed from the production read/write path",
-    "pre-hardening local-file event histories were not backfilled and should not be reused as proof"
+    "This is technical published-path evidence produced by operating the live app with an audit account.",
+    "It proves activation plus one weekly review in the backend event store.",
+    "It does not prove commercial retention, multi-week habit, conversion, churn, CAC, LTV, or paid willingness."
   ]
 }
