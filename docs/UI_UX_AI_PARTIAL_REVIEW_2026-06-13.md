@@ -261,6 +261,27 @@ Status desta passada:
 - Validacao visual do fechamento do dashboard: `test-results/visual-regression/2026-06-14T08-15-51-721Z/manifest.json` passou com `2` screenshots, `1` rota, `2` viewports, `consoleIssues=0` e `pageErrors=0`.
 - Risco residual de IA: a resposta demo-local nao vaza mais contexto bruto na pergunta canonica validada, mas ainda falta prova com usuarios reais, custo real por consulta, avaliacao qualitativa externa e retencao atribuivel ao uso da IA.
 
+## Atualizacao 2026-06-19 - harmonizacao UI operacional
+
+- Execucao sob orquestracao GPT-5.5 com subagentes GPT-5.4-mini:
+  - app shell/navegacao: `components/app-shell/AppMainNav.tsx`, `AppSubNav.tsx`, `AppTopStatus.tsx` e `src/styles/tailwind.css`;
+  - IA/Insights: `pages/AICFO.tsx`, `pages/Insights.tsx` e `src/app/assistantCopy.ts`;
+  - integracao final do dashboard e tokens visuais pelo orquestrador.
+- `components/Dashboard.tsx` foi compactado em torno da sequencia operacional `caixa real -> previsto curto -> pendente/vencido -> atencao -> revisao semanal`, reduzindo repeticao de cards e mantendo os handlers financeiros existentes.
+- `src/app/visualSystem.ts` ganhou superficies compartilhadas para `quietSection` e `decision`, usadas para reforcar o painel de decisao sem abrir uma nova linguagem visual.
+- `pages/AICFO.tsx` e `src/app/assistantCopy.ts` reforcam o posicionamento `Consultor de caixa`: pergunta curta, resposta direta, evidencia usada e proximo passo. A copy evita promessa de CFO autonomo.
+- `pages/Insights.tsx` foi reescrito para leitura operacional de caixa: `Leitura de caixa`, `Caixa agora`, `Horizonte curto`, `Base da leitura`, `Leituras acionaveis`, `Padrao de fluxo` e `Riscos imediatos`.
+- `components/app-shell/*` reduziu peso visual, melhorou alvos de toque e alinhou nav principal, subnav e status superior em desktop/mobile.
+- Correcao visual critica: valores negativos no dashboard agora renderizam como `R$ -2.380,00`, evitando quebra entre hifen e moeda nos cards de previsto.
+- Testes/validacao desta rodada:
+  - `npm run type-check:app`
+  - `node scripts/run-vitest-stable.mjs tests/unit/dashboard-quick-actions.test.tsx tests/unit/dashboard-money-math.test.ts tests/unit/assistant-copy.test.ts tests/unit/insights-plan-render.test.tsx`
+  - `npm run build`
+  - `npm run visual:regression`
+  - `git diff --check`
+- Evidencia visual final: `test-results/visual-regression/2026-06-19T02-32-11-171Z/manifest.json` com 12 screenshots e status `PASS`.
+- Limite de evidencia: esta rodada melhora legibilidade, consistencia e fluxo de decisao da UI. Nao prova retencao, conversao, preferencia de usuarios, disposicao a pagar ou habito recorrente.
+
 ## O que nao cortar agora
 
 - Dashboard como primeira superficie.

@@ -617,10 +617,22 @@ const Dashboard: React.FC<DashboardProps> = ({
     }
   }, [activeWorkspaceId, canSubmitWeeklyReview, currentWeekReview, userId, weeklyReviewReport]);
 
-  const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
+  const currencyFormatter = useMemo(
+    () => new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }),
+    [],
+  );
+  const formatCurrency = (value: number) => {
+    const formatted = currencyFormatter.format(Math.abs(value));
+    if (value >= 0) {
+      return formatted;
+    }
+
+    const numericPart = formatted.replace('R$', '').trim();
+    return `R$ -${numericPart}`;
+  };
 
   const valueOrHidden = (value: number) => (hideValues ? '••••••' : formatCurrency(value));
   const insightsActionTitle = activeWorkspacePlan === 'pro' ? 'Ver insights completos' : 'Ver insights essenciais';
@@ -630,6 +642,10 @@ const Dashboard: React.FC<DashboardProps> = ({
   const PANEL_SURFACE = VISUAL_SURFACES.workspace;
   const SECTION_DIVIDER = 'border-t border-slate-200/80 dark:border-slate-700/80';
   const hasFinancialBase = hasDashboardFinancialBase(metrics);
+  const reviewStatusText = currentWeekReview
+    ? `Revisao desta semana registrada em ${new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(currentWeekReview.reviewedAt))}.`
+    : 'Ainda nao ha revisao registrada para a semana atual.';
+  const weeklyProgressLabel = `${weeklyReviewRetention.completedWeeks}/${weeklyReviewRetention.expectedWeeks} semanas`;
 
   useEffect(() => {
     if (!hasFinancialBase) {
@@ -686,17 +702,17 @@ const Dashboard: React.FC<DashboardProps> = ({
   ]);
 
   return (
-    <div className="flex flex-col gap-5 pb-8">
+    <div className="flex flex-col gap-4 pb-8 sm:gap-5">
       <section className={`${PANEL_SURFACE} overflow-hidden`}>
         <div className="p-4 sm:p-6 lg:p-7">
-          <div className="flex flex-col gap-4 sm:gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(340px,0.92fr)] xl:items-stretch">
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Caixa</p>
                   <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white sm:text-xl">Leitura rapida do caixa</h2>
-                  <p className="mt-1 max-w-2xl text-xs font-medium text-slate-500 dark:text-slate-300 sm:text-sm">
-                    {userName ? `${userName}, veja caixa real, previsto curto, pendente e vencido antes de abrir o resto.` : 'Veja caixa real, previsto curto, pendente e vencido antes de abrir o resto.'}
+                  <p className="mt-1 max-w-2xl text-xs font-medium leading-relaxed text-slate-500 dark:text-slate-300 sm:text-sm">
+                    {userName ? `${userName}, comece pelo dinheiro confirmado, depois revise o que pode entrar e o que ja venceu.` : 'Comece pelo dinheiro confirmado, depois revise o que pode entrar e o que ja venceu.'}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
@@ -716,25 +732,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               </div>
 
-              <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50/85 p-3 sm:mt-4 sm:p-4 xl:hidden dark:border-amber-500/20 dark:bg-amber-500/10">
-                <div className="flex items-start gap-3">
-                  <div className="rounded-xl bg-amber-100 p-2 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                    <CircleAlert size={15} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">O que pede atencao</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{focusNote.title}</p>
-                    <p className="mt-1 text-xs font-medium text-slate-600 dark:text-slate-300 sm:text-sm">{focusNote.description}</p>
-                  </div>
-                </div>
-              <div className="mt-2 grid grid-cols-3 gap-1.5 sm:mt-3 sm:gap-2">
-                  <CompactSignal label="Hoje" value={String(reminderSummary.dueTodayCount)} />
-                  <CompactSignal label="7 dias" value={String(reminderSummary.dueThisWeekCount)} />
-                  <CompactSignal label="Alertas" value={String(metrics.activeAlerts)} />
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-start justify-between gap-3 sm:mt-5 sm:gap-4">
+              <div className="mt-4 flex items-start justify-between gap-3 sm:mt-6 sm:gap-4">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Caixa real</p>
                   <h3 className="mt-1 text-3xl font-semibold tracking-tight text-slate-950 dark:text-white sm:mt-2 sm:text-5xl">
@@ -749,14 +747,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-3 2xl:grid-cols-4">
-                <ComparisonMetricCard
-                  label="Caixa real"
-                  value={valueOrHidden(metrics.currentBalance)}
-                  tone="cash"
-                  icon={<Wallet size={16} />}
-                  description="Dinheiro confirmado agora"
-                />
+              <div className="mt-4 grid grid-cols-1 gap-2 sm:mt-5 sm:grid-cols-3 sm:gap-3">
                 <ComparisonMetricCard
                   label="Previsto curto"
                   value={valueOrHidden(weeklyReviewReport.projectedWeekCash)}
@@ -780,7 +771,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 />
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center gap-2">
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <button
                   type="button"
                   onClick={handleWeeklyReviewSubmit}
@@ -799,31 +790,30 @@ const Dashboard: React.FC<DashboardProps> = ({
                   </button>
                 )}
                 <span className="inline-flex min-h-11 items-center rounded-full bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-300">
-                  {weeklyReviewRetention.completedWeeks}/{weeklyReviewRetention.expectedWeeks} semanas
+                  {weeklyProgressLabel}
                 </span>
               </div>
 
-              <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-900/30">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Leitura rapida</p>
-                <p className="mt-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  Priorize caixa real, previsto curto, pendente e vencido antes de abrir o restante.
-                </p>
+              <div className="mt-4 grid grid-cols-3 gap-1.5 rounded-2xl bg-slate-50 p-1.5 dark:bg-slate-900/30 sm:hidden">
+                <CompactSignal label="Hoje" value={String(reminderSummary.dueTodayCount)} />
+                <CompactSignal label="7 dias" value={String(reminderSummary.dueThisWeekCount)} />
+                <CompactSignal label="Alertas" value={String(metrics.activeAlerts)} />
               </div>
             </div>
 
-            <div className="hidden rounded-[1.75rem] border border-amber-200 bg-amber-50/85 p-5 xl:block dark:border-amber-500/20 dark:bg-amber-500/10">
+            <div className={`${VISUAL_SURFACES.decision} flex min-h-full flex-col justify-between p-4 sm:p-5`}>
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">O que pede atencao</p>
-                  <p className="mt-1 text-xl font-semibold tracking-tight text-slate-900 dark:text-white">{focusNote.title}</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-300">{focusNote.description}</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300 dark:text-slate-500">O que pede atencao</p>
+                  <p className="mt-2 text-xl font-semibold tracking-tight text-white dark:text-slate-950">{focusNote.title}</p>
+                  <p className="mt-2 text-sm font-medium leading-relaxed text-slate-300 dark:text-slate-600">{focusNote.description}</p>
                 </div>
-                <div className="rounded-2xl bg-amber-100 p-2.5 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                <div className="rounded-2xl bg-white/10 p-2.5 text-amber-200 dark:bg-slate-950/5 dark:text-amber-600">
                   <CircleAlert size={16} />
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+              <div className="mt-5 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
                 <UrgencyCard
                   label="Hoje"
                   value={String(reminderSummary.dueTodayCount)}
@@ -845,15 +835,13 @@ const Dashboard: React.FC<DashboardProps> = ({
               </div>
 
               {reminderSummary.pendingCount > 0 && (
-                <p className="mt-4 text-sm font-semibold text-amber-800 dark:text-amber-200">
+                <p className="mt-4 text-sm font-semibold text-amber-200 dark:text-amber-700">
                   Recebiveis pendentes no curto prazo: {reminderSummary.pendingCount} · {valueOrHidden(reminderSummary.pendingAmount)}
                 </p>
               )}
 
-              <p className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-300">
-                {currentWeekReview
-                  ? `Revisao desta semana registrada em ${new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(currentWeekReview.reviewedAt))}.`
-                  : 'Ainda nao ha revisao registrada para a semana atual.'}
+              <p className="mt-4 rounded-2xl bg-white/10 px-4 py-3 text-sm font-medium text-slate-300 dark:bg-slate-950/5 dark:text-slate-600">
+                {reviewStatusText}
               </p>
             </div>
           </div>
@@ -861,16 +849,16 @@ const Dashboard: React.FC<DashboardProps> = ({
 
         <div className={SECTION_DIVIDER}>
           <div className="p-5 sm:p-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Base da revisao</p>
-                <h3 className="mt-1 text-lg font-semibold tracking-tight text-slate-900 dark:text-white">Confirmado, previsto e vencido da semana</h3>
-                <p className="mt-2 max-w-2xl text-sm font-semibold text-slate-500 dark:text-slate-300">
-                  A acao principal fica no topo. Esta base mostra o que sustenta a revisao semanal de caixa.
+                <h3 className="mt-1 text-lg font-semibold tracking-tight text-slate-900 dark:text-white">Confirmado, previsto e vencido</h3>
+                <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-slate-500 dark:text-slate-300">
+                  Use esta linha para confirmar se a revisao semanal tem base suficiente antes de decidir cobranca, pagamento ou espera.
                 </p>
-                <p className="mt-3 inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-900 dark:text-slate-300">
-                  {weeklyReviewRetention.completedWeeks}/{weeklyReviewRetention.expectedWeeks} semanas registradas
-                </p>
+              </div>
+              <div className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-900 dark:text-slate-300">
+                {weeklyProgressLabel} registradas
               </div>
             </div>
 
@@ -898,11 +886,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               />
             </div>
 
-            <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-300">
-              {currentWeekReview
-                ? `Revisao desta semana registrada em ${new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(currentWeekReview.reviewedAt))}.`
-                : 'Ainda nao ha revisao registrada para a semana atual.'}
-            </p>
+            <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-300">{reviewStatusText}</p>
 
             {(weeklyReviewError || weeklyReviewSuccess) && (
               <p className={`mt-3 text-sm font-semibold ${weeklyReviewError ? 'text-rose-600 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300'}`} role="status">
@@ -918,7 +902,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="p-5 sm:p-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Estados financeiros</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">O que ja entrou, o que ainda nao entrou e o que esta atrasado</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">O que entrou, o que depende de confirmacao e o que exige acao</p>
             </div>
 
             <div className="mt-4 flex flex-col gap-3">
@@ -948,6 +932,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
           <div className="p-5 sm:p-6 lg:border-l lg:border-slate-200/80 dark:lg:border-slate-700/80">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Leitura de recebiveis</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">Separacao entre dinheiro disponivel e dinheiro prometido</p>
             <div className="mt-4 space-y-3">
               <MiniSummaryRow
                 label="Pendente"
@@ -973,7 +958,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Acoes principais</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">Siga para as telas que mudam a decisao do dia</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">Escolha a proxima tela conforme a duvida do caixa</p>
               </div>
             </div>
             <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -1105,9 +1090,9 @@ const STATE_TONE_CLASS_MAP = {
 };
 
 const URGENCY_TONE_CLASS_MAP = {
-  today: 'border-amber-200 bg-white/80 dark:border-amber-500/20 dark:bg-slate-900/20',
-  week: 'border-slate-200 bg-white/80 dark:border-slate-700 dark:bg-slate-900/20',
-  alert: 'border-rose-200 bg-white/80 dark:border-rose-500/20 dark:bg-slate-900/20',
+  today: 'border-white/10 bg-white/[0.08] dark:border-slate-200 dark:bg-white/70',
+  week: 'border-white/10 bg-white/[0.08] dark:border-slate-200 dark:bg-white/70',
+  alert: 'border-white/10 bg-white/[0.08] dark:border-slate-200 dark:bg-white/70',
 };
 
 const MINI_SUMMARY_TONE_CLASS_MAP = {
@@ -1172,12 +1157,12 @@ const ComparisonMetricCard: React.FC<{
   tone,
   description,
 }) => (
-  <div className={`min-h-[76px] rounded-2xl border px-3 py-2.5 shadow-none sm:min-h-[132px] sm:rounded-[1.5rem] sm:px-5 sm:py-5 ${COMPARISON_TONE_CLASS_MAP[tone]}`}>
+  <div className={`min-h-[88px] rounded-2xl border px-4 py-3 shadow-none sm:min-h-[112px] sm:rounded-[1.35rem] sm:px-5 sm:py-4 ${COMPARISON_TONE_CLASS_MAP[tone]}`}>
     <div className="flex items-center justify-between">
       <p className="text-[10px] font-semibold uppercase tracking-[0.12em] opacity-70 sm:text-xs sm:tracking-[0.18em]">{label}</p>
       <span className="rounded-lg p-1.5">{icon}</span>
     </div>
-    <p className="mt-2 text-lg font-semibold tracking-tight text-slate-950 dark:text-white sm:mt-3 sm:text-[1.75rem]">{value}</p>
+    <p className="mt-2 whitespace-nowrap text-xl font-semibold tracking-tight text-slate-950 dark:text-white sm:mt-3 sm:text-[1.55rem]">{value}</p>
     {description && <p className="mt-1 hidden text-sm font-medium opacity-80 sm:block">{description}</p>}
   </div>
 );
@@ -1195,7 +1180,7 @@ const StateRow: React.FC<{
   icon,
   tone,
 }) => (
-  <div className={`flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 ${STATE_TONE_CLASS_MAP[tone]}`}>
+  <div className={`flex flex-col gap-3 rounded-2xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 ${STATE_TONE_CLASS_MAP[tone]}`}>
     <div className="flex min-w-0 items-start gap-3">
       <span className="mt-0.5 rounded-xl p-2">{icon}</span>
       <div className="min-w-0">
@@ -1203,7 +1188,7 @@ const StateRow: React.FC<{
         <p className="mt-1 text-sm font-medium opacity-80">{description}</p>
       </div>
     </div>
-    <p className="text-right text-xl font-semibold tracking-tight">{value}</p>
+    <p className="whitespace-nowrap text-left text-xl font-semibold tracking-tight sm:text-right">{value}</p>
   </div>
 );
 
@@ -1219,9 +1204,9 @@ const UrgencyCard: React.FC<{
   tone,
 }) => (
   <div className={`rounded-2xl border p-4 ${URGENCY_TONE_CLASS_MAP[tone]}`}>
-    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{label}</p>
-    <p className="mt-2 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">{value}</p>
-    <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-300">{description}</p>
+    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300 dark:text-slate-500">{label}</p>
+    <p className="mt-2 text-xl font-semibold tracking-tight text-white dark:text-slate-950">{value}</p>
+    <p className="mt-1 text-sm font-medium text-slate-300 dark:text-slate-600">{description}</p>
   </div>
 );
 
@@ -1268,7 +1253,7 @@ const PrimaryActionButton: React.FC<{ title: string; description: string; onClic
   <button
     type="button"
     onClick={onClick}
-    className="flex items-center justify-between rounded-2xl border border-slate-900 bg-slate-900 px-5 py-4 text-left text-white shadow-[0_20px_40px_-24px_rgba(15,23,42,0.5)] transition-colors hover:bg-slate-800 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+    className="flex min-h-[4.5rem] items-center justify-between rounded-2xl border border-slate-900 bg-slate-900 px-5 py-4 text-left text-white shadow-[0_20px_40px_-24px_rgba(15,23,42,0.5)] transition-colors hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
   >
     <span>
       <span className="block text-sm font-semibold tracking-tight">{title}</span>
@@ -1286,7 +1271,7 @@ const QuickActionButton: React.FC<{ title: string; description: string; onClick?
   <button
     type="button"
     onClick={onClick}
-    className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/40 dark:hover:border-slate-500 dark:hover:bg-slate-900/70"
+    className="flex min-h-[4.25rem] items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left shadow-none transition-colors hover:border-slate-300 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 dark:border-slate-700 dark:bg-slate-900/40 dark:hover:border-slate-500 dark:hover:bg-slate-900/70"
   >
     <span>
       <span className="block text-sm font-semibold tracking-tight text-slate-900 dark:text-white">{title}</span>

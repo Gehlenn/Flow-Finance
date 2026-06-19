@@ -50,12 +50,12 @@ interface AICFOProps {
 // ─── Quick prompts ────────────────────────────────────────────────────────────
 
 const QUICK_PROMPTS: { label: string; question: string; icon: React.ReactNode }[] = [
-  { label: 'Posso pagar a semana?', question: 'Posso pagar a semana?', icon: <Wallet size={13} /> },
-  { label: 'Qual o risco da semana?', question: 'Qual o risco da semana?', icon: <AlertTriangle size={13} /> },
-  { label: 'O que entra até o mês fechar?', question: 'O que entra até o mês fechar?', icon: <TrendingUp size={13} /> },
-  { label: 'O que vence agora?', question: 'O que vence agora?', icon: <HelpCircle size={13} /> },
+  { label: 'Paga a semana?', question: 'Posso pagar a semana?', icon: <Wallet size={13} /> },
+  { label: 'Risco agora?', question: 'Qual o risco da semana?', icon: <AlertTriangle size={13} /> },
+  { label: 'O que entra ate fechar?', question: 'O que entra ate o mes fechar?', icon: <TrendingUp size={13} /> },
+  { label: 'O que vence hoje?', question: 'O que vence agora?', icon: <HelpCircle size={13} /> },
   { label: 'Resumo do caixa', question: 'Resumo do caixa', icon: <Sparkles size={13} /> },
-  { label: 'Onde cortar hoje?', question: 'Onde cortar hoje?', icon: <PiggyBank size={13} /> },
+  { label: 'Onde cortar?', question: 'Onde cortar hoje?', icon: <PiggyBank size={13} /> },
 ];
 
 // ─── Intent badge ─────────────────────────────────────────────────────────────
@@ -76,15 +76,15 @@ const CONFIDENCE_BAND_LABEL: Record<AICFOExplainability['confidence_band'], stri
 };
 
 const RESPONSE_DEPTH_LABEL: Record<'standard' | 'reduced', string> = {
-  standard: 'Profundidade normal',
-  reduced: 'Profundidade reduzida',
+  standard: 'Leitura completa',
+  reduced: 'Leitura curta',
 };
 const PANEL_SURFACE = 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900';
 const SOFT_SURFACE = 'rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900';
 
 function formatCurrency(value: number, hideValues: boolean): string {
   if (hideValues) {
-    return '••••';
+    return '****';
   }
 
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -110,7 +110,7 @@ function countMonthlyUserQueries(messages: Message[], reference = new Date()): n
 const buildConversationLearningDiagnostic = (): { title: string; message: string; suggestion: string } => ({
   title: 'Aprendizado da conversa indisponivel',
   message: 'Nao foi possivel atualizar o aprendizado do CFO em segundo plano agora.',
-  suggestion: 'Envie uma nova pergunta ou tente novamente quando a conexao do workspace estiver estável.',
+  suggestion: 'Envie uma nova pergunta ou tente novamente quando a conexao do workspace estiver estavel.',
 });
 
 function buildGenerationFailureMessage(intent: CFOIntent, hasStrongGrounding: boolean): Message {
@@ -239,30 +239,35 @@ const AssistantBubble: React.FC<{
             </div>
           )}
           <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-900/50">
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">Base da resposta</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">Evidencia usada</p>
             {isFallbackExplainability && (
               <p className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-                Base reconstruida do contexto atual porque a resposta nao trouxe explicabilidade.
+                Base reconstruida do contexto atual.
               </p>
             )}
-            <ul className="mt-1 space-y-1">
+            <ul className="mt-1 flex flex-wrap gap-1.5">
               {resolvedExplainability.reasons_used.map(reason => (
-                <li key={reason} className="text-xs text-slate-600 dark:text-slate-300">• {reason}</li>
+                <li key={reason} className="rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">{reason}</li>
               ))}
             </ul>
-            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Sinais usados</p>
-            <div className="mt-1 grid gap-1">
+            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Sinais usados</p>
+            <div className="mt-1 grid gap-1.5">
               {Object.entries(resolvedExplainability.evidence)
                 .filter(([, value]) => Boolean(value))
                 .map(([key, value]) => (
-                  <p key={key} className="text-xs text-slate-600 dark:text-slate-300">
+                  <p key={key} className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
                     {key.replace(/_/g, ' ')}: {String(value)}
                   </p>
                 ))}
             </div>
-            <p className="mt-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
-              Nivel de confianca desta resposta: {CONFIDENCE_BAND_LABEL[resolvedExplainability.confidence_band]}
-            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                Confianca {CONFIDENCE_BAND_LABEL[resolvedExplainability.confidence_band]}
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                {responseDepth === 'reduced' ? 'Base curta' : 'Base completa'}
+              </span>
+            </div>
           </div>
           <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line">{msg.text}</p>
           {responseDepth && (
@@ -276,13 +281,13 @@ const AssistantBubble: React.FC<{
           )}
           {actionRequired && (
             <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
-              <p className="text-xs font-semibold uppercase tracking-[0.08em]">Proxima acao obrigatoria</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.08em]">Proximo passo</p>
               <p className="mt-1 text-xs leading-relaxed">{actionCopy}</p>
             </div>
           )}
           {msg.role === 'assistant' && (onCreateReminder || onNavigateToTab) && (
             <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-900/50">
-              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">Acoes da resposta</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">Abrir acao</p>
               <div className="mt-3 flex flex-wrap gap-2">
               {onCreateReminder && (
                 <button
@@ -301,7 +306,7 @@ const AssistantBubble: React.FC<{
                     });
                     onCreateReminder(buildResponseReminder(msg));
                   }}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
                   <Sparkles size={14} />
                   Criar lembrete
@@ -324,7 +329,7 @@ const AssistantBubble: React.FC<{
                     });
                     onNavigateToTab('flow');
                   }}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
                 >
                   <Wallet size={14} />
                   Ver fluxo
@@ -336,7 +341,7 @@ const AssistantBubble: React.FC<{
         </div>
         <div className="flex items-center gap-2 mt-1 ml-1">
           <ShieldCheck size={9} className="text-emerald-500" />
-          <p className="text-xs text-slate-400">Consultivo · Não constitui garantia financeira</p>
+          <p className="text-xs text-slate-400">Consultivo. Sem garantia de resultado.</p>
         </div>
       </div>
     </div>
@@ -420,10 +425,10 @@ const OperationalSnapshot: React.FC<{
       <section className={`${PANEL_SURFACE} p-3 sm:p-4`}>
         <div className="flex flex-col gap-3 sm:gap-4">
           <div className="flex flex-col gap-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Leitura operacional agora</p>
-            <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-white sm:text-lg">Caixa, horizonte curto e base da resposta</h3>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Caixa agora</p>
+            <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-white sm:text-lg">Resumo do caixa e da base usada</h3>
             <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-              O Consultor IA deve partir do dinheiro confirmado, do risco proximo e do que ainda depende de confirmacao.
+              Pergunta rapida, resposta curta e evidencias visiveis.
             </p>
           </div>
 
@@ -446,16 +451,16 @@ const OperationalSnapshot: React.FC<{
       <aside className={`${PANEL_SURFACE} p-3 sm:p-4`}>
         <div className="flex h-full flex-col gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Base usada agora</p>
-            <h3 className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">Estado da leitura consultiva</h3>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Base da leitura</p>
+            <h3 className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">Como a IA esta lendo o caixa</h3>
           </div>
 
           <div className="flex flex-wrap gap-2">
             <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
-              Confiança {confidencePercent}%
+              Confianca {confidencePercent}%
             </span>
             <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-300">
-              Recorrências {recurringCount}
+              Recorrencias {recurringCount}
             </span>
             <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] ${hasStrongGrounding ? 'border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300' : 'border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300'}`}>
               {hasStrongGrounding ? 'Base suficiente' : 'Base incompleta'}
@@ -479,9 +484,9 @@ const OperationalSnapshot: React.FC<{
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Postura do consultor</p>
             <ul className="mt-2 space-y-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-              <li>• Caixa confirmado primeiro.</li>
-              <li>• Recebivel e previsao nao viram saldo realizado.</li>
-              <li>• Quando a base estiver fraca, a resposta precisa mostrar esse limite.</li>
+              <li>- Caixa confirmado primeiro.</li>
+              <li>- Recebivel e previsao nao entram como saldo realizado.</li>
+              <li>- Base fraca precisa aparecer junto da resposta.</li>
             </ul>
           </div>
         </div>
@@ -513,9 +518,9 @@ const WelcomeScreen: React.FC<{
 
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         {[
-          'Pergunte sobre uma decisao curta: pagar, cobrar, segurar ou priorizar.',
-          'Leia a resposta junto com a base usada e o nivel de confianca.',
-          'Transforme a resposta em proximo passo: lembrete ou revisao do fluxo.',
+          'Pergunte uma decisao curta: pagar, cobrar, segurar ou cortar.',
+          'Leia a resposta com a base usada e o nivel de confianca.',
+          'Feche em acao: lembrete ou abertura do fluxo.',
         ].map((item) => (
           <div key={item} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
             <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">{item}</p>
@@ -534,7 +539,7 @@ const WelcomeScreen: React.FC<{
     <section className={`${SOFT_SURFACE} p-4 sm:p-5`}>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Perguntas rápidas do caixa</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Perguntas curtas do caixa</p>
           <h3 className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">Comece por uma decisao concreta</h3>
         </div>
         <Sparkles size={16} className="text-slate-400" />
@@ -951,9 +956,9 @@ const AICFO: React.FC<AICFOProps> = ({
         )}
 
         <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:px-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Workspace consultivo</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Fluxo consultivo</p>
           <h3 className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
-            {messages.length === 0 ? 'Escolha uma pergunta operacional para abrir a leitura.' : 'Pergunta, base, resposta e proximo passo.'}
+            {messages.length === 0 ? 'Escolha uma pergunta curta para abrir a leitura.' : 'Pergunta, resposta, evidencia e acao.'}
           </h3>
         </div>
 
@@ -982,7 +987,7 @@ const AICFO: React.FC<AICFOProps> = ({
       {/* Input */}
       <div className={`order-3 shrink-0 mt-2 flex items-end gap-2.5 ${PANEL_SURFACE} p-2.5 pl-4 sm:mt-3 sm:gap-3 sm:p-3 sm:pl-5 md:order-none`}>
         <div className="flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Pergunta operacional</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Pergunta rapida</p>
           <textarea
             ref={inputRef}
             value={input}

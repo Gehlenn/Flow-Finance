@@ -31,7 +31,7 @@ const SEVERITY_STYLES = {
   high:   { bg: 'bg-rose-50 dark:bg-rose-500/10',      border: 'border-rose-100 dark:border-rose-500/20',      icon: 'text-rose-500',    badge: 'bg-rose-100 dark:bg-rose-500/20 text-rose-600' },
 };
 
-const SEVERITY_LABEL = { low: 'Baixo', medium: 'Médio', high: 'Alto' };
+const SEVERITY_LABEL = { low: 'Baixo', medium: 'Medio', high: 'Alto' };
 
 const INSIGHT_ICON: Record<string, React.ReactNode> = {
   spending: <TrendingUp size={16} />,
@@ -196,18 +196,18 @@ const Insights: React.FC<InsightsProps> = ({
   const visibleRisks = canUseAdvancedInsights ? risks : risks.slice(0, 1);
   const nextActionSummary = useMemo(() => {
     if (prediction.in7Days < 0) {
-      return 'Cobrir a lacuna da próxima semana antes de assumir novos compromissos.';
+      return 'Cobrir a lacuna da proxima semana antes de assumir novos compromissos.';
     }
 
     if (prediction.in30Days < 0) {
-      return 'Atenção: cortar saídas agora para evitar saldo negativo no mês.';
+      return 'Atencao: cortar saidas agora para evitar saldo negativo no mes.';
     }
 
     if (health_score < 60) {
-      return 'Reduzir despesas variáveis e revisar recorrências.';
+      return 'Reduzir despesas variaveis e revisar recorrencias.';
     }
 
-    return 'Manter ritmo e confirmar as próximas entradas.';
+    return 'Manter ritmo e confirmar as proximas entradas.';
   }, [health_score, prediction.in30Days, prediction.in7Days]);
 
   const handleCreateReminder = useCallback(() => {
@@ -243,11 +243,11 @@ const Insights: React.FC<InsightsProps> = ({
     <div className="flex flex-col gap-4 animate-in fade-in duration-700 pb-24">
       <header className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-none dark:border-slate-700 dark:bg-slate-800 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="min-w-0">
-          <h2 className="text-xl font-semibold tracking-tight leading-tight text-slate-900 dark:text-white sm:text-2xl">Leituras financeiras</h2>
+          <h2 className="text-xl font-semibold tracking-tight leading-tight text-slate-900 dark:text-white sm:text-2xl">Leitura de caixa</h2>
           <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
             Workspace: {activeWorkspaceName || 'Carregando workspace'}
           </p>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Leitura operacional do caixa</p>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Caixa, sinais e proxima acao</p>
         </div>
         <div className={ICON_SURFACE}>
           <Brain size={20} />
@@ -258,7 +258,7 @@ const Insights: React.FC<InsightsProps> = ({
         <div className="flex flex-col items-center gap-4 py-16 text-slate-300 dark:text-slate-600">
           <Sparkles size={40} />
           <p className="text-center text-xs font-semibold uppercase tracking-[0.08em]">
-            Adicione transações para ver as leituras do caixa
+            Adicione transacoes para ver a leitura do caixa
           </p>
         </div>
       ) : (
@@ -271,8 +271,8 @@ const Insights: React.FC<InsightsProps> = ({
                     <Activity size={15} className={hs.text} />
                   </span>
                   <div className="min-w-0">
-                    <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Saúde do caixa</h3>
-                    <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Visão curta do estado atual.</p>
+                    <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Caixa agora</h3>
+                    <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Estado curto do saldo confirmado.</p>
                   </div>
                 </div>
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-white ${hs.bg}`}>
@@ -293,13 +293,13 @@ const Insights: React.FC<InsightsProps> = ({
               </div>
 
               <p className="mt-2 text-xs text-slate-400">
-                {pipeline.processing_ms}ms · pipeline v{pipeline.computed_at ? '0.3' : '—'}
+                {pipeline.processing_ms}ms | pipeline v{pipeline.computed_at ? '0.3' : '-'}
               </p>
 
               <div className={`${SOFT_SURFACE} mt-4 flex items-start gap-3 p-3`}>
                 <Zap size={16} className="mt-0.5 shrink-0 text-slate-500" />
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Próxima ação</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Proxima acao</p>
                   <p className="mt-1 text-sm font-medium leading-snug text-slate-700 dark:text-slate-200">
                     {nextActionSummary}
                   </p>
@@ -311,7 +311,7 @@ const Insights: React.FC<InsightsProps> = ({
                   <button
                     type="button"
                     onClick={() => onNavigateToTab?.('assistant')}
-                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
                   >
                     <MessageSquare size={14} />
                     Abrir assistente
@@ -319,7 +319,7 @@ const Insights: React.FC<InsightsProps> = ({
                   <button
                     type="button"
                     onClick={() => onNavigateToTab?.('goals')}
-                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                   >
                     <Target size={14} />
                     Ver metas
@@ -328,7 +328,7 @@ const Insights: React.FC<InsightsProps> = ({
                     <button
                       type="button"
                       onClick={handleCreateReminder}
-                      className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+                      className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
                     >
                       <Sparkles size={14} />
                       Criar lembrete
@@ -346,8 +346,8 @@ const Insights: React.FC<InsightsProps> = ({
                       <BarChart3 size={15} />
                     </span>
                     <div className="min-w-0">
-                      <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Projeção rápida</h3>
-                      <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Saldo confirmado no curto prazo.</p>
+                      <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Horizonte curto</h3>
+                      <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Saldo confirmado em tres janelas.</p>
                     </div>
                   </div>
                 </div>
@@ -361,7 +361,7 @@ const Insights: React.FC<InsightsProps> = ({
                     <div key={label} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-center dark:border-slate-700 dark:bg-slate-900/40">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{label}</p>
                       <p className={`mt-2 text-[13px] font-semibold tabular-nums whitespace-nowrap sm:text-sm ${value >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300'}`}>
-                        {hideValues ? '••••' : fmt(value)}
+                        {hideValues ? '****' : fmt(value)}
                       </p>
                     </div>
                   ))}
@@ -376,8 +376,8 @@ const Insights: React.FC<InsightsProps> = ({
                         <Brain size={15} />
                       </span>
                       <div className="min-w-0">
-                        <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Contexto avançado</h3>
-                        <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Sinais adicionais para leitura comparativa do caixa.</p>
+                        <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Base da leitura</h3>
+                        <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Sinais adicionais para comparar o caixa.</p>
                       </div>
                     </div>
                     <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
@@ -413,8 +413,8 @@ const Insights: React.FC<InsightsProps> = ({
                   <Lightbulb size={15} />
                 </span>
                 <div className="min-w-0">
-                  <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Sinais do caixa</h3>
-                  <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Leituras curtas para agir no caixa agora.</p>
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Leituras acionaveis</h3>
+                  <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Leituras curtas para agir agora.</p>
                 </div>
               </div>
               <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
@@ -425,7 +425,7 @@ const Insights: React.FC<InsightsProps> = ({
               {visibleInsights.length === 0 ? (
                 <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
                   <CheckCircle2 size={18} className="shrink-0 text-emerald-500" />
-                  <p className="text-sm font-medium text-slate-700 dark:text-white">Tudo sob controle! Nenhum padrão crítico detectado.</p>
+                  <p className="text-sm font-medium text-slate-700 dark:text-white">Sem padroes criticos por enquanto.</p>
                 </div>
               ) : (
                 visibleInsights.map((i) => <InsightCard key={i.id} insight={i} />)
@@ -441,8 +441,8 @@ const Insights: React.FC<InsightsProps> = ({
                     <BarChart3 size={15} />
                   </span>
                   <div className="min-w-0">
-                    <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Perfil de fluxo</h3>
-                    <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Comparação do comportamento financeiro.</p>
+                    <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Padrao de fluxo</h3>
+                    <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Como o caixa costuma se mover.</p>
                   </div>
                 </div>
               </div>
@@ -490,8 +490,8 @@ const Insights: React.FC<InsightsProps> = ({
                   <ShieldAlert size={15} className="text-rose-500" />
                 </span>
                 <div className="min-w-0">
-                  <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Riscos do caixa</h3>
-                  <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Alertas de curto prazo que exigem atenção.</p>
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Riscos imediatos</h3>
+                  <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">Alertas de curto prazo que exigem atencao.</p>
                 </div>
               </div>
               {visibleRisks.length > 0 && (
@@ -504,7 +504,7 @@ const Insights: React.FC<InsightsProps> = ({
               {visibleRisks.length === 0 ? (
                 <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
                   <CheckCircle2 size={18} className="shrink-0 text-emerald-500" />
-                  <p className="text-sm font-medium text-slate-700 dark:text-white">Nenhum risco detectado no horizonte.</p>
+                  <p className="text-sm font-medium text-slate-700 dark:text-white">Nenhum risco visivel no horizonte.</p>
                 </div>
               ) : (
                 visibleRisks.map((r) => (
@@ -522,12 +522,12 @@ const Insights: React.FC<InsightsProps> = ({
           {!canUseAdvancedInsights && (
             <UpgradePromptCard
               compact
-              title="Leituras avançadas e comparativas"
-              description="O Free já entrega sinais essenciais. O Pro adiciona contexto avançado para leitura comparativa do caixa."
+              title="Leituras comparativas"
+              description="O Free entrega sinais essenciais. O Pro adiciona contexto para comparar o caixa."
               bullets={[
-                'perfil financeiro detalhado',
+                'perfil de fluxo detalhado',
                 'comparativos historicos mais completos',
-                'mais contexto nas analises e alertas de risco',
+                'mais contexto nas analises e alertas',
               ]}
             />
           )}
@@ -535,7 +535,7 @@ const Insights: React.FC<InsightsProps> = ({
           <div className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
             <Info size={14} className="mt-0.5 shrink-0 text-slate-400" />
             <p className="text-xs font-medium leading-relaxed text-slate-400">
-              Análises geradas dinamicamente com base nas suas transações. Nenhum dado é enviado para servidores externos.
+              Analises geradas com base nas suas transacoes. Nenhum dado sai do ambiente.
             </p>
           </div>
         </>

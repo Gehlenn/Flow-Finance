@@ -9,7 +9,7 @@ export interface AppTopStatusProps {
 }
 
 function getTopStatusClassName(syncStatus: AppShellSyncStatus): string {
-  return `flow-status-pill inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 md:gap-2 md:px-3 md:py-1.5 ${
+  return `flow-status-pill inline-flex max-w-[calc(100vw-1rem)] items-center gap-1.5 rounded-full px-2.5 py-1.5 md:gap-2 md:px-3 md:py-1.5 ${
     syncStatus === "synced"
       ? "bg-emerald-500/90"
       : syncStatus === "error"
@@ -32,13 +32,13 @@ export const AppTopStatus: React.FC<AppTopStatusProps> = ({
   }
 
   return (
-    <div className="absolute top-3 left-1/2 z-[100] -translate-x-1/2 transition-all duration-500 md:fixed md:top-6">
+    <div className="absolute top-2 left-1/2 z-[100] -translate-x-1/2 px-2 transition-all duration-500 md:fixed md:top-5">
       <div className={getTopStatusClassName(syncStatus)}>
         {isDemoBootstrapActive && (
           <>
-            <span className="inline-flex items-center gap-1 rounded-full border border-cyan-400/15 bg-cyan-400/10 px-2 py-0.5">
+            <span className="inline-flex items-center gap-1 rounded-full border border-cyan-400/15 bg-cyan-400/10 px-1.5 py-0.5">
               <BadgeInfo size={10} className="text-cyan-300" />
-              <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-cyan-50 leading-none md:text-[10px]">
+              <span className="text-[9px] font-semibold uppercase tracking-[0.06em] text-cyan-50 leading-none md:text-[10px]">
                 Demo Pro
               </span>
             </span>
@@ -55,7 +55,7 @@ export const AppTopStatus: React.FC<AppTopStatusProps> = ({
         {syncStatus === "syncing" && (
           <div className="flex items-center gap-1.5">
             <Loader2 size={12} className="text-indigo-400 animate-spin" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white md:text-xs">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-white md:text-xs">
               Gravando na Nuvem...
             </span>
           </div>
@@ -63,7 +63,7 @@ export const AppTopStatus: React.FC<AppTopStatusProps> = ({
         {syncStatus === "synced" && (
           <div className="flex items-center gap-1.5">
             <CloudCheck size={12} className="text-white" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white md:text-xs">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-white md:text-xs">
               Sincronizado
             </span>
           </div>
@@ -71,7 +71,7 @@ export const AppTopStatus: React.FC<AppTopStatusProps> = ({
         {syncStatus === "error" && (
           <div className="flex items-center gap-1.5">
             <CloudOff size={12} className="text-white" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white md:text-xs">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-white md:text-xs">
               Erro de Conexao
             </span>
           </div>

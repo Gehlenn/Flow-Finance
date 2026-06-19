@@ -78,8 +78,8 @@ describe('Insights plan render', () => {
       />,
     );
 
-    expect(screen.getByText(/Leituras avan/i)).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: /Contexto avan/i })).toBeNull();
+    expect(screen.getByText(/Leituras comparativas/i)).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: /Base da leitura/i })).toBeNull();
     expect(screen.getByText(/Pr.*xima a.*o/i)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Abrir assistente/i }));
     expect(onNavigateToTab).toHaveBeenCalledWith('assistant');
@@ -115,9 +115,9 @@ describe('Insights plan render', () => {
       />,
     );
 
-    expect(screen.getByText(/Contexto avan/i)).toBeTruthy();
-    expect(screen.queryByText(/Leituras avan/i)).toBeNull();
-    expect(screen.getByText(/Perfil de fluxo/i)).toBeTruthy();
+    expect(screen.getByText(/Base da leitura/i)).toBeTruthy();
+    expect(screen.queryByText(/Leituras comparativas/i)).toBeNull();
+    expect(screen.getByText(/Padrao de fluxo/i)).toBeTruthy();
     expect(screen.getByText(/Pr.*xima a.*o/i)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Ver metas/i }));
     expect(onNavigateToTab).toHaveBeenCalledWith('goals');
