@@ -2,6 +2,7 @@
 import { Category, Goal } from '../types';
 import { formatCurrency } from '../utils/helpers';
 import { SECONDARY_FLOWS_COPY } from '../src/app/secondaryFlowsCopy';
+import { VISUAL_MOTION, VISUAL_SURFACES } from '../src/app/visualSystem';
 import { logWarn } from '../src/utils/logger';
 import {
   CalendarDays,
@@ -63,6 +64,9 @@ const GOAL_PRESETS: Array<{ title: string; category: Category }> = [
   { title: 'Entrada do imóvel', category: Category.INVESTIMENTO },
 ];
 
+const INPUT_SURFACE =
+  'w-full mt-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none transition-colors focus:border-emerald-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800/70 dark:text-white dark:focus:border-emerald-400 dark:focus:bg-slate-900';
+
 function getGoalProgress(goal: Goal): number {
   if (goal.targetAmount <= 0) return 0;
   return Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
@@ -119,7 +123,7 @@ const GoalCard: React.FC<{
   const daysRemaining = getDaysRemaining(goal.deadline);
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 overflow-hidden shadow-sm">
+    <div className={`${VISUAL_SURFACES.section} overflow-hidden`}>
       <div className="p-5 flex items-start gap-4">
         <div className="relative shrink-0">
           <ProgressRing pct={progress} />
@@ -187,7 +191,7 @@ const GoalCard: React.FC<{
         </div>
       </div>
 
-      <div className="flex border-t border-slate-100 dark:border-slate-700">
+      <div className="flex border-t border-slate-100 dark:border-slate-800">
         <button
           onClick={() => onOpenContribution(goal)}
           className="flex-1 flex items-center justify-center gap-1.5 py-3 text-[9px] font-semibold text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
@@ -305,15 +309,15 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-4 pb-8">
-      <div className="flex items-center justify-between pt-2">
+    <div className={`flex flex-col gap-4 pb-8 ${VISUAL_MOTION.entrance}`}>
+      <div className={`${VISUAL_SURFACES.workspace} flex items-center justify-between gap-4 p-5`}>
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-emerald-600 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-emerald-300">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-emerald-300">
             <Target size={20} />
           </div>
-          <div>
-            <h1 className="text-lg font-semibold text-slate-900 dark:text-white leading-none">{SECONDARY_FLOWS_COPY.goals.title}</h1>
-            <p className="text-[9px] font-medium text-slate-400 uppercase tracking-[0.08em] mt-0.5">
+          <div className="min-w-0">
+            <h1 className="text-lg font-semibold leading-tight text-slate-900 dark:text-white">{SECONDARY_FLOWS_COPY.goals.title}</h1>
+            <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-slate-400">
               {SECONDARY_FLOWS_COPY.goals.subtitle}
             </p>
           </div>
@@ -327,15 +331,15 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
             setContributeDiagnostic(null);
           }}
           disabled={!canEditGoals}
-          className="flex items-center gap-1.5 bg-slate-800 text-white px-4 py-2.5 rounded-2xl text-[10px] font-semibold shadow-sm hover:bg-slate-700 active:scale-95 transition-all dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+          className={`flex shrink-0 items-center gap-1.5 rounded-xl bg-slate-800 px-4 py-2.5 text-[10px] font-semibold text-white hover:bg-slate-700 disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200 ${VISUAL_MOTION.action}`}
         >
           <Plus size={14} /> Nova meta
         </button>
       </div>
 
       {goals.length === 0 && !showForm && (
-        <div className="flex flex-col items-center justify-center gap-4 py-14 bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700">
-          <div className="w-14 h-14 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-200 dark:border-slate-700">
+        <div className={`${VISUAL_SURFACES.quietSection} flex flex-col items-center justify-center gap-4 py-12`}>
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
             <Target size={24} className="text-emerald-500" />
           </div>
           <div className="text-center">
@@ -350,7 +354,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
               setContributeError(null);
               setContributeDiagnostic(null);
             }}
-            className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-2xl text-sm font-semibold shadow-sm dark:bg-slate-100 dark:text-slate-900"
+            className={`flex items-center gap-2 rounded-xl bg-slate-800 px-5 py-2.5 text-sm font-semibold text-white dark:bg-slate-100 dark:text-slate-900 ${VISUAL_MOTION.action}`}
           >
             <Plus size={14} /> Criar meta
           </button>
@@ -358,8 +362,8 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
       )}
 
       {showForm && canEditGoals && (
-        <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 overflow-hidden shadow-lg">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
+        <div className={`${VISUAL_SURFACES.section} overflow-hidden`}>
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
             <p className="font-semibold text-slate-900 dark:text-white text-sm">Nova Meta</p>
             <button
               onClick={() => {
@@ -376,7 +380,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
           </div>
 
           <div
-            className="px-5 py-3 flex gap-2 overflow-x-auto border-b border-slate-100 dark:border-slate-700"
+            className="flex gap-2 overflow-x-auto border-b border-slate-100 px-5 py-3 dark:border-slate-800"
             style={{ scrollbarWidth: 'none' }}
           >
             {GOAL_PRESETS.map((preset) => (
@@ -402,11 +406,11 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
                 value={formData.title}
                 onChange={(event) => setFormData((current) => ({ ...current, title: event.target.value }))}
                 placeholder="Ex: Reserva de Emergência"
-                className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
+                className={INPUT_SURFACE}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Valor alvo (R$)</label>
                 <input
@@ -415,7 +419,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
                   value={formData.targetAmount}
                   onChange={(event) => { setFormData((current) => ({ ...current, targetAmount: event.target.value })); setTargetAmountError(null); setTargetAmountDiagnostic(null); }}
                   placeholder="0,00"
-                  className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
+                  className={INPUT_SURFACE}
                 />
                 {targetAmountError && <p className="text-[10px] text-rose-500 font-medium mt-1">{targetAmountError}</p>}
                 {targetAmountDiagnostic && (
@@ -434,18 +438,18 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
                   value={formData.currentAmount}
                   onChange={(event) => setFormData((current) => ({ ...current, currentAmount: event.target.value }))}
                   placeholder="0,00"
-                  className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
+                  className={INPUT_SURFACE}
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="text-[8px] font-semibold text-slate-400 uppercase tracking-[0.08em]">Categoria</label>
                 <select
                   value={formData.category}
                   onChange={(event) => setFormData((current) => ({ ...current, category: event.target.value as Category }))}
-                  className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
+                  className={INPUT_SURFACE}
                 >
                   {Object.values(Category).map((category) => (
                     <option key={category} value={category}>
@@ -460,7 +464,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
                   type="date"
                   value={formData.deadline}
                   onChange={(event) => setFormData((current) => ({ ...current, deadline: event.target.value }))}
-                  className="w-full mt-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
+                  className={INPUT_SURFACE}
                 />
               </div>
             </div>
@@ -468,7 +472,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
             <button
               onClick={handleCreate}
               disabled={!formData.title || !formData.targetAmount}
-              className="w-full bg-slate-800 text-white rounded-2xl py-3.5 font-semibold text-sm flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all dark:bg-slate-100 dark:text-slate-900"
+              className={`flex w-full items-center justify-center gap-2 rounded-xl bg-slate-800 py-3.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 ${VISUAL_MOTION.action}`}
             >
               <Check size={16} /> Criar Meta
             </button>
@@ -508,7 +512,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
 
       {contributeGoal && canEditGoals && (
         <div className="fixed inset-0 z-[200] flex items-end justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4">
+          <div className={`${VISUAL_SURFACES.modal} flex w-full max-w-sm flex-col gap-4 p-6`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-slate-900 dark:text-white text-sm">
@@ -538,7 +542,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
                   value={contributeAmount}
                   onChange={(event) => { setContributeAmount(event.target.value); setContributeError(null); setContributeDiagnostic(null); }}
                   placeholder="0,00"
-                  className="w-full mt-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 text-lg font-semibold text-slate-900 dark:text-white outline-none focus:border-emerald-400 transition-colors"
+                  className={`${INPUT_SURFACE} mt-1.5 text-lg font-semibold`}
                 />
               {contributeError && <p className="text-[10px] text-rose-500 font-medium mt-1">{contributeError}</p>}
               {contributeDiagnostic && (
@@ -553,7 +557,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
             <button
               onClick={handleContribute}
               disabled={!contributeAmount || Number(contributeAmount) <= 0}
-              className="w-full bg-slate-800 text-white rounded-2xl py-3.5 font-semibold text-sm flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+              className={`flex w-full items-center justify-center gap-2 rounded-xl bg-slate-800 py-3.5 text-sm font-semibold text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 ${VISUAL_MOTION.action}`}
             >
               <Check size={16} /> Confirmar Aporte
             </button>

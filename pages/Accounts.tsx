@@ -1,5 +1,6 @@
 ﻿import React, { useState } from 'react';
 import { Account, AccountType, ACCOUNT_TYPE_LABELS } from '../models/Account';
+import { VISUAL_MOTION, VISUAL_SURFACES } from '../src/app/visualSystem';
 import { logWarn } from '../src/utils/logger';
 import {
   Landmark, Wallet, CreditCard, TrendingUp,
@@ -31,6 +32,9 @@ const ACCOUNT_COLORS: Record<AccountType, string> = {
   credit_card: 'bg-violet-600 dark:bg-violet-500',
   investment: 'bg-amber-600 dark:bg-amber-500',
 };
+
+const INPUT_SURFACE =
+  'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none transition-colors focus:border-emerald-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800/70 dark:text-white dark:focus:border-emerald-400 dark:focus:bg-slate-900';
 
 function buildBalanceErrorDiagnostic(): { title: string; message: string; suggestion: string } {
   return {
@@ -132,27 +136,28 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
   const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
 
   return (
-    <div className="flex flex-col gap-4 animate-in fade-in duration-700 pb-24">
-      <div className="flex items-center justify-between gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm shrink-0 dark:border-slate-700 dark:bg-slate-800 relative overflow-hidden">
-        <div className="absolute inset-y-0 right-0 w-24 bg-slate-50/70 pointer-events-none dark:bg-slate-700/10" />
-        <div className="min-w-0 relative z-10">
-          <h2 className="text-2xl font-semibold tracking-tight leading-none text-slate-900 dark:text-white">Caixa e contas</h2>
-          <p className="mt-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Carteiras, bancos e saldo consolidado</p>
-          <p className="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
-            Workspace: {activeWorkspaceName || 'Carregando workspace'}
-          </p>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
-            Tenant: {activeTenantName || 'Tenant ativo'} · Role: {activeWorkspaceRole || 'member'}
-          </p>
-        </div>
-        <div className="relative z-10 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-          <Landmark size={20} />
+    <div className={`flex flex-col gap-4 pb-24 ${VISUAL_MOTION.entrance}`}>
+      <div className={`${VISUAL_SURFACES.workspace} shrink-0 p-5`}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold leading-tight tracking-tight text-slate-900 dark:text-white">Caixa e contas</h2>
+            <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Carteiras, bancos e saldo consolidado para a leitura de caixa.</p>
+            <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+              Workspace: {activeWorkspaceName || 'Carregando workspace'}
+            </p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+              Tenant: {activeTenantName || 'Tenant ativo'} · Role: {activeWorkspaceRole || 'member'}
+            </p>
+          </div>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+            <Landmark size={20} />
+          </div>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
+      <div className={`${VISUAL_SURFACES.quietSection} p-5`}>
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em] mb-1">Saldo consolidado</p>
-        <p className={`text-3xl font-semibold tracking-tight ${totalBalance >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>
+        <p className={`text-2xl font-semibold tracking-tight sm:text-3xl ${totalBalance >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>
           {hideValues ? '••••••' : formatVal(totalBalance)}
         </p>
         <p className="text-xs text-slate-400 mt-1">{accounts.length} conta{accounts.length !== 1 ? 's' : ''} ativa{accounts.length !== 1 ? 's' : ''}</p>
@@ -160,23 +165,24 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
 
       <div className="flex flex-col gap-3">
         {accounts.map(account => (
-          <div key={account.id} className="bg-white dark:bg-slate-800 rounded-[1.8rem] overflow-hidden border border-slate-100 dark:border-slate-700 shadow-sm flex items-stretch">
-            <div className={`w-14 flex items-center justify-center shrink-0 text-white ${ACCOUNT_COLORS[account.type]}`}>
+          <div key={account.id} className={`${VISUAL_SURFACES.section} grid grid-cols-[3rem_1fr] items-center gap-3 p-4`}>
+            <div className={`flex h-11 w-11 items-center justify-center rounded-xl text-white ${ACCOUNT_COLORS[account.type]}`}>
               {ACCOUNT_ICONS[account.type]}
             </div>
-            <div className="flex-1 px-5 py-4 flex items-center justify-between">
-              <div>
+            <div className="min-w-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
                 <p className="font-semibold text-slate-900 dark:text-white text-sm">{account.name}</p>
                 <p className="text-xs font-medium text-slate-400 uppercase tracking-[0.08em]">{ACCOUNT_TYPE_LABELS[account.type]}</p>
               </div>
-              <div className="flex items-center gap-3">
-                <p className={`font-semibold text-base ${account.balance >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>
+              <div className="flex items-center justify-between gap-3 sm:justify-end">
+                <p className={`whitespace-nowrap text-sm font-semibold sm:text-base ${account.balance >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'}`}>
                   {hideValues ? '••••' : formatVal(account.balance)}
                 </p>
                 {accounts.length > 1 && canEdit && (
                   <button
                     onClick={() => handleDelete(account.id)}
-                    className="p-2 text-slate-300 hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"
+                    className="rounded-xl p-2 text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-400 dark:hover:bg-rose-500/10"
+                    aria-label={`Excluir conta ${account.name}`}
                   >
                     <Trash2 size={15} />
                   </button>
@@ -189,12 +195,12 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
 
       {!showForm && canEdit ? (
       <button type="button" onClick={openForm}
-          className="w-full py-4 rounded-[1.8rem] border-2 border-dashed border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold uppercase tracking-[0.08em] flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          className={`flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-4 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 ${VISUAL_MOTION.action}`}
         >
           <Plus size={16} /> Nova conta de caixa
         </button>
       ) : canEdit ? (
-        <form onSubmit={handleCreate} className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col gap-4 animate-in slide-in-from-bottom-4 duration-300">
+        <form onSubmit={handleCreate} className={`${VISUAL_SURFACES.section} flex flex-col gap-4 p-5 animate-in slide-in-from-bottom-4 duration-300`}>
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Nova conta de caixa</p>
             <button type="button" onClick={closeForm} aria-label="Fechar" className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400">
@@ -210,7 +216,7 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
               value={form.name}
               onChange={e => setForm({ ...form, name: e.target.value })}
               placeholder="Ex: Nubank, Bradesco..."
-              className="w-full p-4 bg-slate-50 dark:bg-slate-700 rounded-2xl outline-none font-medium text-sm text-slate-800 dark:text-white"
+              className={INPUT_SURFACE}
             />
           </div>
 
@@ -221,7 +227,7 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
                 <button
                   key={type} type="button"
                   onClick={() => setForm({ ...form, type })}
-                  className={`p-3 rounded-2xl border flex items-center gap-2 transition-all text-xs font-semibold uppercase tracking-tight ${form.type === type ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100' : 'bg-slate-50 dark:bg-slate-700 border-transparent text-slate-400'}`}
+                  className={`flex items-center gap-2 rounded-xl border p-3 text-xs font-semibold uppercase tracking-tight transition-all ${form.type === type ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100' : 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400'}`}
                 >
                   {ACCOUNT_ICONS[type]}
                   {ACCOUNT_TYPE_LABELS[type]}
@@ -238,7 +244,7 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
               value={form.balance}
               onChange={e => { setForm({ ...form, balance: e.target.value }); setBalanceError(null); setBalanceDiagnostic(null); setCreateAccountDiagnostic(null); }}
               placeholder="0,00"
-              className="w-full p-4 bg-slate-50 dark:bg-slate-700 rounded-2xl outline-none font-semibold text-lg text-slate-800 dark:text-white"
+              className={`${INPUT_SURFACE} text-lg font-semibold`}
             />
             {balanceError && <p className="text-xs text-rose-500 font-medium ml-1">{balanceError}</p>}
             {balanceDiagnostic && (
@@ -260,13 +266,13 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
           <button
             type="submit"
             disabled={isSaving}
-            className="w-full py-4 bg-slate-800 text-white rounded-2xl font-semibold text-xs uppercase tracking-[0.08em] flex items-center justify-center gap-2 active:scale-95 transition-all dark:bg-slate-100 dark:text-slate-900"
+            className={`flex w-full items-center justify-center gap-2 rounded-xl bg-slate-800 py-4 text-xs font-semibold uppercase tracking-[0.08em] text-white disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 ${VISUAL_MOTION.action}`}
           >
             {isSaving ? <Loader2 size={16} className="animate-spin" /> : <><Check size={16} /> Salvar Conta</>}
           </button>
         </form>
       ) : (
-        <div className="w-full py-4 rounded-[1.8rem] border border-slate-200 dark:border-slate-700 text-slate-400 text-xs font-semibold uppercase tracking-[0.08em] flex items-center justify-center gap-2">
+        <div className={`${VISUAL_SURFACES.quietSection} flex w-full items-center justify-center gap-2 py-4 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400`}>
           Workspace em modo leitura
         </div>
       )}

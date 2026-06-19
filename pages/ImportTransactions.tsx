@@ -7,6 +7,7 @@ import {
 import { normalizeFromFileImport, draftToTransaction } from '../src/domain/intakeNormalizer';
 import { saveMerchantCategoryLearning } from '../src/engines/finance/categorization/aiCategorizerFallback';
 import { FinancialEventEmitter } from '../src/events/eventEngine';
+import { VISUAL_SURFACES } from '../src/app/visualSystem';
 import { logWarn } from '../src/utils/logger';
 import {
   Upload, FileText, FileSpreadsheet, FileScan, X, Check,
@@ -57,6 +58,12 @@ const CATEGORY_COLORS: Record<Category, string> = {
   [Category.NEGOCIO]:     'text-sky-500 bg-sky-50 dark:bg-sky-500/10',
   [Category.INVESTIMENTO]:'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10',
 };
+
+const SURFACES = {
+  panel: VISUAL_SURFACES.section,
+  quiet: VISUAL_SURFACES.quietSection,
+  interactive: VISUAL_SURFACES.interactiveCard,
+} as const;
 
 export function formatImportedDateLabel(value: unknown): string {
   if (!value || typeof value !== 'string') return 'Data inválida';
@@ -111,7 +118,7 @@ const TxRow: React.FC<{
     } ${!item.selected ? 'opacity-40' : ''}`}>
 
       {/* Main row */}
-      <div className="flex items-center gap-3 px-4 py-3">
+      <div className="flex items-center gap-3 px-4 py-2.5">
         {/* Checkbox */}
         <button
           onClick={() => onToggleSelect(index)}
@@ -121,7 +128,7 @@ const TxRow: React.FC<{
         </button>
 
         {/* Amount + type indicator */}
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
           isDespesa ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'
         }`}>
           {isDespesa
@@ -176,13 +183,13 @@ const TxRow: React.FC<{
 
       {/* Expanded: edit fields */}
       {expanded && (
-        <div className="px-4 pb-3 pt-1 flex gap-3 border-t border-slate-50 dark:border-slate-700/50 animate-in slide-in-from-top-2 duration-200">
+        <div className="px-4 pb-3 pt-1.5 flex gap-3 border-t border-slate-50 dark:border-slate-700/50 animate-in slide-in-from-top-2 duration-200">
           <div className="flex-1">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em] mb-1">Categoria</p>
             <select
               value={item.category ?? Category.PESSOAL}
               onChange={e => onChangeCategory(index, e.target.value as Category)}
-              className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-2 py-1.5 text-xs font-medium text-slate-800 dark:text-white outline-none"
+              className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-800 dark:text-white outline-none"
             >
               {Object.values(Category).map(c => <option key={c} value={c}>{c}</option>)}
             </select>
@@ -192,7 +199,7 @@ const TxRow: React.FC<{
             <select
               value={item.type ?? item.raw_type ?? TransactionType.DESPESA}
               onChange={e => onChangeType(index, e.target.value as TransactionType)}
-              className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-2 py-1.5 text-xs font-medium text-slate-800 dark:text-white outline-none"
+              className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-800 dark:text-white outline-none"
             >
               <option value={TransactionType.DESPESA}>Despesa</option>
               <option value={TransactionType.RECEITA}>Receita</option>
@@ -375,7 +382,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
 
       {/* Header */}
       <div className="flex items-center gap-3 pt-2">
-        <div className="w-11 h-11 rounded-2xl flex items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
           <Download size={20} className="text-sky-500" />
         </div>
         <div>
@@ -397,13 +404,13 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onClick={() => fileInputRef.current?.click()}
-            className={`relative flex flex-col items-center justify-center gap-5 p-10 rounded-[2rem] border-2 border-dashed cursor-pointer transition-all
+            className={`relative flex flex-col items-center justify-center gap-4 p-6 sm:p-7 rounded-xl border-2 border-dashed cursor-pointer transition-all
               ${isDragging
-                ? 'border-sky-400 bg-sky-50 dark:bg-sky-500/10 scale-[1.01]'
+                ? 'border-sky-400 bg-sky-50 dark:bg-sky-500/10'
                 : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-sky-300 hover:bg-sky-50/40 dark:hover:bg-sky-500/5'
               }`}
           >
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
               <Upload size={28} className="text-sky-500" />
             </div>
             <div className="text-center">
@@ -426,8 +433,8 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
             {(['ofx', 'csv', 'pdf'] as ImportFormat[]).map(fmt => {
               const meta = FORMAT_META[fmt];
               return (
-                <div key={fmt} className={`flex flex-col items-center gap-2 p-3 rounded-2xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800`}>
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${meta.color}`}>
+                <div key={fmt} className={`${SURFACES.interactive} flex flex-col items-center gap-1.5 p-3`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${meta.color}`}>
                     {meta.icon}
                   </div>
                   <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">{meta.label}</p>
@@ -437,7 +444,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
           </div>
 
           {/* Info */}
-          <div className="flex items-start gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-700">
+          <div className={`${SURFACES.quiet} flex items-start gap-3 px-4 py-3`}>
             <Info size={14} className="text-indigo-500 shrink-0 mt-0.5" />
             <div>
               <p className="text-xs font-semibold text-slate-800 dark:text-white">
@@ -453,11 +460,11 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
 
       {/* ── PHASE: detecting / parsing ──────────────────────────────────────── */}
       {(phase === 'detecting' || phase === 'parsing') && (
-        <div className="flex flex-col items-center gap-5 py-12 bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700">
-          <div className="w-14 h-14 bg-sky-50 dark:bg-sky-500/10 rounded-2xl flex items-center justify-center">
+        <div className={`${SURFACES.panel} flex flex-col items-center gap-4 py-8`}>
+          <div className="w-12 h-12 bg-sky-50 dark:bg-sky-500/10 rounded-xl flex items-center justify-center">
             <Loader2 size={26} className="text-sky-500 animate-spin" />
           </div>
-          <div className="text-center w-full px-8">
+          <div className="text-center w-full px-6">
             <p className="font-semibold text-slate-800 dark:text-white text-sm">{progress.step || 'Processando…'}</p>
             {/* Progress bar */}
             <div className="mt-3 w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -469,7 +476,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
             <p className="text-xs text-slate-400 font-medium mt-1.5">{progress.pct}%</p>
           </div>
           {progress.pct >= 65 && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl">
+            <div className="flex items-center gap-2 px-3.5 py-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl">
               <Sparkles size={12} className="text-indigo-500" />
               <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
                 Gemini classificando categorias…
@@ -483,9 +490,9 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
       {phase === 'preview' && result && (
         <>
           {/* Summary bar */}
-          <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 overflow-hidden">
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold uppercase tracking-[0.08em] ${FORMAT_META[result.format].color}`}>
+          <div className={`${SURFACES.panel} overflow-hidden`}>
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold uppercase tracking-[0.08em] ${FORMAT_META[result.format].color}`}>
                 {FORMAT_META[result.format].icon}
                 {FORMAT_META[result.format].label}
               </div>
@@ -509,19 +516,19 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
             </div>
 
             {/* Controls */}
-            <div className="flex items-center gap-2 px-5 py-3 border-t border-slate-100 dark:border-slate-700">
+            <div className="flex items-center gap-2 px-4 py-3 border-t border-slate-100 dark:border-slate-700">
               <button onClick={() => selectAll(true)}
-                className="text-xs font-semibold text-indigo-500 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl">
+                className="text-xs font-semibold text-indigo-500 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 rounded-lg">
                 Selecionar todos
               </button>
               <button onClick={() => selectAll(false)}
-                className="text-xs font-semibold text-slate-400 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-xl">
+                className="text-xs font-semibold text-slate-400 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg">
                 Desmarcar todos
               </button>
               {duplicateCount > 0 && (
                 <button
                   onClick={() => setFilterDuplicates(f => !f)}
-                  className={`ml-auto text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors ${
+                  className={`ml-auto text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
                     filterDuplicates
                       ? 'bg-amber-500 text-white'
                       : 'bg-amber-50 dark:bg-amber-500/10 text-amber-500'
@@ -534,8 +541,8 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
           </div>
 
           {/* Transaction list */}
-          <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 overflow-hidden">
-            <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+          <div className={`${SURFACES.panel} overflow-hidden`}>
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.08em]">
                 {displayItems.length} moviment{displayItems.length !== 1 ? 'os' : 'o'}
               </p>
@@ -567,7 +574,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
 
           {/* Errors */}
           {result.errors.length > 0 && (
-            <div className="flex items-start gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl border border-amber-100 dark:border-amber-500/20">
+            <div className="flex items-start gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-500/10 rounded-xl border border-amber-100 dark:border-amber-500/20">
               <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
               <div className="flex flex-col gap-1">
                 {result.errors.map((e, i) => (
@@ -582,7 +589,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
             <button
               onClick={handleImport}
               disabled={selectedCount === 0}
-              className="w-full bg-sky-600 text-white rounded-2xl p-4 flex items-center justify-center gap-3 font-semibold text-sm shadow-sm hover:bg-sky-500 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-sky-600 text-white rounded-xl px-4 py-3.5 flex items-center justify-center gap-3 font-semibold text-sm shadow-none hover:bg-sky-500 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download size={18} />
               Importar {selectedCount} moviment{selectedCount !== 1 ? 'os' : 'o'}
@@ -602,7 +609,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
 
       {/* ── PHASE: importing ────────────────────────────────────────────────── */}
       {phase === 'importing' && (
-        <div className="flex flex-col items-center gap-4 py-12 bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700">
+        <div className={`${SURFACES.panel} flex flex-col items-center gap-4 py-8`}>
           <Loader2 size={32} className="text-sky-500 animate-spin" />
           <p className="font-semibold text-slate-800 dark:text-white text-sm">Salvando no caixa…</p>
         </div>
@@ -610,8 +617,8 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
 
       {/* ── PHASE: done ─────────────────────────────────────────────────────── */}
       {phase === 'done' && (
-        <div className="flex flex-col items-center gap-5 py-12 bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-emerald-600 shadow-sm">
+        <div className={`${SURFACES.panel} flex flex-col items-center gap-4 py-8`}>
+          <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-emerald-600 shadow-none">
             <Check size={28} className="text-white" />
           </div>
           <div className="text-center">
@@ -622,7 +629,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
             </p>
           </div>
           {learningDiagnostic && (
-            <div role="status" className="w-full max-w-md rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-500/10 p-4 space-y-1">
+            <div role="status" className="w-full max-w-md rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-500/10 p-4 space-y-1">
               <p className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-700 dark:text-amber-300">{learningDiagnostic.title}</p>
               <p className="text-xs font-medium text-amber-800 dark:text-amber-100">{learningDiagnostic.message}</p>
               <p className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-600 dark:text-amber-300">Próximo passo: {learningDiagnostic.suggestion}</p>
@@ -631,7 +638,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
           <div className="flex gap-3">
             <button
               onClick={handleReset}
-              className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-slate-700 rounded-2xl font-semibold text-slate-700 dark:text-white text-sm"
+              className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-700 rounded-lg font-semibold text-slate-700 dark:text-white text-sm"
             >
               <Upload size={14} /> Importar mais
             </button>
@@ -641,15 +648,15 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
 
       {/* ── PHASE: error ────────────────────────────────────────────────────── */}
       {phase === 'error' && (
-        <div className="flex flex-col items-center gap-4 py-10 bg-rose-50 dark:bg-rose-500/10 rounded-[2rem] border border-rose-100 dark:border-rose-500/20">
-          <div className="w-12 h-12 bg-rose-100 dark:bg-rose-500/20 rounded-2xl flex items-center justify-center">
+        <div className="rounded-xl border border-rose-100 bg-rose-50/70 shadow-none dark:border-rose-500/20 dark:bg-rose-500/10 flex flex-col items-center gap-4 py-8">
+          <div className="w-11 h-11 bg-rose-100 dark:bg-rose-500/20 rounded-xl flex items-center justify-center">
             <AlertTriangle size={22} className="text-rose-500" />
           </div>
           <div className="text-center px-4">
             <p className="font-semibold text-rose-700 dark:text-rose-400 text-sm">Falha na importação</p>
             <p className="text-xs text-rose-500 font-medium mt-1">{errorMsg}</p>
             {errorDiagnostic && (
-              <div role="status" className="mt-3 rounded-2xl border border-rose-200 bg-white/70 dark:bg-slate-900/60 p-3 text-left">
+              <div role="status" className="mt-3 rounded-xl border border-rose-200 bg-white/70 dark:bg-slate-900/60 p-3 text-left">
                 <p className="text-xs font-semibold uppercase tracking-[0.08em] text-rose-600 dark:text-rose-300">{errorDiagnostic.title}</p>
                 <p className="mt-1 text-xs font-medium leading-relaxed text-rose-700 dark:text-rose-200">{errorDiagnostic.message}</p>
                 <p className="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-rose-500 dark:text-rose-300">Próximo passo: {errorDiagnostic.suggestion}</p>
@@ -657,7 +664,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
             )}
           </div>
           <button onClick={handleReset}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 rounded-2xl font-semibold text-slate-700 dark:text-white text-sm shadow-sm">
+            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 rounded-lg font-semibold text-slate-700 dark:text-white text-sm shadow-none border border-slate-200 dark:border-slate-700">
             <RefreshCw size={13} /> Tentar novamente
           </button>
         </div>

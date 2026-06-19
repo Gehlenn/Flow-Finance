@@ -56,6 +56,17 @@ Leitura honesta:
 
 Isso melhora a evidencia tecnica publicada, mas nao muda o veredito comercial: `SEM EVIDENCIA SUFICIENTE` para retencao real multi-semana, churn, LTV, CAC, conversao paga ou escala ampla.
 
+## Atualizacao de UI operacional em 2026-06-19
+
+Foi feita uma passada adicional nas telas secundarias da operacao: `ImportTransactions`, `Accounts` e `Goals`.
+
+Leitura honesta:
+
+- A mudanca reduz cardificacao, radius/sombra excessivos e deixa importacao, contas e metas mais coerentes com o contrato visual operacional do app.
+- `visual:regression -- --tabs import,accounts,goals`: `PASS`, com 6 screenshots em `test-results/visual-regression/2026-06-19T13-08-57-442Z/manifest.json`, `consoleIssues=0` e `pageErrors=0`.
+- Testes focados, typecheck, build, mojibake check e `npm run test:ci` passaram.
+- Isso reforca as notas de UX/UI e risco generico, mas nao muda o principal bloqueio de negocio: habito multi-semana e conversao paga seguem `SEM EVIDENCIA SUFICIENTE`.
+
 ## Resumo das notas
 
 | Area | Nota original | Nota atual | Confianca | Status atual |
@@ -115,7 +126,7 @@ Leitura correta da media: nao e prova de negocio. E melhora da prontidao tecnica
 
 - Nota atual: 8/10
 - Confianca: media
-- Evidencia usada: `components/Dashboard.tsx`; `components/Login.tsx`; `src/app/visualSystem.ts`; `scripts/capture-visual-regression.mjs`; `test-results/visual-regression/2026-06-14T07-47-08-463Z/manifest.json`; `test-results/ui-login-operational-desktop-2026-06-14-v1.png`; `tests/e2e/runtime-console-health.spec.ts`; `docs/DEPLOYMENT_STATUS.md`
+- Evidencia usada: `components/Dashboard.tsx`; `components/Login.tsx`; `pages/ImportTransactions.tsx`; `pages/Accounts.tsx`; `pages/Goals.tsx`; `src/app/visualSystem.ts`; `scripts/capture-visual-regression.mjs`; `test-results/visual-regression/2026-06-14T07-47-08-463Z/manifest.json`; `test-results/visual-regression/2026-06-19T13-08-57-442Z/manifest.json`; `test-results/ui-login-operational-desktop-2026-06-14-v1.png`; `tests/e2e/runtime-console-health.spec.ts`; `docs/DEPLOYMENT_STATUS.md`
 - Principal problema atual: experiencia auditada esta utilizavel e tem regressao visual local; ainda faltam evidencias de comportamento real repetido no browser por usuarios externos.
 - Impacto comercial: web esta suficiente para piloto, mas nao prova ativacao em volume.
 - Impacto tecnico: runtime publicado esta mais estavel, com menos ruido de `429`.
@@ -128,7 +139,7 @@ Leitura correta da media: nao e prova de negocio. E melhora da prontidao tecnica
 
 - Nota atual: 8/10
 - Confianca: media
-- Evidencia usada: `components/Dashboard.tsx`; `components/Login.tsx`; `App.tsx`; `pages/AICFO.tsx`; `src/styles/tailwind.css`; `test-results/visual-regression/2026-06-14T07-47-08-463Z/manifest.json`; `test-results/ui-login-operational-mobile-2026-06-14-v1.png`; `npm run health:runtime:mobile`; `docs/AUDIT_PRE_MORTEM_FLOW_FINANCE_2026-06-03.md`
+- Evidencia usada: `components/Dashboard.tsx`; `components/Login.tsx`; `App.tsx`; `pages/AICFO.tsx`; `pages/ImportTransactions.tsx`; `pages/Accounts.tsx`; `pages/Goals.tsx`; `src/styles/tailwind.css`; `test-results/visual-regression/2026-06-14T07-47-08-463Z/manifest.json`; `test-results/visual-regression/2026-06-19T13-08-57-442Z/manifest.json`; `test-results/ui-login-operational-mobile-2026-06-14-v1.png`; `npm run health:runtime:mobile`; `docs/AUDIT_PRE_MORTEM_FLOW_FINANCE_2026-06-03.md`
 - Principal problema atual: mobile foi corrigido para o gate tecnico e regressao visual local; ainda nao ha uso recorrente mobile real.
 - Impacto comercial: piloto em empresas pequenas depende bastante de mobile.
 - Impacto tecnico: precisa manter primeiro viewport preso a caixa, risco e acao.
@@ -284,7 +295,7 @@ Leitura correta da media: nao e prova de negocio. E melhora da prontidao tecnica
 
 - Nota atual: 8/10
 - Confianca: alta
-- Evidencia usada: `docs/PRODUCT_FOCUS_SURFACE_REVIEW_2026-06-11.md`; `src/app/mainNavigation.ts`; `docs/POST_AUDIT_EXECUTION_PLAN_2026-06-11.md`
+- Evidencia usada: `docs/PRODUCT_FOCUS_SURFACE_REVIEW_2026-06-11.md`; `src/app/mainNavigation.ts`; `src/app/visualSystem.ts`; `pages/ImportTransactions.tsx`; `pages/Accounts.tsx`; `pages/Goals.tsx`; `test-results/visual-regression/2026-06-19T13-08-57-442Z/manifest.json`; `docs/POST_AUDIT_EXECUTION_PLAN_2026-06-11.md`
 - Principal problema atual: risco tecnicamente reduzido, mas qualquer nova feature lateral pode reabrir o problema.
 - Impacto comercial: foco atual ajuda o usuario a entender o produto.
 - Impacto tecnico: reduz a pressao por construir super-app.

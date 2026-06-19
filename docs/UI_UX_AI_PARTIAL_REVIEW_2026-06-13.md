@@ -282,6 +282,16 @@ Status desta passada:
 - Evidencia visual final: `test-results/visual-regression/2026-06-19T02-32-11-171Z/manifest.json` com 12 screenshots e status `PASS`.
 - Limite de evidencia: esta rodada melhora legibilidade, consistencia e fluxo de decisao da UI. Nao prova retencao, conversao, preferencia de usuarios, disposicao a pagar ou habito recorrente.
 
+## Atualizacao 2026-06-19 - telas operacionais secundarias
+
+- Orquestracao: GPT-5.5; execucao delegada em GPT-5.4-mini para `pages/ImportTransactions.tsx`; integracao final pelo orquestrador em `pages/Accounts.tsx` e `pages/Goals.tsx`.
+- `pages/ImportTransactions.tsx` agora usa superficies do contrato visual (`section`, `quietSection`, `interactiveCard`) para reduzir dropzone, estados de processamento, preview, erro e sucesso. A logica de parsing/importacao nao foi alterada.
+- `pages/Accounts.tsx` foi compactado para leitura operacional: header menor, saldo consolidado em superficie calma, contas como linhas auditaveis e formulario com radius/sombra reduzidos.
+- `pages/Goals.tsx` foi alinhado ao mesmo contrato: header operacional, cards de meta menos pesados, formulario responsivo em mobile e modal de aporte com superficie compartilhada.
+- Evidencia visual especifica: `test-results/visual-regression/2026-06-19T13-08-57-442Z/manifest.json` com `import`, `accounts` e `goals` em desktop/mobile, 6 screenshots, `consoleIssues=0`, `pageErrors=0`, status `PASS`.
+- Validacao desta rodada: testes focados de contas/metas/importacao, `npm run type-check:app`, `npm run build`, `npm run docs:check-mojibake`, `npm run visual:regression -- --tabs import,accounts,goals`, `npm run test:ci`, e `git diff --check`.
+- Limite de evidencia: melhora de consistencia visual e reducao de aparencia generica nas telas de apoio; ainda nao prova preferencia de usuarios, ganho de ativacao ou habito recorrente.
+
 ## O que nao cortar agora
 
 - Dashboard como primeira superficie.
