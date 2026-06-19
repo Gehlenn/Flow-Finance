@@ -183,7 +183,7 @@ describe('AICFO plan render', () => {
 
     expect(screen.getByText(/Modo Free/i)).toBeTruthy();
     expect(screen.getByText(/20 consultas por mes/i)).toBeTruthy();
-    expect(screen.getByText(/Resumo do caixa/i)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /Resumo do caixa e da base usada/i })).toBeTruthy();
   });
 
   it('plano pro remove banner free e libera prompt completo', () => {
@@ -201,7 +201,7 @@ describe('AICFO plan render', () => {
 
     expect(screen.queryByText(/Modo Free/i)).toBeNull();
     expect(screen.getAllByRole('button').length).toBeGreaterThanOrEqual(6);
-    expect(screen.getByText(/Perguntas r.*idas do caixa/i)).toBeTruthy();
+    expect(screen.getByText(/Perguntas curtas do caixa/i)).toBeTruthy();
   });
 
   it('reserva espaco inferior na lista de respostas para o nav fixo mobile', () => {
@@ -241,7 +241,7 @@ describe('AICFO plan render', () => {
 
     expect(screen.queryByText(/Modo Free/i)).toBeNull();
     expect(screen.queryByText(/Assinar Pro agora/i)).toBeNull();
-    expect(screen.getByText(/Perguntas r.*idas do caixa/i)).toBeTruthy();
+    expect(screen.getByText(/Perguntas curtas do caixa/i)).toBeTruthy();
   });
 
   it('bloqueia a consulta 21 do plano free com paywall visivel', async () => {
@@ -304,7 +304,7 @@ describe('AICFO plan render', () => {
       expect(aicfoMocks.getWorkspaceBillingOverview).toHaveBeenCalled();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Posso pagar a semana\?/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Paga a semana\?/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/Diagnostico da IA/i)).toBeTruthy();
@@ -341,7 +341,7 @@ describe('AICFO plan render', () => {
       expect(aicfoMocks.getWorkspaceBillingOverview).toHaveBeenCalled();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Posso pagar a semana\?/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Paga a semana\?/i }));
 
     expect(await screen.findByRole('status')).toBeTruthy();
     expect(screen.getByText(/Aprendizado da conversa indisponivel/i)).toBeTruthy();
@@ -379,14 +379,14 @@ describe('AICFO plan render', () => {
       expect(aicfoMocks.getWorkspaceBillingOverview).toHaveBeenCalled();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Posso pagar a semana\?/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Paga a semana\?/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/Resposta consultiva\./i)).toBeTruthy();
     });
 
-    expect(screen.getAllByText(/Base da resposta/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Proxima acao obrigatoria/i)).toBeTruthy();
+    expect(screen.getAllByText(/Evidencia usada/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Proximo passo/i).length).toBeGreaterThan(0);
     expect(aicfoMocks.trackProductEvent).toHaveBeenCalledWith(
       'ai_question_submitted',
       expect.objectContaining({
@@ -458,12 +458,12 @@ describe('AICFO plan render', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Posso pagar a semana\?/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Paga a semana\?/i }));
 
     expect(await screen.findByText(/nao consegui processar esta consulta agora/i)).toBeTruthy();
     expect(screen.getAllByText(/Diagnostico da IA/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Nivel de confianca desta resposta: Baixa/i)).toBeTruthy();
-    expect(screen.getByText(/Profundidade reduzida/i)).toBeTruthy();
+    expect(screen.getByText(/Confianca Baixa/i)).toBeTruthy();
+    expect(screen.getByText(/Leitura curta/i)).toBeTruthy();
     expect(aicfoMocks.trackProductEvent).toHaveBeenCalledWith(
       'ai_fallback_observed',
       expect.objectContaining({
@@ -507,10 +507,10 @@ describe('AICFO plan render', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Posso pagar a semana\?/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Paga a semana\?/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Profundidade reduzida/i)).toBeTruthy();
+      expect(screen.getByText(/Leitura curta/i)).toBeTruthy();
       expect(screen.getByText(/Base incompleta/i)).toBeTruthy();
     });
   });
