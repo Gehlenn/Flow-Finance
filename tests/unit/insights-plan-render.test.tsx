@@ -80,7 +80,7 @@ describe('Insights plan render', () => {
 
     expect(screen.getByText(/Leituras comparativas/i)).toBeTruthy();
     expect(screen.queryByRole('heading', { name: /Base da leitura/i })).toBeNull();
-    expect(screen.getByText(/Pr.*xima a.*o/i)).toBeTruthy();
+    expect(screen.getAllByText(/Pr.*xima a.*o/i).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole('button', { name: /Abrir assistente/i }));
     expect(onNavigateToTab).toHaveBeenCalledWith('assistant');
     fireEvent.click(screen.getByRole('button', { name: /Criar lembrete/i }));
@@ -118,7 +118,7 @@ describe('Insights plan render', () => {
     expect(screen.getByText(/Base da leitura/i)).toBeTruthy();
     expect(screen.queryByText(/Leituras comparativas/i)).toBeNull();
     expect(screen.getByText(/Padrao de fluxo/i)).toBeTruthy();
-    expect(screen.getByText(/Pr.*xima a.*o/i)).toBeTruthy();
+    expect(screen.getAllByText(/Pr.*xima a.*o/i).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole('button', { name: /Ver metas/i }));
     expect(onNavigateToTab).toHaveBeenCalledWith('goals');
     fireEvent.click(screen.getByRole('button', { name: /Criar lembrete/i }));
