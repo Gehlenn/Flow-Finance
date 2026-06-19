@@ -161,7 +161,7 @@ describe('App shell navigation', () => {
 
     expect(subsectionTabs.className).toContain('grid');
     expect(subsectionTabs.className).toContain('grid-cols-3');
-    expect(subsectionTabs.className).toContain('md:grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))]');
+    expect(subsectionTabs.className).toContain('md:grid-cols-[repeat(auto-fit,minmax(8rem,1fr))]');
     expect(activeSectionTab.getAttribute('aria-selected')).toBe('true');
     expect(mainNav.className).toContain('grid-cols-4');
     expect(mainNav.className).toContain('mb-3');
