@@ -20,12 +20,10 @@ export function protectChunkLoading(): GuardResult {
     };
   }
 
-  // Intercept global errors
   window.addEventListener('error', (event) => {
     const error = event.error || event.message;
     const errorMessage = error?.message || error?.toString() || '';
 
-    // Detect chunk loading failures
     const isChunkError =
       errorMessage.includes('Failed to fetch dynamically imported module') ||
       errorMessage.includes('Importing a module script failed') ||
@@ -34,7 +32,7 @@ export function protectChunkLoading(): GuardResult {
 
     if (isChunkError) {
       handleChunkError(errorMessage);
-      event.preventDefault(); // Prevent default error handling
+      event.preventDefault();
     }
   });
 
@@ -59,61 +57,55 @@ function handleChunkError(error: string): void {
     fallback: 'chunk-guard-chunk-loading-failed',
   });
 
-  // Show user notification
   showChunkErrorNotification();
 
-  // Force reload if too many errors or first error in production
   if (chunkErrorCount >= MAX_CHUNK_ERRORS || (!hasReloaded && import.meta.env.PROD)) {
     reloadApplication();
   }
 }
 
 function showChunkErrorNotification(): void {
-  // Create notification overlay
   const existingNotification = document.getElementById('chunk-error-notification');
-  if (existingNotification) return; // Already showing
+  if (existingNotification) return;
 
   const notification = document.createElement('div');
   notification.id = 'chunk-error-notification';
-  notification.style.cssText = `
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 16px 24px;
-    border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-    z-index: 9999;
-    font-family: system-ui, -apple-system, sans-serif;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    animation: slideDown 0.3s ease-out;
-  `;
+  notification.className = 'chunk-error-notification';
 
-  notification.innerHTML = `
-    <style>
-      @keyframes slideDown {
-        from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
-        to { transform: translateX(-50%) translateY(0); opacity: 1; }
-      }
-    </style>
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-      <line x1="12" y1="9" x2="12" y2="13"/>
-      <line x1="12" y1="17" x2="12.01" y2="17"/>
-    </svg>
-    <div>
-      <strong style="display: block; margin-bottom: 4px;">Atualização detectada</strong>
-      <span style="opacity: 0.9; font-size: 14px;">Recarregando aplicação...</span>
-    </div>
-  `;
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.setAttribute('class', 'chunk-error-notification-icon');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('fill', 'none');
+  icon.setAttribute('stroke', 'currentColor');
+  icon.setAttribute('stroke-width', '2');
+  const warningPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  warningPath.setAttribute('d', 'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z');
+  const warningLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  warningLine.setAttribute('x1', '12');
+  warningLine.setAttribute('y1', '9');
+  warningLine.setAttribute('x2', '12');
+  warningLine.setAttribute('y2', '13');
+  const warningDot = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  warningDot.setAttribute('x1', '12');
+  warningDot.setAttribute('y1', '17');
+  warningDot.setAttribute('x2', '12.01');
+  warningDot.setAttribute('y2', '17');
+  icon.append(warningPath, warningLine, warningDot);
 
+  const copy = document.createElement('div');
+
+  const title = document.createElement('strong');
+  title.className = 'chunk-error-notification-title';
+  title.textContent = 'Atualizacao detectada';
+
+  const description = document.createElement('span');
+  description.className = 'chunk-error-notification-description';
+  description.textContent = 'Recarregando aplicacao...';
+
+  copy.append(title, description);
+  notification.append(icon, copy);
   document.body.appendChild(notification);
 
-  // Auto reload after 2s
   setTimeout(() => {
     if (!hasReloaded) {
       reloadApplication();
@@ -123,13 +115,12 @@ function showChunkErrorNotification(): void {
 
 function reloadApplication(): void {
   if (hasReloaded) return;
-  
+
   hasReloaded = true;
   logInfo('[Chunk Guard] Reloading application to fetch updated chunks', {
     fallback: 'chunk-guard-reload-triggered',
   });
 
-  // Clear service worker cache before reload
   if ('serviceWorker' in navigator && 'caches' in window) {
     caches.keys().then((keys) => {
       Promise.all(keys.map((key) => caches.delete(key))).then(() => {
@@ -140,4 +131,3 @@ function reloadApplication(): void {
     window.location.reload();
   }
 }
-

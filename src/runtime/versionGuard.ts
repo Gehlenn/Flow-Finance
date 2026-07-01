@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Version Guard
  * Monitors app version consistency between frontend and backend
  */
@@ -6,16 +6,6 @@
 import { GuardResult } from './types';
 import { isBenchmarkBrowserSession } from './benchmarkMode';
 import { logInfo, logWarn } from '../utils/logger';
-
-// Prevents DOM XSS when interpolating version strings from backend responses into innerHTML.
-function escapeHtml(value: unknown): string {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '0.9.7';
 const API_BASE_URL =
@@ -39,7 +29,7 @@ function isLocalNetworkTarget(url: string): boolean {
 const SHOULD_SKIP_NETWORK_PROBES = IS_AUTOMATED_BROWSER || (isLocalNetworkTarget(API_BASE_URL) && IS_DEV);
 
 let lastVersionCheck = 0;
-const VERSION_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const VERSION_CHECK_INTERVAL = 5 * 60 * 1000;
 
 export async function checkAppVersion(): Promise<GuardResult> {
   const now = Date.now();
@@ -53,7 +43,6 @@ export async function checkAppVersion(): Promise<GuardResult> {
     };
   }
 
-  // Rate limit version checks
   if (now - lastVersionCheck < VERSION_CHECK_INTERVAL) {
     return {
       guard: 'version',
@@ -109,8 +98,6 @@ export async function checkAppVersion(): Promise<GuardResult> {
         fallback: 'version-guard-version-mismatch',
       });
 
-      // Hard reload to avoid inconsistent deploy state.
-      // Skip reload during benchmark sessions to keep performance measurements stable.
       if (!isBenchmarkBrowserSession()) {
         logWarn('[HOTFIX] reload bloqueado', {
           frontendVersion: APP_VERSION,
@@ -160,81 +147,6 @@ export async function checkAppVersion(): Promise<GuardResult> {
   }
 }
 
-function showVersionMismatchNotification(localVersion: string, backendVersion: string): void {
-  // Check if already showing
-  if (document.getElementById('version-mismatch-notification')) return;
-
-  const notification = document.createElement('div');
-  notification.id = 'version-mismatch-notification';
-  notification.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    color: white;
-    padding: 16px 20px;
-    border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-    z-index: 9998;
-    font-family: system-ui, -apple-system, sans-serif;
-    max-width: 320px;
-    animation: slideIn 0.3s ease-out;
-  `;
-
-  notification.innerHTML = `
-    <style>
-      @keyframes slideIn {
-        from { transform: translateX(400px); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-      }
-    </style>
-    <div style="display: flex; align-items: start; gap: 12px;">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="12" y1="8" x2="12" y2="12"/>
-        <line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      <div style="flex: 1;">
-        <strong style="display: block; margin-bottom: 8px;">Nova versao disponivel</strong>
-        <p style="margin: 0 0 12px 0; opacity: 0.95; font-size: 13px;">
-          Frontend: v${escapeHtml(localVersion)}<br/>
-          Backend: v${escapeHtml(backendVersion)}
-        </p>
-        <button 
-          data-version-guard-reload="true"
-          style="
-            background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.4);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-            font-size: 13px;
-          "
-        >
-          Atualizar Agora
-        </button>
-      </div>
-    </div>
-  `;
-
-  const reloadButton = notification.querySelector<HTMLButtonElement>('[data-version-guard-reload="true"]');
-  reloadButton?.addEventListener('click', () => window.location.reload());
-
-  document.body.appendChild(notification);
-
-  // Auto-dismiss after 30s
-  setTimeout(() => {
-    if (notification.parentNode) {
-      notification.remove();
-    }
-  }, 30000);
-}
-
 export function getLocalVersion(): string {
   return APP_VERSION;
 }
-
-
-

@@ -665,7 +665,7 @@ const CashFlow: React.FC<CashFlowProps> = ({
                   <span className="text-sm font-semibold text-rose-500 dark:text-rose-400"><span>Saídas</span>: {fmt(totalsByPeriod.expenses)}</span>
                 </div>
               </div>
-              <div className="h-[220px] w-full" style={{ minHeight: '220px' }}>
+              <div className="h-[220px] min-h-[220px] w-full">
                 {timelineData.length > 0 ? (
                   <ResponsiveContainer
                     width="100%"
@@ -696,7 +696,7 @@ const CashFlow: React.FC<CashFlowProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className={`${PANEL_SURFACE} p-4 overflow-hidden min-h-[220px] sm:p-6`}>
                 <h3 className="text-sm font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-[0.16em] mb-4 flex items-center gap-2"><PieIcon size={14} /> Composição</h3>
-                <div className="h-[220px] w-full" style={{ minHeight: '220px' }}>
+                <div className="h-[220px] min-h-[220px] w-full">
                   {categoryData.length > 0 ? (
                     <ResponsiveContainer
                       width="100%"
@@ -724,7 +724,7 @@ const CashFlow: React.FC<CashFlowProps> = ({
 
               <div className={`${PANEL_SURFACE} p-4 overflow-hidden min-h-[220px] sm:p-6`}>
                 <h3 className="text-sm font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-[0.16em] mb-4 flex items-center gap-2"><Target size={14} /> Ranking</h3>
-                <div className="h-[220px] w-full" style={{ minHeight: '220px' }}>
+                <div className="h-[220px] min-h-[220px] w-full">
                   {categoryData.length > 0 ? (
                     <ResponsiveContainer
                       width="100%"
@@ -770,7 +770,7 @@ const CashFlow: React.FC<CashFlowProps> = ({
                 <StateMetricCard label="Previsto" value={fmt(revenueStateSummary.projected)} tone="projected" />
                 <StateMetricCard label="Base futura" value={fmt(revenueStateSummary.pending + revenueStateSummary.overdue)} tone="pending" />
               </div>
-              <div className="mt-6 h-[220px] w-full" style={{ minHeight: '220px' }}>
+              <div className="mt-6 h-[220px] min-h-[220px] w-full">
                 {projectedReceivables.length > 0 ? (
                   <ResponsiveContainer
                     width="100%"

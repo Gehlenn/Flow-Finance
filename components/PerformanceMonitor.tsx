@@ -1,10 +1,20 @@
-﻿import React from 'react';
+import React from 'react';
 import { usePerformanceMonitoring, formatBytes, formatTime, calculatePerformanceScore } from '../hooks/usePerformanceMonitoring';
 import { Activity, Zap, Monitor, Wifi, HardDrive, Clock, TrendingUp, AlertTriangle } from 'lucide-react';
+
+const PERFORMANCE_SCORE_CLASSES = {
+  Excelente: 'bg-emerald-500',
+  Bom: 'bg-amber-500',
+  Regular: 'bg-orange-500',
+  Ruim: 'bg-rose-500'
+} as const;
 
 const PerformanceMonitor: React.FC = () => {
   const metrics = usePerformanceMonitoring();
   const performanceScore = calculatePerformanceScore(metrics);
+  const performanceTone =
+    PERFORMANCE_SCORE_CLASSES[performanceScore.grade as keyof typeof PERFORMANCE_SCORE_CLASSES] ??
+    PERFORMANCE_SCORE_CLASSES.Ruim;
 
   const MetricCard: React.FC<{
     title: string;
@@ -51,8 +61,7 @@ const PerformanceMonitor: React.FC = () => {
       <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
         <div className="flex items-center gap-4 mb-4">
           <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-semibold text-lg"
-            style={{ backgroundColor: performanceScore.color }}
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-semibold text-lg ${performanceTone}`}
           >
             {performanceScore.score}
           </div>
@@ -61,15 +70,14 @@ const PerformanceMonitor: React.FC = () => {
             <p className="text-sm text-slate-500 dark:text-slate-400">{performanceScore.grade}</p>
           </div>
         </div>
-        <div className="w-full h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-1000"
-            style={{
-              width: `${performanceScore.score}%`,
-              backgroundColor: performanceScore.color
-            }}
-          />
-        </div>
+        <progress
+          className={`flow-progress ${
+            performanceScore.score >= 80 ? 'flow-progress-emerald' : performanceScore.score >= 60 ? 'flow-progress-amber' : 'flow-progress-rose'
+          }`}
+          value={performanceScore.score}
+          max={100}
+          aria-label="Performance score"
+        />
       </div>
 
       {/* Core Web Vitals */}

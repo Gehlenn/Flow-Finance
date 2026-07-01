@@ -396,15 +396,15 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
         </ResponsiveChartFrame>
         <div className="mt-4 flex flex-wrap items-center justify-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: COLORS.income }} />
+            <div className="h-3 w-3 rounded-sm bg-[var(--flow-chart-income)]" />
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Receitas</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: COLORS.expenses }} />
+            <div className="h-3 w-3 rounded-sm bg-[var(--flow-chart-expenses)]" />
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Despesas</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-0.5 w-4 rounded" style={{ backgroundColor: COLORS.balance }} />
+            <div className="h-0.5 w-4 rounded bg-[var(--flow-chart-balance)]" />
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Saldo</span>
           </div>
         </div>

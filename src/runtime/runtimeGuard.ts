@@ -11,19 +11,9 @@ import { validateServiceWorker } from './serviceWorkerGuard';
 import { checkAppVersion } from './versionGuard';
 import { logError, logInfo, logWarn } from '../utils/logger';
 
-// Prevents DOM XSS when interpolating data from network responses into innerHTML.
-function escapeHtml(value: unknown): string {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 const DEFAULT_CONFIG: RuntimeConfig = {
-  apiHealthCheckInterval: 60000, // 1 minute
-  versionCheckInterval: 300000, // 5 minutes
+  apiHealthCheckInterval: 60000,
+  versionCheckInterval: 300000,
   enableChunkRetry: true,
   enableAutoReload: true,
 };
@@ -47,13 +37,11 @@ export async function initializeRuntimeGuard(userConfig?: Partial<RuntimeConfig>
 
   const results: GuardResult[] = [];
 
-  // 1. Chunk loading protection
   if (config.enableChunkRetry) {
     const chunkResult = protectChunkLoading();
     results.push(chunkResult);
   }
 
-  // 2. Service worker validation
   try {
     const swResult = await validateServiceWorker();
     results.push(swResult);
@@ -63,7 +51,6 @@ export async function initializeRuntimeGuard(userConfig?: Partial<RuntimeConfig>
     });
   }
 
-  // 3. API health check
   try {
     const apiResult = await checkAPIHealth();
     results.push(apiResult);
@@ -73,7 +60,6 @@ export async function initializeRuntimeGuard(userConfig?: Partial<RuntimeConfig>
     });
   }
 
-  // 4. Deploy version consistency check
   try {
     const versionResult = await checkAppVersion();
     results.push(versionResult);
@@ -83,13 +69,11 @@ export async function initializeRuntimeGuard(userConfig?: Partial<RuntimeConfig>
     });
   }
 
-  // Log results
   logInfo('[Runtime Guard] Initialization complete', {
     results,
     fallback: 'runtime-guard-initialization-complete',
   });
 
-  // Report critical issues
   const criticalIssues = results.filter((r) => r.status === 'critical' || r.status === 'error');
   if (criticalIssues.length > 0) {
     logError('[Runtime Guard] Critical issues detected', new Error('Critical runtime issues detected'), {
@@ -99,17 +83,15 @@ export async function initializeRuntimeGuard(userConfig?: Partial<RuntimeConfig>
     showCriticalErrorUI(criticalIssues);
   }
 
-  // Start periodic checks
   startPeriodicChecks();
 
   isInitialized = true;
 }
 
 function startPeriodicChecks(): void {
-  // Periodic API health check
   if (config.apiHealthCheckInterval) {
     setInterval(() => {
-    checkAPIHealth().catch((err) =>
+      checkAPIHealth().catch((err) =>
         logError('[Runtime Guard] Periodic API check failed', err, {
           fallback: 'runtime-guard-periodic-api-check-failed',
         })
@@ -117,10 +99,9 @@ function startPeriodicChecks(): void {
     }, config.apiHealthCheckInterval);
   }
 
-  // Periodic version check
   if (config.versionCheckInterval) {
     setInterval(() => {
-    checkAppVersion().catch((err) =>
+      checkAppVersion().catch((err) =>
         logError('[Runtime Guard] Periodic version check failed', err, {
           fallback: 'runtime-guard-periodic-version-check-failed',
         })
@@ -135,84 +116,68 @@ function showCriticalErrorUI(issues: GuardResult[]): void {
 
   const overlay = document.createElement('div');
   overlay.id = 'runtime-guard-critical-error';
-  overlay.style.cssText = `
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.98);
-    backdrop-filter: blur(8px);
-    z-index: 999999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    font-family: system-ui, -apple-system, sans-serif;
-  `;
+  overlay.className = 'runtime-guard-critical-overlay';
 
-  const issuesList = issues
-    .map(
-      (issue) => `
-    <li style="margin-bottom: 8px; padding: 12px; background: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; border-radius: 4px;">
-      <strong>${escapeHtml(issue.guard)}</strong>: ${escapeHtml(issue.message || 'Unknown error')}
-    </li>
-  `
-    )
-    .join('');
+  const panel = document.createElement('div');
+  panel.className = 'runtime-guard-critical-panel';
 
-  overlay.innerHTML = `
-    <div style="
-      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      border-radius: 16px;
-      padding: 32px;
-      max-width: 500px;
-      width: 100%;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-      color: white;
-    ">
-      <div style="text-align: center; margin-bottom: 24px;">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" style="margin: 0 auto 16px;">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 700;">Erro Crítico Detectado</h1>
-        <p style="margin: 0; color: #94a3b8; font-size: 14px;">O sistema encontrou problemas que impedem a execução normal</p>
-      </div>
-      
-      <ul style="list-style: none; padding: 0; margin: 0 0 24px 0; font-size: 14px; color: #e2e8f0;">
-        ${issuesList}
-      </ul>
-      
-      <button 
-        data-runtime-guard-reload="true"
-        style="
-          width: 100%;
-          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-          border: none;
-          color: white;
-          padding: 14px 24px;
-          border-radius: 8px;
-          cursor: pointer;
-          font-weight: 600;
-          font-size: 16px;
-          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
-          transition: transform 0.2s;
-        "
-      >
-        Recarregar Aplicação
-      </button>
-    </div>
-  `;
+  const header = document.createElement('div');
+  header.className = 'runtime-guard-critical-header';
 
-  const reloadButton = overlay.querySelector<HTMLButtonElement>('[data-runtime-guard-reload="true"]');
-  reloadButton?.addEventListener('click', () => window.location.reload());
-  reloadButton?.addEventListener('mouseenter', () => {
-    reloadButton.style.transform = 'scale(1.02)';
-  });
-  reloadButton?.addEventListener('mouseleave', () => {
-    reloadButton.style.transform = 'scale(1)';
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.setAttribute('class', 'runtime-guard-critical-icon');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('fill', 'none');
+  icon.setAttribute('stroke', 'currentColor');
+  icon.setAttribute('stroke-width', '2');
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circle.setAttribute('cx', '12');
+  circle.setAttribute('cy', '12');
+  circle.setAttribute('r', '10');
+  const warningLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  warningLine.setAttribute('x1', '12');
+  warningLine.setAttribute('y1', '8');
+  warningLine.setAttribute('x2', '12');
+  warningLine.setAttribute('y2', '12');
+  const warningDot = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  warningDot.setAttribute('x1', '12');
+  warningDot.setAttribute('y1', '16');
+  warningDot.setAttribute('x2', '12.01');
+  warningDot.setAttribute('y2', '16');
+  icon.append(circle, warningLine, warningDot);
+
+  const title = document.createElement('h1');
+  title.className = 'runtime-guard-critical-title';
+  title.textContent = 'Erro critico detectado';
+
+  const description = document.createElement('p');
+  description.className = 'runtime-guard-critical-description';
+  description.textContent = 'O sistema encontrou problemas que impedem a execucao normal.';
+
+  header.append(icon, title, description);
+
+  const list = document.createElement('ul');
+  list.className = 'runtime-guard-critical-list';
+  issues.forEach((issue) => {
+    const item = document.createElement('li');
+    item.className = 'runtime-guard-critical-list-item';
+
+    const guard = document.createElement('strong');
+    guard.textContent = issue.guard;
+
+    item.append(guard, `: ${issue.message || 'Unknown error'}`);
+    list.appendChild(item);
   });
 
+  const reloadButton = document.createElement('button');
+  reloadButton.className = 'runtime-guard-critical-button';
+  reloadButton.type = 'button';
+  reloadButton.dataset.runtimeGuardReload = 'true';
+  reloadButton.textContent = 'Recarregar aplicacao';
+  reloadButton.addEventListener('click', () => window.location.reload());
+
+  panel.append(header, list, reloadButton);
+  overlay.appendChild(panel);
   document.body.appendChild(overlay);
 }
 

@@ -152,6 +152,7 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
   } = usePredictions(days);
 
   const [refreshing, setRefreshing] = useState(false);
+  const chartHeightClass = height <= 240 ? 'h-60' : height <= 320 ? 'h-80' : height <= 480 ? 'h-[400px]' : 'h-[520px]';
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -187,7 +188,7 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
       <div className="rounded-xl border border-slate-200 bg-white p-4">
         <div className="h-6 w-64 animate-pulse rounded bg-slate-100" />
         <div className="mt-2 h-4 w-80 animate-pulse rounded bg-slate-100" />
-        <div className="mt-4 animate-pulse rounded bg-slate-100" style={{ height }} />
+        <div className={`mt-4 animate-pulse rounded bg-slate-100 ${chartHeightClass}`} />
       </div>
     );
   }
@@ -291,7 +292,7 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
         </div>
       ) : null}
 
-      <div className="mt-4" style={{ height }}>
+      <div className={`mt-4 ${chartHeightClass}`}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={chartData} margin={{ top: 12, right: 12, bottom: 12, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" />

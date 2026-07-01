@@ -356,11 +356,10 @@ const TypingBubble: React.FC = () => (
     </div>
     <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-5 py-4 rounded-3xl rounded-tl-lg shadow-sm flex items-center gap-2">
       <div className="flex gap-1">
-        {[0, 1, 2].map(i => (
+        {['flow-typing-delay-0', 'flow-typing-delay-150', 'flow-typing-delay-300'].map(delayClass => (
           <span
-            key={i}
-            className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
-            style={{ animationDelay: `${i * 150}ms` }}
+            key={delayClass}
+            className={`w-2 h-2 bg-slate-400 rounded-full animate-bounce ${delayClass}`}
           />
         ))}
       </div>
@@ -1028,8 +1027,7 @@ const AICFO: React.FC<AICFOProps> = ({
             placeholder={paywallVisible ? 'Limite mensal do Free atingido. Assine o Pro para continuar.' : AI_CFO_COPY.inputPlaceholder}
             rows={1}
             disabled={paywallVisible}
-            className="mt-1 flex-1 max-h-28 w-full resize-none bg-transparent py-1.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 placeholder:font-normal dark:text-white sm:max-h-32 sm:py-2"
-            style={{ scrollbarWidth: 'none' }}
+            className="no-scrollbar mt-1 flex-1 max-h-28 w-full resize-none bg-transparent py-1.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 placeholder:font-normal dark:text-white sm:max-h-32 sm:py-2"
           />
         </div>
         <button
@@ -1045,7 +1043,7 @@ const AICFO: React.FC<AICFOProps> = ({
       </div>
 
       {messages.length > 0 && !isLoading && (
-        <div className="order-3 shrink-0 mt-2 flex gap-2 overflow-x-auto pb-1 md:order-none" style={{ scrollbarWidth: 'none' }}>
+        <div className="no-scrollbar order-3 shrink-0 mt-2 flex gap-2 overflow-x-auto pb-1 md:order-none">
           {quickPrompts.map(p => (
             <button
               key={p.question}

@@ -11,7 +11,7 @@ export function AIControlPanel() {
   }
 
   return (
-    <div style={{ padding: 16, display: 'grid', gap: 24 }}>
+    <div className="grid gap-6 p-4">
       <h1>AI Control Panel</h1>
       <MemoryViewer />
       <PatternViewer />

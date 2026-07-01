@@ -63,15 +63,28 @@ const TermBadge: React.FC<{ children: React.ReactNode; color?: string }> = ({ ch
   </span>
 );
 
+const moneyMapBgClass: Record<string, string> = {
+  '#6366f1': 'bg-indigo-500',
+  '#8b5cf6': 'bg-violet-500',
+  '#0ea5e9': 'bg-sky-500',
+  '#10b981': 'bg-emerald-500',
+  '#94a3b8': 'bg-slate-400',
+};
+
+function getMoneyMapBgClass(color: string): string {
+  return moneyMapBgClass[color] ?? 'bg-slate-400';
+}
+
 const ConfBar: React.FC<{ value: number }> = ({ value }) => {
   const pct = Math.round(value * 100);
-  const color = pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
+  const color = pct >= 80 ? 'flow-progress-emerald' : pct >= 50 ? 'flow-progress-amber' : 'flow-progress-rose';
+  const textColor = pct >= 80 ? 'text-emerald-400' : pct >= 50 ? 'text-amber-400' : 'text-rose-400';
   return (
     <div className="flex items-center gap-2">
       <div className="h-1 w-20 bg-slate-800 rounded-full overflow-hidden">
-        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+        <progress className={`flow-progress ${color}`} value={pct} max={100} aria-label="Confianca" />
       </div>
-      <span className="font-mono text-xs" style={{ color }}>{pct}%</span>
+      <span className={`font-mono text-xs ${textColor}`}>{pct}%</span>
     </div>
   );
 };
@@ -1134,8 +1147,7 @@ const MoneyMapTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }
               {map.distribution.slice(0, 6).map(item => (
                 <div
                   key={item.category}
-                  className="h-full transition-all"
-                  style={{ width: `${item.percentage}%`, backgroundColor: item.color }}
+                  className={`h-full min-w-4 flex-1 transition-all ${getMoneyMapBgClass(item.color)}`}
                   title={`${item.category}: ${item.percentage.toFixed(1)}%`}
                 />
               ))}
@@ -1150,7 +1162,7 @@ const MoneyMapTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }
           <div className="flex flex-col gap-1.5">
             {map.distribution.map(item => (
               <div key={item.category} className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: item.color }} />
+                <div className={`w-2 h-2 rounded-sm shrink-0 ${getMoneyMapBgClass(item.color)}`} />
                 <span className="font-mono text-xs text-slate-300 flex-1 truncate">{item.category}</span>
                 <span className="font-mono text-xs text-slate-500">{item.count}Ã—</span>
                 <div className="flex items-center gap-1">
@@ -1784,7 +1796,12 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
                   </div>
                   {/* progress bar */}
                   <div className="h-1 bg-slate-800 rounded-full overflow-hidden mb-1.5">
-                    <div className="h-full bg-violet-500 rounded-full" style={{ width: `${Math.min(100, cat.percentage)}%` }} />
+                    <progress
+                      className="flow-progress flow-progress-slate"
+                      value={Math.min(100, cat.percentage)}
+                      max={100}
+                      aria-label={`Participacao da categoria ${cat.name}`}
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-xs text-slate-500">{cat.count} transações · {cat.percentage.toFixed(1)}%</span>
@@ -1837,9 +1854,11 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
                     <ArrowRight size={8} className="text-emerald-500 shrink-0" />
                     <span className="font-mono text-xs text-emerald-300 w-32 shrink-0">{rel}</span>
                     <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-500/60 rounded-full"
-                        style={{ width: `${Math.min(100, (cnt / graph.edges.length) * 100 * 5)}%` }}
+                      <progress
+                        className="flow-progress flow-progress-emerald"
+                        value={Math.min(100, (cnt / graph.edges.length) * 100 * 5)}
+                        max={100}
+                        aria-label={`Peso da relacao ${rel}`}
                       />
                     </div>
                     <span className="font-mono text-xs text-slate-400 w-8 text-right">{cnt}</span>

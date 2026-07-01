@@ -35,7 +35,6 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, className = '
           fill="none" 
           xmlns="http://www.w3.org/2000/svg"
           className="relative z-10 animate-natural-float p-1 overflow-visible"
-          style={{ overflow: 'visible' }}
         >
           <defs>
             <linearGradient id="flowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -93,31 +92,6 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true, className = '
           </div>
         </div>
       )}
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes natural-float {
-          0%, 100% { transform: translateY(0) translateX(0) rotate(0deg); }
-          33% { transform: translateY(-8px) translateX(2px) rotate(1deg); }
-          66% { transform: translateY(-4px) translateX(-2px) rotate(-1deg); }
-        }
-        @keyframes breath {
-          0%, 100% { transform: scale(0.9); opacity: 0.4; filter: blur(20px); }
-          50% { transform: scale(1.3); opacity: 0.8; filter: blur(15px); }
-        }
-        @keyframes ping-slow {
-          0%, 100% { transform: scale(1); opacity: 0.8; }
-          50% { transform: scale(1.6); opacity: 1; filter: drop-shadow(0 0 10px #22D3EE); }
-        }
-        .animate-natural-float {
-          animation: natural-float 7s ease-in-out infinite;
-        }
-        .animate-breath {
-          animation: breath 9s ease-in-out infinite;
-        }
-        .animate-ping-slow {
-          animation: ping-slow 4s ease-in-out infinite;
-        }
-      `}} />
     </div>
   );
 };

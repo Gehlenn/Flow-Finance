@@ -345,9 +345,11 @@ const Insights: React.FC<InsightsProps> = ({
               </div>
 
               <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-                <div
-                  className={`h-full ${hs.bar} rounded-full transition-all duration-1000`}
-                  style={{ width: `${health_score}%` }}
+                <progress
+                  className={`flow-progress ${health_score >= 70 ? 'flow-progress-emerald' : health_score >= 45 ? 'flow-progress-amber' : 'flow-progress-rose'}`}
+                  value={health_score}
+                  max={100}
+                  aria-label="Saude do caixa"
                 />
               </div>
 
@@ -529,9 +531,11 @@ const Insights: React.FC<InsightsProps> = ({
                       <div key={key} className="flex items-center gap-3">
                         <p className="w-28 shrink-0 truncate text-xs font-semibold uppercase tracking-tight text-slate-400">{key.replace('_', ' ')}</p>
                         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-                          <div
-                            className="h-full rounded-full bg-slate-500 transition-all duration-700"
-                            style={{ width: `${pct}%` }}
+                          <progress
+                            className="flow-progress flow-progress-slate"
+                            value={pct}
+                            max={100}
+                            aria-label={`Pontuacao do perfil ${key.replace('_', ' ')}`}
                           />
                         </div>
                         <p className="w-8 text-right text-xs font-semibold text-slate-400">{pct}%</p>

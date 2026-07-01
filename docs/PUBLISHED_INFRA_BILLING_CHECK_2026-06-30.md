@@ -19,6 +19,8 @@ This check covers public, unauthenticated runtime evidence only. It does not rea
 - Vercel deploy evidence: alternate frontend deployment `dpl_6r3DVKQsgVUVgQFBsFykko8W3oXu` promoted script CSP hardening to `https://flow-finance-xi.vercel.app`.
 - Vercel deploy evidence: official frontend deployment `dpl_GVoQNYWMFMAMtWHTJMBtjda9defc` removed runtime inline handlers and promoted to `https://flow-finance-frontend-nine.vercel.app`.
 - Vercel deploy evidence: alternate frontend deployment `dpl_Bv1wu9QbSyqez2qm4hSqCfjuCAtL` removed runtime inline handlers and promoted to `https://flow-finance-xi.vercel.app`.
+- Vercel deploy evidence: official frontend deployment `dpl_3aMx98ErwTseg6TDbhRJgYnsMdFs` removed frontend `style-src 'unsafe-inline'` and promoted to `https://flow-finance-frontend-nine.vercel.app`.
+- Vercel deploy evidence: alternate frontend deployment `dpl_FjwvsZVfZDKESRS38rt7g2Hr5ZQo` removed frontend `style-src 'unsafe-inline'` and promoted to `https://flow-finance-xi.vercel.app`.
 
 ## Public runtime observations
 
@@ -52,7 +54,9 @@ Correction made and published:
 - Published validation: `PUBLISHED_FRONTEND_URL=https://flow-finance-xi.vercel.app npm run health:published-headers` passed after script CSP hardening, with artifact `test-results/published-headers/2026-07-01T12-48-04-023Z.json`; alternate frontend CSP reported no `script-src` violation.
 - Published validation: `npm run health:published-headers` passed after removing runtime inline handlers, with artifact `test-results/published-headers/2026-07-01T12-57-27-553Z.json`.
 - Published validation: `PUBLISHED_FRONTEND_URL=https://flow-finance-xi.vercel.app npm run health:published-headers` passed after removing runtime inline handlers, with artifact `test-results/published-headers/2026-07-01T12-57-27-739Z.json`.
-- Local CSP readiness: `npm run health:csp-readiness` produced `test-results/csp-readiness/2026-07-01T12-57-26-322Z.json` with `scriptBlockers: []` and `styleCspReady: false`.
+- Local CSP readiness: `npm run health:csp-readiness` produced `test-results/csp-readiness/2026-07-01T18-03-23-764Z.json` with `PASS`, `scriptBlockers: []`, `styleBlockers: []`, `scriptCspReady: true`, and `styleCspReady: true`.
+- Published validation: `npm run health:published-headers` passed after style CSP hardening, with artifact `test-results/published-headers/2026-07-01T18-06-58-946Z.json`; frontend CSP reported no `script-src` or `style-src` violation.
+- Published validation: `PUBLISHED_FRONTEND_URL=https://flow-finance-xi.vercel.app npm run health:published-headers` passed after style CSP hardening, with artifact `test-results/published-headers/2026-07-01T18-07-00-337Z.json`; alternate frontend CSP reported no `script-src` or `style-src` violation.
 - Published validation: `npm run health:vercel` passed against `https://flow-finance-backend.vercel.app`; `/health`, `/api/health`, and `/api/version` matched the expected contracts and `/` returned the expected API-only `404`.
 
 Important boundary:
@@ -114,15 +118,15 @@ Assessment:
 - Impact comercial: weakens trust posture for a fintech-like SaaS and leaves production-readiness claims too broad.
 - Impact tecnico: missing defense-in-depth against XSS/clickjacking/content sniffing on the browser app shell.
 - Correction: `vercel.json` now defines frontend-wide security headers and uses `rewrites` instead of legacy `routes`.
-- Remaining risk: `style-src` remains compatibility-oriented and still allows `'unsafe-inline'`.
+- Remaining risk: authenticated app behavior under strict CSP still needs real-use validation.
 
-### P2 - Style CSP is intentionally compatible, not strict
+### P2 - Style CSP was intentionally compatible, not strict - CLOSED FOR PUBLISHED HEADER
 
-- Evidence: `index.html` no longer uses inline importmap/bootstrap; `public/flow-bootstrap.js` carries the service-worker bootstrap; `vercel.json` now publishes `script-src 'self'`; `test-results/published-headers/2026-07-01T12-57-27-553Z.json` and `test-results/published-headers/2026-07-01T12-57-27-739Z.json` show no frontend `script-src` violations.
-- Remaining evidence: `test-results/csp-readiness/2026-07-01T12-57-26-322Z.json` shows `scriptBlockers: []`, but `style-src` still allows `'unsafe-inline'` and the app still has inline style surfaces.
+- Evidence: `index.html` no longer uses inline importmap/bootstrap; `public/flow-bootstrap.js` carries the service-worker bootstrap; runtime guards, progress surfaces, dev panels, logo animation, and Vercel CSP were migrated away from inline style/script surfaces.
+- Closure evidence: `test-results/csp-readiness/2026-07-01T18-03-23-764Z.json` is `PASS`, and `test-results/published-headers/2026-07-01T18-06-58-946Z.json` plus `test-results/published-headers/2026-07-01T18-07-00-337Z.json` show no frontend `script-src` or `style-src` violations.
 - Impact comercial: acceptable as an incremental hardening step, but not strong enough to market as mature browser security.
 - Impact tecnico: XSS defense-in-depth is improved but not maximized.
-- Correction recommended: migrate runtime style injection/inline style dependencies or introduce a nonce/hash strategy for style surfaces so `style-src 'unsafe-inline'` can be removed.
+- Remaining risk: this proves headers and static/runtime inventory, not authenticated workflow behavior under real usage.
 
 ### P1 - Stripe/env alignment remains unproven without authenticated billing smoke
 

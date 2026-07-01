@@ -1,7 +1,7 @@
 # Flow Finance - external production gates
 
 Data: 2026-06-30
-Status: HEADERS, SCRIPT CSP AND FIRESTORE PASS / STRIPE BLOCK REMAINS
+Status: HEADERS, LOCAL SCRIPT+STYLE CSP AND FIRESTORE PASS / STRIPE BLOCK REMAINS
 
 ## Escopo
 
@@ -53,13 +53,14 @@ Status: BACKEND AND FRONTEND PUBLISHED PASS
 
 Implementado:
 
-- `scripts/check-published-headers.mjs` verifica headers publicados do backend e frontend, grava artefatos em `test-results/published-headers/`, e bloqueia regressao se o frontend voltar a permitir `'unsafe-inline'` ou `https://esm.sh` em `script-src`.
+- `scripts/check-published-headers.mjs` verifica headers publicados do backend e frontend, grava artefatos em `test-results/published-headers/`, e bloqueia regressao se o frontend voltar a permitir `'unsafe-inline'` ou `https://esm.sh` em `script-src` ou `'unsafe-inline'` em `style-src`.
 - `scripts/check-csp-readiness.mjs` inventaria readiness de CSP local, separando script blockers de style blockers e gravando artefatos em `test-results/csp-readiness/`.
 - `package.json` expoe `npm run health:published-headers`.
 - `.vercelignore` exclui artefatos locais de upload para o Vercel.
 - `vercel.json` usa `rewrites` em vez de `routes` legado, permitindo que os headers de alto nivel sejam aplicados ao SPA root.
 - `index.html` nao usa mais importmap inline nem bootstrap inline; o bootstrap de service worker foi movido para `public/flow-bootstrap.js`.
 - `vercel.json` agora publica `script-src 'self'` no frontend, sem `'unsafe-inline'` e sem `https://esm.sh`.
+- `vercel.json` agora remove `'unsafe-inline'` tambem de `style-src`; componentes, runtime guards, paineis dev, logo e barras de progresso foram migrados para classes CSS e `<progress>`.
 
 Validado:
 
@@ -70,10 +71,14 @@ Validado:
 - `PUBLISHED_FRONTEND_URL=https://flow-finance-xi.vercel.app npm run health:published-headers`: `PASS`, artefato `test-results/published-headers/2026-07-01T12-48-04-023Z.json`, incluindo ausencia de violacoes em `script-src` no frontend alternativo.
 - `npm run health:published-headers`: `PASS`, artefato `test-results/published-headers/2026-07-01T12-57-27-553Z.json`, apos remover handlers inline dos runtime guards.
 - `PUBLISHED_FRONTEND_URL=https://flow-finance-xi.vercel.app npm run health:published-headers`: `PASS`, artefato `test-results/published-headers/2026-07-01T12-57-27-739Z.json`, apos remover handlers inline dos runtime guards.
-- `npm run health:csp-readiness`: `BLOCK`, artefato `test-results/csp-readiness/2026-07-01T12-57-26-322Z.json`; `scriptBlockers: []`, `scriptCspReady: true`, `styleCspReady: false`.
+- `npm run health:csp-readiness`: `PASS`, artefato `test-results/csp-readiness/2026-07-01T18-03-23-764Z.json`; `scriptBlockers: []`, `styleBlockers: []`, `scriptCspReady: true`, `styleCspReady: true`.
+- `npm run type-check`, `npm run build`, and `npm run test:ci`: `PASS` after the style CSP migration; `test:ci` completed `242` test files across `9` chunks.
+- `node scripts/capture-visual-regression.mjs --tabs=dashboard,flow,analytics,cfo,assistant,goals,insights --viewports=desktop,mobile`: `PASS`, artefato `test-results/visual-regression/2026-07-01T18-04-52-669Z/manifest.json`, `14` screenshots.
 - Backend publicado: `PASS` para `Content-Security-Policy`, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` e `X-Request-Id`.
-- Frontend oficial publicado: `PASS` para `Content-Security-Policy`, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` e `Permissions-Policy`; CSP de script publicada como `script-src 'self'`.
-- Frontend alternativo publicado: `PASS` para os mesmos headers e para `script-src 'self'`.
+- `npm run health:published-headers`: `PASS`, artefato `test-results/published-headers/2026-07-01T18-06-58-946Z.json`; frontend oficial publicado sem violacao de `script-src` e `style-src`.
+- `PUBLISHED_FRONTEND_URL=https://flow-finance-xi.vercel.app npm run health:published-headers`: `PASS`, artefato `test-results/published-headers/2026-07-01T18-07-00-337Z.json`; frontend alternativo publicado sem violacao de `script-src` e `style-src`.
+- Frontend oficial publicado: `PASS` para `Content-Security-Policy`, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` e `Permissions-Policy`; CSP publicada como `script-src 'self'` e `style-src 'self' https://fonts.googleapis.com`.
+- Frontend alternativo publicado: `PASS` para os mesmos headers e para `script-src 'self'` e `style-src` sem `unsafe-inline`.
 
 Publicado:
 
@@ -83,10 +88,12 @@ Publicado:
 - `flow-finance-xi.vercel.app` recebeu script CSP estrita no deploy `dpl_6r3DVKQsgVUVgQFBsFykko8W3oXu`.
 - `flow-finance-frontend-nine.vercel.app` recebeu a remocao dos handlers inline runtime no deploy `dpl_GVoQNYWMFMAMtWHTJMBtjda9defc`.
 - `flow-finance-xi.vercel.app` recebeu a remocao dos handlers inline runtime no deploy `dpl_Bv1wu9QbSyqez2qm4hSqCfjuCAtL`.
+- `flow-finance-frontend-nine.vercel.app` recebeu `style-src` sem `unsafe-inline` no deploy `dpl_3aMx98ErwTseg6TDbhRJgYnsMdFs`.
+- `flow-finance-xi.vercel.app` recebeu `style-src` sem `unsafe-inline` no deploy `dpl_FjwvsZVfZDKESRS38rt7g2Hr5ZQo`.
 
 SEM EVIDENCIA SUFICIENTE:
 
-- CSP de estilo sem `unsafe-inline`; `test-results/csp-readiness/2026-07-01T12-57-26-322Z.json` lista os bloqueios atuais de estilo inline em componentes React, runtime guards e superficies dev.
+- SEM EVIDENCIA SUFICIENTE para comportamento autenticado real sob a CSP estrita; headers publicados e inventario local passaram, mas isso nao substitui teste funcional real do app.
 
 ## Firestore emulator
 
@@ -120,6 +127,8 @@ Fechado offline:
 - backend publicado saudavel e com headers;
 - frontends oficial e alternativo publicados com headers.
 - frontends oficial e alternativo publicados com `script-src 'self'`, sem script inline ou dependencia de `esm.sh` na CSP.
+- frontends oficial e alternativo publicados com `style-src` sem `unsafe-inline`.
+- readiness local de CSP completo, incluindo `style-src` sem `unsafe-inline`, passou em `test-results/csp-readiness/2026-07-01T18-03-23-764Z.json`.
 
 Ainda bloqueia:
 

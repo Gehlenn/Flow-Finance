@@ -377,11 +377,10 @@ const Assistant: React.FC<AssistantProps> = ({
     }
   };
 
-  const getAlertColor = (percent: number) => {
-    if (percent >= 100) return 'text-rose-600 bg-rose-500';
-    if (percent >= 80) return 'text-amber-600 bg-amber-500';
-    if (percent >= 50) return 'text-slate-600 bg-slate-500';
-    return 'text-slate-600 bg-slate-500';
+  const getAlertProgressClass = (percent: number) => {
+    if (percent >= 100) return 'flow-progress-rose';
+    if (percent >= 80) return 'flow-progress-amber';
+    return 'flow-progress-slate';
   };
 
   return (
@@ -688,12 +687,17 @@ const Assistant: React.FC<AssistantProps> = ({
                       </div>
                       
                       <div className="relative h-4 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden shadow-inner border border-slate-50 dark:border-slate-800">
-                        <div
-                          className="absolute top-0 left-0 h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-out flex items-center justify-end pr-2"
-                          style={{ width: `${progress}%` }}
-                        >
-                          {progress > 15 && <span className="text-xs font-semibold text-white drop-shadow-md">{Math.round(progress)}%</span>}
-                        </div>
+                        <progress
+                          className="flow-progress flow-progress-emerald absolute inset-0"
+                          value={progress}
+                          max={100}
+                          aria-label={`Progresso da meta ${goal.title}`}
+                        />
+                        {progress > 15 && (
+                          <span className="absolute inset-y-0 left-0 flex items-center px-2 text-xs font-semibold text-white drop-shadow-md">
+                            {Math.round(progress)}%
+                          </span>
+                        )}
                         {progress <= 15 && (
                           <div className="absolute top-0 left-0 h-full w-full flex items-center justify-start pl-2">
                              <span className="text-xs font-semibold text-emerald-600">{Math.round(progress)}%</span>
@@ -734,8 +738,6 @@ const Assistant: React.FC<AssistantProps> = ({
               </div>
               {alerts.map(alert => {
                 const { spent, percent } = calculateAlertProgress(transactions, alert);
-                const colorClass = getAlertColor(percent);
-                
                 return (
                   <div key={alert.id} className="bg-white/95 p-4 dark:bg-slate-800/70 sm:p-5 rounded-2xl border border-slate-100 dark:border-slate-700 flex items-center gap-4 shadow-none animate-in fade-in slide-in-from-bottom-2 transition-all">
                     <div className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-colors ${percent >= 100 ? 'bg-rose-500 text-white' : 'bg-slate-50 dark:bg-slate-900/50 text-slate-400'}`}>
@@ -753,7 +755,12 @@ const Assistant: React.FC<AssistantProps> = ({
                         </div>
                       </div>
                       <div className="h-2 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
-                        <div className={`h-full transition-all duration-700 ${colorClass.split(' ')[1]}`} style={{ width: `${percent}%` }}></div>
+                        <progress
+                          className={`flow-progress ${getAlertProgressClass(percent)}`}
+                          value={Math.min(percent, 100)}
+                          max={100}
+                          aria-label={`Uso do limite ${alert.category}`}
+                        />
                       </div>
                     </div>
                     <button onClick={() => onDeleteAlert(alert.id)} className="p-1 text-slate-200 hover:text-rose-500 transition-colors"><Trash2 size={14} /></button>

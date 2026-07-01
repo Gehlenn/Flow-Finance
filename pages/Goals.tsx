@@ -107,7 +107,7 @@ const ProgressRing: React.FC<{ pct: number; size?: number }> = ({ pct, size = 56
         strokeLinecap="round"
         strokeDasharray={circumference}
         strokeDashoffset={offset}
-        style={{ transition: 'stroke-dashoffset 0.8s ease' }}
+        className="flow-progress-ring-value"
       />
     </svg>
   );
@@ -157,9 +157,11 @@ const GoalCard: React.FC<{
           </div>
 
           <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden mt-2">
-            <div
-              className="h-full rounded-full transition-all duration-700 bg-emerald-500"
-              style={{ width: `${progress}%` }}
+            <progress
+              className="flow-progress flow-progress-emerald"
+              value={progress}
+              max={100}
+              aria-label={`Progresso da meta ${goal.title}`}
             />
           </div>
 
@@ -380,8 +382,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
           </div>
 
           <div
-            className="flex gap-2 overflow-x-auto border-b border-slate-100 px-5 py-3 dark:border-slate-800"
-            style={{ scrollbarWidth: 'none' }}
+            className="no-scrollbar flex gap-2 overflow-x-auto border-b border-slate-100 px-5 py-3 dark:border-slate-800"
           >
             {GOAL_PRESETS.map((preset) => (
               <button

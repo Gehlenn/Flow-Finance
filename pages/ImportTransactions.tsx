@@ -478,9 +478,11 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
             <p className="font-semibold text-slate-800 dark:text-white text-sm">{progress.step || 'Processando…'}</p>
             {/* Progress bar */}
             <div className="mt-3 w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-sky-500 rounded-full transition-all duration-500"
-                style={{ width: `${progress.pct}%` }}
+              <progress
+                className="flow-progress flow-progress-sky"
+                value={progress.pct}
+                max={100}
+                aria-label="Progresso da importacao"
               />
             </div>
             <p className="text-xs text-slate-400 font-medium mt-1.5">{progress.pct}%</p>

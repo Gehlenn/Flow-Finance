@@ -52,6 +52,9 @@ const checks = [
         "'unsafe-inline'",
         'https://esm.sh',
       ],
+      'style-src': [
+        "'unsafe-inline'",
+      ],
     },
   },
 ];

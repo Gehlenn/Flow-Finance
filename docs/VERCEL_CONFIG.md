@@ -59,14 +59,14 @@ FRONTEND_URL=https://flow-finance-frontend-nine.vercel.app/
 
 ## Headers publicados
 
-Validacao viva em `2026-06-30`:
+Validacao viva em `2026-07-01`:
 
 - backend oficial em `/health` e `/` expoe `Content-Security-Policy`, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` e `X-Request-Id`
-- frontend oficial em `/` expoe `Content-Security-Policy`, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` e `Permissions-Policy`; script CSP esta em `script-src 'self'` no deploy `dpl_GVoQNYWMFMAMtWHTJMBtjda9defc`
-- frontend alternativo `https://flow-finance-xi.vercel.app/` expoe os mesmos headers e script CSP no deploy `dpl_Bv1wu9QbSyqez2qm4hSqCfjuCAtL`
+- frontend oficial em `/` expoe `Content-Security-Policy`, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` e `Permissions-Policy`; CSP esta em `script-src 'self'` e `style-src 'self' https://fonts.googleapis.com` no deploy `dpl_3aMx98ErwTseg6TDbhRJgYnsMdFs`
+- frontend alternativo `https://flow-finance-xi.vercel.app/` expoe os mesmos headers e CSP no deploy `dpl_FjwvsZVfZDKESRS38rt7g2Hr5ZQo`
 - o runner de evidencia para este recorte e `npm run health:published-headers`; para o alias alternativo use `PUBLISHED_FRONTEND_URL=https://flow-finance-xi.vercel.app npm run health:published-headers`
-- observacao: `script-src` nao permite mais `unsafe-inline` nem `https://esm.sh`; `style-src` ainda permite `unsafe-inline` por compatibilidade com estilos runtime, entao nao tratar como CSP totalmente estrita final
-- inventario local: `npm run health:csp-readiness` bloqueia enquanto houver style blockers; o artefato atual e `test-results/csp-readiness/2026-07-01T12-57-26-322Z.json`
+- observacao: `script-src` nao permite mais `unsafe-inline` nem `https://esm.sh`; `style-src` tambem nao permite mais `unsafe-inline` no frontend publicado
+- inventario local: `npm run health:csp-readiness` passou com `scriptBlockers: []` e `styleBlockers: []`; o artefato atual e `test-results/csp-readiness/2026-07-01T18-03-23-764Z.json`
 
 ## Regras praticas
 

@@ -2,7 +2,7 @@
 
 Este documento centraliza auditorias, evidencias operacionais e materiais de comprovacao. A funcao dele e evitar que cada evidencia fique solta e sem contexto.
 
-Ultima revisao estrutural: 2026-06-30
+Ultima revisao estrutural: 2026-07-01
 
 ## Entrada recomendada (historico)
 
@@ -24,6 +24,12 @@ Se o objetivo for entender decisoes antigas, auditorias passadas ou diagnosticos
 - [COPY_POSITIONING_REVIEW_2026-06-30.md](./COPY_POSITIONING_REVIEW_2026-06-30.md)
 - [PUBLISHED_INFRA_BILLING_CHECK_2026-06-30.md](./PUBLISHED_INFRA_BILLING_CHECK_2026-06-30.md)
 - [EXTERNAL_PRODUCTION_GATES_2026-06-30.md](./EXTERNAL_PRODUCTION_GATES_2026-06-30.md)
+- `test-results/csp-readiness/2026-07-01T18-03-23-764Z.json` (readiness local de CSP frontend: `PASS`; `scriptBlockers: []`, `styleBlockers: []`, `script-src 'self'`, `style-src` sem `'unsafe-inline'`)
+- `test-results/published-headers/2026-07-01T18-06-58-946Z.json` (headers publicados em 2026-07-01: frontend oficial `PASS`, `script-src 'self'`, `style-src 'self' https://fonts.googleapis.com`, sem violacoes de CSP)
+- `test-results/published-headers/2026-07-01T18-07-00-337Z.json` (headers publicados em 2026-07-01: frontend alternativo `PASS`, `script-src 'self'`, `style-src 'self' https://fonts.googleapis.com`, sem violacoes de CSP)
+- `test-results/visual-regression/2026-07-01T18-04-52-669Z/manifest.json` (regressao visual focada apos migracao CSP: `PASS`, `14` screenshots, `dashboard`, `flow`, `analytics`, `cfo`, `assistant`, `goals`, `insights`, desktop/mobile)
+- `test-results/audit-claims/2026-07-01T18-08-16-691Z/report.json` (claims guard apos migracao CSP e indexacao: `PASS`, `80` docs ativos, `0` violacoes)
+- `test-results/audit-evidence/2026-07-01T18-08-21-365Z/report.json` (pacote consolidado apos migracao CSP: `BLOCK` somente por habito/coorte; activation export/checker, AI quality, claims guard e visual `PASS`)
 
 ## Auditorias correntes
 
@@ -125,6 +131,11 @@ Se o objetivo for entender decisoes antigas, auditorias passadas ou diagnosticos
 - `test-results/csp-readiness/2026-07-01T12-57-26-322Z.json` (CSP readiness em 2026-07-01: `BLOCK` por style blockers; `scriptBlockers: 0`, `scriptCspReady: true`, `styleCspReady: false`)
 - `test-results/published-headers/2026-07-01T12-57-27-553Z.json` (headers publicados em 2026-07-01 apos runtime handlers: backend `PASS`; frontend oficial `PASS`; sem violacao de `script-src`)
 - `test-results/published-headers/2026-07-01T12-57-27-739Z.json` (headers publicados em 2026-07-01 apos runtime handlers: backend `PASS`; frontend alternativo `PASS`; sem violacao de `script-src`)
+- `test-results/csp-readiness/2026-07-01T18-03-23-764Z.json` (CSP readiness em 2026-07-01: `PASS`; `scriptBlockers: 0`, `styleBlockers: 0`, `scriptCspReady: true`, `styleCspReady: true`)
+- `test-results/published-headers/2026-07-01T18-04-27-142Z.json` (headers publicados em 2026-07-01 apos style CSP: backend `PASS`; frontend oficial `PASS`; sem violacao de `script-src` ou `style-src`)
+- `test-results/published-headers/2026-07-01T18-04-27-062Z.json` (headers publicados em 2026-07-01 apos style CSP: backend `PASS`; frontend alternativo `PASS`; sem violacao de `script-src` ou `style-src`)
+- `test-results/audit-claims/2026-07-01T18-07-30-444Z/report.json` (claims guard final apos style CSP publicado e docs/vault atualizados: `PASS`, `80` docs ativos, `0` violacoes)
+- `test-results/audit-evidence/2026-07-01T18-07-39-584Z/report.json` (pacote consolidado final apos style CSP publicado: `BLOCK` somente por habito/coorte; activation export/checker, AI quality, claims guard e visual `PASS`)
 - `test-results/activation-retention-refresh/2026-07-01T12-59-26-853Z/report.json` (activation/retention refresh em 2026-07-01: `PASS`; preflight, export publicado e checker executados)
 - `test-results/activation-retention-export/2026-07-01T12-59-31-824Z/report.json` (activation export em 2026-07-01: `PASS`)
 - `test-results/activation-retention-evidence/2026-07-01T12-59-32-754Z-events/report.json` (activation checker em 2026-07-01: `PASS`)

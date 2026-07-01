@@ -199,10 +199,12 @@ const AITaskQueueMonitor: React.FC = () => {
             {lastProgress.progress !== undefined && <span>{lastProgress.progress}%</span>}
           </div>
           {lastProgress.progress !== undefined && (
-            <div className="w-full bg-gray-700 rounded-full h-1">
-              <div
-                className="bg-blue-500 h-1 rounded-full transition-all"
-                style={{ width: `${lastProgress.progress}%` }}
+            <div className="w-full bg-gray-700 rounded-full h-1 overflow-hidden">
+              <progress
+                className="flow-progress flow-progress-sky"
+                value={lastProgress.progress}
+                max={100}
+                aria-label="Progresso da tarefa de IA"
               />
             </div>
           )}

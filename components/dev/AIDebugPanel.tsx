@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getAIDebugLogs, clearAIDebugLogs, AIDebugEntry } from '../../src/ai/aiDebugService';
 import { getFinancialEvents, clearFinancialEvents } from '../../src/events/eventEngine';
 import { FinancialEvent } from '../../models/FinancialEvent';
@@ -25,12 +25,17 @@ const formatTime = (iso: string) =>
 
 const confidenceBar = (c?: number) => {
   const pct = Math.round((c ?? 0) * 100);
-  const color = pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-rose-500';
+  const color = pct >= 80 ? 'flow-progress-emerald' : pct >= 50 ? 'flow-progress-amber' : 'flow-progress-rose';
   const textColor = pct >= 80 ? 'text-emerald-500' : pct >= 50 ? 'text-amber-500' : 'text-rose-500';
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full`} style={{ width: `${pct}%` }} />
+        <progress
+          className={`flow-progress ${color}`}
+          value={pct}
+          max={100}
+          aria-label="Confianca do evento de IA"
+        />
       </div>
       <span className={`text-xs font-semibold ${textColor}`}>{pct}%</span>
     </div>
@@ -146,7 +151,7 @@ const FinancialEventsTab: React.FC = () => {
         </div>
       </div>
       {events.length > 0 && (
-        <div className="px-4 py-2 flex gap-2 overflow-x-auto shrink-0 border-b border-slate-100 dark:border-slate-800" style={{ scrollbarWidth: 'none' }}>
+        <div className="px-4 py-2 flex gap-2 overflow-x-auto no-scrollbar shrink-0 border-b border-slate-100 dark:border-slate-800">
           {Object.entries(byType).map(([type, count]) => {
             const meta = EVENT_META[type] ?? { color: 'text-slate-500 bg-slate-50', label: type, icon: <Activity size={12} /> };
             return (
@@ -288,5 +293,3 @@ const AIDebugPanel: React.FC = () => {
 };
 
 export default AIDebugPanel;
-
-
