@@ -208,7 +208,7 @@ describe('predictCashflow', () => {
   it('descarta date-only invalida ao calcular o baseline historico', () => {
     const txs = [
       { ...makeTx('Salario invalido', 9000, TransactionType.RECEITA, 5), date: '2026-02-31' } as Transaction,
-      { ...makeTx('Salario valido', 3000, TransactionType.RECEITA, 10), date: '2026-03-10' } as Transaction,
+      { ...makeTx('Salario valido', 3000, TransactionType.RECEITA, 10), date: makeDateOnly(10) } as Transaction,
     ];
 
     const result = predictCashflow([], txs);
