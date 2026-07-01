@@ -17,6 +17,8 @@ This check covers public, unauthenticated runtime evidence only. It does not rea
 - Vercel deploy evidence: alternate frontend deployment `dpl_5qgv5j99TUAGBMbUncPavkvnAwU8` promoted `https://flow-finance-xi.vercel.app`.
 - Vercel deploy evidence: official frontend deployment `dpl_YZc7iFsJtcBp3AX9Vky3N2eitwfV` promoted script CSP hardening to `https://flow-finance-frontend-nine.vercel.app`.
 - Vercel deploy evidence: alternate frontend deployment `dpl_6r3DVKQsgVUVgQFBsFykko8W3oXu` promoted script CSP hardening to `https://flow-finance-xi.vercel.app`.
+- Vercel deploy evidence: official frontend deployment `dpl_GVoQNYWMFMAMtWHTJMBtjda9defc` removed runtime inline handlers and promoted to `https://flow-finance-frontend-nine.vercel.app`.
+- Vercel deploy evidence: alternate frontend deployment `dpl_Bv1wu9QbSyqez2qm4hSqCfjuCAtL` removed runtime inline handlers and promoted to `https://flow-finance-xi.vercel.app`.
 
 ## Public runtime observations
 
@@ -48,6 +50,9 @@ Correction made and published:
 - Published validation: `PUBLISHED_FRONTEND_URL=https://flow-finance-xi.vercel.app npm run health:published-headers` passed in strict mode for the alternate frontend, with artifact `test-results/published-headers/2026-06-30T22-39-12-189Z.json`.
 - Published validation: `npm run health:published-headers` passed after script CSP hardening, with artifact `test-results/published-headers/2026-07-01T12-47-26-231Z.json`; frontend CSP reported no `script-src` violation.
 - Published validation: `PUBLISHED_FRONTEND_URL=https://flow-finance-xi.vercel.app npm run health:published-headers` passed after script CSP hardening, with artifact `test-results/published-headers/2026-07-01T12-48-04-023Z.json`; alternate frontend CSP reported no `script-src` violation.
+- Published validation: `npm run health:published-headers` passed after removing runtime inline handlers, with artifact `test-results/published-headers/2026-07-01T12-57-27-553Z.json`.
+- Published validation: `PUBLISHED_FRONTEND_URL=https://flow-finance-xi.vercel.app npm run health:published-headers` passed after removing runtime inline handlers, with artifact `test-results/published-headers/2026-07-01T12-57-27-739Z.json`.
+- Local CSP readiness: `npm run health:csp-readiness` produced `test-results/csp-readiness/2026-07-01T12-57-26-322Z.json` with `scriptBlockers: []` and `styleCspReady: false`.
 - Published validation: `npm run health:vercel` passed against `https://flow-finance-backend.vercel.app`; `/health`, `/api/health`, and `/api/version` matched the expected contracts and `/` returned the expected API-only `404`.
 
 Important boundary:
@@ -113,8 +118,8 @@ Assessment:
 
 ### P2 - Style CSP is intentionally compatible, not strict
 
-- Evidence: `index.html` no longer uses inline importmap/bootstrap; `public/flow-bootstrap.js` carries the service-worker bootstrap; `vercel.json` now publishes `script-src 'self'`; `test-results/published-headers/2026-07-01T12-47-26-231Z.json` and `test-results/published-headers/2026-07-01T12-48-04-023Z.json` show no frontend `script-src` violations.
-- Remaining evidence: `style-src` still allows `'unsafe-inline'`.
+- Evidence: `index.html` no longer uses inline importmap/bootstrap; `public/flow-bootstrap.js` carries the service-worker bootstrap; `vercel.json` now publishes `script-src 'self'`; `test-results/published-headers/2026-07-01T12-57-27-553Z.json` and `test-results/published-headers/2026-07-01T12-57-27-739Z.json` show no frontend `script-src` violations.
+- Remaining evidence: `test-results/csp-readiness/2026-07-01T12-57-26-322Z.json` shows `scriptBlockers: []`, but `style-src` still allows `'unsafe-inline'` and the app still has inline style surfaces.
 - Impact comercial: acceptable as an incremental hardening step, but not strong enough to market as mature browser security.
 - Impact tecnico: XSS defense-in-depth is improved but not maximized.
 - Correction recommended: migrate runtime style injection/inline style dependencies or introduce a nonce/hash strategy for style surfaces so `style-src 'unsafe-inline'` can be removed.

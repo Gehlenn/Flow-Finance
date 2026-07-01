@@ -184,7 +184,7 @@ function showCriticalErrorUI(issues: GuardResult[]): void {
       </ul>
       
       <button 
-        onclick="window.location.reload()" 
+        data-runtime-guard-reload="true"
         style="
           width: 100%;
           background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
@@ -198,13 +198,20 @@ function showCriticalErrorUI(issues: GuardResult[]): void {
           box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
           transition: transform 0.2s;
         "
-        onmouseover="this.style.transform='scale(1.02)'"
-        onmouseout="this.style.transform='scale(1)'"
       >
         Recarregar Aplicação
       </button>
     </div>
   `;
+
+  const reloadButton = overlay.querySelector<HTMLButtonElement>('[data-runtime-guard-reload="true"]');
+  reloadButton?.addEventListener('click', () => window.location.reload());
+  reloadButton?.addEventListener('mouseenter', () => {
+    reloadButton.style.transform = 'scale(1.02)';
+  });
+  reloadButton?.addEventListener('mouseleave', () => {
+    reloadButton.style.transform = 'scale(1)';
+  });
 
   document.body.appendChild(overlay);
 }

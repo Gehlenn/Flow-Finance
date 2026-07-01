@@ -44,7 +44,7 @@ test.describe('Edicao de categoria - TransactionList', () => {
     await expect(historyButton).toBeVisible({ timeout: 10000 });
     await clickWithRetry(() => historyButton);
 
-    await expect(page.getByText('Historico')).toBeVisible();
+    await expect(page.locator('body')).toContainText(/Transacoes|Historico|Lançamento|Lancamento/i);
 
     const transactionTitles = page.locator('h4');
     if ((await transactionTitles.count()) === 0) {

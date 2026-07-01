@@ -201,7 +201,7 @@ function showVersionMismatchNotification(localVersion: string, backendVersion: s
           Backend: v${escapeHtml(backendVersion)}
         </p>
         <button 
-          onclick="window.location.reload()" 
+          data-version-guard-reload="true"
           style="
             background: rgba(255,255,255,0.2);
             border: 1px solid rgba(255,255,255,0.4);
@@ -218,6 +218,9 @@ function showVersionMismatchNotification(localVersion: string, backendVersion: s
       </div>
     </div>
   `;
+
+  const reloadButton = notification.querySelector<HTMLButtonElement>('[data-version-guard-reload="true"]');
+  reloadButton?.addEventListener('click', () => window.location.reload());
 
   document.body.appendChild(notification);
 

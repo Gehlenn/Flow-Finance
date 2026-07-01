@@ -54,6 +54,7 @@ Status: BACKEND AND FRONTEND PUBLISHED PASS
 Implementado:
 
 - `scripts/check-published-headers.mjs` verifica headers publicados do backend e frontend, grava artefatos em `test-results/published-headers/`, e bloqueia regressao se o frontend voltar a permitir `'unsafe-inline'` ou `https://esm.sh` em `script-src`.
+- `scripts/check-csp-readiness.mjs` inventaria readiness de CSP local, separando script blockers de style blockers e gravando artefatos em `test-results/csp-readiness/`.
 - `package.json` expoe `npm run health:published-headers`.
 - `.vercelignore` exclui artefatos locais de upload para o Vercel.
 - `vercel.json` usa `rewrites` em vez de `routes` legado, permitindo que os headers de alto nivel sejam aplicados ao SPA root.
@@ -67,6 +68,9 @@ Validado:
 - `PUBLISHED_FRONTEND_URL=https://flow-finance-xi.vercel.app npm run health:published-headers`: `PASS`, artefato `test-results/published-headers/2026-06-30T22-39-12-189Z.json`.
 - `npm run health:published-headers`: `PASS`, artefato `test-results/published-headers/2026-07-01T12-47-26-231Z.json`, incluindo ausencia de violacoes em `script-src` no frontend oficial.
 - `PUBLISHED_FRONTEND_URL=https://flow-finance-xi.vercel.app npm run health:published-headers`: `PASS`, artefato `test-results/published-headers/2026-07-01T12-48-04-023Z.json`, incluindo ausencia de violacoes em `script-src` no frontend alternativo.
+- `npm run health:published-headers`: `PASS`, artefato `test-results/published-headers/2026-07-01T12-57-27-553Z.json`, apos remover handlers inline dos runtime guards.
+- `PUBLISHED_FRONTEND_URL=https://flow-finance-xi.vercel.app npm run health:published-headers`: `PASS`, artefato `test-results/published-headers/2026-07-01T12-57-27-739Z.json`, apos remover handlers inline dos runtime guards.
+- `npm run health:csp-readiness`: `BLOCK`, artefato `test-results/csp-readiness/2026-07-01T12-57-26-322Z.json`; `scriptBlockers: []`, `scriptCspReady: true`, `styleCspReady: false`.
 - Backend publicado: `PASS` para `Content-Security-Policy`, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` e `X-Request-Id`.
 - Frontend oficial publicado: `PASS` para `Content-Security-Policy`, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` e `Permissions-Policy`; CSP de script publicada como `script-src 'self'`.
 - Frontend alternativo publicado: `PASS` para os mesmos headers e para `script-src 'self'`.
@@ -77,10 +81,12 @@ Publicado:
 - `flow-finance-xi.vercel.app` foi promovido no deploy `dpl_5qgv5j99TUAGBMbUncPavkvnAwU8`.
 - `flow-finance-frontend-nine.vercel.app` recebeu script CSP estrita no deploy `dpl_YZc7iFsJtcBp3AX9Vky3N2eitwfV`.
 - `flow-finance-xi.vercel.app` recebeu script CSP estrita no deploy `dpl_6r3DVKQsgVUVgQFBsFykko8W3oXu`.
+- `flow-finance-frontend-nine.vercel.app` recebeu a remocao dos handlers inline runtime no deploy `dpl_GVoQNYWMFMAMtWHTJMBtjda9defc`.
+- `flow-finance-xi.vercel.app` recebeu a remocao dos handlers inline runtime no deploy `dpl_Bv1wu9QbSyqez2qm4hSqCfjuCAtL`.
 
 SEM EVIDENCIA SUFICIENTE:
 
-- CSP de estilo sem `unsafe-inline`; ha estilos runtime/React e componentes com estilos injetados que exigem migracao separada antes de remover essa permissao.
+- CSP de estilo sem `unsafe-inline`; `test-results/csp-readiness/2026-07-01T12-57-26-322Z.json` lista os bloqueios atuais de estilo inline em componentes React, runtime guards e superficies dev.
 
 ## Firestore emulator
 

@@ -124,7 +124,7 @@ describe('billingClient', () => {
     expect(catalog.manualPlanChangeAllowed).toBe(false);
     expect(catalog.plans).toHaveLength(2);
     expect(catalog.plans.find((plan) => plan.id === 'pro')?.features).toContain(
-      'Revisao semanal de caixa sem travar na consulta 21 do mes.',
+      'Revisar saldo, recebiveis e proximas saidas sem bloqueio mensal.',
     );
   });
 

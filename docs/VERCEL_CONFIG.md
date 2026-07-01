@@ -62,10 +62,11 @@ FRONTEND_URL=https://flow-finance-frontend-nine.vercel.app/
 Validacao viva em `2026-06-30`:
 
 - backend oficial em `/health` e `/` expoe `Content-Security-Policy`, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` e `X-Request-Id`
-- frontend oficial em `/` expoe `Content-Security-Policy`, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` e `Permissions-Policy`; script CSP esta em `script-src 'self'` no deploy `dpl_YZc7iFsJtcBp3AX9Vky3N2eitwfV`
-- frontend alternativo `https://flow-finance-xi.vercel.app/` expoe os mesmos headers e script CSP no deploy `dpl_6r3DVKQsgVUVgQFBsFykko8W3oXu`
+- frontend oficial em `/` expoe `Content-Security-Policy`, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` e `Permissions-Policy`; script CSP esta em `script-src 'self'` no deploy `dpl_GVoQNYWMFMAMtWHTJMBtjda9defc`
+- frontend alternativo `https://flow-finance-xi.vercel.app/` expoe os mesmos headers e script CSP no deploy `dpl_Bv1wu9QbSyqez2qm4hSqCfjuCAtL`
 - o runner de evidencia para este recorte e `npm run health:published-headers`; para o alias alternativo use `PUBLISHED_FRONTEND_URL=https://flow-finance-xi.vercel.app npm run health:published-headers`
 - observacao: `script-src` nao permite mais `unsafe-inline` nem `https://esm.sh`; `style-src` ainda permite `unsafe-inline` por compatibilidade com estilos runtime, entao nao tratar como CSP totalmente estrita final
+- inventario local: `npm run health:csp-readiness` bloqueia enquanto houver style blockers; o artefato atual e `test-results/csp-readiness/2026-07-01T12-57-26-322Z.json`
 
 ## Regras praticas
 

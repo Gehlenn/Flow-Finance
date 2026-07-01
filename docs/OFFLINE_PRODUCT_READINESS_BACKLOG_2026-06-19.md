@@ -521,10 +521,17 @@ Evidence:
 - Verified public runtime: `PUBLISHED_FRONTEND_URL=https://flow-finance-xi.vercel.app npm run health:published-headers` passed in strict mode for the alternate frontend, artifact `test-results/published-headers/2026-06-30T22-39-12-189Z.json`.
 - Implemented: inline importmap/bootstrap were removed from `index.html`; service-worker bootstrap now lives in `public/flow-bootstrap.js`.
 - Implemented: frontend CSP now publishes `script-src 'self'`; the published headers runner blocks regressions that reintroduce `'unsafe-inline'` or `https://esm.sh` under `script-src`.
+- Implemented: runtime guard reload actions no longer use inline `onclick`/hover handlers; event listeners are registered from code.
+- Implemented: `scripts/check-csp-readiness.mjs` and `npm run health:csp-readiness` now inventory script/style CSP readiness and preserve the remaining style debt as explicit evidence.
 - Verified published deployment: official frontend `dpl_YZc7iFsJtcBp3AX9Vky3N2eitwfV` is `READY` and aliased to `https://flow-finance-frontend-nine.vercel.app`.
 - Verified published deployment: alternate frontend `dpl_6r3DVKQsgVUVgQFBsFykko8W3oXu` is `READY` and aliased to `https://flow-finance-xi.vercel.app`.
 - Verified public runtime: `npm run health:published-headers` passed for script CSP on the official frontend, artifact `test-results/published-headers/2026-07-01T12-47-26-231Z.json`.
 - Verified public runtime: `PUBLISHED_FRONTEND_URL=https://flow-finance-xi.vercel.app npm run health:published-headers` passed for script CSP on the alternate frontend, artifact `test-results/published-headers/2026-07-01T12-48-04-023Z.json`.
+- Verified published deployment: official frontend `dpl_GVoQNYWMFMAMtWHTJMBtjda9defc` is `READY` and aliased to `https://flow-finance-frontend-nine.vercel.app`.
+- Verified published deployment: alternate frontend `dpl_Bv1wu9QbSyqez2qm4hSqCfjuCAtL` is `READY` and aliased to `https://flow-finance-xi.vercel.app`.
+- Verified public runtime: `npm run health:published-headers` passed after runtime handler removal, artifact `test-results/published-headers/2026-07-01T12-57-27-553Z.json`.
+- Verified public runtime: `PUBLISHED_FRONTEND_URL=https://flow-finance-xi.vercel.app npm run health:published-headers` passed after runtime handler removal, artifact `test-results/published-headers/2026-07-01T12-57-27-739Z.json`.
+- Verified local inventory: `npm run health:csp-readiness` produced `test-results/csp-readiness/2026-07-01T12-57-26-322Z.json` with `scriptBlockers: []`, `scriptCspReady: true`, and `styleCspReady: false`.
 - Verified public runtime: `npm run health:vercel` passed against the official backend; `/health`, `/api/health`, and `/api/version` matched expected contracts and `/` returned the expected API-only `404`.
 - Implemented: `scripts/check-published-headers.mjs` now writes JSON/Markdown evidence under `test-results/published-headers/`; current artifact is `test-results/published-headers/2026-06-30T22-15-24-810Z.json`.
 - Implemented: backend billing fallback and env examples now use `SAAS_PRO_MONTHLY_PRICE_CENTS=4900`, aligned with the visible Pro packaging.
@@ -535,7 +542,7 @@ Evidence:
 - Verified offline: `npm run test:firestore:rules` passed with Firestore emulator, `3` files, and `16` tests using the portable JDK 21.
 - Documented: `docs/EXTERNAL_PRODUCTION_GATES_2026-06-30.md` records billing, headers, Stripe, and Firestore gate evidence.
 - Documented: `docs/PUBLISHED_INFRA_BILLING_CHECK_2026-06-30.md` records commands, evidence, limits, and residual risks.
-- SEM EVIDENCIA SUFICIENTE: style CSP without `unsafe-inline`; the current app still has runtime/React style surfaces that need a separate migration before removing inline style permission.
+- SEM EVIDENCIA SUFICIENTE: style CSP without `unsafe-inline`; `test-results/csp-readiness/2026-07-01T12-57-26-322Z.json` lists the current inline style surfaces that need a separate migration before removing inline style permission.
 - SEM EVIDENCIA SUFICIENTE: published Stripe price/env alignment, real checkout, real portal session, webhook secret alignment, paid conversion, and workspace billing reconciliation remain unproven by this unauthenticated slice.
 - SEM EVIDENCIA SUFICIENTE: real Firestore behavior in the published Firebase project remains unproven by the emulator run.
 

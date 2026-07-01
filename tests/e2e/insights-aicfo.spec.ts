@@ -43,6 +43,8 @@ async function clickFirstAvailable(locators: Locator[]): Promise<boolean> {
 
 async function openConsultorIA(page: Page): Promise<void> {
   const openedSection = await clickFirstAvailable([
+    page.getByRole('button', { name: /^Decisao$/i }),
+    page.getByRole('tab', { name: /^Decisao$/i }),
     page.getByRole('button', { name: /^IA$/i }),
     page.getByRole('tab', { name: /^IA$/i }),
     page.getByRole('button', { name: /^Apoio IA$/i }),
