@@ -269,8 +269,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
             });
             if (active) {
               setSuggestionDiagnostic({
-                title: 'Sugestao de IA indisponivel',
-                message: 'A IA nao conseguiu sugerir uma categoria agora.',
+                title: 'Sugestao de categoria indisponivel',
+                message: 'Nao foi possivel sugerir uma categoria agora.',
                 suggestion: 'Escolha a categoria manualmente e salve a alteracao.',
               });
             }
@@ -301,7 +301,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
           });
           setCategorySaveDiagnostic({
             title: 'Categoria salva localmente',
-            message: 'A transacao foi atualizada, mas o aprendizado da IA nao foi salvo agora.',
+            message: 'A transacao foi atualizada, mas o aprendizado de categoria nao foi salvo agora.',
             suggestion: 'Revise a categoria depois ou tente sincronizar o aprendizado mais tarde.',
           });
           return;
@@ -384,6 +384,10 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
   const activeFilterSummary = useMemo(() => {
     const parts: string[] = [];
 
+    if (searchQuery.trim()) {
+      parts.push(`Busca: ${searchQuery.trim()}`);
+    }
+
     if (categoryFilter !== 'Todas') {
       parts.push(`Categoria: ${categoryFilter}`);
     }
@@ -397,7 +401,17 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
     }
 
     return parts.length > 0 ? parts.join(' · ') : 'Sem filtros aplicados';
-  }, [categoryFilter, dateEnd, dateStart, stateFilter]);
+  }, [categoryFilter, dateEnd, dateStart, searchQuery, stateFilter]);
+
+  const hasActiveNarrowing = Boolean(searchQuery.trim() || categoryFilter !== 'Todas' || stateFilter !== 'Todas' || dateStart || dateEnd);
+
+  const resetFilters = () => {
+    setSearchQuery('');
+    setCategoryFilter('Todas');
+    setStateFilter('Todas');
+    setDateStart('');
+    setDateEnd('');
+  };
 
   const handleSort = (key: SortKey) => {
     setSortConfig(current => ({
@@ -604,7 +618,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
           <div className={`${TRANSACTION_TOOLBAR_SURFACE} p-3 space-y-3 animate-in slide-in-from-top-2 md:p-4 md:space-y-4`}>
              <div className="flex items-center justify-between border-b border-slate-100 pb-2 dark:border-slate-700">
                 <span className="text-sm font-semibold text-slate-400 uppercase tracking-[0.18em]">Filtros</span>
-                <button onClick={() => {setCategoryFilter('Todas'); setStateFilter('Todas'); setDateStart(''); setDateEnd('');}} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-700 dark:hover:bg-slate-800"><RotateCcw size={10} /> Reset</button>
+                <button onClick={resetFilters} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-700 dark:hover:bg-slate-800"><RotateCcw size={10} /> Reset</button>
              </div>
              <div className="space-y-3.5 md:space-y-4">
               <div className="space-y-2">
@@ -672,7 +686,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
 
       <div className={`${PANEL_SURFACE} overflow-hidden divide-y divide-slate-50 dark:divide-slate-700`}>
         {filteredAndSorted.length === 0 && (
-          <div className="px-6 py-12 text-center">
+          <div data-testid="transaction-empty-state" className="px-6 py-12 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
               <History size={22} />
             </div>
@@ -681,9 +695,24 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
             </p>
             <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
               {transactions.length === 0
-                ? 'Comece pelo botão + no Dashboard. Depois os lançamentos aparecem aqui para revisão.'
-                : 'Tente limpar os filtros ou volte ao Dashboard para conferir se o lançamento foi feito em outro recorte.'}
+                ? 'Comece pelo botão + no Dashboard para adicionar lançamentos ou importar extratos. Depois eles aparecem aqui para revisão.'
+                : 'Os lançamentos existem, mas este recorte ficou vazio. Limpe os filtros, ajuste a busca ou volte ao Dashboard para conferir outro recorte.'}
             </p>
+            {transactions.length > 0 && hasActiveNarrowing && (
+              <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+                {activeFilterSummary}
+              </p>
+            )}
+            {transactions.length > 0 && hasActiveNarrowing && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="mt-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                <RotateCcw size={12} />
+                Limpar filtros
+              </button>
+            )}
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
               <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                 Dashboard
@@ -882,7 +911,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
 
       {editingTransaction && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[300] flex items-center justify-center p-4 animate-in fade-in duration-300" role="dialog" aria-modal="true" aria-label="Editar Categoria">
-          <div className={`${MODAL_SURFACE} w-full max-w-xs p-8 space-y-6 animate-in zoom-in-95`}>
+          <div className={`${MODAL_SURFACE} w-full max-w-sm sm:max-w-md p-8 space-y-6 animate-in zoom-in-95`}>
             <div className="flex justify-between items-center mb-2">
               <h3 className="text-lg font-semibold text-slate-800 dark:text-white uppercase tracking-tight" id="modal-title">Editar Categoria</h3>
               <button onClick={() => setEditingTransaction(null)} className="p-1 text-slate-400" aria-label="Fechar modal de edição de categoria"><X size={20} /></button>
@@ -892,7 +921,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
                 <p className="text-sm font-semibold text-slate-400 uppercase tracking-[0.16em] mb-1">Categoria</p>
                 {suggestedCategory && (
                   <div className="mb-2 flex items-center gap-2">
-                    <span className="text-xs font-medium text-slate-500 bg-slate-50 dark:bg-slate-900/50 rounded-full px-2 py-0.5">Sugestão IA: {suggestedCategory}</span>
+                    <span className="text-xs font-medium text-slate-500 bg-slate-50 dark:bg-slate-900/50 rounded-full px-2 py-0.5">Categoria sugerida: {suggestedCategory}</span>
                   </div>
                 )}
                 {suggestionDiagnostic && (
@@ -902,19 +931,19 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
                     <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-600 dark:text-amber-300">Próximo passo: {suggestionDiagnostic.suggestion}</p>
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {Object.values(Category).map((cat, idx) => (
                     <button
                       key={cat}
                       type="button"
                       ref={idx === 0 ? firstCatBtnRef : undefined}
                       onClick={() => setEditCategoryValue(cat)}
-                      className={`p-3 rounded-2xl border flex items-center gap-2 transition-all ${editCategoryValue === cat ? 'bg-slate-800 text-white border-slate-800 shadow-sm dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100' : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-400'}`}
+                      className={`min-h-14 px-3 py-3 rounded-2xl border flex items-center gap-2 text-left transition-all ${editCategoryValue === cat ? 'bg-slate-800 text-white border-slate-800 shadow-sm dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100' : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-400'}`}
                       aria-label={`Selecionar categoria ${cat}`}
                     >
-                      <span className="text-sm font-semibold uppercase tracking-tight truncate">{cat}</span>
+                      <span className="min-w-0 flex-1 text-sm font-semibold uppercase tracking-tight leading-tight whitespace-normal break-words">{cat}</span>
                       {suggestedCategory === cat && (
-                        <span className="ml-1 text-xs font-medium text-slate-400">(IA)</span>
+                        <span className="shrink-0 text-xs font-medium text-slate-400">(sugerida)</span>
                       )}
                     </button>
                   ))}
@@ -955,7 +984,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ activeWorkspaceId, ac
       {/* Toast de categoria salva com botão de fechar manual */}
       <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[350] transition-all duration-300 transform ${showCategorySaved ? 'translate-y-0 opacity-100' : '-translate-y-12 opacity-0 pointer-events-none'}`} role="status" aria-live="polite">
         <div className="bg-indigo-600 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 font-semibold text-xs uppercase tracking-[0.08em] border border-white/20">
-          <Check size={16} strokeWidth={3} /> Categoria atualizada e IA treinada!
+          <Check size={16} strokeWidth={3} /> Categoria atualizada e aprendizado salvo!
           <button ref={closeToastRef} onClick={() => setShowCategorySaved(false)} className="ml-2 p-1 rounded-full bg-white/20 hover:bg-white/40 transition-colors" aria-label="Fechar aviso de categoria salva"><X size={14} /></button>
         </div>
       </div>

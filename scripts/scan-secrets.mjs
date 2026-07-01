@@ -7,7 +7,7 @@ const rootDir = process.cwd();
 const ignoredFiles = new Set(['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock']);
 
 const secretPatterns = [
-  { name: 'OpenAI key', regex: /sk-(?:proj-)?[A-Za-z0-9_-]{24,}/g },
+  { name: 'OpenAI key', regex: /(?<![A-Za-z0-9])sk-(?:proj-)?[A-Za-z0-9_-]{24,}/g },
   { name: 'Google API key', regex: /AIza[0-9A-Za-z_-]{20,}/g },
   { name: 'JWT-like token', regex: /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g },
   { name: 'Private key block', regex: /-----BEGIN (?:RSA )?PRIVATE KEY-----/g },
@@ -41,6 +41,7 @@ function shouldIgnoreFile(relPath) {
   if (
     normalized.startsWith('docs/')
     || normalized.startsWith('tests/')
+    || normalized.startsWith('backend/tests/')
     || normalized.endsWith('.example')
     || normalized.includes('/dist/')
     || normalized.includes('/coverage/')

@@ -5,12 +5,13 @@ Aplicacao SaaS de gestao financeira com foco em fluxo de caixa, transacoes, rece
 ## Estado atual
 
 - Versao documental atual: `0.9.7`
-- Data de atualizacao: `2026-05-25`
+- Data de atualizacao: `2026-06-25`
 - Estado do ciclo: `em fechamento operacional`
 - Suite global: `verde`
 - Billing Stripe sandbox: `validado localmente`
-- Ponto principal anterior resolvido em `2026-05-25`: o backend oficial foi redeployado, `/health`, `/api/health` e `/api/version` respondem `200`, e `/api/version` agora expoe `0.9.7`
-- Variaveis criticas no Vercel: provisionadas no frontend e no backend; a pendencia agora e consolidar a evidencia final de preview/observabilidade
+- GitHub Actions e Vercel: ultimo checkpoint publicado estava verde antes desta rodada local; revalidar apos o proximo push.
+- Evidencia offline atual: instrumentacao de recorrencia/ativacao validada por testes focados e matriz visual consolidada `PASS` com 46 screenshots.
+- Fronteira comercial: habito duravel, conversao paga, churn, CAC, LTV e disposicao de pagamento continuam `SEM EVIDENCIA SUFICIENTE`.
 
 ## Links oficiais do projeto
 
@@ -134,6 +135,9 @@ Validacoes aprovadas no checkpoint atual:
 - `npm run test:backend`
 - `npm run build`
 - `npm run health:vercel`
+- `npm run type-check`
+- `vitest run tests/unit/product-analytics.test.ts tests/unit/product-analytics-contract.test.ts tests/unit/app-shell-navigation.test.tsx tests/unit/workspace-session.test.ts tests/unit/import-transactions-session.test.tsx tests/unit/insights-plan-render.test.tsx tests/unit/dashboard-quick-actions.test.tsx tests/unit/cashflow-clarity.test.tsx tests/unit/activation-retention-export.test.ts tests/unit/habit-proof-evidence.test.ts tests/unit/cohort-state-report.test.ts --exclude .tmp/**`
+- `node scripts/capture-visual-regression.mjs --tabs=dashboard,history,flow,insights,cfo,settings,assistant,analytics,import,accounts,goals,workspaceadmin,workspaceaudit --surfaces=pricing,auth-gate,ai-input-modal,transaction-edit-modal,transaction-delete-modal,cashflow-share-modal,cashflow-strategy-modal,assistant-smart-alerts,settings-support,settings-legal --viewports=desktop,mobile`
 
 Observacao operacional:
 
@@ -142,8 +146,9 @@ Observacao operacional:
 
 ## O que ainda bloqueia fechamento do ciclo
 
-1. Falta consolidar a evidencia final de readiness entre frontend publicado, backend publicado e docs operacionais.
-2. Falta liberar ou compartilhar preview protegido quando ele for usado como evidencia de verificacao.
+1. Falta prova real multi-semana de habito recorrente no `health:habit-proof`.
+2. Falta evidencia comercial real de conversao paga, retencao, churn, CAC, LTV e disposicao de pagamento.
+3. Falta revalidar o pacote final apos push/deploy desta rodada local.
 
 ## Billing e observabilidade
 

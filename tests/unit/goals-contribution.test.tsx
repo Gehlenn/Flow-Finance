@@ -16,10 +16,10 @@ vi.mock('../../src/utils/logger', () => ({
 vi.mock('../../src/app/secondaryFlowsCopy', () => ({
   SECONDARY_FLOWS_COPY: {
     goals: {
-      title: 'Metas',
-      subtitle: 'Acompanhe seus objetivos',
-      emptyTitle: 'Sem metas',
-      emptyDescription: 'Crie uma meta para começar',
+      title: 'Metas de caixa',
+      subtitle: 'Reservas, provisoes e objetivos ligados ao caixa operacional',
+      emptyTitle: 'Nenhuma meta de caixa cadastrada',
+      emptyDescription: 'Crie uma reserva de caixa, uma provisao ou outro objetivo ligado ao fluxo operacional.',
     },
   },
 }));

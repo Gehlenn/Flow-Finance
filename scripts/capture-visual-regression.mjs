@@ -23,6 +23,189 @@ const DEFAULT_TABS = [
   { tab: 'cfo', label: 'Consultor de caixa' },
   { tab: 'settings', label: 'Conta e plano' },
 ];
+const DEFAULT_ROUTE_STATES = [
+  {
+    routeState: 'pricing',
+    label: '/pricing',
+    path: '/pricing',
+    mode: 'route',
+    bootstrapDemo: true,
+    readySelector: 'h1:has-text("Free e Pro para controle de caixa")',
+  },
+  {
+    routeState: 'auth-gate',
+    label: 'Logged-out auth gate',
+    path: '/',
+    mode: 'state',
+    bootstrapDemo: false,
+    readySelector: '[data-testid="login-button"]',
+  },
+  {
+    routeState: 'insights-empty',
+    label: 'Insights empty first session',
+    path: '/',
+    tab: 'insights',
+    mode: 'state',
+    bootstrapE2E: true,
+    bootstrapDemo: false,
+    demoData: false,
+    readySelector: 'text=Primeira leitura de caixa',
+  },
+  {
+    routeState: 'dashboard-empty',
+    label: 'Dashboard activation first session',
+    path: '/',
+    tab: 'dashboard',
+    mode: 'state',
+    bootstrapE2E: true,
+    bootstrapDemo: false,
+    demoData: false,
+    readySelector: '[data-testid="dashboard-activation-state"]',
+  },
+  {
+    routeState: 'history-empty',
+    label: 'Transactions empty first session',
+    path: '/',
+    tab: 'history',
+    mode: 'state',
+    bootstrapE2E: true,
+    bootstrapDemo: false,
+    demoData: false,
+    readySelector: '[data-testid="transaction-empty-state"]',
+  },
+  {
+    routeState: 'goals-empty',
+    label: 'Goals empty first session',
+    path: '/',
+    tab: 'goals',
+    mode: 'state',
+    bootstrapE2E: true,
+    bootstrapDemo: false,
+    demoData: false,
+    readySelector: '[data-testid="goals-empty-state"]',
+  },
+  {
+    routeState: 'aicfo-base-short',
+    label: 'AI CFO short-base first session',
+    path: '/',
+    tab: 'cfo',
+    mode: 'state',
+    bootstrapE2E: true,
+    bootstrapDemo: false,
+    demoData: false,
+    readySelector: '[data-testid="aicfo-base-short-state"]',
+  },
+  {
+    routeState: 'import-idle',
+    label: 'Import idle first session',
+    path: '/',
+    tab: 'import',
+    mode: 'state',
+    bootstrapE2E: true,
+    bootstrapDemo: false,
+    demoData: false,
+    readySelector: '[data-testid="import-idle-state"]',
+  },
+  {
+    routeState: 'ai-input-modal',
+    label: 'AI input modal',
+    path: '/',
+    tab: 'dashboard',
+    mode: 'modal',
+    bootstrapDemo: true,
+    actions: [
+      { type: 'clickRole', role: 'button', name: 'Adicionar lancamento' },
+    ],
+    readySelector: 'text=Lançamento Manual',
+  },
+  {
+    routeState: 'transaction-edit-modal',
+    label: 'Transaction edit modal',
+    path: '/',
+    tab: 'history',
+    mode: 'modal',
+    bootstrapDemo: true,
+    actions: [
+      { type: 'clickText', text: 'Projeto Aurora - parcela 1' },
+      { type: 'clickRole', role: 'button', name: 'Editar' },
+    ],
+    readySelector: '[role="dialog"][aria-label="Editar Categoria"]',
+  },
+  {
+    routeState: 'transaction-delete-modal',
+    label: 'Transaction delete confirmation',
+    path: '/',
+    tab: 'history',
+    mode: 'modal',
+    bootstrapDemo: true,
+    actions: [
+      { type: 'clickText', text: 'Projeto Aurora - parcela 1' },
+      { type: 'clickRole', role: 'button', name: 'Excluir' },
+    ],
+    readySelector: 'text=Confirmar Exclusão',
+  },
+  {
+    routeState: 'cashflow-share-modal',
+    label: 'Cash flow export modal',
+    path: '/',
+    tab: 'flow',
+    mode: 'modal',
+    bootstrapDemo: true,
+    actions: [
+      { type: 'clickRole', role: 'button', name: 'Abrir compartilhamento do fluxo' },
+    ],
+    readySelector: '#cashflow-share-title',
+  },
+  {
+    routeState: 'cashflow-strategy-modal',
+    label: 'Cash flow strategy modal',
+    path: '/',
+    tab: 'flow',
+    mode: 'modal',
+    bootstrapDemo: true,
+    actions: [
+      { type: 'clickText', text: 'Estrat' },
+      { type: 'clickText', text: 'Gerar diagnóstico' },
+    ],
+    readySelector: '#cashflow-consultancy-title',
+  },
+  {
+    routeState: 'assistant-smart-alerts',
+    label: 'Assistant smart alerts modal',
+    path: '/',
+    tab: 'assistant',
+    mode: 'modal',
+    bootstrapDemo: true,
+    actions: [
+      { type: 'clickRole', role: 'button', name: 'Gerar alertas de limite do caixa' },
+    ],
+    readySelector: 'text=Alertas do caixa',
+  },
+  {
+    routeState: 'settings-support',
+    label: 'Settings AI support modal',
+    path: '/',
+    tab: 'settings',
+    mode: 'modal',
+    bootstrapDemo: true,
+    actions: [
+      { type: 'clickRole', role: 'button', name: 'Revisao de caixa' },
+    ],
+    readySelector: 'input[placeholder*="Digite sua pergunta"]',
+  },
+  {
+    routeState: 'settings-legal',
+    label: 'Settings legal modal',
+    path: '/',
+    tab: 'settings',
+    mode: 'modal',
+    bootstrapDemo: true,
+    actions: [
+      { type: 'clickRole', role: 'button', name: 'Termos e privacidade' },
+    ],
+    readySelector: 'text=Termos de Uso e Privacidade',
+  },
+];
 const DEFAULT_VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 900 },
   { name: 'mobile', width: 390, height: 844 },
@@ -59,6 +242,7 @@ function parseListArg(value) {
 function parseArgs(argv) {
   const args = {
     tabs: [],
+    routeStates: [],
     viewports: [],
   };
 
@@ -103,6 +287,17 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (token === '--surfaces') {
+      args.routeStates = parseListArg(argv[index + 1]);
+      index += 1;
+      continue;
+    }
+
+    if (token.startsWith('--surfaces=')) {
+      args.routeStates = parseListArg(token.slice('--surfaces='.length));
+      continue;
+    }
+
     if (token === '--viewports') {
       args.viewports = parseListArg(argv[index + 1]);
       index += 1;
@@ -139,6 +334,29 @@ function resolveViewports(args) {
   return args.viewports
     .map((name) => lookup.get(name))
     .filter(Boolean);
+}
+
+function resolveRouteStates(args) {
+  if (args.routeStates.length === 0) {
+    return [];
+  }
+
+  const lookup = new Map(DEFAULT_ROUTE_STATES.map((item) => [item.routeState, item]));
+  return args.routeStates.map((routeState) => {
+    const preset = lookup.get(routeState);
+    if (preset) {
+      return preset;
+    }
+
+    return {
+      routeState,
+      label: routeState,
+      path: routeState.startsWith('/') ? routeState : `/${routeState}`,
+      mode: 'route',
+      bootstrapDemo: false,
+      readySelector: undefined,
+    };
+  });
 }
 
 async function isBaseUrlReachable(baseUrl) {
@@ -189,9 +407,11 @@ async function ensureDevServer(baseUrl) {
   return { started: true, child };
 }
 
-function buildDemoUrl(baseUrl, tab) {
+function buildAppUrl(baseUrl, tab, options = {}) {
   const url = new URL('/', baseUrl);
-  url.searchParams.set('demoData', '1');
+  if (options.demoData !== false) {
+    url.searchParams.set('demoData', '1');
+  }
   url.searchParams.set('demoPlan', 'pro');
   url.searchParams.set('demoUserId', 'visual-regression-user');
   url.searchParams.set('demoUserEmail', 'visual@flow.dev');
@@ -203,6 +423,20 @@ function buildDemoUrl(baseUrl, tab) {
   url.searchParams.set('demoToken', 'visual-regression-token');
   url.searchParams.set('tab', tab);
   return url.toString();
+}
+
+function buildDemoUrl(baseUrl, tab) {
+  return buildAppUrl(baseUrl, tab, { demoData: true });
+}
+
+function buildRouteStateUrl(baseUrl, routeState) {
+  if (routeState.tab) {
+    return buildAppUrl(baseUrl, routeState.tab, {
+      demoData: routeState.demoData !== false,
+    });
+  }
+
+  return new URL(routeState.path, baseUrl).toString();
 }
 
 function sha256File(contents) {
@@ -230,7 +464,8 @@ function summarizeText(value, maxLength = 240) {
 function isIgnorableConsoleIssue(type, text) {
   if (type === 'warning') {
     return text.includes('Service Worker registration blocked by Playwright')
-      || text.includes('[Sentry] DSN ausente');
+      || text.includes('[Sentry] DSN ausente')
+      || text.includes('[AICFO] Failed to load workspace AI usage');
   }
 
   if (type === 'error') {
@@ -330,7 +565,43 @@ async function fulfillDemoApi(route) {
   return json({});
 }
 
-async function captureViewport(browser, baseUrl, runDir, viewport, tabs) {
+async function runVisualAction(page, action) {
+  const timeout = action.timeoutMs || 10_000;
+
+  if (action.type === 'clickRole') {
+    await page.getByRole(action.role, { name: new RegExp(action.name, 'i') }).first().click({ timeout });
+    return;
+  }
+
+  if (action.type === 'clickText') {
+    await page.getByText(action.text, { exact: Boolean(action.exact) }).first().click({ timeout });
+    return;
+  }
+
+  if (action.type === 'clickSelector') {
+    await page.locator(action.selector).first().click({ timeout });
+    return;
+  }
+
+  if (action.type === 'fillSelector') {
+    await page.locator(action.selector).first().fill(action.value || '', { timeout });
+    return;
+  }
+
+  if (action.type === 'waitForSelector') {
+    await page.locator(action.selector).first().waitFor({ state: 'visible', timeout });
+    return;
+  }
+
+  if (action.type === 'wait') {
+    await page.waitForTimeout(action.ms || 500);
+    return;
+  }
+
+  throw new Error(`Unknown visual action type: ${action.type}`);
+}
+
+async function createCaptureContext(browser, viewport, bootstrap) {
   const context = await browser.newContext({
     viewport: { width: viewport.width, height: viewport.height },
     deviceScaleFactor: 1,
@@ -370,36 +641,73 @@ async function captureViewport(browser, baseUrl, runDir, viewport, tabs) {
     await route.continue();
   });
 
-  await page.addInitScript((bootstrap) => {
-    window.localStorage.setItem('flow_demo_data', '1');
-    window.localStorage.setItem('flow_demo_plan', 'pro');
-    window.localStorage.setItem('flow_demo_user_id', bootstrap.userId);
-    window.localStorage.setItem('flow_demo_user_email', bootstrap.userEmail);
-    window.localStorage.setItem('flow_demo_user_name', bootstrap.userName);
-    window.localStorage.setItem('flow_demo_workspace_id', bootstrap.workspaceId);
-    window.localStorage.setItem('flow_demo_workspace_name', bootstrap.workspaceName);
-    window.localStorage.setItem('flow_demo_tenant_id', bootstrap.tenantId);
-    window.localStorage.setItem('flow_demo_tenant_name', bootstrap.tenantName);
-    window.localStorage.setItem('flow_demo_auth_token', bootstrap.token);
-  }, {
-    userId: 'visual-regression-user',
-    userEmail: 'visual@flow.dev',
-    userName: 'Visual Regression',
-    workspaceId: 'ws-visual-regression',
-    workspaceName: 'Atelie Aurora',
-    tenantId: 'tenant-visual-regression',
-    tenantName: 'Flow Finance Demo',
-    token: 'visual-regression-token',
-  });
+  if (bootstrap) {
+    await page.addInitScript((demoBootstrap) => {
+      if (demoBootstrap.e2eAuth) {
+        const emptyEntities = {
+          accounts: [],
+          transactions: [],
+          goals: [],
+          reminders: [],
+          receivables: [],
+        };
+        window.localStorage.setItem('flow_e2e_auth', '1');
+        window.localStorage.setItem('flow_e2e_user_id', demoBootstrap.userId);
+        window.localStorage.setItem('flow_e2e_user_email', demoBootstrap.userEmail);
+        window.localStorage.setItem('flow_e2e_user_name', demoBootstrap.userName);
+        window.localStorage.setItem('active_workspace_id', demoBootstrap.workspaceId);
+        window.localStorage.setItem(`flow_e2e_seed_entities:${demoBootstrap.workspaceId}`, JSON.stringify(emptyEntities));
+      }
+      if (demoBootstrap.demoData !== false) {
+        window.localStorage.setItem('flow_demo_data', '1');
+      }
+      window.localStorage.setItem('flow_demo_plan', 'pro');
+      window.localStorage.setItem('flow_demo_user_id', demoBootstrap.userId);
+      window.localStorage.setItem('flow_demo_user_email', demoBootstrap.userEmail);
+      window.localStorage.setItem('flow_demo_user_name', demoBootstrap.userName);
+      window.localStorage.setItem('flow_demo_workspace_id', demoBootstrap.workspaceId);
+      window.localStorage.setItem('flow_demo_workspace_name', demoBootstrap.workspaceName);
+      window.localStorage.setItem('flow_demo_tenant_id', demoBootstrap.tenantId);
+      window.localStorage.setItem('flow_demo_tenant_name', demoBootstrap.tenantName);
+      window.localStorage.setItem('flow_demo_auth_token', demoBootstrap.token);
+    }, bootstrap);
+  }
 
+  return {
+    context,
+    page,
+    consoleIssues,
+    pageErrors,
+  };
+}
+
+async function captureItems(page, items, buildUrl, runDir, viewport, kind) {
   const captures = [];
 
-  for (const { tab, label } of tabs) {
-    const targetUrl = buildDemoUrl(baseUrl, tab);
+  for (const item of items) {
+    const targetUrl = buildUrl(item);
     const response = await page.goto(targetUrl, {
       waitUntil: 'domcontentloaded',
       timeout: NAVIGATION_TIMEOUT_MS,
     });
+
+    if (item.initialReadySelector || (item.readySelector && !(item.actions || []).length)) {
+      await page.locator(item.initialReadySelector || item.readySelector).waitFor({
+        state: 'visible',
+        timeout: 15_000,
+      }).catch(() => undefined);
+    }
+
+    for (const action of item.actions || []) {
+      await runVisualAction(page, action);
+    }
+
+    if (item.readySelectorAfterActions || item.readySelector) {
+      await page.locator(item.readySelectorAfterActions || item.readySelector).waitFor({
+        state: 'visible',
+        timeout: 15_000,
+      });
+    }
 
     await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
     await page.waitForTimeout(700);
@@ -415,7 +723,7 @@ async function captureViewport(browser, baseUrl, runDir, viewport, tabs) {
       `,
     });
 
-    const screenshotPath = path.join(runDir, `${tab}-${viewport.name}.png`);
+    const screenshotPath = path.join(runDir, `${item.routeState || item.tab}-${viewport.name}.png`);
     await page.screenshot({
       path: screenshotPath,
       fullPage: true,
@@ -423,8 +731,14 @@ async function captureViewport(browser, baseUrl, runDir, viewport, tabs) {
     });
 
     captures.push({
-      tab,
-      label,
+      captureType: kind,
+      ...(kind === 'tab' ? { tab: item.tab } : {}),
+      ...(kind !== 'tab' ? {
+        routeState: item.routeState,
+        path: item.path,
+        mode: item.mode,
+      } : {}),
+      label: item.label,
       viewport: viewport.name,
       width: viewport.width,
       height: viewport.height,
@@ -436,13 +750,75 @@ async function captureViewport(browser, baseUrl, runDir, viewport, tabs) {
     });
   }
 
-  await context.close();
+  return captures;
+}
+
+async function captureViewport(browser, baseUrl, runDir, viewport, tabs, routeStates) {
+  const tabCaptureBootstrap = {
+    userId: 'visual-regression-user',
+    userEmail: 'visual@flow.dev',
+    userName: 'Visual Regression',
+    workspaceId: 'ws-visual-regression',
+    workspaceName: 'Atelie Aurora',
+    tenantId: 'tenant-visual-regression',
+    tenantName: 'Flow Finance Demo',
+    token: 'visual-regression-token',
+    demoData: true,
+  };
+
+  const tabContext = await createCaptureContext(browser, viewport, tabCaptureBootstrap);
+  const tabCaptures = await captureItems(
+    tabContext.page,
+    tabs,
+    (tab) => buildDemoUrl(baseUrl, tab.tab),
+    runDir,
+    viewport,
+    'tab',
+  );
+
+  const routeStateCaptures = [];
+  const routeStateConsoleIssues = [];
+  const routeStatePageErrors = [];
+  for (const routeState of routeStates) {
+    const shouldBootstrapRouteState = routeState.bootstrapDemo || routeState.bootstrapAuth || routeState.bootstrapE2E;
+    const routeStateContext = await createCaptureContext(
+      browser,
+      viewport,
+      shouldBootstrapRouteState
+        ? {
+          ...tabCaptureBootstrap,
+          demoData: routeState.demoData !== false,
+          e2eAuth: routeState.bootstrapE2E === true,
+        }
+        : null,
+    );
+    routeStateCaptures.push(...await captureItems(
+      routeStateContext.page,
+      [routeState],
+      (item) => buildRouteStateUrl(baseUrl, item),
+      runDir,
+      viewport,
+      'route-state',
+    ));
+    routeStateConsoleIssues.push(...routeStateContext.consoleIssues);
+    routeStatePageErrors.push(...routeStateContext.pageErrors);
+    await routeStateContext.context.close();
+  }
+
+  await tabContext.context.close();
 
   return {
     viewport: viewport.name,
-    captures,
-    consoleIssues,
-    pageErrors,
+    tabCaptures,
+    routeStateCaptures,
+    consoleIssues: [
+      ...tabContext.consoleIssues,
+      ...routeStateConsoleIssues,
+    ],
+    pageErrors: [
+      ...tabContext.pageErrors,
+      ...routeStatePageErrors,
+    ],
   };
 }
 
@@ -460,6 +836,7 @@ async function main() {
       'Usage:',
       '  node scripts/capture-visual-regression.mjs',
       '  node scripts/capture-visual-regression.mjs --tabs=dashboard,history,flow',
+      '  node scripts/capture-visual-regression.mjs --surfaces=pricing,auth-gate',
       '  node scripts/capture-visual-regression.mjs --viewports=desktop,mobile',
       '  node scripts/capture-visual-regression.mjs --base-url http://127.0.0.1:4173',
       '',
@@ -477,6 +854,7 @@ async function main() {
     || readStringEnv('FLOW_VISUAL_REGRESSION_OUTPUT_DIR')
     || DEFAULT_OUTPUT_ROOT;
   const tabs = resolveTabs(args);
+  const routeStates = resolveRouteStates(args);
   const viewports = resolveViewports(args);
 
   if (tabs.length === 0) {
@@ -502,7 +880,7 @@ async function main() {
   try {
     browser = await chromium.launch({ headless: true });
     for (const viewport of viewports) {
-      const run = await captureViewport(browser, baseUrl, runDir, viewport, tabs);
+      const run = await captureViewport(browser, baseUrl, runDir, viewport, tabs, routeStates);
       viewportRuns.push(run);
       aggregateConsoleIssues.push(...run.consoleIssues);
       aggregatePageErrors.push(...run.pageErrors);
@@ -516,7 +894,9 @@ async function main() {
     }
   }
 
-  const captureEntries = viewportRuns.flatMap((run) => run.captures);
+  const tabCaptureEntries = viewportRuns.flatMap((run) => run.tabCaptures);
+  const routeStateCaptureEntries = viewportRuns.flatMap((run) => run.routeStateCaptures);
+  const captureEntries = [...tabCaptureEntries, ...routeStateCaptureEntries];
   const manifest = {
     runnerName: RUNNER_NAME,
     capturedAt: timestamp,
@@ -533,14 +913,20 @@ async function main() {
       args: DEV_SERVER_ARGS,
     },
     tabs,
+    routeStates,
     viewports,
     summary: {
       screenshots: captureEntries.length,
+      tabScreenshots: tabCaptureEntries.length,
+      routeStateScreenshots: routeStateCaptureEntries.length,
       routes: tabs.length,
+      routeStates: routeStates.length,
       viewportCount: viewports.length,
       consoleIssues: aggregateConsoleIssues.length,
       pageErrors: aggregatePageErrors.length,
     },
+    tabCaptures: tabCaptureEntries,
+    routeStateCaptures: routeStateCaptureEntries,
     captures: captureEntries,
     issues: {
       console: aggregateConsoleIssues,
@@ -552,7 +938,7 @@ async function main() {
     ? 'PASS'
     : 'BLOCK';
   manifest.summaryText = manifest.status === 'PASS'
-    ? 'PASS: visual regression screenshots captured for the central Flow Finance screens'
+    ? `PASS: visual regression screenshots captured for ${routeStates.length > 0 ? 'tab and route/state' : 'tab'} surfaces`
     : 'BLOCK: visual regression captured, but unexpected runtime issues were observed';
 
   const manifestPath = path.join(runDir, 'manifest.json');

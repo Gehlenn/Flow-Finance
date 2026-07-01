@@ -38,6 +38,23 @@ interface UseFinancialStateOptions {
   isDemoMode: boolean;
 }
 
+function hasExplicitE2ESeedForWorkspace(workspaceId: string | null): boolean {
+  if (!workspaceId || typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    const storage = window.localStorage;
+    return storage.getItem('flow_e2e_auth') === '1'
+      && Boolean(
+        storage.getItem(`flow_e2e_seed_entities:${workspaceId}`)
+        || storage.getItem('flow_e2e_seed_entities'),
+      );
+  } catch {
+    return false;
+  }
+}
+
 export function useFinancialState(options: UseFinancialStateOptions) {
   const { userId, activeTenantId, activeWorkspaceId, syncEngine, isDemoMode } = options;
 
@@ -134,6 +151,10 @@ export function useFinancialState(options: UseFinancialStateOptions) {
     }
 
     if (accounts.length > 0 || workspaceDefaultAccountRef.current === activeWorkspaceId) {
+      return;
+    }
+
+    if (hasExplicitE2ESeedForWorkspace(activeWorkspaceId)) {
       return;
     }
 

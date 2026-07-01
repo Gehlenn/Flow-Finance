@@ -128,7 +128,7 @@ vi.mock('../../src/app/mainNavigation', () => ({
     { tab: 'dashboard', label: 'Caixa' },
     { tab: 'history', label: 'Transacoes' },
     { tab: 'flow', label: 'Receitas' },
-    { tab: 'cfo', label: 'IA' },
+    { tab: 'cfo', label: 'Decisao' },
   ],
 }));
 
@@ -166,11 +166,12 @@ describe('App shell navigation', () => {
     expect(mainNav.className).toContain('grid-cols-4');
     expect(mainNav.className).toContain('mb-3');
     expect(mainNav.className).toContain('xl:fixed');
-    expect(fab.className).toContain('hidden');
-    expect(fab.className).toContain('xl:flex');
+    expect(fab.className).toContain('flex');
+    expect(fab.className).toContain('bottom-5');
+    expect(fab.className).toContain('md:bottom-8');
     expect(screen.getByRole('button', { name: 'Caixa' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Transacoes' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Receitas' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'IA' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Decisao' })).toBeTruthy();
   });
 });

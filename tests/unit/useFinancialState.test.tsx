@@ -242,6 +242,67 @@ describe('useFinancialState', () => {
     });
   });
 
+  it('keeps explicitly empty e2e seeded workspaces without creating a default account', async () => {
+    const workspaceId = 'ws-empty-e2e';
+    const seedKey = `flow_e2e_seed_entities:${workspaceId}`;
+    localStorage.setItem('flow_e2e_auth', '1');
+    localStorage.setItem(seedKey, JSON.stringify({
+      accounts: [],
+      transactions: [],
+      goals: [],
+      reminders: [],
+      receivables: [],
+    }));
+
+    const syncEntities = vi.fn().mockResolvedValue({
+      entities: {
+        accounts: [],
+        transactions: [],
+        goals: [],
+        reminders: [],
+      },
+      idMaps: {},
+    });
+
+    const syncEngine = {
+      entities: {
+        accounts: [],
+        transactions: [],
+        goals: [],
+        reminders: [],
+      },
+      profile: {
+        name: 'Flow User',
+        theme: 'light' as const,
+        reminders: [],
+        alerts: [],
+      },
+      syncProfile: vi.fn().mockResolvedValue(undefined),
+      syncEntities,
+      backendSyncEnabled: true,
+      hasLoadedEntities: true,
+    };
+
+    try {
+      renderHook(() => useFinancialState({
+        userId: 'user-1',
+        activeTenantId: 'tenant-1',
+        activeWorkspaceId: workspaceId,
+        syncEngine: syncEngine as never,
+        isDemoMode: false,
+      }));
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(syncEntities).not.toHaveBeenCalled();
+    } finally {
+      localStorage.removeItem('flow_e2e_auth');
+      localStorage.removeItem(seedKey);
+    }
+  });
+
   it('stores leak and report snapshots from the event listener pipeline', async () => {
     const syncEngine = {
       entities: {

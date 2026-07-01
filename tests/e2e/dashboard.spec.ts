@@ -3,7 +3,7 @@ import { skipIfNoAuthShell } from './helpers/skipHelpers';
 import { gotoAuthedApp } from './helpers/appBootstrap';
 import { clickWithRetry } from './helpers/resilientActions';
 
-const NAV_LABELS = [/Inicio|Caixa|Home/i, /Transacoes|Historico/i, /Fluxo|Receitas/i, /Apoio IA|Consultor IA|Consultor de caixa/i, /Ajustes|Settings|Conta e plano/i];
+const NAV_LABELS = [/Inicio|Caixa|Home/i, /Transacoes|Historico/i, /Fluxo|Receitas/i, /Decisao|Consultor de caixa/i, /Ajustes|Settings|Conta e plano/i];
 
 async function visibleNavCount(page: Page): Promise<number> {
   let count = 0;

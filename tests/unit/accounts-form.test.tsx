@@ -26,6 +26,28 @@ const accounts: Account[] = [
 ];
 
 describe('Accounts form', () => {
+  it('estado vazio orienta a primeira conta e abre o formulario', () => {
+    render(
+      <Accounts
+        userId="user-1"
+        hideValues={false}
+        activeWorkspaceName="Workspace"
+        activeTenantName="Tenant"
+        activeWorkspaceRole="admin"
+        accounts={[]}
+        onCreateAccount={vi.fn(async () => undefined)}
+        onDeleteAccount={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/Primeira conta de caixa/i)).toBeTruthy();
+    expect(screen.getByText(/ancorar o saldo consolidado/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar conta principal/i }));
+    expect(screen.getByPlaceholderText(/Ex: Nubank/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Salvar Conta/i })).toBeTruthy();
+  });
+
   it('reseta o rascunho ao reabrir o formulario', () => {
     render(
       <Accounts

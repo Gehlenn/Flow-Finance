@@ -54,6 +54,43 @@ describe('AdvancedAnalytics date safety', () => {
     expect(screen.getByText(/Sem dados nos últimos 6 meses/i)).toBeTruthy();
   });
 
+  it('shows a category empty state instead of a zero-value chart', async () => {
+    const rectSpy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      width: 640,
+      height: 256,
+      top: 0,
+      left: 0,
+      bottom: 256,
+      right: 640,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+
+    try {
+      render(
+        <AdvancedAnalytics
+          transactions={[
+            {
+              id: 'tx-zero',
+              amount: 0,
+              type: TransactionType.DESPESA,
+              category: Category.PESSOAL,
+              description: 'Despesa zerada',
+              date: '2026-04-02T10:00:00.000Z',
+            },
+          ]}
+          hideValues={false}
+        />,
+      );
+
+      expect(await screen.findByText(/Sem gastos categorizados/i)).toBeTruthy();
+      expect(screen.getByText(/despesas classificadas/i)).toBeTruthy();
+    } finally {
+      rectSpy.mockRestore();
+    }
+  });
+
   it('formatAnalyticsDateLabel falls back cleanly for invalid values', () => {
     expect(formatAnalyticsDateLabel('data-quebrada')).toBe('Data inválida');
     expect(formatAnalyticsDateLabel(null)).toBe('Data inválida');

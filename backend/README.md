@@ -117,11 +117,14 @@ Fluxo validado:
 Configuração típica:
 
 ```env
+SAAS_PRO_MONTHLY_PRICE_CENTS=4900
 STRIPE_SECRET_KEY=sk_test_xxx
 STRIPE_PRICE_PRO_MONTHLY=price_xxx
 STRIPE_WEBHOOK_SECRET=whsec_xxx
 ALLOW_MOCK_BILLING_UPDATES=false
 ```
+
+Use `SAAS_PRO_MONTHLY_PRICE_CENTS=4900` como fallback explícito do Pro quando o price ID estiver configurado para `R$ 49,00/mes`. O checkout real ainda depende de `STRIPE_SECRET_KEY`, `STRIPE_PRICE_PRO_MONTHLY` e `STRIPE_WEBHOOK_SECRET`.
 
 Listener local:
 

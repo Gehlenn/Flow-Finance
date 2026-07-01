@@ -21,6 +21,19 @@ describe('check-ai-quality-evidence', () => {
   });
 
   it('passes the canonical offline AI CFO quality cases', () => {
+    expect(CANONICAL_CASES.map((item) => item.name)).toEqual(
+      expect.arrayContaining([
+        'cash_position_direct',
+        'risk_question_fallback',
+        'monthly_summary_with_prudence',
+        'negative_cash_runway',
+        'overdue_receivables',
+        'goal_at_risk',
+        'high_recurring_cost',
+        'optimistic_forecast',
+      ]),
+    );
+
     const result = evaluateCases(CANONICAL_CASES, 0.9);
 
     expect(result.status).toBe('PASS');

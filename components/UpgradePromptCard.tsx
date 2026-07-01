@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Loader2, Sparkles, TrendingUp } from 'lucide-react';
 import { buildBillingReturnUrl, createWorkspaceCheckoutSession } from '../src/saas';
 import { ensureActiveWorkspace, getCurrentWorkspaceIdentity } from '../src/services/workspaceSession';
-import { MONETIZATION_PRICING } from '../src/app/monetizationPlan';
+import { getPlanPackaging } from '../src/app/monetizationPlan';
 import { trackProductEvent } from '../src/app/productAnalytics';
 import { logWarn } from '../src/utils/logger';
 
@@ -27,10 +27,7 @@ const UpgradePromptCard: React.FC<UpgradePromptCardProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const monthlyPriceLabel = useMemo(
-    () => `R$ ${MONETIZATION_PRICING.proMonthlyBRL.toFixed(2).replace('.', ',')}/mes`,
-    [],
-  );
+  const monthlyPriceLabel = useMemo(() => getPlanPackaging('pro').priceLabel, []);
 
   const handleUpgrade = async () => {
     setIsLoading(true);
@@ -67,7 +64,7 @@ const UpgradePromptCard: React.FC<UpgradePromptCardProps> = ({
         workspaceId,
         fallback: 'upgrade-card-checkout-failed',
       });
-      setError('Nao foi possivel abrir o checkout do Stripe agora.');
+      setError('Nao foi possivel abrir o checkout agora.');
     } finally {
       setIsLoading(false);
     }
@@ -89,7 +86,7 @@ const UpgradePromptCard: React.FC<UpgradePromptCardProps> = ({
       <ul className="mt-4 space-y-2">
         {bullets.map((bullet) => (
           <li key={bullet} className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-            • {bullet}
+            - {bullet}
           </li>
         ))}
       </ul>
@@ -98,7 +95,7 @@ const UpgradePromptCard: React.FC<UpgradePromptCardProps> = ({
         <div className="mt-4 space-y-3">
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/50">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Checkout Stripe</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Acesso Pro</p>
               <p className="text-sm font-semibold text-slate-900 dark:text-white">{monthlyPriceLabel}</p>
             </div>
             <button
@@ -111,9 +108,7 @@ const UpgradePromptCard: React.FC<UpgradePromptCardProps> = ({
               {ctaLabel}
             </button>
           </div>
-          {error && (
-            <p className="text-sm font-medium text-rose-600 dark:text-rose-300">{error}</p>
-          )}
+          {error && <p className="text-sm font-medium text-rose-600 dark:text-rose-300">{error}</p>}
         </div>
       )}
     </section>

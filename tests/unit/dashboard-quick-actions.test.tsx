@@ -74,7 +74,7 @@ describe('dashboard quick actions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /ver transacoes/i }));
     fireEvent.click(screen.getAllByRole('button', { name: /abrir fluxo de caixa/i })[0]);
-    fireEvent.click(screen.getByRole('button', { name: /ver insights/i }));
+    fireEvent.click(screen.getByRole('button', { name: /ver sinais essenciais do caixa/i }));
     fireEvent.click(screen.getByRole('button', { name: /ver receitas previstas/i }));
     fireEvent.click(screen.getByRole('button', { name: /abrir ajustes/i }));
 
@@ -192,11 +192,20 @@ describe('dashboard quick actions', () => {
     fireEvent.click(screen.getByRole('button', { name: /registrar revisao semanal/i }));
 
     await waitFor(() => {
-      expect(analyticsMocks.trackProductEventOnce).toHaveBeenCalledWith(
+      expect(analyticsMocks.trackProductEventOnce).toHaveBeenNthCalledWith(
+        1,
         'weekly_cash_review_completed',
         expect.stringContaining('workspace-1'),
         expect.objectContaining({
           source: 'weekly_cash_review',
+        }),
+      );
+      expect(analyticsMocks.trackProductEventOnce).toHaveBeenNthCalledWith(
+        2,
+        'weekly_review_completed',
+        expect.stringContaining('workspace-1'),
+        expect.objectContaining({
+          source: 'dashboard_weekly_review',
         }),
       );
     });
@@ -225,6 +234,7 @@ describe('dashboard quick actions', () => {
     expect(screen.getAllByText(/Faltam dados para ler o caixa/i).length).toBeGreaterThan(0);
     expect(screen.queryAllByText(/Caixa sob controle/i)).toHaveLength(0);
     expect(screen.getByText(/Monte a primeira leitura de caixa/i)).toBeTruthy();
+    expect(screen.getByTestId('dashboard-activation-state')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: /adicionar lancamento/i }));
 

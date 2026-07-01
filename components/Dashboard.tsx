@@ -40,6 +40,7 @@ interface DashboardProps {
   alerts?: Array<{ id: string }>;
   reminders?: Reminder[];
   receivables?: Receivable[];
+  forceReceivablesSourceOfTruth?: boolean;
   hideValues?: boolean;
   onCreateAccount?: (account: { name: string; type: Account['type']; balance: number }) => void | Promise<void>;
   onAddTransactions?: (transactions: Partial<Transaction>[]) => void | Promise<void>;
@@ -441,6 +442,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   alerts = [],
   reminders = [],
   receivables = [],
+  forceReceivablesSourceOfTruth,
   hideValues = false,
   onCreateAccount,
   onAddTransactions,
@@ -452,17 +454,25 @@ const Dashboard: React.FC<DashboardProps> = ({
   onOpenEntryCapture,
 }) => {
   const metrics = useMemo(
-    () => calculateDashboardMetrics(transactions, accounts, reminders, alerts.length, new Date(), receivables),
-    [transactions, accounts, reminders, alerts.length, receivables],
+    () => calculateDashboardMetrics(
+      transactions,
+      accounts,
+      reminders,
+      alerts.length,
+      new Date(),
+      receivables,
+      forceReceivablesSourceOfTruth,
+    ),
+    [transactions, accounts, reminders, alerts.length, receivables, forceReceivablesSourceOfTruth],
   );
   const focusNote = useMemo(() => buildDashboardFocusNote(metrics), [metrics]);
   const nextReceivable = useMemo(
-    () => buildDashboardNextReceivableSummary(reminders, receivables, new Date()),
-    [reminders, receivables],
+    () => buildDashboardNextReceivableSummary(reminders, receivables, new Date(), forceReceivablesSourceOfTruth),
+    [reminders, receivables, forceReceivablesSourceOfTruth],
   );
   const reminderSummary = useMemo(
-    () => buildDashboardReminderStateSummary(reminders, new Date(), receivables),
-    [reminders, receivables],
+    () => buildDashboardReminderStateSummary(reminders, new Date(), receivables, forceReceivablesSourceOfTruth),
+    [reminders, receivables, forceReceivablesSourceOfTruth],
   );
   const activationStatus = useMemo(
     () => buildDashboardActivationStatus(transactions, accounts, reminders, receivables),
@@ -602,6 +612,14 @@ const Dashboard: React.FC<DashboardProps> = ({
         workspaceId: activeWorkspaceId,
         reviewerId: userId,
       });
+      trackProductEventOnce('weekly_review_completed', `${activeWorkspaceId}:${review.weekStart}`, {
+        source: 'dashboard_weekly_review',
+        week_start: review.weekStart,
+        outcome: review.outcome,
+        has_overdue_receivables: review.overdueReceivables > 0,
+        transaction_count: review.transactionCount,
+        receivable_count: review.receivableCount,
+      });
       const refreshedHistory = loadWeeklyCashReviewHistory(activeWorkspaceId);
       const refreshedRetention = measureWeeklyCashReviewRetention(refreshedHistory, { lookbackWeeks: 4 });
       const isRepeatReview = Boolean(currentWeekReview);
@@ -635,9 +653,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   };
 
   const valueOrHidden = (value: number) => (hideValues ? '••••••' : formatCurrency(value));
-  const insightsActionTitle = activeWorkspacePlan === 'pro' ? 'Ver insights completos' : 'Ver insights essenciais';
+  const insightsActionTitle = activeWorkspacePlan === 'pro' ? 'Ver leitura completa da semana' : 'Ver sinais essenciais do caixa';
   const insightsActionDescription = activeWorkspacePlan === 'pro'
-    ? 'Abra analises profundas e comparativos historicos do periodo.'
+    ? 'Compare previsto vs realizado e veja a base da decisao.'
     : 'Abra sinais principais para validar sua leitura de caixa.';
   const PANEL_SURFACE = VISUAL_SURFACES.workspace;
   const SECTION_DIVIDER = 'border-t border-slate-200/80 dark:border-slate-700/80';
@@ -969,7 +987,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               />
               <PrimaryActionButton
                 title="Abrir fluxo de caixa"
-                description="Leia o movimento do periodo sem sair do core financeiro."
+                description="Leia a movimentacao da semana sem sair do caixa."
                 onClick={onNavigateToFlow}
               />
             </div>
@@ -991,7 +1009,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       </section>
 
       {!activationStatus.isComplete && (
-        <section className={`${PANEL_SURFACE} p-5`}>
+        <section data-testid="dashboard-activation-state" className={`${PANEL_SURFACE} p-5`}>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Ativacao</p>

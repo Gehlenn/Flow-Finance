@@ -1,9 +1,21 @@
-﻿import { readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const rulesPath = path.resolve(process.cwd(), 'firestore.rules');
+const firebaseJsonPath = path.resolve(process.cwd(), 'firebase.json');
+const vitestFirestoreConfigPath = path.resolve(process.cwd(), 'vitest.firestore.config.ts');
+
 const rules = readFileSync(rulesPath, 'utf8');
+const firebaseJson = JSON.parse(readFileSync(firebaseJsonPath, 'utf8')) as {
+  firestore?: { rules?: string };
+  emulators?: {
+    firestore?: { port?: number };
+    ui?: { enabled?: boolean };
+    singleProjectMode?: boolean;
+  };
+};
+const vitestFirestoreConfig = readFileSync(vitestFirestoreConfigPath, 'utf8');
 
 describe('firestore.rules multi-tenant coverage', () => {
   it('protects workspace SaaS collections', () => {
@@ -40,10 +52,25 @@ describe('firestore.rules multi-tenant coverage', () => {
   });
 
   it('restricts tenant reads to tenant members', () => {
-    expect(rules).toContain("match /tenants/{tenantId}");
+    expect(rules).toContain('match /tenants/{tenantId}');
     expect(rules).toContain('resource.data.id == tenantId');
     expect(rules).toContain('isTenantMember(tenantId)');
     expect(rules).toContain('isTenantOwner(tenantId)');
-    expect(rules).toContain("match /tenant_members/{memberId}");
+    expect(rules).toContain('match /tenant_members/{memberId}');
+  });
+
+  it('pins the emulator config to the local Firestore rules file', () => {
+    expect(firebaseJson.firestore?.rules).toBe('firestore.rules');
+    expect(firebaseJson.emulators?.firestore?.port).toBe(8080);
+    expect(firebaseJson.emulators?.ui?.enabled).toBe(false);
+    expect(firebaseJson.emulators?.singleProjectMode).toBe(true);
+  });
+
+  it('keeps the dedicated Firestore Vitest config scoped to firestore tests', () => {
+    expect(vitestFirestoreConfig).toContain("include: ['tests/firestore/**/*.test.ts']");
+    expect(vitestFirestoreConfig).toContain("exclude: ['**/node_modules/**', '**/dist/**', '**/tests/e2e/**', '**/tests/integration/**']");
+    expect(vitestFirestoreConfig).toContain("environment: 'node'");
+    expect(vitestFirestoreConfig).toContain("pool: 'forks'");
+    expect(vitestFirestoreConfig).toContain('passWithNoTests: false');
   });
 });

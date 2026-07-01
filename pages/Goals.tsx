@@ -58,10 +58,10 @@ function buildGoalsDiagnostic(kind: 'target' | 'contribute'): { title: string; m
 }
 
 const GOAL_PRESETS: Array<{ title: string; category: Category }> = [
-  { title: 'Reserva de emergência', category: Category.INVESTIMENTO },
-  { title: 'Viagem', category: Category.PESSOAL },
-  { title: 'Novo equipamento', category: Category.CONSULTORIO },
-  { title: 'Entrada do imóvel', category: Category.INVESTIMENTO },
+  { title: 'Reserva de caixa operacional', category: Category.INVESTIMENTO },
+  { title: 'Provisão de impostos', category: Category.INVESTIMENTO },
+  { title: 'Reserva para folha', category: Category.CONSULTORIO },
+  { title: 'Colchão para sazonalidade', category: Category.PESSOAL },
 ];
 
 const INPUT_SURFACE =
@@ -338,7 +338,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
       </div>
 
       {goals.length === 0 && !showForm && (
-        <div className={`${VISUAL_SURFACES.quietSection} flex flex-col items-center justify-center gap-4 py-12`}>
+        <div data-testid="goals-empty-state" className={`${VISUAL_SURFACES.quietSection} flex flex-col items-center justify-center gap-4 py-12`}>
           <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
             <Target size={24} className="text-emerald-500" />
           </div>
@@ -405,7 +405,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
                 type="text"
                 value={formData.title}
                 onChange={(event) => setFormData((current) => ({ ...current, title: event.target.value }))}
-                placeholder="Ex: Reserva de Emergência"
+                placeholder="Ex: Reserva de caixa operacional"
                 className={INPUT_SURFACE}
               />
             </div>

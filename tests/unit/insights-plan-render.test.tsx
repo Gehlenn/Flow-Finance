@@ -5,6 +5,10 @@ import { describe, expect, it, vi } from 'vitest';
 import Insights from '../../pages/Insights';
 import { Category, ReminderType, TransactionType, type Transaction } from '../../types';
 
+const productAnalyticsMocks = vi.hoisted(() => ({
+  trackProductEventMock: vi.fn(),
+}));
+
 vi.mock('../../src/ai/aiOrchestrator', () => ({
   runAIPipelineSync: vi.fn(() => ({
     financial_state: {},
@@ -50,6 +54,10 @@ vi.mock('../../src/app/productFinancialIntelligence', () => ({
   })),
 }));
 
+vi.mock('../../src/app/productAnalytics', () => ({
+  trackProductEvent: productAnalyticsMocks.trackProductEventMock,
+}));
+
 const baseTransactions: Transaction[] = [
   {
     id: 'tx-1',
@@ -62,6 +70,35 @@ const baseTransactions: Transaction[] = [
 ];
 
 describe('Insights plan render', () => {
+  beforeEach(() => {
+    productAnalyticsMocks.trackProductEventMock.mockReset();
+  });
+
+  it('estado vazio direciona primeira sessao para importar dados ou revisar fluxo', () => {
+    const onNavigateToTab = vi.fn();
+
+    render(
+      <Insights
+        activeWorkspaceName="Workspace Teste"
+        transactions={[]}
+        userId="u1"
+        workspacePlan="free"
+        hideValues={false}
+        onNavigateToTab={onNavigateToTab}
+      />,
+    );
+
+    expect(screen.getByText(/Primeira leitura de caixa/i)).toBeTruthy();
+    expect(screen.getByText(/Monte o primeiro retrato de caixa/i)).toBeTruthy();
+    expect(screen.getByText(/saldo confirmado e proxima acao/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Importar transacoes/i }));
+    expect(onNavigateToTab).toHaveBeenCalledWith('import');
+
+    fireEvent.click(screen.getByRole('button', { name: /Ver fluxo/i }));
+    expect(onNavigateToTab).toHaveBeenCalledWith('flow');
+  });
+
   it('plano free mostra camada essencial com card de upgrade', () => {
     const onNavigateToTab = vi.fn();
     const onCreateReminder = vi.fn();
@@ -81,6 +118,17 @@ describe('Insights plan render', () => {
     expect(screen.getByText(/Leituras comparativas/i)).toBeTruthy();
     expect(screen.queryByRole('heading', { name: /Base da leitura/i })).toBeNull();
     expect(screen.getAllByText(/Pr.*xima a.*o/i).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: /Gastos dentro da media/i }));
+    expect(productAnalyticsMocks.trackProductEventMock).toHaveBeenCalledWith(
+      'ai_insight_opened',
+      expect.objectContaining({
+        source: 'insights_page',
+        item_type: 'insight',
+        insight_type: 'spending',
+        severity: 'low',
+        plan: 'free',
+      }),
+    );
     fireEvent.click(screen.getByRole('button', { name: /Abrir assistente/i }));
     expect(onNavigateToTab).toHaveBeenCalledWith('assistant');
     fireEvent.click(screen.getByRole('button', { name: /Criar lembrete/i }));
@@ -88,6 +136,16 @@ describe('Insights plan render', () => {
       title: expect.stringMatching(/Revisar a pr.*xima a.*o do caixa/i),
       priority: 'media',
     }));
+    expect(productAnalyticsMocks.trackProductEventMock).toHaveBeenCalledWith(
+      'decision_saved',
+      expect.objectContaining({
+        source: 'insights_page',
+        origin: 'next_action',
+        decision_type: 'reminder',
+        item_type: 'next_action',
+        plan: 'free',
+      }),
+    );
     fireEvent.click(screen.getByRole('button', { name: /Acompanhar risco/i }));
     expect(onCreateReminder).toHaveBeenLastCalledWith(expect.objectContaining({
       title: 'Acompanhar risco do caixa',
@@ -95,6 +153,16 @@ describe('Insights plan render', () => {
       type: ReminderType.NEGOCIO,
       completed: false,
     }));
+    expect(productAnalyticsMocks.trackProductEventMock).toHaveBeenCalledWith(
+      'decision_saved',
+      expect.objectContaining({
+        source: 'insights_page',
+        origin: 'risk_follow_up',
+        decision_type: 'reminder',
+        item_type: 'low_balance',
+        plan: 'free',
+      }),
+    );
     fireEvent.click(screen.getByRole('button', { name: /Ver fluxo/i }));
     expect(onNavigateToTab).toHaveBeenCalledWith('flow');
   });

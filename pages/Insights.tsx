@@ -4,12 +4,13 @@ import { runAIPipelineSync } from '../src/ai/aiOrchestrator';
 import { AIInsight } from '../src/ai/insightGenerator';
 import { FinancialRiskAlert } from '../src/ai/riskAnalyzer';
 import { buildProductFinancialIntelligence } from '../src/app/productFinancialIntelligence';
+import { trackProductEvent } from '../src/app/productAnalytics';
 import {
   Sparkles, TrendingUp, TrendingDown, ShieldAlert,
   Lightbulb, PiggyBank, AlertTriangle, CheckCircle2,
   BarChart3, Brain, Zap, Info, Activity, MessageSquare, Target
 } from 'lucide-react';
-import { canAccessFeature } from '../src/app/monetizationPlan';
+import { canAccessFeature, getUpgradePromptBullets } from '../src/app/monetizationPlan';
 import UpgradePromptCard from '../components/UpgradePromptCard';
 import type { Tab } from '../hooks/navigationTypes';
 
@@ -51,10 +52,14 @@ const ICON_SURFACE = 'flex h-7 w-7 items-center justify-center rounded-lg border
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-const InsightCard: React.FC<{ insight: AIInsight }> = ({ insight }) => {
+const InsightCard: React.FC<{ insight: AIInsight; onOpen?: (insight: AIInsight) => void }> = ({ insight, onOpen }) => {
   const s = SEVERITY_STYLES[insight.severity ?? 'low'];
   return (
-    <div className={`${s.bg} border ${s.border} rounded-xl p-4 flex gap-3 items-start shadow-none`}>
+    <button
+      type="button"
+      onClick={() => onOpen?.(insight)}
+      className={`${s.bg} border ${s.border} rounded-xl p-4 flex w-full gap-3 items-start text-left shadow-none transition-colors hover:border-slate-300 dark:hover:border-slate-500`}
+    >
       <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${s.bg} ${s.icon}`}>
         {INSIGHT_ICON[insight.type]}
       </div>
@@ -67,7 +72,7 @@ const InsightCard: React.FC<{ insight: AIInsight }> = ({ insight }) => {
           <span className="text-xs text-slate-400 font-medium capitalize">{insight.type}</span>
         </div>
       </div>
-    </div>
+    </button>
   );
 };
 
@@ -215,6 +220,13 @@ const Insights: React.FC<InsightsProps> = ({
       return;
     }
 
+    trackProductEvent('decision_saved', {
+      source: 'insights_page',
+      origin: 'next_action',
+      decision_type: 'reminder',
+      item_type: 'next_action',
+      plan: workspacePlan,
+    });
     onCreateReminder(buildNextActionReminder({
       prediction: {
         in7Days: prediction.in7Days,
@@ -222,15 +234,32 @@ const Insights: React.FC<InsightsProps> = ({
       },
       healthScore: health_score,
     }));
-  }, [health_score, onCreateReminder, prediction.in30Days, prediction.in7Days]);
+  }, [health_score, onCreateReminder, prediction.in30Days, prediction.in7Days, workspacePlan]);
 
   const handleRiskFollowUp = useCallback((alert: FinancialRiskAlert) => {
     if (!onCreateReminder) {
       return;
     }
 
+    trackProductEvent('decision_saved', {
+      source: 'insights_page',
+      origin: 'risk_follow_up',
+      decision_type: 'reminder',
+      item_type: alert.type,
+      plan: workspacePlan,
+    });
     onCreateReminder(buildRiskFollowUpReminder(alert));
-  }, [onCreateReminder]);
+  }, [onCreateReminder, workspacePlan]);
+
+  const handleInsightOpen = useCallback((insight: AIInsight) => {
+    trackProductEvent('ai_insight_opened', {
+      source: 'insights_page',
+      item_type: 'insight',
+      insight_type: insight.type,
+      severity: insight.severity ?? 'low',
+      plan: workspacePlan,
+    });
+  }, [workspacePlan]);
 
   const fmt = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -255,11 +284,41 @@ const Insights: React.FC<InsightsProps> = ({
       </header>
 
       {isEmpty ? (
-        <div className="flex flex-col items-center gap-4 py-16 text-slate-300 dark:text-slate-600">
-          <Sparkles size={40} />
-          <p className="text-center text-xs font-semibold uppercase tracking-[0.08em]">
-            Adicione transacoes para ver a leitura do caixa
-          </p>
+        <div className={`${PAGE_SURFACE} flex flex-col items-center gap-4 px-5 py-12 text-center`}>
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+            <Sparkles size={22} />
+          </div>
+          <div className="max-w-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+              Primeira leitura de caixa
+            </p>
+            <p className="mt-2 text-sm font-semibold leading-snug text-slate-800 dark:text-slate-100">
+              Monte o primeiro retrato de caixa antes de decidir pagamento, cobranca ou espera.
+            </p>
+            <p className="mt-2 text-sm leading-snug text-slate-500 dark:text-slate-400">
+              Comece com entradas, saidas e recebiveis. Depois a tela mostra risco, saldo confirmado e proxima acao.
+            </p>
+          </div>
+          {typeof onNavigateToTab === 'function' && (
+            <div className="flex w-full max-w-sm flex-col gap-2 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                onClick={() => onNavigateToTab('import')}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+              >
+                <Sparkles size={14} />
+                Importar transacoes
+              </button>
+              <button
+                type="button"
+                onClick={() => onNavigateToTab('flow')}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                <BarChart3 size={14} />
+                Ver fluxo
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <>
@@ -428,7 +487,7 @@ const Insights: React.FC<InsightsProps> = ({
                   <p className="text-sm font-medium text-slate-700 dark:text-white">Sem padroes criticos por enquanto.</p>
                 </div>
               ) : (
-                visibleInsights.map((i) => <InsightCard key={i.id} insight={i} />)
+                visibleInsights.map((i) => <InsightCard key={i.id} insight={i} onOpen={handleInsightOpen} />)
               )}
             </div>
           </section>
@@ -524,11 +583,7 @@ const Insights: React.FC<InsightsProps> = ({
               compact
               title="Leituras comparativas"
               description="O Free entrega sinais essenciais. O Pro adiciona contexto para comparar o caixa."
-              bullets={[
-                'perfil de fluxo detalhado',
-                'comparativos historicos mais completos',
-                'mais contexto nas analises e alertas',
-              ]}
+              bullets={getUpgradePromptBullets()}
             />
           )}
 

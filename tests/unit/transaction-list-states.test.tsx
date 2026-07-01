@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import TransactionList, { classifyTransactionFinancialState } from '../../components/TransactionList';
 import { Category, TransactionType, type Transaction } from '../../types';
@@ -11,6 +11,10 @@ type TransactionWithState = Transaction & {
 
 describe('transaction financial states', () => {
   const now = new Date('2026-04-10T12:00:00.000Z');
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
 
   const makeTransaction = (overrides: Partial<TransactionWithState> = {}): TransactionWithState => ({
     id: 'tx-1',
@@ -47,8 +51,18 @@ describe('transaction financial states', () => {
       <TransactionList
         transactions={[
           makeTransaction({ id: 'confirmed-1', description: 'Pagamento fornecedor' }),
-          makeTransaction({ id: 'pending-1', description: 'Recebimento agendado', type: TransactionType.RECEITA, date: '2099-01-01T10:00:00.000Z' }),
-          makeTransaction({ id: 'overdue-1', description: 'Recorrencia atrasada', generated: true, date: '2020-01-01T10:00:00.000Z' }),
+          makeTransaction({
+            id: 'pending-1',
+            description: 'Recebimento agendado',
+            type: TransactionType.RECEITA,
+            date: '2099-01-01T10:00:00.000Z',
+          }),
+          makeTransaction({
+            id: 'overdue-1',
+            description: 'Recorrencia atrasada',
+            generated: true,
+            date: '2020-01-01T10:00:00.000Z',
+          }),
         ]}
         hideValues={false}
         onDelete={vi.fn()}
@@ -67,8 +81,18 @@ describe('transaction financial states', () => {
       <TransactionList
         transactions={[
           makeTransaction({ id: 'confirmed-1', description: 'Pagamento fornecedor' }),
-          makeTransaction({ id: 'pending-1', description: 'Recebimento agendado', type: TransactionType.RECEITA, date: '2099-01-01T10:00:00.000Z' }),
-          makeTransaction({ id: 'overdue-1', description: 'Recorrencia atrasada', generated: true, date: '2020-01-01T10:00:00.000Z' }),
+          makeTransaction({
+            id: 'pending-1',
+            description: 'Recebimento agendado',
+            type: TransactionType.RECEITA,
+            date: '2099-01-01T10:00:00.000Z',
+          }),
+          makeTransaction({
+            id: 'overdue-1',
+            description: 'Recorrencia atrasada',
+            generated: true,
+            date: '2020-01-01T10:00:00.000Z',
+          }),
         ]}
         hideValues={false}
         onDelete={vi.fn()}
@@ -96,8 +120,31 @@ describe('transaction financial states', () => {
     );
 
     expect(screen.getByText(/Nenhum lançamento ainda/i)).toBeTruthy();
+    expect(screen.getByText(/adicionar lançamentos ou importar extratos/i)).toBeTruthy();
     expect(screen.getByText(/botão \+ no Dashboard/i)).toBeTruthy();
     expect(screen.getByText('Dashboard', { selector: 'span' })).toBeTruthy();
     expect(screen.getByText('+', { selector: 'span' })).toBeTruthy();
+  });
+
+  it('diferencia ausência por filtro quando há transações carregadas', () => {
+    render(
+      <TransactionList
+        transactions={[makeTransaction({ id: 'confirmed-1', description: 'Pagamento fornecedor' })]}
+        hideValues={false}
+        onDelete={vi.fn()}
+        onDeleteMultiple={vi.fn()}
+        onUpdate={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Buscar...'), { target: { value: 'inexistente' } });
+
+    expect(screen.getByText(/Nenhum lançamento encontrado/i)).toBeTruthy();
+    expect(screen.getByText(/Este recorte ficou vazio/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Limpar filtros/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Limpar filtros/i }));
+
+    expect(screen.getByText(/Pagamento fornecedor/i)).toBeTruthy();
   });
 });

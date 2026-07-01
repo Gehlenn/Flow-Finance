@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -177,20 +177,20 @@ describe('Settings workspace admin entry', () => {
     expect(screen.getByText(/Vincular Apple/i)).toBeTruthy();
   });
 
-  it('mostra diagnostico explicito quando o suporte IA cai em fallback', async () => {
+  it('mostra diagnostico explicito quando o revisao de caixa cai em fallback', async () => {
     renderSettings('owner');
 
     await waitFor(() => {
       expect(screen.getByText(/Operacao do workspace/i)).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Guia com IA/i }));
+    fireEvent.click(screen.getByText(/Revisao de caixa/i).closest('button') as HTMLButtonElement);
     const supportInput = await screen.findByPlaceholderText(/Digite sua pergunta sobre caixa/i);
     fireEvent.change(supportInput, { target: { value: 'O que ainda falta entrar?' } });
     await waitFor(() => {
       expect((supportInput as HTMLInputElement).value).toBe('O que ainda falta entrar?');
     });
-    fireEvent.click(screen.getByRole('button', { name: /Enviar pergunta ao guia IA/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Enviar pergunta para revisao de caixa/i }));
 
     await waitFor(() => {
       expect(settingsMocks.apiRequest).toHaveBeenCalledWith(
@@ -200,10 +200,29 @@ describe('Settings workspace admin entry', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Diagnóstico do guia com IA/i)).toBeTruthy();
+      expect(screen.getByText(/Diagnostico da revisao de caixa/i)).toBeTruthy();
     });
-    expect(screen.getByText(/Suporte IA indisponivel para consolidar recebiveis agora/i)).toBeTruthy();
+    expect(screen.getByText(/Revisao de caixa indisponivel para consolidar recebiveis agora/i)).toBeTruthy();
     expect(screen.getByText(/Revise a tela de contas a receber e confirme os vencimentos/i)).toBeTruthy();
+  });
+
+  it('mantem o composer do revisao de caixa respiravel no mobile', async () => {
+    renderSettings('owner');
+
+    await waitFor(() => {
+      expect(screen.getByText(/Operacao do workspace/i)).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText(/Revisao de caixa/i).closest('button') as HTMLButtonElement);
+
+    const supportInput = await screen.findByPlaceholderText(/Digite sua pergunta sobre caixa/i);
+    const sendButton = screen.getByRole('button', { name: /Enviar pergunta para revisao de caixa/i });
+
+    expect(supportInput.className).toContain('min-w-0');
+    expect(supportInput.className).toContain('w-full');
+    expect(sendButton.className).toContain('w-full');
+    expect(sendButton.className).toContain('sm:w-auto');
+    expect(sendButton.className).toContain('sm:shrink-0');
   });
 
   it('mostra diagnostico visivel quando o plano do workspace nao carrega', async () => {
@@ -246,7 +265,7 @@ describe('Settings workspace admin entry', () => {
     );
   });
 
-  it('registra diagnostico quando a geração da chave de integracao falha', async () => {
+  it('registra diagnostico quando a gera��o da chave de integracao falha', async () => {
     renderSettings('owner', { generateError: true });
 
     await waitFor(() => {

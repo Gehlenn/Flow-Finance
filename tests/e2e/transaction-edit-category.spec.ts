@@ -3,8 +3,8 @@ import { skipIf } from './helpers/skipHelpers';
 import { gotoDemoApp } from './helpers/appBootstrap';
 import { clickWithRetry } from './helpers/resilientActions';
 
-test.describe('Edição de Categoria - TransactionList', () => {
-  test('Usuário edita categoria de uma transação e recebe feedback visual', async ({ page }) => {
+test.describe('Edicao de categoria - TransactionList', () => {
+  test('usuario edita categoria de uma transacao e recebe feedback visual', async ({ page }) => {
     await page.addInitScript(() => {
       const prefixes = [
         'flow_searchQuery:',
@@ -42,13 +42,10 @@ test.describe('Edição de Categoria - TransactionList', () => {
       .getByRole('tab', { name: /^Transacoes$/i })
       .first();
     await expect(historyButton).toBeVisible({ timeout: 10000 });
-
     await clickWithRetry(() => historyButton);
 
-    // Espera o histórico carregar
-    await expect(page.getByText('Histórico')).toBeVisible();
+    await expect(page.getByText('Historico')).toBeVisible();
 
-    // Garante ao menos uma transação disponível para edição
     const transactionTitles = page.locator('h4');
     if ((await transactionTitles.count()) === 0) {
       await skipIf(true, {
@@ -60,7 +57,7 @@ test.describe('Edição de Categoria - TransactionList', () => {
     const firstTransactionTitle = page.locator('h4').first();
     if (!(await firstTransactionTitle.count())) {
       await skipIf(true, {
-        reason: 'Nenhuma transação ficou disponível no histórico mesmo após criação manual.',
+        reason: 'Nenhuma transacao ficou disponivel no historico mesmo apos criacao manual.',
         category: 'fixture-dependent',
       });
     }
@@ -68,30 +65,17 @@ test.describe('Edição de Categoria - TransactionList', () => {
     await expect(firstTransactionTitle).toBeVisible({ timeout: 10000 });
     await clickWithRetry(() => firstTransactionTitle);
 
-    // Abre modal de detalhes e clica em Editar
     await clickWithRetry(() => page.getByRole('button', { name: /^Editar$/i }));
-
-    // Modal de edição deve aparecer
     await expect(page.getByRole('dialog', { name: 'Editar Categoria' })).toBeVisible();
 
-    // Seleciona nova categoria (exemplo: "Trabalho / Consultório")
-    await clickWithRetry(() => page.getByRole('button', { name: 'Selecionar categoria Trabalho / Consultório' }));
-
-    // Salva
+    await clickWithRetry(() => page.getByRole('button', { name: 'Selecionar categoria Trabalho / Consultorio' }));
     await clickWithRetry(() => page.getByRole('button', { name: 'Salvar categoria' }));
 
-    // Toast de confirmação
-    await expect(page.getByRole('status')).toContainText('Categoria atualizada e IA treinada');
+    await expect(page.getByRole('status')).toContainText('Categoria atualizada e aprendizado salvo');
 
-    // Fecha o toast manualmente
     await clickWithRetry(() => page.getByRole('button', { name: 'Fechar aviso de categoria salva' }));
     const categoryToast = page.getByRole('status');
     await expect(categoryToast).toHaveClass(/opacity-0/);
     await expect(categoryToast).toHaveClass(/pointer-events-none/);
   });
 });
-
-
-
-
-

@@ -63,6 +63,7 @@ const ARTIFACT_SOURCES = [
     file: 'manifest.json',
     statusPath: ['status'],
     summaryPath: ['summary'],
+    preferMostComplete: true,
   },
 ];
 
@@ -101,14 +102,53 @@ async function readJsonIfExists(filePath) {
   }
 }
 
-async function latestDirectory(rootPath) {
+function scoreArtifactCompleteness(payload) {
+  const summary = payload?.summary && typeof payload.summary === 'object' ? payload.summary : {};
+  return {
+    screenshots: Number(summary.screenshots || 0),
+    routeStateScreenshots: Number(summary.routeStateScreenshots || 0),
+    routes: Number(summary.routes || 0),
+    routeStates: Number(summary.routeStates || 0),
+  };
+}
+
+function compareArtifactCandidates(left, right) {
+  const fields = ['screenshots', 'routeStateScreenshots', 'routes', 'routeStates'];
+  for (const field of fields) {
+    if (left.score[field] !== right.score[field]) {
+      return left.score[field] - right.score[field];
+    }
+  }
+
+  return left.name.localeCompare(right.name);
+}
+
+async function latestDirectory(rootPath, source = {}) {
   try {
     const entries = await fs.readdir(rootPath, { withFileTypes: true });
-    return entries
+    const directories = entries
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
-      .sort()
-      .at(-1) ?? '';
+      .sort();
+
+    if (!source.preferMostComplete) {
+      return directories.at(-1) ?? '';
+    }
+
+    const candidates = [];
+    for (const name of directories) {
+      const artifactPath = path.join(rootPath, name, source.file);
+      const payload = await readJsonIfExists(artifactPath);
+      if (!payload) continue;
+      candidates.push({
+        name,
+        score: scoreArtifactCompleteness(payload),
+      });
+    }
+
+    return candidates.sort(compareArtifactCandidates).at(-1)?.name
+      ?? directories.at(-1)
+      ?? '';
   } catch {
     return '';
   }
@@ -116,7 +156,7 @@ async function latestDirectory(rootPath) {
 
 async function collectArtifact(source) {
   const rootPath = path.resolve(process.cwd(), source.root);
-  const latest = await latestDirectory(rootPath);
+  const latest = await latestDirectory(rootPath, source);
   if (!latest) {
     return {
       id: source.id,

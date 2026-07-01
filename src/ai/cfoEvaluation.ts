@@ -11,6 +11,7 @@ export interface CFOEvaluationCase {
     | 'avoids_absolute_promises'
     | 'avoids_raw_context_leak'
     | 'has_explainability'
+    | 'has_required_action'
     | 'has_low_confidence_fallback'
     | 'uses_reduced_depth_when_limited'
     | 'uses_standard_depth_when_strong'
@@ -99,6 +100,10 @@ function evaluateTraits(response: AICFOResponse, traits: CFOEvaluationCase['expe
         break;
       case 'has_explainability':
         ok = hasExplainability(explainability);
+        break;
+      case 'has_required_action':
+        ok = answer.includes('proxima acao')
+          || answer.includes('proximo passo');
         break;
       case 'has_low_confidence_fallback':
         ok = explainability?.confidence_band === 'low'

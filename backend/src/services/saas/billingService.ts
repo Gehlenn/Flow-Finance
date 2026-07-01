@@ -361,7 +361,7 @@ async function applyPlanChange(input: {
 function getProMonthlyPriceCents(): number {
   const rawValue = process.env.SAAS_PRO_MONTHLY_PRICE_CENTS;
   const parsedValue = rawValue ? parseInt(rawValue, 10) : NaN;
-  return Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : 2990;
+  return Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : 4900;
 }
 
 function getBillingCapabilities(hasBillingCustomer = false): BillingCapabilities {

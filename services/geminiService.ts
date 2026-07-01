@@ -69,6 +69,11 @@ type CfoContextSummary = {
   forecast30Days?: string;
   monthResult?: string;
   dataQuality?: string;
+  overdueReceivables?: string;
+  pendingReceivables?: string;
+  goalAtRisk?: string;
+  recurringExpense?: string;
+  optimisticForecast?: string;
 };
 
 function extractContextValue(context: string, label: string): string | undefined {
@@ -77,12 +82,28 @@ function extractContextValue(context: string, label: string): string | undefined
   return matchedLine.split(':').slice(1).join(':').trim();
 }
 
+function extractFirstContextValue(context: string, labels: string[]): string | undefined {
+  for (const label of labels) {
+    const value = extractContextValue(context, label);
+    if (value) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
 function extractCfoContextSummary(context: string): CfoContextSummary {
   return {
     confirmedCash: extractContextValue(context, 'Confirmado (disponivel hoje)'),
     forecast30Days: extractContextValue(context, 'Em 30 dias'),
     monthResult: extractContextValue(context, '- Resultado'),
     dataQuality: extractContextValue(context, 'QUALIDADE DOS DADOS (merchant coverage)'),
+    overdueReceivables: extractFirstContextValue(context, ['Vencido (atrasado)', 'RECEBIVEIS ATRASADOS']),
+    pendingReceivables: extractFirstContextValue(context, ['Pendente (a confirmar)', 'PENDENCIAS A CONFIRMAR']),
+    goalAtRisk: extractFirstContextValue(context, ['META EM RISCO', 'META EM RISCO (VALOR)']),
+    recurringExpense: extractFirstContextValue(context, ['CUSTO RECORRENTE ALTO', 'CUSTO RECORRENTE']),
+    optimisticForecast: extractFirstContextValue(context, ['PREVISAO OTIMISTA DEMAIS', 'PREVISAO OTIMISTA']),
   };
 }
 
@@ -103,6 +124,26 @@ function buildCfoBaseSummary(summary: CfoContextSummary): string {
 
   if (summary.dataQuality) {
     parts.push(`qualidade do dado ${summary.dataQuality}`);
+  }
+
+  if (summary.overdueReceivables) {
+    parts.push(`recebiveis atrasados ${summary.overdueReceivables}`);
+  }
+
+  if (summary.pendingReceivables) {
+    parts.push(`pendencias a confirmar ${summary.pendingReceivables}`);
+  }
+
+  if (summary.goalAtRisk) {
+    parts.push(`meta em risco ${summary.goalAtRisk}`);
+  }
+
+  if (summary.recurringExpense) {
+    parts.push(`custo recorrente ${summary.recurringExpense}`);
+  }
+
+  if (summary.optimisticForecast) {
+    parts.push(`previsao otimista ${summary.optimisticForecast}`);
   }
 
   return parts.length > 0 ? parts.join(', ') : 'dados locais da demonstracao';
@@ -135,6 +176,9 @@ function buildLocalStrategicReport(transactions: Transaction[], reason = 'demo-l
 
 export function buildLocalCFOAnswer(question: string, context: string, intent: string): string {
   const normalizedQuestion = normalizeInput(question);
+  const asksGoalRisk = /meta|objetivo|alvo/.test(normalizedQuestion);
+  const asksRecurringCost = /recorrente|assinatura|custo fixo|gasto fixo/.test(normalizedQuestion);
+  const asksOptimisticForecast = /otimista|otimismo|superestim|previsao demais/.test(normalizedQuestion);
   const asksRisk = intent === 'risk_question' || /risco|perigo|atras/.test(normalizedQuestion);
   const asksCash = intent === 'cash_position' || /caixa|saldo|posicao/.test(normalizedQuestion);
   const asksReceivables = intent === 'receivables_question' || /receber|recebivel|pendente|vencido/.test(normalizedQuestion);
@@ -142,10 +186,44 @@ export function buildLocalCFOAnswer(question: string, context: string, intent: s
   const baseSummary = buildCfoBaseSummary(summary);
 
   if (asksReceivables) {
+    const receivableLabel = summary.overdueReceivables
+      ? 'recebiveis atrasados'
+      : 'recebiveis em aberto';
+    const receivableAmount = summary.overdueReceivables ?? summary.pendingReceivables;
     return [
-      `Leitura demo: pendencias ainda nao contam como ${summary.confirmedCash ? `caixa confirmado de ${summary.confirmedCash}` : 'caixa confirmado'}.`,
-      'Risco: confundir previsao com dinheiro disponivel pode apertar o caixa.',
+      `Leitura demo: ${receivableLabel}${receivableAmount ? ` de ${receivableAmount}` : ''} ainda nao contam como ${summary.confirmedCash ? `caixa confirmado de ${summary.confirmedCash}` : 'caixa confirmado'}.`,
+      'Risco: confundir promessa de entrada com dinheiro disponivel pode apertar o caixa.',
       'Proxima acao: cobre o vencido primeiro e valide a data do proximo recebimento.',
+      `Base resumida: ${baseSummary}.`,
+    ].join('\n\n');
+  }
+
+  if (asksGoalRisk || summary.goalAtRisk) {
+    const goal = summary.goalAtRisk ?? 'meta informada';
+    return [
+      `Leitura demo: ${goal} esta em risco porque o caixa confirmado e a previsao de 30 dias nao fecham a conta.`,
+      'Risco: manter a meta sem ajuste pode forcar gasto ou prazo irreal.',
+      'Proxima acao: corte saidas, revise prazo ou reduza a meta para um nivel executavel.',
+      `Base resumida: ${baseSummary}.`,
+    ].join('\n\n');
+  }
+
+  if (asksRecurringCost || summary.recurringExpense) {
+    const recurring = summary.recurringExpense ?? 'custo recorrente informado';
+    return [
+      `Leitura demo: ${recurring} pesa no caixa e reduz o espaco para novas despesas.`,
+      'Risco: recorrencias altas comprimem a margem antes mesmo da entrada prevista.',
+      'Proxima acao: revise assinaturas, cancele o que nao usa e renegocie o que sobra.',
+      `Base resumida: ${baseSummary}.`,
+    ].join('\n\n');
+  }
+
+  if (asksOptimisticForecast || summary.optimisticForecast) {
+    const forecast = summary.optimisticForecast ?? summary.forecast30Days ?? 'previsao informada';
+    return [
+      `Leitura demo: a previsao parece otimista demais; ${forecast} nao deve ser tratado como saldo.`,
+      'Risco: usar esse numero como caixa mascara aperto de curto prazo.',
+      'Proxima acao: rode um cenario conservador e segure compromissos nao essenciais ate a entrada cair.',
       `Base resumida: ${baseSummary}.`,
     ].join('\n\n');
   }

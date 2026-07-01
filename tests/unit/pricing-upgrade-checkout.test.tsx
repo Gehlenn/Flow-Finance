@@ -34,6 +34,7 @@ vi.mock('../../src/utils/logger', () => ({
 
 import Pricing from '../../pages/Pricing';
 import UpgradePromptCard from '../../components/UpgradePromptCard';
+import { getPackagingEvidenceBoundary, getPlanPackaging, getUpgradePromptBullets } from '../../src/app/monetizationPlan';
 
 describe('checkout entrypoints', () => {
   beforeEach(() => {
@@ -68,6 +69,11 @@ describe('checkout entrypoints', () => {
 
     render(<Pricing />);
 
+    expect(screen.getByRole('heading', { name: /Free e Pro para controle de caixa/i })).toBeTruthy();
+    expect(screen.getByText(getPlanPackaging('free').decisionJob)).toBeTruthy();
+    expect(screen.getByText(getPlanPackaging('pro').decisionJob)).toBeTruthy();
+    expect(screen.getByText(getPackagingEvidenceBoundary())).toBeTruthy();
+
     const button = await screen.findByRole('button', { name: /Assinar Pro/i });
     await waitFor(() => {
       expect((button as HTMLButtonElement).disabled).toBe(false);
@@ -90,7 +96,7 @@ describe('checkout entrypoints', () => {
     });
   });
 
-  it('tracks pricing checkout failure only when Stripe responds without a redirect URL', async () => {
+  it('tracks pricing checkout failure only when checkout responds without a redirect URL', async () => {
     checkoutMocks.createWorkspaceCheckoutSession.mockResolvedValue({
       id: 'cs_test_2',
       url: null,
@@ -110,7 +116,7 @@ describe('checkout entrypoints', () => {
         source: 'pricing',
         plan: 'pro',
       });
-      expect(screen.getByText(/Nao foi possivel abrir o checkout do Stripe agora/i)).toBeTruthy();
+      expect(screen.getByText(/Nao foi possivel abrir o checkout agora/i)).toBeTruthy();
     });
   });
 
@@ -124,11 +130,15 @@ describe('checkout entrypoints', () => {
       <UpgradePromptCard
         title="Mais analise"
         description="Libere o Pro."
-        bullets={['Analise historica']}
+        bullets={getUpgradePromptBullets()}
         workspaceId="ws-card"
         showUpgradeAction
       />,
     );
+
+    for (const bullet of getUpgradePromptBullets()) {
+      expect(screen.getByText((_, element) => element?.tagName === 'LI' && element.textContent?.includes(bullet) === true)).toBeTruthy();
+    }
 
     fireEvent.click(screen.getByRole('button', { name: /Assinar Pro/i }));
 

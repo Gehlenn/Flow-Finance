@@ -1,7 +1,7 @@
-﻿import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ComposedChart
 } from 'recharts';
 import { formatCurrency } from '../utils/helpers';
 import { Transaction, TransactionType } from '../types';
@@ -25,9 +25,43 @@ const TOOLTIP_CONTENT_STYLE = {
 };
 const TOOLTIP_LABEL_STYLE = { color: FLOW_CHART_UI.tooltipText };
 const LEGEND_TEXT_STYLE = { color: FLOW_CHART_UI.tooltipText, fontSize: '14px', fontWeight: 600 };
+const SECTION_SHELL = 'overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm dark:border-slate-700 dark:bg-slate-800/90';
+const EMPTY_CHART_SHELL = 'flex h-[240px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-6 text-center dark:border-slate-700 dark:bg-slate-900/40';
+
+type ChartSize = { width: number; height: number };
+
+const ResponsiveChartFrame: React.FC<{ className?: string; children: (size: ChartSize) => React.ReactNode }> = ({ className = 'h-64 w-full min-w-0', children }) => {
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const [size, setSize] = useState<ChartSize>({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const element = frameRef.current;
+    if (!element) {
+      return;
+    }
+
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect();
+      setSize({
+        width: Math.max(0, Math.round(rect.width)),
+        height: Math.max(0, Math.round(rect.height)),
+      });
+    };
+
+    updateSize();
+    if (typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  return <div ref={frameRef} className={className}>{size.width > 0 && size.height > 0 ? children(size) : null}</div>;
+};
 
 const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceName, transactions, hideValues }) => {
-
   // 1. Balance Trend Over Time (Line Chart)
   const balanceTrendData = useMemo(() => {
     const sortedTransactions = [...transactions].sort((a, b) =>
@@ -60,6 +94,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
 
     return Object.entries(categoryTotals)
       .map(([category, amount]) => ({ category, amount }))
+      .filter((item) => compareMoney(item.amount, 0) > 0)
       .sort((a, b) => compareMoney(b.amount, a.amount))
       .slice(0, 8); // Top 8 categories
   }, [transactions]);
@@ -131,17 +166,27 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
 
   const formatAxisValue = (value: number) => {
     if (hideValues) return '••••';
+    if (Math.abs(value) < 1000) {
+      return formatCurrency(value, 'pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        maximumFractionDigits: 0,
+      });
+    }
+    if (Math.abs(value) < 10000) {
+      return `R$ ${(value / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}k`;
+    }
     return `R$ ${(value / 1000).toFixed(0)}k`;
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className={`${SECTION_SHELL} flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between`}>
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Analytics</p>
           <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Relatórios Avançados</h2>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-right dark:border-slate-700 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-200 bg-slate-50/90 px-4 py-3 text-left dark:border-slate-700 dark:bg-slate-900/70 sm:text-right">
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Workspace ativo</p>
           <p className="text-sm text-slate-700 dark:text-slate-100">
             {activeWorkspaceName || 'Carregando workspace'}
@@ -150,7 +195,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
       </div>
 
       {/* Balance Trend Chart */}
-      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className={`${SECTION_SHELL} p-5 sm:p-6`}>
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
             <svg className="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -162,9 +207,9 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
             <p className="text-sm text-slate-500 dark:text-slate-400">Evolução do seu patrimônio ao longo do tempo</p>
           </div>
         </div>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={balanceTrendData}>
+        <ResponsiveChartFrame>
+          {({ width, height }) => (
+            <AreaChart width={width} height={height} data={balanceTrendData}>
               <defs>
                 <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={COLORS.balance} stopOpacity={0.3}/>
@@ -188,12 +233,12 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
                 strokeWidth={2}
               />
             </AreaChart>
-          </ResponsiveContainer>
-        </div>
+          )}
+        </ResponsiveChartFrame>
       </div>
 
       {/* Category Distribution Chart */}
-      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className={`${SECTION_SHELL} p-5 sm:p-6`}>
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
             <svg className="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -205,25 +250,36 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
             <p className="text-sm text-slate-500 dark:text-slate-400">Principais categorias de despesa</p>
           </div>
         </div>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={categoryData} layout="horizontal">
-              <CartesianGrid strokeDasharray="3 3" stroke={FLOW_CHART_UI.grid} />
-              <XAxis type="number" tickFormatter={formatAxisValue} stroke={FLOW_CHART_UI.axis} fontSize={12} />
-              <YAxis dataKey="category" type="category" width={80} stroke={FLOW_CHART_UI.axis} fontSize={12} />
-              <Tooltip
-                formatter={(value) => [formatTooltipValue(Number(value)), 'Total']}
-                labelStyle={TOOLTIP_LABEL_STYLE}
-                contentStyle={TOOLTIP_CONTENT_STYLE}
-              />
-              <Bar dataKey="amount" fill={COLORS.expenses} radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <ResponsiveChartFrame>
+          {({ width, height }) => (
+            categoryData.length > 0 ? (
+              <BarChart width={width} height={height} data={categoryData} layout="vertical" margin={{ top: 6, right: 12, left: 8, bottom: 6 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={FLOW_CHART_UI.grid} />
+                <XAxis type="number" tickFormatter={formatAxisValue} stroke={FLOW_CHART_UI.axis} fontSize={12} />
+                <YAxis dataKey="category" type="category" width={80} stroke={FLOW_CHART_UI.axis} fontSize={12} />
+                <Tooltip
+                  formatter={(value) => [formatTooltipValue(Number(value)), 'Total']}
+                  labelStyle={TOOLTIP_LABEL_STYLE}
+                  contentStyle={TOOLTIP_CONTENT_STYLE}
+                />
+                <Bar dataKey="amount" fill={COLORS.expenses} radius={[0, 4, 4, 0]} />
+              </BarChart>
+            ) : (
+              <div className={EMPTY_CHART_SHELL}>
+                <div className="max-w-xs">
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Sem gastos categorizados</p>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    A distribuição por categoria aparece quando houver despesas classificadas.
+                  </p>
+                </div>
+              </div>
+            )
+          )}
+        </ResponsiveChartFrame>
       </div>
 
       {/* Income vs Expenses Pie Chart */}
-      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className={`${SECTION_SHELL} p-5 sm:p-6`}>
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
             <svg className="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -236,9 +292,9 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
             <p className="text-sm text-slate-500 dark:text-slate-400">Distribuição geral do fluxo financeiro</p>
           </div>
         </div>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
+        <ResponsiveChartFrame>
+          {({ width, height }) => (
+            <PieChart width={width} height={height}>
               <Pie
                 data={incomeExpenseData}
                 cx="50%"
@@ -262,12 +318,12 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
                 formatter={(value) => <span style={LEGEND_TEXT_STYLE}>{value}</span>}
               />
             </PieChart>
-          </ResponsiveContainer>
-        </div>
+          )}
+        </ResponsiveChartFrame>
       </div>
 
       {/* Cash Flow Projection */}
-      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className={`${SECTION_SHELL} p-5 sm:p-6`}>
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-cyan-300">
             <svg className="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -279,9 +335,9 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
             <p className="text-sm text-slate-500 dark:text-slate-400">Previsão baseada nos últimos 30 dias</p>
           </div>
         </div>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={cashFlowProjection}>
+        <ResponsiveChartFrame>
+          {({ width, height }) => (
+            <LineChart width={width} height={height} data={cashFlowProjection}>
               <CartesianGrid strokeDasharray="3 3" stroke={FLOW_CHART_UI.grid} />
               <XAxis
                 dataKey="day"
@@ -304,12 +360,12 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
                 strokeDasharray="5 5"
               />
             </LineChart>
-          </ResponsiveContainer>
-        </div>
+          )}
+        </ResponsiveChartFrame>
       </div>
 
       {/* Monthly Trends Chart */}
-      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className={`${SECTION_SHELL} p-5 sm:p-6`}>
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-amber-500 dark:border-slate-700 dark:bg-slate-900 dark:text-amber-300">
             <TrendingUp className="h-4.5 w-4.5" />
@@ -319,9 +375,9 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
             <p className="text-sm text-slate-500 dark:text-slate-400">Receitas e despesas nos últimos 6 meses</p>
           </div>
         </div>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={monthlyTrends} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <ResponsiveChartFrame>
+          {({ width, height }) => (
+            <ComposedChart width={width} height={height} data={monthlyTrends} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={FLOW_CHART_UI.grid} vertical={false} />
               <XAxis dataKey="label" stroke={FLOW_CHART_UI.axis} fontSize={11} tickLine={false} axisLine={false} />
               <YAxis tickFormatter={formatAxisValue} stroke={FLOW_CHART_UI.axis} fontSize={11} tickLine={false} axisLine={false} />
@@ -336,26 +392,26 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ activeWorkspaceNa
               <Bar dataKey="despesas" fill={COLORS.expenses} radius={[6, 6, 0, 0]} barSize={16} opacity={0.9} />
               <Line type="monotone" dataKey="saldo" stroke={COLORS.balance} strokeWidth={2.5} dot={{ r: 4, fill: COLORS.balance, stroke: 'white', strokeWidth: 2 }} />
             </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="flex items-center justify-center gap-6 mt-4">
+          )}
+        </ResponsiveChartFrame>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.income }} />
+            <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: COLORS.income }} />
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Receitas</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.expenses }} />
+            <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: COLORS.expenses }} />
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Despesas</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-0.5 rounded" style={{ backgroundColor: COLORS.balance }} />
+            <div className="h-0.5 w-4 rounded" style={{ backgroundColor: COLORS.balance }} />
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em]">Saldo</span>
           </div>
         </div>
       </div>
 
       {/* Monthly Report Table */}
-      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className={`${SECTION_SHELL} p-5 sm:p-6`}>
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
             <FileText className="h-4.5 w-4.5" />
@@ -438,6 +494,3 @@ export function formatAnalyticsDateLabel(value: unknown): string {
 }
 
 export default AdvancedAnalytics;
-
-
-

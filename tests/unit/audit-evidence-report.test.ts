@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
 import {
   buildMarkdown,
+  collectArtifact,
   determineEvidenceStatus,
   getPathValue,
   normalizeStatus,
@@ -69,5 +73,45 @@ describe('generate-audit-evidence-report', () => {
 
     expect(markdown).toContain('What this report does not prove');
     expect(markdown).toContain('It does not prove retention without multi-week real usage.');
+  });
+
+  it('prefers the most complete visual manifest over a later smoke capture', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'flow-audit-evidence-'));
+    const fullRun = path.join(root, '2026-06-26T14-10-53-868Z');
+    const smokeRun = path.join(root, '2026-06-26T14-11-43-872Z');
+
+    await fs.mkdir(fullRun, { recursive: true });
+    await fs.mkdir(smokeRun, { recursive: true });
+    await fs.writeFile(path.join(fullRun, 'manifest.json'), JSON.stringify({
+      status: 'PASS',
+      summary: {
+        screenshots: 48,
+        routeStateScreenshots: 22,
+        routes: 13,
+        routeStates: 11,
+      },
+    }), 'utf8');
+    await fs.writeFile(path.join(smokeRun, 'manifest.json'), JSON.stringify({
+      status: 'PASS',
+      summary: {
+        screenshots: 2,
+        routeStateScreenshots: 0,
+        routes: 1,
+        routeStates: 0,
+      },
+    }), 'utf8');
+
+    const artifact = await collectArtifact({
+      id: 'visual_regression',
+      title: 'Visual regression',
+      root,
+      file: 'manifest.json',
+      statusPath: ['status'],
+      summaryPath: ['summary'],
+      preferMostComplete: true,
+    });
+
+    expect(artifact.runId).toBe('2026-06-26T14-10-53-868Z');
+    expect(artifact.artifactPath).toContain('2026-06-26T14-10-53-868Z');
   });
 });

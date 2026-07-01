@@ -5,6 +5,7 @@ import {
   canUseDemoWorkspaceFallback,
   getDemoBootstrapIdentity,
 } from '../demo/demoBootstrap';
+import { trackProductEventOnce } from '../app/productAnalytics';
 import {
   addWorkspaceMember,
   createPersonalWorkspace as createPersonalWorkspaceInFirestore,
@@ -190,6 +191,7 @@ async function createBackendWorkspace(identity: UserIdentity): Promise<Workspace
 async function ensureActiveWorkspaceFromBackend(identity: UserIdentity): Promise<WorkspaceSummary> {
   const workspaces = await fetchBackendWorkspaceSummaries();
   const storedWorkspaceId = getStoredWorkspaceId();
+  const createdWorkspace = workspaces.length === 0;
   const selectedWorkspace = (storedWorkspaceId
     ? workspaces.find((workspace) => workspace.workspaceId === storedWorkspaceId)
     : undefined)
@@ -197,6 +199,14 @@ async function ensureActiveWorkspaceFromBackend(identity: UserIdentity): Promise
     || await createBackendWorkspace(identity);
 
   setActiveWorkspaceId(selectedWorkspace.workspaceId);
+  if (createdWorkspace) {
+    trackProductEventOnce('workspace_created', selectedWorkspace.workspaceId, {
+      source: 'workspace_session',
+      plan: selectedWorkspace.plan,
+      provisioning: 'backend',
+      is_default: selectedWorkspace.isDefault,
+    });
+  }
   return selectedWorkspace;
 }
 
@@ -240,6 +250,12 @@ export async function listUserWorkspaces(userId?: string | null): Promise<Worksp
 export async function createPersonalWorkspace(identity?: UserIdentity, name?: string): Promise<WorkspaceSummary> {
   const workspace = await createPersonalWorkspaceInFirestore(resolveIdentity(identity), name);
   setActiveWorkspaceId(workspace.workspaceId);
+  trackProductEventOnce('workspace_created', workspace.workspaceId, {
+    source: 'workspace_session',
+    plan: workspace.plan,
+    provisioning: 'firestore',
+    is_default: workspace.isDefault,
+  });
   return workspace;
 }
 
@@ -289,5 +305,13 @@ export async function ensureActiveWorkspace(identity?: UserIdentity): Promise<Wo
 
   const selectedWorkspace = workspaces[0] || await ensureActiveWorkspaceForUser(resolvedIdentity);
   setActiveWorkspaceId(selectedWorkspace.workspaceId);
+  if (!workspaces[0]) {
+    trackProductEventOnce('workspace_created', selectedWorkspace.workspaceId, {
+      source: 'workspace_session',
+      plan: selectedWorkspace.plan,
+      provisioning: 'firestore',
+      is_default: selectedWorkspace.isDefault,
+    });
+  }
   return selectedWorkspace;
 }

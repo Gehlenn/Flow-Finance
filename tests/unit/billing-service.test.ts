@@ -111,6 +111,14 @@ describe('billingService', () => {
     expect(catalog.plans.find((plan) => plan.id === 'pro')?.priceMonthlyCents).toBe(4990);
   });
 
+  it('usa fallback de 4900 centavos quando a env de preco nao existe', () => {
+    delete process.env.SAAS_PRO_MONTHLY_PRICE_CENTS;
+
+    const catalog = getPlanCatalog('user-default-price');
+
+    expect(catalog.plans.find((plan) => plan.id === 'pro')?.priceMonthlyCents).toBe(4900);
+  });
+
   it('permite trocar plano via API mock quando habilitado', async () => {
     const result = await changeUserPlan({
       userId: 'user-upgrade',

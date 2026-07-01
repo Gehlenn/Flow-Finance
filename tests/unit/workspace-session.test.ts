@@ -18,6 +18,10 @@ const workspaceSessionLoggerMocks = vi.hoisted(() => ({
   logWarnMock: vi.fn(),
 }));
 
+const workspaceSessionAnalyticsMocks = vi.hoisted(() => ({
+  trackProductEventOnceMock: vi.fn(),
+}));
+
 vi.mock('../../src/config/api.config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/config/api.config')>();
   return {
@@ -40,6 +44,10 @@ vi.mock('../../src/services/firestoreWorkspaceStore', () => ({
 
 vi.mock('../../src/utils/logger', () => ({
   logWarn: workspaceSessionLoggerMocks.logWarnMock,
+}));
+
+vi.mock('../../src/app/productAnalytics', () => ({
+  trackProductEventOnce: workspaceSessionAnalyticsMocks.trackProductEventOnceMock,
 }));
 
 import {
@@ -113,6 +121,16 @@ describe('workspaceSession', () => {
         body: JSON.stringify({ name: 'Workspace de Flow User' }),
       }),
     );
+    expect(workspaceSessionAnalyticsMocks.trackProductEventOnceMock).toHaveBeenCalledWith(
+      'workspace_created',
+      'ws_backend_new',
+      expect.objectContaining({
+        source: 'workspace_session',
+        plan: 'free',
+        provisioning: 'backend',
+        is_default: true,
+      }),
+    );
     expect(firestoreWorkspaceMocks.ensureActiveWorkspaceForUserMock).not.toHaveBeenCalled();
   });
 
@@ -141,6 +159,7 @@ describe('workspaceSession', () => {
       '[WorkspaceSession] Backend workspace bootstrap failed',
       expect.objectContaining({
         endpoint: 'https://backend.flow.test/api/workspace',
+        error: expect.any(Error),
         fallback: 'workspace-bootstrap-backend-to-firestore',
       }),
     );
@@ -180,6 +199,16 @@ describe('workspaceSession', () => {
       name: 'Flow User',
       email: 'user@test.dev',
     });
+    expect(workspaceSessionAnalyticsMocks.trackProductEventOnceMock).toHaveBeenCalledWith(
+      'workspace_created',
+      'ws_new',
+      expect.objectContaining({
+        source: 'workspace_session',
+        plan: 'free',
+        provisioning: 'firestore',
+        is_default: true,
+      }),
+    );
   });
 
   it('persists active workspace changes and emits a browser event', () => {

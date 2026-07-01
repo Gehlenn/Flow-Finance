@@ -47,7 +47,7 @@ const NAVIGATION_SECTIONS: NavigationSection[] = [
   },
   {
     id: 'ai',
-    label: 'IA',
+    label: 'Decisao',
     defaultTab: 'cfo',
     items: [
       { tab: 'cfo', label: 'Consultor de caixa' },

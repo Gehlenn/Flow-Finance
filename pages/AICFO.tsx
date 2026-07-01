@@ -25,7 +25,8 @@ import { AI_CFO_COPY } from '../src/app/assistantCopy';
 import { trackProductEvent, trackProductEventOnce } from '../src/app/productAnalytics';
 import {
   FREE_LIMITS,
-  MONETIZATION_PRICING,
+  getPlanPackaging,
+  getUpgradePromptBullets,
   withinFreeLimit,
 } from '../src/app/monetizationPlan';
 import type { Tab } from '../hooks/navigationTypes';
@@ -109,7 +110,7 @@ function countMonthlyUserQueries(messages: Message[], reference = new Date()): n
 
 const buildConversationLearningDiagnostic = (): { title: string; message: string; suggestion: string } => ({
   title: 'Aprendizado da conversa indisponivel',
-  message: 'Nao foi possivel atualizar o aprendizado do CFO em segundo plano agora.',
+  message: 'Nao foi possivel atualizar o aprendizado do consultor de caixa em segundo plano agora.',
   suggestion: 'Envie uma nova pergunta ou tente novamente quando a conexao do workspace estiver estavel.',
 });
 
@@ -118,7 +119,7 @@ function buildGenerationFailureMessage(intent: CFOIntent, hasStrongGrounding: bo
     id: makeId(),
     role: 'assistant',
     intent,
-    text: 'Nao consegui processar esta consulta agora. A IA ficou indisponivel nesta tentativa, entao nao vou inferir uma recomendacao.',
+    text: 'Nao consegui processar esta consulta agora. O servico consultivo ficou indisponivel nesta tentativa, entao nao vou inferir uma recomendacao.',
     timestamp: new Date().toISOString(),
     responseDepth: 'reduced',
     diagnostic: {
@@ -128,7 +129,7 @@ function buildGenerationFailureMessage(intent: CFOIntent, hasStrongGrounding: bo
     },
     explainability: {
       reasons_used: [
-        'Fallback operacional da IA',
+        'Fallback operacional do consultor de caixa',
         hasStrongGrounding ? 'Dados financeiros existem, mas a resposta nao foi gerada' : 'Base financeira limitada ou incompleta',
       ],
       evidence: {
@@ -144,10 +145,10 @@ function buildResponseReminder(message: Message): Partial<Reminder> {
   const highPriority = message.intent === 'risk_question' || message.intent === 'cash_position';
   return {
     title: message.intent === 'risk_question'
-      ? 'Acompanhar risco do CFO'
+      ? 'Acompanhar risco de caixa'
       : message.intent === 'cash_position'
-        ? 'Revisar posicao de caixa indicada pelo CFO'
-        : 'Revisar recomendacao do CFO',
+        ? 'Revisar posicao de caixa indicada'
+        : 'Revisar recomendacao de caixa',
     date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     type: ReminderType.NEGOCIO,
     priority: highPriority ? 'alta' : 'media',
@@ -229,7 +230,7 @@ const AssistantBubble: React.FC<{
           )}
           {msg.diagnostic && (
             <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
-              <p className="text-xs font-semibold uppercase tracking-[0.08em]">Diagnostico da IA</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.08em]">Diagnostico do caixa</p>
               <p className="mt-1 text-xs leading-relaxed">{msg.diagnostic.message}</p>
               {msg.diagnostic.suggestion && (
                 <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] opacity-90">
@@ -417,7 +418,9 @@ const OperationalSnapshot: React.FC<{
     in7Days >= currentBalance
       ? 'Janela de 7 dias sustenta ou melhora a posicao atual.'
       : 'Janela de 7 dias projeta compressao de caixa.',
-    productSignals?.[0] || 'Base ainda curta para leituras mais profundas; use perguntas objetivas.',
+    productSignals?.[0] || (hasStrongGrounding
+      ? 'Base ainda curta para leituras mais profundas; use perguntas objetivas.'
+      : 'Faltam movimentos registrados, contas cadastradas e historico de recebiveis para ampliar a leitura.'),
   ];
 
   return (
@@ -452,7 +455,7 @@ const OperationalSnapshot: React.FC<{
         <div className="flex h-full flex-col gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Base da leitura</p>
-            <h3 className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">Como a IA esta lendo o caixa</h3>
+            <h3 className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">Como o consultor esta lendo o caixa</h3>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -500,7 +503,9 @@ const OperationalSnapshot: React.FC<{
 const WelcomeScreen: React.FC<{
   onPrompt: (q: string) => void;
   prompts: { label: string; question: string; icon: React.ReactNode }[];
-}> = ({ onPrompt, prompts }) => (
+  hasStrongGrounding: boolean;
+  onNavigateToTab?: (tab: Tab) => void;
+}> = ({ onPrompt, prompts, hasStrongGrounding, onNavigateToTab }) => (
   <div className="grid gap-3 py-1 animate-in fade-in duration-500 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.15fr)]">
     <section className={`${SOFT_SURFACE} p-4 sm:p-5`}>
       <div className="flex items-start gap-3">
@@ -515,6 +520,37 @@ const WelcomeScreen: React.FC<{
           </p>
         </div>
       </div>
+
+      {!hasStrongGrounding && (
+        <div data-testid="aicfo-base-short-state" className="mt-4 rounded-2xl border border-amber-100 bg-amber-50/70 p-3 dark:border-amber-500/20 dark:bg-amber-500/10">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-700 dark:text-amber-300">
+            Base curta
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-200">
+            A leitura vai ficar reduzida ate entrar movimento, contas cadastradas e historico de recebiveis. Use a base que ja existe para decidir com cautela.
+          </p>
+          {onNavigateToTab && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => onNavigateToTab('import')}
+                className="inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-white px-3 py-2 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-50 dark:border-amber-500/30 dark:bg-slate-900 dark:text-amber-200 dark:hover:bg-slate-800"
+              >
+                <TrendingUp size={14} />
+                Importar transacoes
+              </button>
+              <button
+                type="button"
+                onClick={() => onNavigateToTab('flow')}
+                className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+              >
+                <Wallet size={14} />
+                Ver fluxo
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         {[
@@ -593,7 +629,7 @@ const AICFO: React.FC<AICFOProps> = ({
   const isFreePlan = effectiveWorkspacePlan !== 'pro';
   const queryLimit = FREE_LIMITS.consultorIaQueriesPerMonth;
   const proMonthlyPriceLabel = useMemo(
-    () => `R$ ${MONETIZATION_PRICING.proMonthlyBRL.toFixed(2).replace('.', ',')}/mes`,
+    () => getPlanPackaging('pro').priceLabel,
     [],
   );
 
@@ -678,7 +714,7 @@ const AICFO: React.FC<AICFOProps> = ({
           });
           setUsageDiagnostic({
             title: 'Uso do plano indisponivel',
-            message: 'Nao foi possivel preparar o contexto local do Consultor IA agora.',
+            message: 'Nao foi possivel preparar o contexto local do Consultor de caixa agora.',
             suggestion: 'Recarregue a pagina ou saia do modo demo para usar a leitura do workspace real.',
           });
           return;
@@ -711,7 +747,7 @@ const AICFO: React.FC<AICFOProps> = ({
         });
         setUsageDiagnostic({
           title: 'Uso do plano indisponivel',
-          message: 'Nao foi possivel sincronizar o contador mensal do Consultor IA agora.',
+          message: 'Nao foi possivel sincronizar o contador mensal do Consultor de caixa agora.',
           suggestion: 'O Flow vai usar a contagem local desta conversa ate a leitura do workspace voltar.',
         });
       }
@@ -923,7 +959,7 @@ const AICFO: React.FC<AICFOProps> = ({
         <div className="mb-2 rounded-2xl border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-700 dark:bg-slate-800/60 sm:mb-3 sm:p-3">
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">Modo Free</p>
           <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-            O Consultor IA segue liberado no Free com as mesmas respostas consultivas, mas para em {queryLimit} consultas por mes. No Pro, o uso fica ilimitado por {proMonthlyPriceLabel}.
+            A revisao de caixa segue liberada no Free para confirmar saldo, previsto e recebiveis, mas para em {queryLimit} consultas por mes. No Pro, a revisao semanal fica ilimitada por {proMonthlyPriceLabel}.
           </p>
         </div>
       )}
@@ -941,13 +977,9 @@ const AICFO: React.FC<AICFOProps> = ({
         {paywallVisible && (
           <div className="border-b border-slate-200 p-3 dark:border-slate-800 sm:p-4">
             <UpgradePromptCard
-              title="Consultor IA ilimitado"
-              description="Voce chegou ao limite mensal do Free. O Pro libera consultas sem travar, mais workspaces e mais contexto historico."
-              bullets={[
-                'consultor IA sem bloqueio mensal',
-                'multiplos workspaces para operacoes separadas',
-                'analises historicas para comparar caixa e risco',
-              ]}
+              title="Revisao semanal de caixa ilimitada"
+              description="Voce chegou ao limite mensal do Free. O Pro libera revisao recorrente, workspaces separados e mais historico de caixa."
+              bullets={getUpgradePromptBullets()}
               workspaceId={workspaceId}
               showUpgradeAction
               ctaLabel="Assinar Pro agora"
@@ -964,7 +996,7 @@ const AICFO: React.FC<AICFOProps> = ({
 
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:px-5 sm:pb-5">
           {messages.length === 0
-            ? <WelcomeScreen onPrompt={sendMessage} prompts={quickPrompts} />
+            ? <WelcomeScreen onPrompt={sendMessage} prompts={quickPrompts} hasStrongGrounding={hasStrongGrounding} onNavigateToTab={onNavigateToTab} />
             : messages.map(msg =>
                 msg.role === 'user'
                   ? <UserBubble key={msg.id} msg={msg} />
@@ -985,7 +1017,7 @@ const AICFO: React.FC<AICFOProps> = ({
       </div>
 
       {/* Input */}
-      <div className={`order-3 shrink-0 mt-2 flex items-end gap-2.5 ${PANEL_SURFACE} p-2.5 pl-4 sm:mt-3 sm:gap-3 sm:p-3 sm:pl-5 md:order-none`}>
+      <div className={`order-3 mb-[calc(3.75rem+env(safe-area-inset-bottom))] shrink-0 mt-2 flex items-end gap-2.5 ${PANEL_SURFACE} p-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pl-4 sm:mt-3 sm:gap-3 sm:p-3 sm:pl-5 md:order-none md:mb-0`}>
         <div className="flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Pergunta rapida</p>
           <textarea

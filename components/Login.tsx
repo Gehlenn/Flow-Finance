@@ -364,7 +364,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onDevelopmentLogin }) => {
           >
             <ShieldCheck size={13} /> Sessão protegida
           </button>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">Firebase, login local e recuperacao</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">Acesso ao painel de caixa do workspace</p>
         </div>
       </div>
     </div>

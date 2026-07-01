@@ -20,6 +20,7 @@ vi.mock('../../src/config/api.config', () => ({
     },
   },
   apiRequest: apiRequestMock,
+  getStoredWorkspaceId: vi.fn(() => 'ws-test'),
 }));
 
 vi.mock('../../src/utils/logger', () => ({
@@ -27,7 +28,10 @@ vi.mock('../../src/utils/logger', () => ({
   logError: logErrorMock,
 }));
 
-import { buildSmartInputFallback, GeminiService } from '../../services/geminiService';
+import { buildLocalCFOAnswer, buildSmartInputFallback, GeminiService } from '../../services/geminiService';
+import { buildCFOExplainability, buildCFOResponseDepth } from '../../src/ai/aiCFO';
+import { evaluateCFOCases } from '../../src/ai/cfoEvaluation';
+import { CFO_EVALUATION_FIXTURES } from '../fixtures/ai/cfoEvaluationFixtures';
 import type { Reminder, TransactionData } from '../../types';
 import { TransactionType, Category } from '../../types';
 
@@ -67,6 +71,48 @@ describe('buildSmartInputFallback', () => {
     const output = buildSmartInputFallback('teste aleatorio sem contexto financeiro');
     expect(output.intent).toBe('transaction');
     expect(output.data).toHaveLength(0);
+  });
+});
+
+describe('buildLocalCFOAnswer', () => {
+  const canonicalOfflineCases = CFO_EVALUATION_FIXTURES.filter((fixture) =>
+    [
+      'negative_cash_runway',
+      'overdue_receivables',
+      'goal_at_risk',
+      'high_recurring_cost',
+      'optimistic_forecast',
+    ].includes(fixture.name),
+  );
+
+  it.each(canonicalOfflineCases)('produz resposta consultiva e especifica para %s', (fixture) => {
+    const answer = buildLocalCFOAnswer(fixture.question, fixture.context, fixture.intent);
+    const explainability = buildCFOExplainability(fixture.context, fixture.intent);
+
+    expect(answer).toContain('Proxima acao');
+    expect(answer).not.toContain('=== DADOS');
+    expect(answer).not.toContain('CONTAS:');
+    expect(answer).not.toContain('TOTAL DE TRANSACOES');
+
+    const [result] = evaluateCFOCases([
+      {
+        name: fixture.name,
+        intent: fixture.intent,
+        response: {
+          question: fixture.question,
+          answer,
+          context_summary: 'Offline consultative demo anchored to the workspace summary.',
+          intent: fixture.intent,
+          response_depth: buildCFOResponseDepth(explainability),
+          timestamp: new Date('2026-06-19T12:00:00.000Z').toISOString(),
+          explainability,
+        },
+        expectedTraits: fixture.expectedTraits,
+      },
+    ]);
+
+    expect(result.passed).toBe(true);
+    expect(result.missingTraits).toHaveLength(0);
   });
 });
 

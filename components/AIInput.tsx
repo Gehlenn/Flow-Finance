@@ -146,8 +146,8 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
 
   const ensureHasGeneratedItems = (count: number, kind: 'transaction' | 'reminder') => {
     if (count > 0) return;
-    if (kind === 'transaction') throw new Error('Nenhuma transação foi gerada pela IA');
-    throw new Error('Nenhum lembrete foi gerado pela IA');
+    if (kind === 'transaction') throw new Error('Nenhum rascunho de transacao foi gerado');
+    throw new Error('Nenhum lembrete foi gerado');
   };
 
   const pickSingleTransaction = (items: TransactionData[], origin: 'text' | 'image') => {
@@ -158,7 +158,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
         count: items.length,
         fallback: 'ai-input-single-draft-multiple-transactions',
       });
-      setIntakeWarning('A IA detectou múltiplas transações. Neste fluxo, apenas a primeira será usada e você deve revisar antes de salvar.');
+      setIntakeWarning('Detectamos multiplos movimentos. Neste fluxo, apenas o primeiro rascunho sera usado e voce deve revisar antes de salvar.');
     }
     return items[0];
   };
@@ -240,7 +240,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
         fallback: 'ai-input-processing-failed',
       });
       setDiagnostic({
-        message: 'A IA nao conseguiu processar este lancamento agora.',
+        message: 'Nao foi possivel preparar o rascunho deste lancamento agora.',
         suggestion: 'Tente novamente em alguns instantes ou use o modo manual.',
       });
       setError("Não consegui entender. Tente ser mais específico ou use o modo manual.");
@@ -312,7 +312,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
           fallback: 'ai-input-processing-failed',
         });
         setDiagnostic({
-          message: 'A IA nao conseguiu ler a imagem enviada agora.',
+          message: 'Nao foi possivel ler a imagem enviada agora.',
           suggestion: 'Envie uma foto mais nítida ou use o modo manual para registrar os dados.',
         });
         setError("Erro ao ler imagem. Tente uma foto mais nítida.");
@@ -361,7 +361,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
             )}
             <p className="text-[10px] text-slate-400 font-medium">
               {pendingDraft.confidenceLevel === 'low'
-                ? 'A IA não conseguiu extrair alguns dados com certeza. Campos destacados precisam de confirmação.'
+                ? 'Alguns dados do rascunho ficaram incertos. Campos destacados precisam de confirmacao.'
                 : 'Verifique os campos destacados antes de salvar.'}
             </p>
 

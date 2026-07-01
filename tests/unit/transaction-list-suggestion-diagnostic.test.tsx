@@ -52,8 +52,8 @@ describe('TransactionList suggestion diagnostic', () => {
 
     const diagnostic = await screen.findByRole('status');
     expect(diagnostic).toBeTruthy();
-    expect(screen.getByText(/Sugestao de IA indisponivel/i)).toBeTruthy();
-    expect(screen.getByText(/A IA nao conseguiu sugerir uma categoria agora/i)).toBeTruthy();
+    expect(screen.getByText(/Sugestao de categoria indisponivel/i)).toBeTruthy();
+    expect(screen.getByText(/Nao foi possivel sugerir uma categoria agora/i)).toBeTruthy();
     expect(screen.getByText(/Escolha a categoria manualmente/i)).toBeTruthy();
     expect(transactionListLoggerMock.logWarn).toHaveBeenCalledWith(
       '[TransactionList] Failed to suggest category',

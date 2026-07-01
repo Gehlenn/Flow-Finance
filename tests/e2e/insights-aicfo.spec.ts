@@ -17,7 +17,7 @@ async function tryOpenInsightsSurface(page: Page): Promise<boolean> {
     page.getByRole('tab', { name: /^Insights$/i }),
     page.getByRole('button', { name: /^Insights$/i }),
     page.getByRole('button', { name: /Ver insights/i }),
-    page.getByText(/Insights atualizam automaticamente/i),
+    page.getByText(/Sinais do caixa atualizados/i),
   ];
 
   for (const trigger of insightsTriggers) {

@@ -193,8 +193,36 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
         ))}
       </div>
 
-      {!showForm && canEdit ? (
-      <button type="button" onClick={openForm}
+      {accounts.length === 0 && !showForm ? (
+        <div className={`${VISUAL_SURFACES.quietSection} flex flex-col items-center justify-center gap-4 px-5 py-12 text-center`}>
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-white text-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-emerald-300">
+            <PiggyBank size={24} />
+          </div>
+          <div className="max-w-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">Primeira conta de caixa</p>
+            <p className="mt-2 text-sm font-semibold leading-snug text-slate-800 dark:text-white">
+              Cadastre a conta principal para ancorar o saldo consolidado.
+            </p>
+            <p className="mt-2 text-sm leading-snug text-slate-500 dark:text-slate-400">
+              Esse saldo ajuda o dashboard, o fluxo previsto e a leitura consultiva a partirem de uma base real.
+            </p>
+          </div>
+          {canEdit ? (
+            <button
+              type="button"
+              onClick={openForm}
+              className={`flex items-center gap-2 rounded-xl bg-slate-800 px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200 ${VISUAL_MOTION.action}`}
+            >
+              <Plus size={14} /> Adicionar conta principal
+            </button>
+          ) : (
+            <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400 dark:border-slate-700 dark:bg-slate-900">
+              Workspace em modo leitura
+            </p>
+          )}
+        </div>
+      ) : !showForm && canEdit ? (
+        <button type="button" onClick={openForm}
           className={`flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-4 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 ${VISUAL_MOTION.action}`}
         >
           <Plus size={16} /> Nova conta de caixa
@@ -277,12 +305,6 @@ const Accounts: React.FC<AccountsProps> = ({ hideValues, activeWorkspaceName, ac
         </div>
       )}
 
-      {accounts.length === 0 && (
-        <div className="flex flex-col items-center py-12 gap-3 text-slate-300">
-          <PiggyBank size={40} />
-          <p className="text-xs font-semibold uppercase tracking-[0.08em]">Nenhuma conta ainda</p>
-        </div>
-      )}
     </div>
   );
 };

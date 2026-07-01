@@ -55,6 +55,13 @@ describe('buildNavigationContext', () => {
         workspacePlan: 'free',
       }).activeWorkspacePlan,
     ).toBe('pro');
+    expect(
+      buildNavigationContext({
+        ...base,
+        demoWorkspacePlan: 'pro',
+        workspacePlan: 'free',
+      }).forceReceivablesSourceOfTruth,
+    ).toBe(true);
 
     expect(
       buildNavigationContext({
@@ -63,6 +70,13 @@ describe('buildNavigationContext', () => {
         workspacePlan: 'pro',
       }).activeWorkspacePlan,
     ).toBe('pro');
+    expect(
+      buildNavigationContext({
+        ...base,
+        demoWorkspacePlan: null,
+        workspacePlan: 'pro',
+      }).forceReceivablesSourceOfTruth,
+    ).toBe(false);
 
     expect(
       buildNavigationContext({

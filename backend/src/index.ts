@@ -14,6 +14,7 @@ import { checkDatabaseHealth, hasDatabaseConfig } from './config/database';
 import { createCorsOptions, resolveAllowedOrigins } from './config/cors';
 import { resolveTrustProxySetting } from './config/server';
 import { buildOpenApiSpec, isApiDocsEnabled, renderSwaggerHtml } from './docs/openapi';
+import { requireTrustedCookieStateChangingOrigin } from './middleware/csrfOrigin';
 
 // Routes
 import authRoutes from './routes/authRoutes';
@@ -99,6 +100,9 @@ app.use(cors(corsOptions));
 
 // Request context middleware
 app.use(requestContextMiddleware);
+
+// Cookie-authenticated state changes must come from a trusted browser origin.
+app.use(requireTrustedCookieStateChangingOrigin);
 
 // Logging middleware
 app.use((_req: Request, _res: Response, next: NextFunction) => {

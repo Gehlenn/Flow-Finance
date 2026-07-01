@@ -16,10 +16,10 @@ vi.mock('../../src/utils/logger', () => ({
 vi.mock('../../src/app/secondaryFlowsCopy', () => ({
   SECONDARY_FLOWS_COPY: {
     goals: {
-      title: 'Metas',
-      subtitle: 'Acompanhe seus objetivos',
-      emptyTitle: 'Sem metas',
-      emptyDescription: 'Crie uma meta para começar',
+      title: 'Metas de caixa',
+      subtitle: 'Reservas, provisoes e objetivos ligados ao caixa operacional',
+      emptyTitle: 'Nenhuma meta de caixa cadastrada',
+      emptyDescription: 'Crie uma reserva de caixa, uma provisao ou outro objetivo ligado ao fluxo operacional.',
     },
   },
 }));
@@ -90,7 +90,7 @@ describe('Goals page', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Nova meta/i }));
-    fireEvent.change(screen.getByPlaceholderText(/Reserva de Emerg/i), { target: { value: 'Reserva' } });
+    fireEvent.change(screen.getByPlaceholderText(/Reserva de caixa operacional/i), { target: { value: 'Reserva' } });
     fireEvent.change(screen.getAllByPlaceholderText('0,00')[0], { target: { value: 'abc' } });
     fireEvent.click(screen.getByRole('button', { name: /Criar Meta/i }));
 
@@ -116,7 +116,7 @@ describe('Goals page', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Nova meta/i }));
-    fireEvent.change(screen.getByPlaceholderText(/Reserva de Emerg/i), { target: { value: 'Reserva' } });
+    fireEvent.change(screen.getByPlaceholderText(/Reserva de caixa operacional/i), { target: { value: 'Reserva' } });
     fireEvent.change(screen.getAllByPlaceholderText('0,00')[0], { target: { value: 'abc' } });
     fireEvent.click(screen.getByRole('button', { name: /Criar Meta/i }));
 
@@ -176,7 +176,7 @@ describe('Goals page', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Nova meta/i }));
-    fireEvent.change(screen.getByPlaceholderText(/Reserva de Emerg/i), { target: { value: 'Reserva' } });
+    fireEvent.change(screen.getByPlaceholderText(/Reserva de caixa operacional/i), { target: { value: 'Reserva' } });
     fireEvent.change(screen.getAllByPlaceholderText('0,00')[0], { target: { value: '1000' } });
     fireEvent.click(screen.getByRole('button', { name: /Criar Meta/i }));
 
@@ -190,6 +190,24 @@ describe('Goals page', () => {
         fallback: 'goals-create-goal-failed',
       }),
     );
+  });
+
+  it('mostra o empty state orientado a caixa operacional', () => {
+    render(
+      <GoalsPage
+        goals={[]}
+        hideValues={false}
+        canEditGoals={false}
+        onCreateGoal={vi.fn()}
+        onDeleteGoal={vi.fn()}
+        onContributeGoal={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Nenhuma meta de caixa cadastrada')).toBeTruthy();
+    expect(
+      screen.getByText(/reserva de caixa, uma provisao ou outro objetivo ligado ao fluxo operacional/i),
+    ).toBeTruthy();
   });
 });
 

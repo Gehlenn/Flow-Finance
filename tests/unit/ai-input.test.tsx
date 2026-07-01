@@ -168,7 +168,7 @@ describe('AIInput', () => {
     fireEvent.click(screen.getByRole('button', { name: /Confirmar Inteligente/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/A IA detectou múltiplas transações/i)).toBeTruthy();
+      expect(screen.getByText(/Detectamos multiplos movimentos/i)).toBeTruthy();
       expect(screen.getByRole('button', { name: /Confirmar e Salvar/i })).toBeTruthy();
     });
 
@@ -213,7 +213,7 @@ describe('AIInput', () => {
     fireEvent.change(fileInput!, { target: { files: [file] } });
 
     expect(await screen.findByRole('status')).toBeTruthy();
-    expect(screen.getByText(/A IA nao conseguiu ler a imagem enviada agora/i)).toBeTruthy();
+    expect(screen.getByText(/Nao foi possivel ler a imagem enviada agora/i)).toBeTruthy();
     expect(screen.getAllByText(/foto mais/i).length).toBeGreaterThan(0);
     expect(screen.getByRole('alert').textContent).toContain('Erro ao ler imagem');
     expect(logWarnMock).toHaveBeenCalledWith(

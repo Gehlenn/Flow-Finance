@@ -18,6 +18,7 @@ import {
 } from '../src/engines/finance/analyticsEngine';
 import { calculateCashflowSummary } from '../src/engines/finance/cashflowEngine';
 import { logWarn } from '../src/utils/logger';
+import { trackProductEventOnce } from '../src/app/productAnalytics';
 import { FLOW_CHART_COLORS, FLOW_CHART_UI } from '../src/styles/chartPalette';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -33,11 +34,13 @@ interface CashFlowProps {
   activeWorkspaceName?: string | null;
   transactions: Transaction[];
   receivables?: Receivable[];
+  forceReceivablesSourceOfTruth?: boolean;
   hideValues: boolean;
   theme: 'light' | 'dark';
 }
 
 const COLORS = FLOW_CHART_COLORS.categories;
+const RESPONSIVE_CONTAINER_INITIAL_DIMENSION = { width: 1, height: 1 };
 
 interface CustomTooltipProps {
   active?: boolean;
@@ -265,13 +268,18 @@ const CASHFLOW_TIMEFRAMES = ['7d', '30d', '12m', 'custom'] as const;
 type CashflowTimeframe = typeof CASHFLOW_TIMEFRAMES[number];
 const REVENUE_SECTIONS = ['realizado', 'previsto', 'pendencias', 'estrategia'] as const;
 type RevenueSection = typeof REVENUE_SECTIONS[number];
+const STRATEGIC_FALLBACK_PLAN = [
+  'Revisar o recorte de caixa em outro periodo para confirmar a leitura operacional.',
+  'Conferir recebiveis pendentes e vencidos antes de tratar previsao como caixa disponivel.',
+  'Validar saidas ja confirmadas para decidir o que pode ser adiado ou renegociado.',
+];
 const PANEL_SURFACE = 'rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-900';
 const MODAL_SURFACE = 'rounded-xl bg-white shadow-[0_14px_32px_-24px_rgba(15,23,42,0.32)] dark:bg-slate-900';
 const REVENUE_SECTION_META: Record<RevenueSection, { label: string; description: string }> = {
   realizado: { label: 'Realizado', description: 'Entradas confirmadas e leitura do fluxo atual' },
   previsto: { label: 'Previsto', description: 'Receitas agendadas e valor que ainda pode entrar' },
   pendencias: { label: 'Pendências', description: 'Itens vencidos ou aguardando confirmação' },
-  estrategia: { label: 'Estratégia', description: 'Diagnóstico consultivo com fallback de IA' },
+  estrategia: { label: 'Estratégia', description: 'Diagnostico consultivo do recorte de caixa' },
 };
 
 function parseDateSafe(value?: string | null): number | null {
@@ -283,7 +291,96 @@ function parseDateSafe(value?: string | null): number | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
 }
 
-const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceName, transactions, receivables = [], hideValues, theme }) => {
+function dedupeStrategicActionPlan(actionPlan?: unknown): string[] {
+  const normalizedSteps: string[] = [];
+
+  if (Array.isArray(actionPlan)) {
+    for (const step of actionPlan) {
+      if (typeof step !== 'string') {
+        continue;
+      }
+
+      const trimmedStep = step.trim();
+      if (!trimmedStep) {
+        continue;
+      }
+
+      const alreadyIncluded = normalizedSteps.some(
+        (existingStep) => existingStep.toLowerCase() === trimmedStep.toLowerCase(),
+      );
+      if (!alreadyIncluded) {
+        normalizedSteps.push(trimmedStep);
+      }
+    }
+  }
+
+  for (const fallbackStep of STRATEGIC_FALLBACK_PLAN) {
+    if (normalizedSteps.length >= 3) {
+      break;
+    }
+
+    const alreadyIncluded = normalizedSteps.some(
+      (existingStep) => existingStep.toLowerCase() === fallbackStep.toLowerCase(),
+    );
+    if (!alreadyIncluded) {
+      normalizedSteps.push(fallbackStep);
+    }
+  }
+
+  return normalizedSteps.length > 0 ? normalizedSteps.slice(0, 3) : [...STRATEGIC_FALLBACK_PLAN];
+}
+
+function buildStrategicFallbackReport(reason: string) {
+  return {
+    executiveSummary: 'Diagnostico de caixa incompleto',
+    actionPlan: [...STRATEGIC_FALLBACK_PLAN],
+    diagnostic: {
+      kind: reason,
+      message: 'O diagnostico consultivo nao retornou conteudo completo para este recorte',
+      suggestion: 'Tente outro recorte e revise recebiveis e saidas confirmadas',
+    },
+  };
+}
+
+function normalizeStrategicReport(report: any, fallbackReason: string) {
+  if (!report || typeof report !== 'object') {
+    return buildStrategicFallbackReport(fallbackReason);
+  }
+
+  const executiveSummary = typeof report.executiveSummary === 'string' && report.executiveSummary.trim()
+    ? report.executiveSummary.trim()
+    : 'Diagnostico de caixa incompleto';
+
+  const actionPlan = dedupeStrategicActionPlan(report.actionPlan);
+  if (executiveSummary === 'Diagnostico de caixa incompleto' || actionPlan.length < 2) {
+    return buildStrategicFallbackReport(fallbackReason);
+  }
+
+  const diagnostic = report.diagnostic && typeof report.diagnostic === 'object'
+    ? report.diagnostic
+    : {
+        kind: fallbackReason,
+        message: 'O diagnostico consultivo nao retornou conteudo completo para este recorte',
+        suggestion: 'Tente outro recorte e revise recebiveis e saidas confirmadas',
+      };
+
+  return {
+    ...report,
+    executiveSummary,
+    actionPlan,
+    diagnostic,
+  };
+}
+
+const CashFlow: React.FC<CashFlowProps> = ({
+  activeWorkspaceId,
+  activeWorkspaceName,
+  transactions,
+  receivables = [],
+  forceReceivablesSourceOfTruth,
+  hideValues,
+  theme,
+}) => {
   const [timeframe, setTimeframe] = useState<CashflowTimeframe>('30d');
   const [revenueSection, setRevenueSection] = useState<RevenueSection>('realizado');
   const [dateStart, setDateStart] = useState('');
@@ -364,8 +461,8 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
   }, [filtered]);
 
   const revenueStateSummary = useMemo(
-    () => calculateRevenueStateSummary(filtered, filteredReceivables),
-    [filtered, filteredReceivables]
+    () => calculateRevenueStateSummary(filtered, filteredReceivables, new Date(), forceReceivablesSourceOfTruth),
+    [filtered, filteredReceivables, forceReceivablesSourceOfTruth]
   );
 
   const pendingReceivables = useMemo(
@@ -389,6 +486,29 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
 
   const categoryData = useMemo(() => buildExpenseCategoryData(filtered), [filtered]);
 
+  useEffect(() => {
+    if (revenueSection !== 'previsto') {
+      return;
+    }
+
+    trackProductEventOnce('forecast_viewed', activeWorkspaceId || activeWorkspaceName || 'cashflow', {
+      source: 'cashflow',
+      timeframe,
+      transaction_count: filtered.length,
+      receivable_count: filteredReceivables.length,
+      projected_receivables: projectedReceivables.length,
+      has_receivables: filteredReceivables.length > 0,
+    });
+  }, [
+    activeWorkspaceId,
+    activeWorkspaceName,
+    filtered.length,
+    filteredReceivables.length,
+    projectedReceivables.length,
+    revenueSection,
+    timeframe,
+  ]);
+
   const handleGenerateReport = async () => {
     if (report) {
       setIsConsultancyOpen(true);
@@ -398,11 +518,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
     setIsGenerating(true);
     try {
       const strategicReport = await gemini.current.generateStrategicReport(filtered);
-      const nextReport = strategicReport || {
-        executiveSummary: 'IA sem resposta completa',
-        actionPlan: ['Revisar entradas confirmadas', 'Separar previsao de caixa disponivel'],
-        diagnostic: { kind: 'ai_unavailable', message: 'A IA estratégica não retornou conteúdo para este recorte', suggestion: 'Tente novamente ou ajuste o período analisado' },
-      };
+      const nextReport = normalizeStrategicReport(strategicReport, 'ai_unavailable');
       setReport(nextReport);
       localStorage.setItem(reportStorageKey, JSON.stringify(nextReport));
     } catch (e) {
@@ -410,11 +526,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
         error: e,
         fallback: 'cashflow-generate-strategic-report-failed',
       });
-      const fallback = {
-        executiveSummary: 'IA sem resposta completa',
-        actionPlan: ['A IA estratégica está indisponível no momento', 'A IA estratégica está indisponível no momento'],
-        diagnostic: { kind: 'ai_unavailable', message: 'A IA estratégica está indisponível no momento', suggestion: 'Tente novamente mais tarde' },
-      };
+      const fallback = buildStrategicFallbackReport('ai_unavailable');
       setReport(fallback);
     } finally {
       setIsGenerating(false);
@@ -555,7 +667,12 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
               </div>
               <div className="h-[220px] w-full" style={{ minHeight: '220px' }}>
                 {timelineData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={220} minWidth={0}>
+                  <ResponsiveContainer
+                    width="100%"
+                    height={220}
+                    minWidth={0}
+                    initialDimension={RESPONSIVE_CONTAINER_INITIAL_DIMENSION}
+                  >
                     <AreaChart data={timelineData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
                       <XAxis dataKey="date" hide />
@@ -581,7 +698,12 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
                 <h3 className="text-sm font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-[0.16em] mb-4 flex items-center gap-2"><PieIcon size={14} /> Composição</h3>
                 <div className="h-[220px] w-full" style={{ minHeight: '220px' }}>
                   {categoryData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={220} minWidth={0}>
+                    <ResponsiveContainer
+                      width="100%"
+                      height={220}
+                      minWidth={0}
+                      initialDimension={RESPONSIVE_CONTAINER_INITIAL_DIMENSION}
+                    >
                       <PieChart>
                         <Pie data={categoryData} innerRadius={60} outerRadius={80} paddingAngle={8} dataKey="value" stroke="none">
                           {categoryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
@@ -604,7 +726,12 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
                 <h3 className="text-sm font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-[0.16em] mb-4 flex items-center gap-2"><Target size={14} /> Ranking</h3>
                 <div className="h-[220px] w-full" style={{ minHeight: '220px' }}>
                   {categoryData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={220} minWidth={0}>
+                    <ResponsiveContainer
+                      width="100%"
+                      height={220}
+                      minWidth={0}
+                      initialDimension={RESPONSIVE_CONTAINER_INITIAL_DIMENSION}
+                    >
                       <BarChart data={categoryData} layout="vertical" margin={{ left: 8, right: 16 }}>
                         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={gridColor} />
                         <XAxis type="number" hide />
@@ -645,7 +772,12 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
               </div>
               <div className="mt-6 h-[220px] w-full" style={{ minHeight: '220px' }}>
                 {projectedReceivables.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={220} minWidth={0}>
+                  <ResponsiveContainer
+                    width="100%"
+                    height={220}
+                    minWidth={0}
+                    initialDimension={RESPONSIVE_CONTAINER_INITIAL_DIMENSION}
+                  >
                     <BarChart
                       data={[
                         { name: 'Confirmado', value: revenueStateSummary.confirmed },
@@ -749,8 +881,8 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
                   <Target size={28} />
                 </div>
                 <div>
-                  <h4 className="text-base font-semibold tracking-tight uppercase text-slate-500 dark:text-slate-400">Próximo passo financeiro</h4>
-                  <p className="mt-1.5 text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-300">Diagnóstico curto para decidir o que fazer agora.</p>
+                  <h4 className="text-base font-semibold tracking-tight uppercase text-slate-500 dark:text-slate-400">Proxima decisao de caixa</h4>
+                  <p className="mt-1.5 text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-300">Resumo curto para decidir saldo, recebiveis e proximos vencimentos.</p>
                 </div>
               </div>
               {report && (
@@ -787,7 +919,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[300] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div role="dialog" aria-modal="true" aria-labelledby="cashflow-share-title" aria-describedby="cashflow-share-description" className={`${MODAL_SURFACE} w-full max-w-sm p-8 space-y-6 animate-in zoom-in-95`}>
             <div className="flex justify-between items-center">
-              <h3 id="cashflow-share-title" className="text-xl font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Exportar Receitas</h3>
+              <h3 id="cashflow-share-title" className="text-xl font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Exportar fluxo de caixa</h3>
               <button onClick={() => setIsShareModalOpen(false)} className="p-1 text-slate-400"><X size={20} /></button>
             </div>
 
@@ -796,7 +928,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
                <div className="space-y-1">
                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300">• Dados de Entradas/Saídas</p>
                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300">• Divisão por Categorias</p>
-                 {report && <p className="text-xs font-medium text-slate-600 dark:text-slate-300">• Prioridade Flow (Análise IA)</p>}
+                 {report && <p className="text-xs font-medium text-slate-600 dark:text-slate-300">• Prioridade Flow (diagnostico consultivo)</p>}
                </div>
             </div>
 
@@ -858,7 +990,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
                       <div className="flex items-start gap-3">
                         <AlertTriangle size={18} className="mt-0.5 shrink-0" />
                         <div className="space-y-1">
-                          <h4 className="text-sm font-semibold uppercase tracking-[0.16em]">IA sem resposta completa</h4>
+                          <h4 className="text-sm font-semibold uppercase tracking-[0.16em]">Diagnostico de caixa incompleto</h4>
                           <p className="text-sm font-medium leading-relaxed">{reportDiagnosticMessage}</p>
                           {reportDiagnostic?.suggestion && (
                             <p className="text-sm font-semibold uppercase tracking-[0.16em] opacity-90">
@@ -889,9 +1021,11 @@ const CashFlow: React.FC<CashFlowProps> = ({ activeWorkspaceId, activeWorkspaceN
             </div>
 
             <div className="p-6 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 flex gap-3">
-              <button onClick={() => setIsConsultancyOpen(false)} className="flex-1 py-4 bg-slate-900 dark:bg-slate-700 text-white rounded-2xl font-semibold text-sm uppercase tracking-[0.16em] active:scale-95">Sair</button>
-              <button onClick={() => handleShare('whatsapp')} className="flex-1 py-4 bg-slate-100 dark:bg-slate-100 text-slate-900 rounded-2xl font-semibold text-sm uppercase tracking-[0.16em] active:scale-95 flex items-center justify-center gap-2">
-                <MessageCircle size={16} /> WhatsApp
+              <button onClick={() => handleShare('whatsapp')} className="flex-[1.25] py-4 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-2xl font-semibold text-sm uppercase tracking-[0.16em] active:scale-95 flex items-center justify-center gap-2">
+                <MessageCircle size={16} /> Enviar plano
+              </button>
+              <button onClick={() => setIsConsultancyOpen(false)} className="flex-1 py-4 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200 rounded-2xl font-semibold text-sm uppercase tracking-[0.16em] active:scale-95">
+                Sair
               </button>
             </div>
           </div>

@@ -45,7 +45,7 @@ test.describe('Demo bootstrap', () => {
     await gotoDemoApp(page);
     await expect(page.getByText('Leitura rapida do caixa')).toBeVisible();
 
-    const navLabels = ['Caixa', 'Operacao', 'Receitas', 'IA'];
+    const navLabels = ['Caixa', 'Operacao', 'Receitas', 'Decisao'];
     for (const label of navLabels) {
       const button = page.getByRole('button', { name: label });
       if (await button.count()) {

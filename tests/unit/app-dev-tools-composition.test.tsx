@@ -159,8 +159,8 @@ describe('App dev tools composition', () => {
   it('shows Lab IA, Performance and dev panels for allowlisted dev accounts', async () => {
     await renderAppWithEmail('dev@flow.test');
 
-    expect(await screen.findByRole('button', { name: 'IA' })).toBeTruthy();
-    expect(await screen.findByLabelText('IA subsecoes')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Decisao' })).toBeTruthy();
+    expect(await screen.findByLabelText('Decisao subsecoes')).toBeTruthy();
     expect(await screen.findByRole('tab', { name: 'Lab IA' })).toBeTruthy();
     expect(await screen.findByRole('tab', { name: 'Performance' })).toBeTruthy();
     expect(await screen.findByTestId('ai-debug-panel')).toBeTruthy();
@@ -170,7 +170,7 @@ describe('App dev tools composition', () => {
   it('hides Lab IA, Performance and dev panels for non-dev accounts', async () => {
     await renderAppWithEmail('regular@flow.test');
 
-    expect(await screen.findByRole('button', { name: 'IA' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Decisao' })).toBeTruthy();
     expect(await screen.findByLabelText('Caixa subsecoes')).toBeTruthy();
     expect(screen.queryByRole('tab', { name: 'Lab IA' })).toBeNull();
     expect(screen.queryByRole('tab', { name: 'Performance' })).toBeNull();

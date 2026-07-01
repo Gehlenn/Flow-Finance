@@ -7,6 +7,9 @@ import { FinancialEventEmitter } from '../../src/events/eventEngine';
 
 const runImportPipelineMock = vi.fn();
 const saveMerchantCategoryLearningMock = vi.fn();
+const productAnalyticsMocks = vi.hoisted(() => ({
+  trackProductEventMock: vi.fn(),
+}));
 const importTransactionsLoggerMock = vi.hoisted(() => ({
   logWarn: vi.fn(),
 }));
@@ -30,6 +33,10 @@ vi.mock('../../src/engines/finance/categorization/aiCategorizerFallback', () => 
   saveMerchantCategoryLearning: (...args: unknown[]) => saveMerchantCategoryLearningMock(...args),
 }));
 
+vi.mock('../../src/app/productAnalytics', () => ({
+  trackProductEvent: productAnalyticsMocks.trackProductEventMock,
+}));
+
 vi.mock('../../src/utils/logger', () => ({
   logWarn: importTransactionsLoggerMock.logWarn,
 }));
@@ -38,6 +45,7 @@ describe('ImportTransactions session state', () => {
   beforeEach(() => {
     runImportPipelineMock.mockReset();
     saveMerchantCategoryLearningMock.mockReset();
+    productAnalyticsMocks.trackProductEventMock.mockReset();
     importTransactionsLoggerMock.logWarn.mockReset();
     runImportPipelineMock.mockResolvedValue({
       format: 'csv',
@@ -67,6 +75,21 @@ describe('ImportTransactions session state', () => {
       errors: [],
       parse_time_ms: 12,
     });
+  });
+
+  it('renders the first import idle state with review-before-save copy', () => {
+    render(
+      <ImportTransactionsPage
+        transactions={[]}
+        userId="user-1"
+        hideValues={false}
+        onAddTransactions={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('import-idle-state')).toBeTruthy();
+    expect(screen.getByText(/Envie um arquivo para revisar entradas e saidas/i)).toBeTruthy();
+    expect(screen.getByText(/Voce revisa antes de confirmar no caixa/i)).toBeTruthy();
   });
 
   it('resets duplicate filter between import sessions', async () => {
@@ -237,6 +260,17 @@ describe('ImportTransactions session state', () => {
       category: 'Pessoal',
       type: 'Despesa',
     });
+    expect(productAnalyticsMocks.trackProductEventMock).toHaveBeenCalledWith(
+      'transaction_imported',
+      expect.objectContaining({
+        source: 'import_transactions',
+        format: 'csv',
+        imported_count: 1,
+        selected_count: 1,
+        duplicate_count: 1,
+        error_count: 0,
+      }),
+    );
   });
 
   it('continues import when merchant learning persistence fails', async () => {

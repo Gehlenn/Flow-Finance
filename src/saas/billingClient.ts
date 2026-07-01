@@ -5,8 +5,14 @@ import {
   getAuthHeaders,
 } from '../config/api.config';
 import { getDemoBootstrapPlan } from '../demo/demoBootstrap';
+import {
+  MONETIZATION_PRICING,
+  getPlanFeatureMessages,
+  getPlanPackaging,
+} from '../app/monetizationPlan';
 import { trackProductEvent } from '../app/productAnalytics';
 import { logWarn } from '../utils/logger';
+import { getPlanLimits } from './policyEngine';
 
 export type WorkspacePlanCatalog = {
   scope: 'workspace';
@@ -43,6 +49,26 @@ type StripePortalResponse = {
 
 type BillingAnalyticsSource = 'pricing' | 'upgrade_prompt' | 'settings' | 'workspace_admin' | 'unknown';
 
+function createLocalBillingPlans(): WorkspacePlanCatalog['plans'] {
+  return (['free', 'pro'] as const).map((planId) => {
+    const plan = getPlanPackaging(planId);
+    const limits = getPlanLimits(planId);
+
+    return {
+      id: planId,
+      name: plan.label,
+      priceMonthlyCents: planId === 'pro' ? MONETIZATION_PRICING.proMonthlyBRL * 100 : 0,
+      currency: 'BRL',
+      limits: {
+        transactions: limits.transactionsPerMonth,
+        aiQueries: limits.aiQueriesPerMonth,
+        bankConnections: limits.bankConnections,
+      },
+      features: getPlanFeatureMessages(planId),
+    };
+  });
+}
+
 function createFallbackPlanCatalog(workspaceId: string, currentPlan: 'free' | 'pro' = 'free'): WorkspacePlanCatalog {
   return {
     scope: 'workspace',
@@ -54,7 +80,7 @@ function createFallbackPlanCatalog(workspaceId: string, currentPlan: 'free' | 'p
     hasBillingCustomer: false,
     billingProvider: 'mock',
     manualPlanChangeAllowed: true,
-    plans: [],
+    plans: createLocalBillingPlans(),
   };
 }
 
@@ -69,7 +95,7 @@ function createDemoPlanCatalog(workspaceId: string, currentPlan: 'free' | 'pro')
     hasBillingCustomer: false,
     billingProvider: 'none',
     manualPlanChangeAllowed: false,
-    plans: [],
+    plans: createLocalBillingPlans(),
   };
 }
 

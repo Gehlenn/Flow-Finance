@@ -1,9 +1,9 @@
 export const SECONDARY_FLOWS_COPY = {
   goals: {
-    title: 'Metas',
-    subtitle: 'Reservas e objetivos que apoiam o caixa',
-    emptyTitle: 'Nenhuma meta cadastrada',
-    emptyDescription: 'Crie metas com impacto real no seu planejamento financeiro.',
+    title: 'Metas de caixa',
+    subtitle: 'Reservas, provisoes e objetivos ligados ao caixa operacional',
+    emptyTitle: 'Nenhuma meta de caixa cadastrada',
+    emptyDescription: 'Crie uma reserva de caixa, uma provisao ou outro objetivo ligado ao fluxo operacional.',
   },
   import: {
     title: 'Importar para o caixa',

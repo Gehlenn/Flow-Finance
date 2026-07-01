@@ -116,7 +116,10 @@ vi.mock('../../src/middleware/featureGate', () => ({ featureGateOpenFinance: vi.
 vi.mock('../../src/middleware/requestContext', () => ({ requestContextMiddleware: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()) }));
 vi.mock('../../src/middleware/jsonValidation', () => ({ validateJsonMiddleware: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()) }));
 vi.mock('../../src/middleware/rateLimit', () => ({ apiLimiter: vi.fn() }));
-vi.mock('../../src/middleware/errorHandler', () => ({ errorHandler: vi.fn() }));
+vi.mock('../../src/middleware/errorHandler', () => ({
+  asyncHandler: (handler: unknown) => handler,
+  errorHandler: vi.fn(),
+}));
 vi.mock('../../src/services/persistence/postgresStateStore', () => ({
   initializePostgresStateStore: vi.fn().mockResolvedValue(false),
   saveWorkspaceStoreState: vi.fn().mockResolvedValue(undefined),
@@ -139,6 +142,7 @@ vi.mock('../../src/services/persistence/postgresStateStore', () => ({
   queryTenantsForUser: vi.fn().mockResolvedValue([]),
   queryDomainEvents: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
   insertDomainEvent: vi.fn().mockResolvedValue(undefined),
+  isPostgresStateStoreEnabled: vi.fn().mockReturnValue(false),
 }));
 
 describe('backend bootstrap observability', () => {
@@ -183,7 +187,7 @@ describe('backend bootstrap observability', () => {
     await vi.waitFor(() => {
       expect(mocks.loggerError).toHaveBeenCalledWith(
         expect.objectContaining({
-          initializationTasks: ['workspaceStore', 'auditLog', 'saasStore'],
+          initializationTasks: ['workspaceStore', 'auditLog', 'domainEventStore', 'saasStore'],
           vercel: '1',
           nodeEnv: 'test',
           fallback: 'serverless-cold-start-persistence-init-failed',

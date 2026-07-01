@@ -12,6 +12,50 @@ const { logErrorMock } = vi.hoisted(() => ({
   logErrorMock: vi.fn(),
 }));
 
+const appAnalyticsMocks = vi.hoisted(() => ({
+  trackProductEventMock: vi.fn(),
+  trackProductEventOnceMock: vi.fn(() => true),
+}));
+
+const appAuthState = vi.hoisted(() => ({
+  auth: {
+    user: { id: 'user-1', name: 'Ada' as string | null, email: 'ada@flow.test' },
+    activeWorkspace: {
+      tenantId: 'tenant-1',
+      workspaceId: 'workspace-1',
+      tenantName: 'Tenant',
+      name: 'Workspace',
+      plan: 'free',
+      role: 'owner',
+    },
+    isE2EBootstrapActive: false,
+    isDemoBootstrapActive: false,
+    cloudSyncEnabled: true,
+    backendSyncEnabled: true,
+    isInitialLoading: false,
+    isLoggedIn: true,
+    setCloudSyncEnabled: vi.fn(),
+    setBackendSyncEnabled: vi.fn(),
+    setUserName: vi.fn(),
+    handleLogout: vi.fn(),
+    handleLogin: vi.fn(),
+    handleDevelopmentLogin: vi.fn(),
+  },
+}));
+
+const appSyncState = vi.hoisted(() => ({
+  profile: { name: 'Alice' as string | null, theme: 'light' as 'light' | 'dark' },
+  isProfileReady: true,
+  hasLoadedEntities: true,
+  syncStatus: 'synced',
+  syncProfile: vi.fn(),
+}));
+
+vi.mock('../../src/app/productAnalytics', () => ({
+  trackProductEvent: appAnalyticsMocks.trackProductEventMock,
+  trackProductEventOnce: appAnalyticsMocks.trackProductEventOnceMock,
+}));
+
 vi.mock('../../src/utils/logger', () => ({
   logError: logErrorMock,
 }));
@@ -43,28 +87,7 @@ vi.mock('../../src/saas', () => ({
 }));
 
 vi.mock('../../hooks/useAuthAndWorkspace', () => ({
-  useAuthAndWorkspace: () => ({
-    user: { id: 'user-1', name: 'Alice', email: 'alice@example.com' },
-    activeWorkspace: {
-      tenantId: 'tenant-1',
-      workspaceId: 'workspace-1',
-      tenantName: 'Tenant',
-      name: 'Workspace',
-      plan: 'free',
-      role: 'owner',
-    },
-    isE2EBootstrapActive: false,
-    cloudSyncEnabled: true,
-    backendSyncEnabled: true,
-    isInitialLoading: false,
-    isLoggedIn: true,
-    setCloudSyncEnabled: vi.fn(),
-    setBackendSyncEnabled: vi.fn(),
-    setUserName: vi.fn(),
-    handleLogout: vi.fn(),
-    handleLogin: vi.fn(),
-    handleDevelopmentLogin: vi.fn(),
-  }),
+  useAuthAndWorkspace: () => appAuthState.auth,
 }));
 
 vi.mock('../../hooks/useFinancialState', () => ({
@@ -103,13 +126,7 @@ vi.mock('../../hooks/useNavigationTabs', () => ({
 }));
 
 vi.mock('../../hooks/useSyncEngine', () => ({
-  useSyncEngine: () => ({
-    profile: { name: 'Alice', theme: 'light' },
-    isProfileReady: true,
-    hasLoadedEntities: true,
-    syncStatus: 'synced',
-    syncProfile: vi.fn(),
-  }),
+  useSyncEngine: () => appSyncState,
 }));
 
 vi.mock('../../src/app/mainNavigation', () => ({
@@ -145,6 +162,12 @@ import App from '../../App';
 describe('App bootstrap observability', () => {
   beforeEach(() => {
     logErrorMock.mockReset();
+    appAnalyticsMocks.trackProductEventMock.mockReset();
+    appAnalyticsMocks.trackProductEventOnceMock.mockReset();
+    appAnalyticsMocks.trackProductEventOnceMock.mockReturnValue(true);
+    appAuthState.auth.user.name = 'Ada';
+    appSyncState.profile.name = 'Alice';
+    localStorage.clear();
   });
 
   it('registra erro quando o boundary captura uma falha', () => {
@@ -155,6 +178,38 @@ describe('App bootstrap observability', () => {
       expect.any(Error),
       expect.objectContaining({
         fallback: 'app-error-boundary-caught',
+      }),
+    );
+  });
+
+  it('registra return_visit quando o shell principal carrega com workspace ativo', () => {
+    render(<App />);
+
+    expect(appAnalyticsMocks.trackProductEventMock).toHaveBeenCalledWith(
+      'return_visit',
+      expect.objectContaining({
+        source: 'app_shell',
+        has_workspace: true,
+        plan: 'free',
+      }),
+    );
+  });
+
+  it('registra onboarding_started quando o perfil ainda nao tem nome', () => {
+    appAuthState.auth.user.name = null;
+    appSyncState.profile.name = null;
+
+    render(<App />);
+
+    expect(appAnalyticsMocks.trackProductEventOnceMock).toHaveBeenCalledWith(
+      'onboarding_started',
+      'workspace-1',
+      expect.objectContaining({
+        source: 'app_shell',
+        plan: 'free',
+        has_workspace: true,
+        has_profile_name: false,
+        entry_point: 'name_prompt',
       }),
     );
   });

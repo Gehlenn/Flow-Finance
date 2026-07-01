@@ -1,9 +1,9 @@
-﻿import React from 'react';
+import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react';
 import TransactionList from '../../components/TransactionList';
 import { Category, Transaction, TransactionType } from '../../types';
 
-describe('TransactionList - Edição de Categoria', () => {
+describe('TransactionList - edicao de categoria', () => {
   const baseTx: Transaction = {
     id: '1',
     amount: 100,
@@ -14,7 +14,7 @@ describe('TransactionList - Edição de Categoria', () => {
     merchant: 'McDonalds',
   };
 
-  it('permite editar a categoria de uma transação', async () => {
+  it('permite editar a categoria de uma transacao', async () => {
     const onUpdate = vi.fn();
     const { getByText, queryByText } = render(
       <TransactionList
@@ -24,7 +24,7 @@ describe('TransactionList - Edição de Categoria', () => {
         onDelete={() => {}}
         onDeleteMultiple={() => {}}
         onUpdate={onUpdate}
-      />
+      />,
     );
 
     fireEvent.click(getByText('Restaurante'));
@@ -33,14 +33,14 @@ describe('TransactionList - Edição de Categoria', () => {
     fireEvent.click(getByText('Salvar'));
 
     await waitFor(() => expect(onUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ category: Category.CONSULTORIO })
+      expect.objectContaining({ category: Category.CONSULTORIO }),
     ));
-    expect(queryByText('Categoria atualizada e IA treinada!')).toBeTruthy();
+    await waitFor(() => expect(queryByText('Categoria atualizada e aprendizado salvo!')).toBeTruthy());
   });
 
-  it('permite desfazer alteração de categoria no modal', async () => {
+  it('permite desfazer alteracao de categoria no modal', async () => {
     const onUpdate = vi.fn();
-    const { getByText, getByRole } = render(
+    const { getByText, getByRole, getAllByRole } = render(
       <TransactionList
         userId="user-1"
         transactions={[baseTx]}
@@ -48,11 +48,22 @@ describe('TransactionList - Edição de Categoria', () => {
         onDelete={() => {}}
         onDeleteMultiple={() => {}}
         onUpdate={onUpdate}
-      />
+      />,
     );
 
     fireEvent.click(getByText('Restaurante'));
     fireEvent.click(getByText('Editar'));
+
+    const categoryButtons = getAllByRole('button', { name: /Selecionar categoria/ });
+    expect(categoryButtons).toHaveLength(4);
+    categoryButtons.forEach((button) => {
+      expect(button.className).toContain('min-h-14');
+      const label = button.querySelector('span');
+      expect(label?.className).toContain('whitespace-normal');
+      expect(label?.className).toContain('break-words');
+      expect(label?.className).not.toContain('truncate');
+    });
+
     fireEvent.click(getByText(Category.CONSULTORIO));
 
     const desfazerBtn = await waitFor(() => getByRole('button', { name: /desfazer/i }));
@@ -63,8 +74,8 @@ describe('TransactionList - Edição de Categoria', () => {
     await waitFor(() => {
       const originalBtn = getByRole('button', { name: `Selecionar categoria ${Category.PESSOAL}` });
       expect(
-        originalBtn.classList.contains('bg-indigo-600') ||
-        originalBtn.classList.contains('text-white')
+        originalBtn.classList.contains('bg-indigo-600')
+        || originalBtn.classList.contains('text-white'),
       ).toBe(true);
     });
 

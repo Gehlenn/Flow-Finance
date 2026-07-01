@@ -483,27 +483,27 @@ const Settings: React.FC<SettingsProps> = ({
 
     const SUPPORT_DIAGNOSTICS: Record<string, { message: string; suggestion: string }> = {
       receivables_question: {
-        message: 'Suporte IA indisponivel para consolidar recebiveis agora.',
+        message: 'Revisao de caixa indisponivel para consolidar recebiveis agora.',
         suggestion: 'Revise a tela de contas a receber e confirme os vencimentos antes de assumir novos compromissos.',
       },
       spending_advice: {
-        message: 'Suporte IA indisponivel para orientar gasto neste momento.',
+        message: 'Revisao de caixa indisponivel para orientar gasto neste momento.',
         suggestion: 'Confira o caixa confirmado e os compromissos dos proximos 7 dias antes de decidir.',
       },
       risk_question: {
-        message: 'Suporte IA indisponivel para calcular risco de curto prazo agora.',
+        message: 'Revisao de caixa indisponivel para calcular risco de curto prazo agora.',
         suggestion: 'Verifique vencimentos, recebiveis atrasados e saldo projetado na tela principal.',
       },
       cash_position: {
-        message: 'Suporte IA indisponivel para consolidar a posicao de caixa agora.',
+        message: 'Revisao de caixa indisponivel para consolidar a posicao de caixa agora.',
         suggestion: 'Use o saldo confirmado das contas e desconte os compromissos ja assumidos.',
       },
       savings_question: {
-        message: 'Suporte IA indisponivel para sugerir economia neste momento.',
+        message: 'Revisao de caixa indisponivel para sugerir economia neste momento.',
         suggestion: 'Revise assinaturas, fornecedores secundarios e gastos variaveis sem impacto operacional.',
       },
       monthly_summary: {
-        message: 'Suporte IA indisponivel para consolidar o resumo do mes agora.',
+        message: 'Revisao de caixa indisponivel para consolidar o resumo do mes agora.',
         suggestion: 'Compare entradas confirmadas, saidas registradas e os 3 maiores centros de custo.',
       },
     };
@@ -640,9 +640,9 @@ const Settings: React.FC<SettingsProps> = ({
                 <div className="pt-2 space-y-2">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-300">Regra ativa do plano</p>
                   <ul className="space-y-1">
-                    <li className="text-sm text-slate-600 dark:text-slate-300">• Consultor IA {currentPlan === 'pro' ? 'ilimitado' : `${FREE_LIMITS.consultorIaQueriesPerMonth} consultas por mes`}</li>
+                    <li className="text-sm text-slate-600 dark:text-slate-300">• Consultor de caixa {currentPlan === 'pro' ? 'ilimitado' : `${FREE_LIMITS.consultorIaQueriesPerMonth} consultas por mes`}</li>
                     <li className="text-sm text-slate-600 dark:text-slate-300">• Workspaces {currentPlan === 'pro' ? 'multiplos' : `${FREE_LIMITS.workspaces}`}</li>
-                    <li className="text-sm text-slate-600 dark:text-slate-300">• Exportacao de relatorios {currentPlan === 'pro' ? 'liberada' : 'bloqueada no Free'}</li>
+                    <li className="text-sm text-slate-600 dark:text-slate-300">• Exportacao de relatorios fora do MVP ate existir backend real</li>
                   </ul>
                 </div>
                 <div className="pt-3 flex flex-col gap-2">
@@ -1000,8 +1000,8 @@ const Settings: React.FC<SettingsProps> = ({
           >
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 shadow-sm dark:bg-slate-800 dark:text-slate-300"><BrainCircuit size={18} /></div>
             <div className="flex-1">
-              <h5 className="text-sm font-semibold text-slate-800 dark:text-white uppercase tracking-[0.12em]">Guia com IA</h5>
-              <p className="text-xs text-slate-400 font-medium">Tire dúvidas sobre caixa, integrações ou fluxo do produto</p>
+              <h5 className="text-sm font-semibold text-slate-800 dark:text-white uppercase tracking-[0.12em]">Revisao de caixa</h5>
+              <p className="text-xs text-slate-400 font-medium">Tire duvidas sobre caixa, recebiveis e a proxima decisao</p>
             </div>
             <ChevronRight size={16} className="text-slate-300" />
           </button>
@@ -1059,14 +1059,14 @@ const Settings: React.FC<SettingsProps> = ({
             <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-slate-100 text-slate-600 rounded-xl shadow-sm dark:bg-slate-800 dark:text-slate-300"><BrainCircuit size={16} /></div>
-                <h3 className="text-lg font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Guia com IA</h3>
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-white uppercase tracking-tight">Revisao de caixa</h3>
               </div>
               <button onClick={() => { setShowAiSupport(false); setSupportResponse(''); setSupportQuery(''); setSupportDiagnostic(null); }} className="p-2 text-slate-400"><X size={20} /></button>
             </div>
             <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-5">
               {supportDiagnostic && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
-                  <p className="text-sm font-semibold uppercase tracking-[0.16em]">Diagnóstico do guia com IA</p>
+                  <p className="text-sm font-semibold uppercase tracking-[0.16em]">Diagnostico da revisao de caixa</p>
                   <p className="mt-2 text-sm font-medium leading-relaxed">{supportDiagnostic.message}</p>
                   <p className="mt-2 text-sm font-semibold uppercase tracking-[0.16em] opacity-90">
                     Próximo passo: {supportDiagnostic.suggestion}
@@ -1095,20 +1095,20 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
               )}
             </div>
-            <div className="p-5 sm:p-6 border-t border-slate-100 dark:border-slate-700 flex gap-2">
+            <div className="p-5 sm:p-6 border-t border-slate-100 dark:border-slate-700 flex flex-col gap-2 sm:flex-row sm:items-end">
               <input
                 type="text"
                 value={supportQuery}
                 onChange={(event) => setSupportQuery(event.target.value)}
                 onKeyPress={(event) => event.key === 'Enter' && void handleAiSupport(event.currentTarget.value)}
-                placeholder="Digite sua pergunta sobre caixa, integrações ou planos..."
-                className="flex-1 p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl outline-none font-medium text-sm text-slate-700 dark:text-white"
+                placeholder="Digite sua pergunta sobre caixa, recebiveis ou revisao semanal..."
+                className="min-w-0 w-full flex-1 p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl outline-none font-medium text-sm text-slate-700 dark:text-white"
               />
               <button
                 type="button"
-                aria-label="Enviar pergunta ao guia IA"
+                aria-label="Enviar pergunta para revisao de caixa"
                 onClick={() => void handleAiSupport(supportQuery)}
-                className="p-4 bg-slate-900 text-white rounded-2xl shadow-sm active:scale-95 transition-all dark:bg-slate-100 dark:text-slate-900"
+                className="w-full sm:w-auto sm:shrink-0 sm:self-end p-4 bg-slate-900 text-white rounded-2xl shadow-sm active:scale-95 transition-all dark:bg-slate-100 dark:text-slate-900"
               >
                 <Send size={20} />
               </button>

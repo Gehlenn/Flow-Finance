@@ -139,6 +139,7 @@ export interface NavigationRenderContext {
   alerts: Alert[];
   reminders: Reminder[];
   receivables: Receivable[];
+  forceReceivablesSourceOfTruth?: boolean;
   goals: Goal[];
   latestLeaks?: FinancialLeak[];
   latestReport?: FinancialReport | null;
@@ -200,6 +201,7 @@ export function useNavigationTabs() {
               alerts={context.alerts}
               reminders={context.reminders}
               receivables={context.receivables}
+              forceReceivablesSourceOfTruth={context.forceReceivablesSourceOfTruth}
               hideValues={context.hideValues}
               onCreateAccount={context.onCreateAccount}
               onAddTransactions={context.onAddTransactions}
@@ -265,6 +267,8 @@ export function useNavigationTabs() {
               activeWorkspaceId={context.activeWorkspaceId}
               activeWorkspaceName={context.activeWorkspaceName}
               transactions={context.transactions}
+              receivables={context.receivables}
+              forceReceivablesSourceOfTruth={context.forceReceivablesSourceOfTruth}
               hideValues={context.hideValues}
               theme={context.theme}
             />

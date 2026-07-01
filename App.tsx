@@ -2,7 +2,9 @@ import React, {
   Suspense,
   lazy,
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { Loader2 } from "lucide-react";
@@ -38,7 +40,7 @@ import {
   shouldShowFloatingEntryButton,
   shouldShowTopStatus,
 } from "./src/app/appShellLayout";
-import { trackProductEvent } from "./src/app/productAnalytics";
+import { trackProductEvent, trackProductEventOnce } from "./src/app/productAnalytics";
 import { getDemoBootstrapPlan } from "./src/demo/demoBootstrap";
 import { useAppTheme } from "./src/app/useAppTheme";
 import { useBillingRuntime } from "./src/app/useBillingRuntime";
@@ -152,12 +154,93 @@ const App: React.FC = () => {
   const [showAIInput, setShowAIInput] = useState(false);
 
   const userName = syncEngine.profile.name ?? authState.user.name;
+  const hasTrackedReturnVisitRef = useRef(false);
   const theme = syncEngine.profile.theme;
   useAppTheme({
     theme,
     documentElement:
       typeof document !== "undefined" ? document.documentElement : null,
   });
+  useEffect(() => {
+    if (
+      authState.isInitialLoading
+      || !authState.isLoggedIn
+      || authState.isDemoBootstrapActive
+      || authState.isE2EBootstrapActive
+      || hasTrackedReturnVisitRef.current
+    ) {
+      return;
+    }
+
+    hasTrackedReturnVisitRef.current = true;
+
+    let daysSinceLastVisit: number | null = null;
+    if (typeof window !== "undefined") {
+      const storageKey = "flow:return_visit:last_seen";
+      try {
+        const lastSeen = window.localStorage.getItem(storageKey);
+        if (lastSeen) {
+          const parsedLastSeen = new Date(lastSeen);
+          if (!Number.isNaN(parsedLastSeen.getTime())) {
+            const diffMs = Date.now() - parsedLastSeen.getTime();
+            daysSinceLastVisit = Math.max(0, Math.round(diffMs / (24 * 60 * 60 * 1000)));
+          }
+        }
+
+        window.localStorage.setItem(storageKey, new Date().toISOString());
+      } catch {
+        // Non-critical: return visit is only a telemetry hint.
+      }
+    }
+
+    trackProductEvent("return_visit", {
+      source: "app_shell",
+      plan: authState.activeWorkspace.plan || "free",
+      has_workspace: Boolean(authState.activeWorkspace.workspaceId),
+      days_since_last_visit: daysSinceLastVisit,
+    });
+  }, [
+    authState.activeWorkspace.plan,
+    authState.activeWorkspace.workspaceId,
+    authState.isDemoBootstrapActive,
+    authState.isE2EBootstrapActive,
+    authState.isInitialLoading,
+    authState.isLoggedIn,
+  ]);
+
+  useEffect(() => {
+    if (
+      authState.isInitialLoading
+      || !authState.isLoggedIn
+      || authState.isDemoBootstrapActive
+      || authState.isE2EBootstrapActive
+      || userName
+    ) {
+      return;
+    }
+
+    trackProductEventOnce(
+      "onboarding_started",
+      authState.activeWorkspace.workspaceId || authState.user.id || "local",
+      {
+        source: "app_shell",
+        plan: authState.activeWorkspace.plan || "free",
+        has_workspace: Boolean(authState.activeWorkspace.workspaceId),
+        has_profile_name: Boolean(userName),
+        entry_point: "name_prompt",
+      },
+    );
+  }, [
+    authState.activeWorkspace.plan,
+    authState.activeWorkspace.workspaceId,
+    authState.isDemoBootstrapActive,
+    authState.isE2EBootstrapActive,
+    authState.isInitialLoading,
+    authState.isLoggedIn,
+    authState.user.id,
+    userName,
+  ]);
+
   useSyncErrorTracking({
     syncStatus: syncEngine.syncStatus,
     activeTab: navigation.activeTab,

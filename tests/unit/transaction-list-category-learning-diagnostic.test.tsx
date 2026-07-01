@@ -60,7 +60,7 @@ describe('TransactionList - aprendizado auxiliar', () => {
 
     const diagnostic = screen.getByText(/Categoria salva localmente/i).closest('[role="status"]');
     expect(diagnostic).toBeTruthy();
-    expect(within(diagnostic as HTMLElement).getByText(/aprendizado da IA nao foi salvo agora/i)).toBeTruthy();
+    expect(within(diagnostic as HTMLElement).getByText(/aprendizado de categoria nao foi salvo agora/i)).toBeTruthy();
     expect(transactionListLoggerMock.logWarn).toHaveBeenCalledWith(
       '[TransactionList] Failed to learn category',
       expect.objectContaining({

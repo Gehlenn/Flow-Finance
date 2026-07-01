@@ -204,6 +204,33 @@ describe('AICFO plan render', () => {
     expect(screen.getByText(/Perguntas curtas do caixa/i)).toBeTruthy();
   });
 
+  it('mostra copy operacional e atalhos quando a base inicial e curta', () => {
+    const onNavigateToTab = vi.fn();
+
+    render(
+      <AICFO
+        transactions={[]}
+        accounts={[]}
+        userId="u1"
+        workspacePlan="pro"
+        hideValues={false}
+        onNavigateToTab={onNavigateToTab}
+        onCreateReminder={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/Base curta/i)).toBeTruthy();
+    expect(screen.getByText(/A leitura vai ficar reduzida ate entrar movimento, contas cadastradas e historico de recebiveis/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Importar transacoes/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Ver fluxo/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Importar transacoes/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Ver fluxo/i }));
+
+    expect(onNavigateToTab).toHaveBeenCalledWith('import');
+    expect(onNavigateToTab).toHaveBeenCalledWith('flow');
+  });
+
   it('reserva espaco inferior na lista de respostas para o nav fixo mobile', () => {
     const { container } = render(
       <AICFO
@@ -222,6 +249,29 @@ describe('AICFO plan render', () => {
     );
 
     expect(scrollArea).toBeTruthy();
+  });
+
+  it('reserva safe-area inferior no composer mobile', () => {
+    const { container } = render(
+      <AICFO
+        transactions={baseTransactions}
+        accounts={baseAccounts}
+        userId="u1"
+        workspacePlan="pro"
+        hideValues={false}
+        onNavigateToTab={vi.fn()}
+        onCreateReminder={vi.fn()}
+      />,
+    );
+
+    const composer = Array.from(container.querySelectorAll('div')).find(
+      (element) => element.textContent?.includes('Pergunta rapida')
+        && element.className.includes('pb-[calc(0.75rem+env(safe-area-inset-bottom))]'),
+    );
+
+    expect(composer).toBeTruthy();
+    expect(composer?.className).toContain('mb-[calc(3.75rem+env(safe-area-inset-bottom))]');
+    expect(composer?.className).toContain('md:mb-0');
   });
 
   it('usa o plano pro do demo mesmo quando o workspace chega como free', () => {
@@ -272,7 +322,7 @@ describe('AICFO plan render', () => {
       />,
     );
 
-    expect(await screen.findByText(/Consultor IA ilimitado/i)).toBeTruthy();
+    expect(await screen.findByText(/Revisao semanal de caixa ilimitada/i)).toBeTruthy();
     expect(screen.getByText(/limite mensal do Free/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: /Assinar Pro agora/i })).toBeTruthy();
   });
@@ -307,7 +357,7 @@ describe('AICFO plan render', () => {
     fireEvent.click(screen.getByRole('button', { name: /Paga a semana\?/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Diagnostico da IA/i)).toBeTruthy();
+      expect(screen.getByText(/Diagnostico do caixa/i)).toBeTruthy();
     });
     expect(aicfoMocks.trackProductEventOnce).not.toHaveBeenCalled();
     expect(aicfoMocks.trackProductEvent).toHaveBeenCalledWith(
@@ -345,7 +395,7 @@ describe('AICFO plan render', () => {
 
     expect(await screen.findByRole('status')).toBeTruthy();
     expect(screen.getByText(/Aprendizado da conversa indisponivel/i)).toBeTruthy();
-    expect(screen.getByText(/Nao foi possivel atualizar o aprendizado do CFO em segundo plano agora/i)).toBeTruthy();
+    expect(screen.getByText(/Nao foi possivel atualizar o aprendizado do consultor de caixa em segundo plano agora/i)).toBeTruthy();
     expect(aicfoMocks.logWarn).toHaveBeenCalledWith(
       '[AICFO] Failed to learn from conversation',
       expect.objectContaining({
@@ -411,7 +461,7 @@ describe('AICFO plan render', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: /Criar lembrete/i }).at(-1)!);
     expect(onCreateReminder).toHaveBeenCalledWith(expect.objectContaining({
-      title: 'Acompanhar risco do CFO',
+      title: 'Acompanhar risco de caixa',
       priority: 'alta',
       type: ReminderType.NEGOCIO,
       completed: false,
@@ -461,7 +511,7 @@ describe('AICFO plan render', () => {
     fireEvent.click(screen.getByRole('button', { name: /Paga a semana\?/i }));
 
     expect(await screen.findByText(/nao consegui processar esta consulta agora/i)).toBeTruthy();
-    expect(screen.getAllByText(/Diagnostico da IA/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Diagnostico do caixa/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Confianca Baixa/i)).toBeTruthy();
     expect(screen.getByText(/Leitura curta/i)).toBeTruthy();
     expect(aicfoMocks.trackProductEvent).toHaveBeenCalledWith(

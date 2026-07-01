@@ -40,6 +40,8 @@ vi.mock('../../src/app/productAnalytics', () => ({
 }));
 
 import { ApiRequestError } from '../../src/config/api.config';
+import { MONETIZATION_PRICING } from '../../src/app/monetizationPlan';
+import { getPlanLimits } from '../../src/saas/policyEngine';
 import { createWorkspaceCheckoutSession, createWorkspacePortalSession, getWorkspacePlanCatalog } from '../../src/saas/billingClient';
 
 describe('billingClient', () => {
@@ -55,8 +57,29 @@ describe('billingClient', () => {
     }));
 
     const catalog = await getWorkspacePlanCatalog({ workspaceId: 'ws-1', currentPlan: 'pro' });
+    const freeLimits = getPlanLimits('free');
+    const proLimits = getPlanLimits('pro');
 
     expect(catalog.billingProvider).toBe('mock');
+    expect(catalog.plans).toHaveLength(2);
+    expect(catalog.plans.find((plan) => plan.id === 'free')).toMatchObject({
+      name: 'Free',
+      priceMonthlyCents: 0,
+      limits: {
+        transactions: freeLimits.transactionsPerMonth,
+        aiQueries: freeLimits.aiQueriesPerMonth,
+        bankConnections: freeLimits.bankConnections,
+      },
+    });
+    expect(catalog.plans.find((plan) => plan.id === 'pro')).toMatchObject({
+      name: 'Pro',
+      priceMonthlyCents: MONETIZATION_PRICING.proMonthlyBRL * 100,
+      limits: {
+        transactions: proLimits.transactionsPerMonth,
+        aiQueries: proLimits.aiQueriesPerMonth,
+        bankConnections: proLimits.bankConnections,
+      },
+    });
     expect(apiMocks.logWarn).toHaveBeenCalledWith(
       '[BillingClient] Falling back to local plan catalog',
       expect.objectContaining({
@@ -99,6 +122,10 @@ describe('billingClient', () => {
     expect(catalog.stripeConfigured).toBe(false);
     expect(catalog.stripePortalEnabled).toBe(false);
     expect(catalog.manualPlanChangeAllowed).toBe(false);
+    expect(catalog.plans).toHaveLength(2);
+    expect(catalog.plans.find((plan) => plan.id === 'pro')?.features).toContain(
+      'Revisao semanal de caixa sem travar na consulta 21 do mes.',
+    );
   });
 
   it('tracks checkout lifecycle and preserves the request failure signal', async () => {

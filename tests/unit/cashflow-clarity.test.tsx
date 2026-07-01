@@ -6,8 +6,16 @@ import { GeminiService } from '../../services/geminiService';
 import { getWorkspaceScopedStorageKey } from '../../src/utils/workspaceStorage';
 import { Category, TransactionType } from '../../types';
 
+const productAnalyticsMocks = vi.hoisted(() => ({
+  trackProductEventOnceMock: vi.fn(() => true),
+}));
+
 const cashFlowMocks = vi.hoisted(() => ({
   logWarn: vi.fn(),
+}));
+
+vi.mock('../../src/app/productAnalytics', () => ({
+  trackProductEventOnce: productAnalyticsMocks.trackProductEventOnceMock,
 }));
 
 vi.mock('../../src/utils/logger', () => ({
@@ -24,6 +32,8 @@ describe('CashFlow clarity', () => {
 
   beforeEach(() => {
     localStorage.clear();
+    productAnalyticsMocks.trackProductEventOnceMock.mockReset();
+    productAnalyticsMocks.trackProductEventOnceMock.mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -78,7 +88,8 @@ describe('CashFlow clarity', () => {
 
     expect(screen.getByText('Receita realizada')).toBeTruthy();
     fireEvent.click(screen.getByRole('tab', { name: /Estratégia/i }));
-    expect(screen.getByText(/Pr.*ximo passo financeiro/i)).toBeTruthy();
+    expect(screen.getByText(/Proxima decisao de caixa/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Gerar diagn/i })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Abrir diagn/i })).toBeNull();
     expect(cashFlowMocks.logWarn).toHaveBeenCalledWith(
       '[CashFlow] Failed to parse stored strategic report',
@@ -115,7 +126,9 @@ describe('CashFlow clarity', () => {
 
     expect(screen.getByText('Receita realizada')).toBeTruthy();
     fireEvent.click(screen.getByRole('tab', { name: /Estratégia/i }));
-    expect(screen.getByText(/Pr.*ximo passo financeiro/i)).toBeTruthy();
+    expect(screen.getByText(/Proxima decisao de caixa/i)).toBeTruthy();
+    expect(screen.getByText(/Resumo estrat/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Abrir diagn/i })).toBeTruthy();
   }, 20_000);
 
   it('invalida o relatorio estrategico quando o recorte de caixa muda', async () => {
@@ -222,6 +235,35 @@ describe('CashFlow clarity', () => {
     });
   }, 20_000);
 
+  it('deduplica e completa o plano quando a IA retorna resposta estrategica incompleta', async () => {
+    vi.spyOn(GeminiService.prototype, 'generateStrategicReport').mockResolvedValueOnce({
+      executiveSummary: '',
+      actionPlan: ['Revisar entradas confirmadas', 'Revisar entradas confirmadas'],
+    });
+
+    render(
+      <CashFlow
+        activeWorkspaceId={workspaceId}
+        activeWorkspaceName="Clinica Flow"
+        transactions={[]}
+        hideValues={false}
+        theme="light"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: /Estrat/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Gerar diagn/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/Diagnostico de caixa incompleto/i).length).toBeGreaterThan(0);
+    });
+
+    expect(screen.getAllByText(/Revisar o recorte de caixa em outro periodo/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Conferir recebiveis pendentes e vencidos/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Validar saidas ja confirmadas/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Revisar entradas confirmadas/i)).toBeNull();
+  }, 20_000);
+
   it('nao trata diagnostico local da demo como falha de IA', async () => {
     vi.spyOn(GeminiService.prototype, 'generateStrategicReport').mockResolvedValueOnce({
       executiveSummary: 'Diagnostico local pronto para demonstracao.',
@@ -249,7 +291,7 @@ describe('CashFlow clarity', () => {
     await waitFor(() => {
       expect(screen.getAllByText(/Diagnostico local pronto/i).length).toBeGreaterThan(0);
     });
-    expect(screen.queryByText(/IA sem resposta completa/i)).toBeNull();
+    expect(screen.queryByText(/Diagnostico de caixa incompleto/i)).toBeNull();
   }, 20_000);
 
   it('mostra estados vazios uteis quando nao ha movimentos no recorte', () => {
@@ -333,6 +375,60 @@ describe('CashFlow clarity', () => {
     fireEvent.click(screen.getByRole('tab', { name: /Estratégia/i }));
     expect(screen.getByRole('button', { name: /Gerar diagn/i })).toBeTruthy();
   });
+
+  it('registra a visualizacao da previsao quando o usuario abre a secao prevista', () => {
+    const today = new Date().toISOString();
+    const todayKey = today.slice(0, 10);
+
+    render(
+      <CashFlow
+        activeWorkspaceId={workspaceId}
+        activeWorkspaceName="Clinica Flow"
+        transactions={[
+          {
+            id: '1',
+            amount: 500,
+            type: TransactionType.RECEITA,
+            category: Category.CONSULTORIO,
+            description: 'Receita confirmada',
+            date: today,
+          },
+        ]}
+        receivables={[
+          {
+            id: 'recv-1',
+            user_id: 'user-1',
+            tenant_id: 'tenant-1',
+            workspace_id: workspaceId,
+            description: 'Recebivel pendente',
+            expected_amount: 180,
+            realized_amount: 0,
+            due_date: todayKey,
+            realized_at: null,
+            status: 'open',
+            source: 'manual',
+            created_at: today,
+            updated_at: today,
+          },
+        ]}
+        hideValues={false}
+        theme="light"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: /Previsto/i }));
+
+    expect(productAnalyticsMocks.trackProductEventOnceMock).toHaveBeenLastCalledWith(
+      'forecast_viewed',
+      workspaceId,
+      expect.objectContaining({
+        source: 'cashflow',
+        timeframe: '30d',
+        has_receivables: true,
+      }),
+    );
+  });
+
 });
 
 

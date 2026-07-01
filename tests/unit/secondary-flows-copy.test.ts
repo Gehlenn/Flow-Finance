@@ -4,7 +4,8 @@ import { SECONDARY_FLOWS_COPY } from '../../src/app/secondaryFlowsCopy';
 describe('secondary flows copy alignment', () => {
   it('keeps goals copy grounded in planning and cash support', () => {
     expect(SECONDARY_FLOWS_COPY.goals.subtitle.toLowerCase()).toContain('caixa');
-    expect(SECONDARY_FLOWS_COPY.goals.emptyDescription.toLowerCase()).toContain('planejamento');
+    expect(SECONDARY_FLOWS_COPY.goals.title.toLowerCase()).toContain('caixa');
+    expect(SECONDARY_FLOWS_COPY.goals.emptyDescription.toLowerCase()).toContain('provisao');
   });
 
   it('keeps import copy focused on review before saving', () => {

@@ -12,6 +12,7 @@ import {
 import { logWarn } from '../src/utils/logger';
 import { canViewWorkspaceAudit } from '../src/security/workspacePermissions';
 import type { Tab } from '../hooks/navigationTypes';
+import { getDemoBootstrapPlan } from '../src/demo/demoBootstrap';
 
 interface WorkspaceAuditPageProps {
   userId: string | null;
@@ -41,6 +42,40 @@ const RANGE_OPTIONS = [
 
 type RangeValue = typeof RANGE_OPTIONS[number]['value'];
 const PAGE_SIZE = 20;
+const DEMO_AUDIT_CREATED_AT = '2026-06-19T12:00:00.000Z';
+
+function buildDemoWorkspaceAuditEvents(workspace: WorkspaceSummary, userId: string): AuditLogDocument[] {
+  return [
+    {
+      id: 'demo-audit-weekly-review',
+      tenantId: workspace.tenantId,
+      workspaceId: workspace.workspaceId,
+      userId,
+      action: 'weekly_cash_review_completed',
+      resourceType: 'workspace',
+      resourceId: workspace.workspaceId,
+      metadata: {
+        source: 'demo',
+        result: 'cash_review_recorded',
+      },
+      createdAt: DEMO_AUDIT_CREATED_AT,
+    },
+    {
+      id: 'demo-audit-transaction-import',
+      tenantId: workspace.tenantId,
+      workspaceId: workspace.workspaceId,
+      userId,
+      action: 'transaction_imported',
+      resourceType: 'transactions',
+      resourceId: 'demo-import',
+      metadata: {
+        imported_count: 4,
+        source: 'demo',
+      },
+      createdAt: DEMO_AUDIT_CREATED_AT,
+    },
+  ];
+}
 
 function buildAuditErrorDiagnostic(message: string): { title: string; message: string; suggestion: string } {
   const normalized = message.toLowerCase();
@@ -94,6 +129,7 @@ const WorkspaceAuditPage: React.FC<WorkspaceAuditPageProps> = ({
   const [resourceType, setResourceType] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [nextCursor, setNextCursor] = useState<AuditLogCursor | null>(null);
+  const demoWorkspacePlan = useMemo(() => getDemoBootstrapPlan(), []);
 
   const canAccessAudit = canViewWorkspaceAudit(activeWorkspaceRole || workspace?.role);
 
@@ -108,6 +144,27 @@ const WorkspaceAuditPage: React.FC<WorkspaceAuditPageProps> = ({
       setError(null);
       setErrorDiagnostic(null);
       try {
+        if (demoWorkspacePlan) {
+          const demoWorkspace: WorkspaceSummary = {
+            workspaceId: activeWorkspaceId,
+            tenantId: 'tenant-visual-regression',
+            name: activeWorkspaceName || 'Atelie Aurora',
+            tenantName: activeTenantName || 'Flow Finance Demo',
+            plan: demoWorkspacePlan,
+            role: activeWorkspaceRole || 'owner',
+            isDefault: true,
+          };
+          setWorkspace(demoWorkspace);
+          const demoEvents = buildDemoWorkspaceAuditEvents(demoWorkspace, userId);
+          setEvents(
+            resourceType === 'all'
+              ? demoEvents
+              : demoEvents.filter((event) => event.resourceType === resourceType),
+          );
+          setNextCursor(null);
+          return;
+        }
+
         const identity = getCurrentWorkspaceIdentity();
         const resolvedWorkspace = await ensureActiveWorkspace(identity);
         setWorkspace(resolvedWorkspace);
@@ -137,7 +194,7 @@ const WorkspaceAuditPage: React.FC<WorkspaceAuditPageProps> = ({
     };
 
     void load();
-  }, [activeWorkspaceId, range, resourceType, userId]);
+  }, [activeTenantName, activeWorkspaceId, activeWorkspaceName, activeWorkspaceRole, demoWorkspacePlan, range, resourceType, userId]);
 
   const filteredEvents = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();

@@ -1,6 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
 import { isOriginAllowed, resolveAllowedOrigins } from '../config/cors';
 import logger from '../config/logger';
+import { AUTH_COOKIE_NAMES } from '../services/auth/authCookies';
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 function getRefererOrigin(referer: string | undefined): string | undefined {
   if (!referer) {
@@ -25,12 +28,13 @@ export function isTrustedStateChangingOrigin(params: {
   nodeEnv?: string;
   allowedOrigins?: string;
   frontendUrl?: string;
+  allowMissingOrigin?: boolean;
 }): boolean {
   const nodeEnv = params.nodeEnv || process.env.NODE_ENV || 'development';
   const origin = params.origin || getRefererOrigin(params.referer);
 
   if (!origin) {
-    return true;
+    return params.allowMissingOrigin ?? true;
   }
 
   const allowedOrigins = resolveAllowedOrigins({
@@ -56,6 +60,36 @@ export function requireTrustedStateChangingOrigin(req: Request, res: Response, n
     hasReferer: Boolean(referer),
     fallback: 'csrf-origin-rejected',
   }, '[CSRF] State-changing auth request rejected by origin policy');
+
+  res.status(403).json({ error: 'Origem nao autorizada', statusCode: 403 });
+}
+
+function hasAuthCookie(req: Request): boolean {
+  const cookie = req.get('cookie') || '';
+  return cookie.includes(`${AUTH_COOKIE_NAMES.access}=`) || cookie.includes(`${AUTH_COOKIE_NAMES.refresh}=`);
+}
+
+export function requireTrustedCookieStateChangingOrigin(req: Request, res: Response, next: NextFunction): void {
+  if (SAFE_METHODS.has(req.method.toUpperCase()) || !hasAuthCookie(req)) {
+    next();
+    return;
+  }
+
+  const origin = req.get('origin');
+  const referer = req.get('referer');
+
+  if (isTrustedStateChangingOrigin({ origin, referer, allowMissingOrigin: false })) {
+    next();
+    return;
+  }
+
+  logger.warn({
+    origin,
+    hasReferer: Boolean(referer),
+    method: req.method,
+    path: req.path,
+    fallback: 'csrf-cookie-origin-rejected',
+  }, '[CSRF] Cookie-authenticated state-changing request rejected by origin policy');
 
   res.status(403).json({ error: 'Origem nao autorizada', statusCode: 403 });
 }

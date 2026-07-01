@@ -83,6 +83,7 @@ export function buildNavigationContext(
     alerts: args.alerts,
     reminders: args.reminders,
     receivables: args.receivables,
+    forceReceivablesSourceOfTruth: args.demoWorkspacePlan !== null && args.demoWorkspacePlan !== undefined,
     goals: args.goals,
     latestLeaks: args.latestLeaks,
     latestReport: args.latestReport,

@@ -1,6 +1,7 @@
 export type WorkspacePlan = 'free' | 'pro';
 
 export type MonetizationTier = 'core' | 'pro' | 'future';
+export type PackagingStatus = 'available' | 'validation' | 'future';
 
 export const FREE_LIMITS = {
   workspaces: 1,
@@ -33,12 +34,27 @@ type FeatureDefinition = {
   valueMessage: string;
 };
 
+export type PlanPackaging = {
+  id: WorkspacePlan;
+  label: string;
+  priceLabel: string;
+  shortPositioning: string;
+  decisionJob: string;
+  status: PackagingStatus;
+  includedFeatureIds: FlowMonetizationFeature[];
+  limits: {
+    workspaces: number | 'multiple';
+    consultorIaQueriesPerMonth: number | 'unlimited';
+  };
+  upgradeTrigger?: string;
+};
+
 export const MONETIZATION_FEATURES: FeatureDefinition[] = [
   {
     id: 'manualTransactions',
     tier: 'core',
     title: 'Lancamentos manuais',
-    valueMessage: 'Registrar entradas, saidas e recebiveis que alimentam o fluxo de caixa.',
+    valueMessage: 'Registrar entradas e saidas manualmente para manter o caixa visivel.',
   },
   {
     id: 'dashboardCore',
@@ -50,19 +66,19 @@ export const MONETIZATION_FEATURES: FeatureDefinition[] = [
     id: 'transactionsView',
     tier: 'core',
     title: 'Tela de transacoes',
-    valueMessage: 'Historico operacional para entender o que entrou, saiu e ainda falta.',
+    valueMessage: 'Historico operacional para revisar o que entrou, saiu e ainda falta.',
   },
   {
     id: 'remindersCore',
     tier: 'core',
     title: 'Lembretes',
-    valueMessage: 'Controle de vencimentos e recebiveis que afetam a decisao de caixa.',
+    valueMessage: 'Lembretes de vencimento e recebimento que pedem acao na revisao inicial.',
   },
   {
     id: 'unlimitedConsultorIa',
     tier: 'pro',
-    title: 'Consultor IA ilimitado',
-    valueMessage: 'Revisao semanal de caixa sem travar na consulta 21 do mes.',
+    title: 'Revisao semanal de caixa ilimitada',
+    valueMessage: 'Revisar saldo, recebiveis e proximas saidas sem bloqueio mensal.',
   },
   {
     id: 'multipleWorkspaces',
@@ -74,37 +90,37 @@ export const MONETIZATION_FEATURES: FeatureDefinition[] = [
     id: 'reportExport',
     tier: 'future',
     title: 'Exportacao de relatorios',
-    valueMessage: 'Futuro: exportar relatorios quando o backend tiver geracao real.',
+    valueMessage: 'Futuro: exportar relatorios quando a geracao real estiver disponivel.',
   },
   {
     id: 'advancedReports',
     tier: 'pro',
     title: 'Historico de fluxo de caixa',
-    valueMessage: 'Comparar semanas e meses para revisar previsto vs realizado.',
+    valueMessage: 'Historico e relatorios para comparar semanas e meses.',
   },
   {
     id: 'advancedCashflowAnalysis',
     tier: 'pro',
     title: 'Analises profundas de caixa',
-    valueMessage: 'Leitura de tendencia, risco, sazonalidade e buracos de caixa recorrentes.',
+    valueMessage: 'Leitura de tendencia, risco e concentracao recorrente de caixa.',
   },
   {
     id: 'aiRichConsultant',
     tier: 'pro',
-    title: 'Contexto estendido do consultor IA',
-    valueMessage: 'Mais historico de caixa e operacao para respostas consultivas menos rasas.',
+    title: 'Mais historico para comparar caixa',
+    valueMessage: 'Mais historico de caixa e operacao para comparar previsto vs realizado sem resposta rasa.',
   },
   {
     id: 'historicalComparisons',
     tier: 'pro',
     title: 'Comparativos historicos completos',
-    valueMessage: 'Comparar periodos para entender repeticao de atrasos, entradas e saidas.',
+    valueMessage: 'Comparar periodos para identificar mudancas reais de caixa.',
   },
   {
     id: 'smartAlertSuggestions',
     tier: 'pro',
     title: 'Sugestoes de alerta de caixa',
-    valueMessage: 'Sugerir limites quando saldo, recebivel ou vencimento exige acao.',
+    valueMessage: 'Sugerir alertas quando saldo, recebiveis ou vencimentos pedem acao.',
   },
 ];
 
@@ -153,3 +169,73 @@ export const MONETIZATION_PRICING = {
   proMonthlyBRL: 49,
   proAnnualBRL: 490,
 };
+
+export function formatMonthlyPriceBRL(value: number): string {
+  return `R$ ${value.toFixed(2).replace('.', ',')}/mes`;
+}
+
+export function formatAnnualPriceBRL(value: number): string {
+  return `R$ ${value.toFixed(2).replace('.', ',')}/ano`;
+}
+
+export const PLAN_PACKAGING: Record<WorkspacePlan, PlanPackaging> = {
+  free: {
+    id: 'free',
+    label: 'Free',
+    priceLabel: 'R$ 0',
+    shortPositioning: 'Caixa basico para lancamento manual e revisao inicial.',
+    decisionJob: 'Registrar entradas, saidas e vencimentos para a primeira leitura de caixa.',
+    status: 'available',
+    includedFeatureIds: ['manualTransactions', 'dashboardCore', 'transactionsView', 'remindersCore'],
+    limits: {
+      workspaces: FREE_LIMITS.workspaces,
+      consultorIaQueriesPerMonth: FREE_LIMITS.consultorIaQueriesPerMonth,
+    },
+    upgradeTrigger: 'Upgrade quando a operacao precisar de historico, relatorios, revisao semanal ou workspaces separados.',
+  },
+  pro: {
+    id: 'pro',
+    label: 'Pro',
+    priceLabel: formatMonthlyPriceBRL(MONETIZATION_PRICING.proMonthlyBRL),
+    shortPositioning: 'Historico, relatorios e revisao semanal para operacoes de servico.',
+    decisionJob: 'Aprofundar previsto vs realizado, risco e contexto para a rotina semanal de caixa.',
+    status: 'validation',
+    includedFeatureIds: [
+      'unlimitedConsultorIa',
+      'multipleWorkspaces',
+      'advancedReports',
+      'advancedCashflowAnalysis',
+      'aiRichConsultant',
+      'historicalComparisons',
+      'smartAlertSuggestions',
+    ],
+    limits: {
+      workspaces: 'multiple',
+      consultorIaQueriesPerMonth: 'unlimited',
+    },
+    upgradeTrigger: 'Upgrade quando o caixa depender de varias operacoes, historico comparativo ou consultas consultivas recorrentes.',
+  },
+};
+
+export function getPlanPackaging(plan: WorkspacePlan): PlanPackaging {
+  return PLAN_PACKAGING[plan];
+}
+
+export function getPlanFeatureMessages(plan: WorkspacePlan): string[] {
+  return getPlanPackaging(plan).includedFeatureIds.map((featureId) => {
+    const feature = MONETIZATION_FEATURES.find((item) => item.id === featureId);
+    return feature?.valueMessage || featureId;
+  });
+}
+
+export function getUpgradePromptBullets(): string[] {
+  return [
+    'Sem bloqueio mensal para revisar caixa, recebiveis e proximas saidas.',
+    'Historico para comparar previsto vs realizado sem depender de memoria.',
+    'Workspaces separados para operacoes, unidades ou clientes de servico.',
+  ];
+}
+
+export function getPackagingEvidenceBoundary(): string {
+  return 'Packaging preparado para validacao; nao prova disposicao a pagar, conversao paga, CAC, LTV, demanda de mercado ou billing real.';
+}
