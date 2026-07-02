@@ -29,9 +29,11 @@ Se o objetivo for entender decisoes antigas, auditorias passadas ou diagnosticos
 - `test-results/published-headers/2026-07-01T18-07-00-337Z.json` (headers publicados em 2026-07-01: frontend alternativo `PASS`, `script-src 'self'`, `style-src 'self' https://fonts.googleapis.com`, sem violacoes de CSP)
 - `test-results/visual-regression/2026-07-01T18-04-52-669Z/manifest.json` (regressao visual focada apos migracao CSP: `PASS`, `14` screenshots, `dashboard`, `flow`, `analytics`, `cfo`, `assistant`, `goals`, `insights`, desktop/mobile)
 - [visual-baselines/core-readiness.json](./visual-baselines/core-readiness.json) (baseline de contrato visual para telas core MVP; cobre capturas esperadas, viewports, status HTTP, tamanho minimo de screenshot e hashes de referencia nao bloqueantes)
-- `test-results/visual-baseline/2026-07-02T02-45-28-863Z/report.json` (baseline visual de contrato em 2026-07-02: `PASS`, sem issues, usando `test-results/visual-regression/2026-07-01T18-04-52-669Z/manifest.json`)
+- `test-results/visual-baseline/2026-07-02T02-46-01-415Z/report.json` (baseline visual de contrato em 2026-07-02: `PASS`, sem issues, usando `test-results/visual-regression/2026-07-01T18-04-52-669Z/manifest.json`)
 - `test-results/audit-claims/2026-07-01T18-08-16-691Z/report.json` (claims guard apos migracao CSP e indexacao: `PASS`, `80` docs ativos, `0` violacoes)
 - `test-results/audit-evidence/2026-07-01T18-08-21-365Z/report.json` (pacote consolidado apos migracao CSP: `BLOCK` somente por habito/coorte; activation export/checker, AI quality, claims guard e visual `PASS`)
+- `test-results/audit-claims/2026-07-02T02-48-29-878Z/report.json` (claims guard apos baseline visual de contrato: `PASS`, `80` docs ativos, `0` violacoes)
+- `test-results/audit-evidence/2026-07-02T02-49-33-381Z/report.json` (pacote consolidado apos baseline visual de contrato: `BLOCK` somente por habito/coorte; activation export/checker, AI quality, claims guard e visual `PASS`)
 
 ## Auditorias correntes
 

@@ -138,7 +138,7 @@ Current findings:
 - Implemented: `components/Settings.tsx` now uses a mobile-safe stacked support composer, closing the previous P1 cramped/truncated support input finding.
 - Implemented: `components/CashFlow.tsx`, `components/Login.tsx`, and `pages/Insights.tsx` now remove the highest-impact generic/product-misaligned wording from share, strategy, auth, and Insights empty-state surfaces.
 - Inferred: the visual baseline is now materially stronger for offline review, but it is still screenshot/manual evidence, not user preference or conversion evidence.
-- Validated offline: `npm run health:visual-baseline` produced `test-results/visual-baseline/2026-07-02T02-45-28-863Z/report.json` with `PASS`; `npx vitest run tests/unit/visual-baseline.test.ts --exclude .tmp/** --pool=forks --maxWorkers=1` passed with `5` tests.
+- Validated offline: `npm run health:visual-baseline` produced `test-results/visual-baseline/2026-07-02T02-46-01-415Z/report.json` with `PASS`; `npx vitest run tests/unit/visual-baseline.test.ts --exclude .tmp/** --pool=forks --maxWorkers=1` passed with `5` tests.
 - SEM EVIDENCIA SUFICIENTE: no pixel-diff threshold exists yet; no external user has validated the visual hierarchy.
 
 Residual risks for this step:
