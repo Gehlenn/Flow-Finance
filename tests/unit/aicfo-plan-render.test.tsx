@@ -139,6 +139,8 @@ const baseAccounts: Account[] = [
 
 describe('AICFO plan render', () => {
   beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
     vi.clearAllMocks();
     vi.mocked(analyzeFinancialQuestion).mockReset();
     vi.mocked(analyzeFinancialQuestion).mockReturnValue('monthly_summary');
