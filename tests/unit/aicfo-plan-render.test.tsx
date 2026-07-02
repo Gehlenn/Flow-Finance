@@ -140,6 +140,15 @@ const baseAccounts: Account[] = [
 describe('AICFO plan render', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(analyzeFinancialQuestion).mockReset();
+    vi.mocked(analyzeFinancialQuestion).mockReturnValue('monthly_summary');
+    vi.mocked(generateCFOResponse).mockReset();
+    vi.mocked(generateCFOResponse).mockResolvedValue({
+      answer: 'Resposta consultiva.',
+      timestamp: new Date().toISOString(),
+    });
+    vi.mocked(learnFromConversation).mockReset();
+    vi.mocked(learnFromConversation).mockResolvedValue(undefined);
     aicfoMocks.demoPlan.value = null;
     aicfoMocks.getCurrentWorkspaceIdentity.mockReturnValue({ userId: 'u1' });
     aicfoMocks.ensureActiveWorkspace.mockResolvedValue({
@@ -407,7 +416,7 @@ describe('AICFO plan render', () => {
   it('oferece acao operacional na resposta do CFO', async () => {
     const onNavigateToTab = vi.fn();
     const onCreateReminder = vi.fn();
-    vi.mocked(analyzeFinancialQuestion).mockReturnValueOnce('risk_question');
+    vi.mocked(analyzeFinancialQuestion).mockReturnValue('risk_question');
     vi.mocked(generateCFOResponse).mockResolvedValueOnce({
       answer: 'Resposta consultiva.',
       timestamp: new Date().toISOString(),
