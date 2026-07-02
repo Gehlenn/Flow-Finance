@@ -37,6 +37,7 @@
     "health:vercel": "node scripts/verify-vercel-observability.mjs https://flow-finance-backend.vercel.app",
     "health:published-headers": "node scripts/check-published-headers.mjs --strict",
     "health:csp-readiness": "node scripts/check-csp-readiness.mjs",
+    "health:visual-baseline": "node scripts/check-visual-baseline.mjs",
     "health:target-performance": "node scripts/check-target-performance-evidence.mjs",
     "health:scale-readiness:ready": "node scripts/check-scale-readiness-prereqs.mjs",
     "health:scale-readiness": "node scripts/check-scale-readiness-evidence.mjs",

@@ -1,0 +1,177 @@
+{
+  "name": "Flow Finance core visual readiness baseline",
+  "createdAt": "2026-07-01T18:04:52.669Z",
+  "sourceManifest": "test-results/visual-regression/2026-07-01T18-04-52-669Z/manifest.json",
+  "policy": {
+    "blockOnMissingCapture": true,
+    "blockOnViewportMismatch": true,
+    "blockOnResponseStatusMismatch": true,
+    "blockOnConsoleIssues": true,
+    "blockOnPageErrors": true,
+    "blockOnScreenshotTooSmall": true,
+    "blockOnHashChange": false
+  },
+  "expectedSummary": {
+    "minScreenshots": 14,
+    "minRoutes": 7,
+    "minViewportCount": 2,
+    "maxConsoleIssues": 0,
+    "maxPageErrors": 0
+  },
+  "captures": [
+    {
+      "key": "tab:dashboard:desktop",
+      "captureType": "tab",
+      "surface": "dashboard",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "responseStatus": 200,
+      "minScreenshotBytes": 220951,
+      "referenceSha256": "50fd19a18e5eb05276c11b1b96fe3a6eba16fcacdbf9ff7676a74e5af9c34a67"
+    },
+    {
+      "key": "tab:flow:desktop",
+      "captureType": "tab",
+      "surface": "flow",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "responseStatus": 200,
+      "minScreenshotBytes": 95064,
+      "referenceSha256": "d1581d54dd8929838d8966a005f876edbe6d709d083b30da1b427cc660426a60"
+    },
+    {
+      "key": "tab:analytics:desktop",
+      "captureType": "tab",
+      "surface": "analytics",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "responseStatus": 200,
+      "minScreenshotBytes": 148581,
+      "referenceSha256": "d6b7104e19fba555e7e79dc285b391de8d2ad3fc49ea6f4dfe0916d7d243f372"
+    },
+    {
+      "key": "tab:cfo:desktop",
+      "captureType": "tab",
+      "surface": "cfo",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "responseStatus": 200,
+      "minScreenshotBytes": 128691,
+      "referenceSha256": "5a4c787c3a19496672798a6a325c750fc8666c74e7eb94ca2c8713b5338b9d16"
+    },
+    {
+      "key": "tab:assistant:desktop",
+      "captureType": "tab",
+      "surface": "assistant",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "responseStatus": 200,
+      "minScreenshotBytes": 160075,
+      "referenceSha256": "c3349249a3b727e55c358edc04b20c2625986cd2cc13bb4bb135b260a363c3c3"
+    },
+    {
+      "key": "tab:goals:desktop",
+      "captureType": "tab",
+      "surface": "goals",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "responseStatus": 200,
+      "minScreenshotBytes": 47182,
+      "referenceSha256": "ef362047b26958dcfb1a403d39b4593ee7db87736fa53aa4585f9afbe127ee3d"
+    },
+    {
+      "key": "tab:insights:desktop",
+      "captureType": "tab",
+      "surface": "insights",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "responseStatus": 200,
+      "minScreenshotBytes": 121778,
+      "referenceSha256": "2fd0447aec955d023b14d97deab3121b680ac41b68b4fb745dc46c54038f04eb"
+    },
+    {
+      "key": "tab:dashboard:mobile",
+      "captureType": "tab",
+      "surface": "dashboard",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "minScreenshotBytes": 201302,
+      "referenceSha256": "66dcf5c1c14e50af88d216fbba512ff8f64f87b8d8156395cb83ad2e78b36cb0"
+    },
+    {
+      "key": "tab:flow:mobile",
+      "captureType": "tab",
+      "surface": "flow",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "minScreenshotBytes": 68420,
+      "referenceSha256": "cf1f0065369e36bd09406b91d3086e9e35d3133c2a52398fa02a97244391e2b2"
+    },
+    {
+      "key": "tab:analytics:mobile",
+      "captureType": "tab",
+      "surface": "analytics",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "minScreenshotBytes": 122258,
+      "referenceSha256": "857733300e598cb855720a9df265126eb7f43371480de47568951aaca63ab318"
+    },
+    {
+      "key": "tab:cfo:mobile",
+      "captureType": "tab",
+      "surface": "cfo",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "minScreenshotBytes": 117631,
+      "referenceSha256": "15ac96b15b81b892ace7e8ba47f29205623d01f9daad1daa84b237ad1a0145ab"
+    },
+    {
+      "key": "tab:assistant:mobile",
+      "captureType": "tab",
+      "surface": "assistant",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "minScreenshotBytes": 141933,
+      "referenceSha256": "055b006b692b96d81033d1cc89f6bb9c866589acd306a36ca1bd79c3aac8748a"
+    },
+    {
+      "key": "tab:goals:mobile",
+      "captureType": "tab",
+      "surface": "goals",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "minScreenshotBytes": 38003,
+      "referenceSha256": "dec79fb7f144c4156590c4d4e93276f4a60505ddca9d0632c1ea14bdcb56ce6d"
+    },
+    {
+      "key": "tab:insights:mobile",
+      "captureType": "tab",
+      "surface": "insights",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "minScreenshotBytes": 104758,
+      "referenceSha256": "d2ddf9a5f4943cc366735b6615019d947835a4c38de6f73d3b047587284d5761"
+    }
+  ]
+}

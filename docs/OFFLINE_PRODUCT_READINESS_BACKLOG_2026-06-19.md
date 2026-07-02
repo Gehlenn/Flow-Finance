@@ -132,17 +132,19 @@ Current findings:
 - Implemented: `src/demo/demoBootstrap.ts` now seeds enough operational expense categories for visual and product walkthroughs not to look like a zero-data or toy dataset; covered by `tests/unit/demoBootstrap.test.ts`.
 - Implemented: `pages/AICFO.tsx` now reserves safe-area/bottom-nav space for the mobile "Pergunta rapida" composer; covered by `tests/unit/aicfo-plan-render.test.tsx` and `test-results/visual-regression/2026-06-26T19-19-19-381Z/manifest.json`.
 - Documented: the runner is screenshot evidence, not a pixel-diff baseline. It records manifest, paths, hashes, console issues, and page errors.
+- Implemented: `docs/visual-baselines/core-readiness.json` and `scripts/check-visual-baseline.mjs` now provide a committed visual coverage baseline for core MVP screens; `npm run health:visual-baseline` blocks missing captures, wrong viewport dimensions, bad response status, console/page errors, and screenshots that fall below the baseline size floor.
 - Documented: `docs/VISUAL_SCREENSHOT_REVIEW_2026-06-26.md` records manual/subagent scoring and residual UX risk for Dashboard, Advanced Analytics, CFO mobile, Pricing, modal states, support/legal surfaces, auth, and empty states.
 - Implemented: `components/TransactionList.tsx` now lets category chips wrap and use a one-column mobile grid, closing the previous P1 truncation finding in transaction edit modals.
 - Implemented: `components/Settings.tsx` now uses a mobile-safe stacked support composer, closing the previous P1 cramped/truncated support input finding.
 - Implemented: `components/CashFlow.tsx`, `components/Login.tsx`, and `pages/Insights.tsx` now remove the highest-impact generic/product-misaligned wording from share, strategy, auth, and Insights empty-state surfaces.
 - Inferred: the visual baseline is now materially stronger for offline review, but it is still screenshot/manual evidence, not user preference or conversion evidence.
-- SEM EVIDENCIA SUFICIENTE: no automated visual diff baseline exists yet; no external user has validated the visual hierarchy.
+- Validated offline: `npm run health:visual-baseline` produced `test-results/visual-baseline/2026-07-02T02-45-28-863Z/report.json` with `PASS`; `npx vitest run tests/unit/visual-baseline.test.ts --exclude .tmp/** --pool=forks --maxWorkers=1` passed with `5` tests.
+- SEM EVIDENCIA SUFICIENTE: no pixel-diff threshold exists yet; no external user has validated the visual hierarchy.
 
 Residual risks for this step:
 
 - Previous P1 UI debt is closed offline by tests and focused screenshots: transaction category chips no longer depend on truncation, and the mobile support composer is no longer forced into a cramped single row.
-- P2/P3 UI/product debt remains: legal modal density, possible generic wording on secondary surfaces, and lack of automated pixel-diff baseline.
+- P2/P3 UI/product debt remains: legal modal density, possible generic wording on secondary surfaces, and lack of automated pixel-diff thresholding.
 - CFO mobile bottom input safe-area was fixed in the focused recapture; broader mobile shell changes should still rerun this screenshot.
 
 ### 2. Recurring-use instrumentation
@@ -555,7 +557,7 @@ Evidence:
 
 1. Provide Stripe smoke env/auth context and rerun `npm run health:stripe-live-smoke`.
 2. Before any paid billing claim, run authenticated Stripe smoke against the published backend with controlled workspace credentials.
-3. Optional P2/P3 polish for remaining legacy/dev-only language and automated visual diff baseline after the MVP surface set stabilizes.
+3. Optional P2/P3 polish for remaining legacy/dev-only language and pixel-diff thresholding after the MVP surface set stabilizes.
 4. Resume real-use evidence collection for habit/cohort state when app testing becomes available.
 
 ## Current active subagent split
