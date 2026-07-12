@@ -36,6 +36,8 @@ playwright-e2e-summary.json
 coverage/
 debug-screenshot.png
 *.png
+!tests/e2e/visual-diff.spec.ts-snapshots/
+!tests/e2e/visual-diff.spec.ts-snapshots/*.png
 *.jpg
 *.jpeg
 

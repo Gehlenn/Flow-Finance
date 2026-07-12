@@ -38,6 +38,7 @@
     "health:published-headers": "node scripts/check-published-headers.mjs --strict",
     "health:csp-readiness": "node scripts/check-csp-readiness.mjs",
     "health:visual-baseline": "node scripts/check-visual-baseline.mjs",
+    "health:visual-diff": "node ./node_modules/@playwright/test/cli.js test tests/e2e/visual-diff.spec.ts --project=chromium --workers=1 --output=test-results/playwright-visual-diff",
     "health:target-performance": "node scripts/check-target-performance-evidence.mjs",
     "health:scale-readiness:ready": "node scripts/check-scale-readiness-prereqs.mjs",
     "health:scale-readiness": "node scripts/check-scale-readiness-evidence.mjs",
