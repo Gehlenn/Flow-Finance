@@ -142,6 +142,7 @@ Current findings:
 - Validated offline: `npm run health:visual-baseline` produced `test-results/visual-baseline/2026-07-02T02-46-01-415Z/report.json` with `PASS`; `npx vitest run tests/unit/visual-baseline.test.ts --exclude .tmp/** --pool=forks --maxWorkers=1` passed with `5` tests.
 - Validated offline: `npm run health:visual-diff -- --update-snapshots` passed with `14/14`, followed by two consecutive clean `npm run health:visual-diff` runs with `14/14` on 2026-07-12.
 - Hardened operationally: the Playwright output is isolated under `test-results/playwright-visual-diff`, preventing the visual gate from clearing audit evidence stored elsewhere under `test-results/`.
+- CI boundary: the visual-diff spec skips outside the exact `chromium` project on Windows, so the general cross-browser E2E suite does not request uncommitted Linux/Firefox/WebKit baselines; Linux/CI pixel baselines remain a separate future gate.
 - SEM EVIDENCIA SUFICIENTE: cross-platform pixel stability, accessibility behavior, and external-user validation of the visual hierarchy remain unproven.
 
 Residual risks for this step:

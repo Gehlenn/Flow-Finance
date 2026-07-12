@@ -30,6 +30,11 @@ test.use({
   serviceWorkers: 'block',
 });
 
+test.skip(
+  ({ browserName, isMobile }) => process.platform !== 'win32' || browserName !== 'chromium' || isMobile,
+  'The committed pixel baseline currently supports Chromium on Windows only.',
+);
+
 function buildDemoUrl(tab: Surface['tab']): string {
   const params = new URLSearchParams({
     demoData: '1',
