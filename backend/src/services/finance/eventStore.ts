@@ -7,7 +7,6 @@ import {
   initializePostgresStateStore,
   insertDomainEvent,
   isPostgresStateStoreEnabled,
-  PersistedDomainEventRow,
   queryDomainEvents,
 } from '../persistence/postgresStateStore';
 import {
@@ -15,8 +14,9 @@ import {
   getDomainEventFirestoreStatus,
   queryDomainEventsFromFirestore,
 } from './eventStoreFirestore';
+import type { DomainEventRecord } from './eventStoreTypes';
 
-export type DomainEventRecord = PersistedDomainEventRow;
+export type { DomainEventRecord } from './eventStoreTypes';
 
 type DomainEventPersistenceMode = 'postgres' | 'firebase' | 'legacy-file';
 

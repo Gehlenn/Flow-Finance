@@ -1,7 +1,7 @@
 ﻿/**
  * SUBSCRIPTION DETECTOR — src/ai/subscriptionDetector.ts
  *
- * PART 4 — Detecta assinaturas e pagamentos recorrentes nas transações.
+ * Detecta assinaturas e pagamentos recorrentes nas transações.
  *
  * Estratégias de detecção:
  *   1. Matching por catálogo de serviços conhecidos (Netflix, Spotify, etc.)
@@ -11,7 +11,11 @@
 
 import { Transaction, TransactionType } from '../../types';
 import { makeId } from '../../utils/helpers';
-import { normalizeSubscriptionText, roundSubscriptionAmount } from './subscriptionDetectionCore';
+import {
+  normalizeSubscriptionText,
+  roundSubscriptionAmount,
+  type SubscriptionBillingCycle,
+} from './subscriptionDetectionCore';
 import {
   detectCycle,
   estimateNextCharge,
@@ -22,8 +26,6 @@ import {
 import { KNOWN_SERVICES } from './subscriptionDetectorCatalog';
 
 // ─── Models ───────────────────────────────────────────────────────────────────
-
-export type SubscriptionBillingCycle = 'monthly' | 'weekly' | 'annual' | 'unknown';
 
 export interface DetectedSubscription {
   id:            string;
@@ -50,7 +52,6 @@ export interface SubscriptionSummary {
   categories:       Record<string, number>;  // categoria → total mensal
 }
 
-// ─── PART 4 — detectSubscriptions ────────────────────────────────────────────
 
 /**
  * Detecta assinaturas e pagamentos recorrentes nas transações.

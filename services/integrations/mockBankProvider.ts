@@ -1,21 +1,8 @@
 /**
- * BANK PROVIDER INTERFACE + MOCK IMPLEMENTATION
- *
- * PART 10 — Interface provider abstrata.
- * Qualquer API futura (Pluggy, Belvo, TrueLayer) deve implementar IBankProvider.
- *
- * Estrutura de providers:
- *
- *   IBankProvider (interface)
- *       ├── MockBankProvider       ← implementação atual (simulada)
- *       ├── PluggyProvider         ← futuro: npx @pluggy/client
- *       ├── BelvoProvider          ← futuro: @belvo-finance/belvo-js
- *       └── TrueLayerProvider      ← futuro: @truelayer/client
+ * Provider contract and deterministic mock used by the local Open Banking flow.
  */
 
 import { Transaction, TransactionType, Category } from '../../types';
-
-// ─── PART 10 — Provider interface (contrato para futuros providers) ────────────
 
 export interface RawBankTransaction {
   id: string;
@@ -27,7 +14,7 @@ export interface RawBankTransaction {
   balance_after?: number; // saldo após a transação
 }
 
-export interface RawBankAccount {
+interface RawBankAccount {
   id: string;
   name: string;
   balance: number;
@@ -52,9 +39,7 @@ export interface IBankProvider {
   fetchTransactions(externalId: string, days?: number): Promise<RawBankTransaction[]>;
 }
 
-// ─── PART 3 — Mock Bank Provider ─────────────────────────────────────────────
-
-// Dados mock realistas por banco
+// Stable sample data keeps local sync behavior reproducible.
 const BANK_MOCK_DATA: Record<string, {
   balance: number;
   transactions: Omit<RawBankTransaction, 'id'>[];
@@ -90,7 +75,7 @@ function offset(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export class MockBankProvider implements IBankProvider {
+class MockBankProvider implements IBankProvider {
   readonly providerName = 'Mock (Simulado)';
 
   async connect(bankId: string, _userId: string) {
@@ -127,25 +112,16 @@ export class MockBankProvider implements IBankProvider {
   }
 }
 
-// ─── Provider registry (PART 10) ─────────────────────────────────────────────
-
 export type ProviderKey = 'mock' | 'pluggy' | 'belvo' | 'truelayer';
 
 const PROVIDER_REGISTRY: Partial<Record<ProviderKey, IBankProvider>> = {
   mock: new MockBankProvider(),
-  // pluggy:    new PluggyProvider(),     // future: npm install @pluggy/client
-  // belvo:     new BelvoProvider(),      // future: npm install @belvo-finance/belvo-js
-  // truelayer: new TrueLayerProvider(),  // future: npm install @truelayer/client
 };
 
 export function getProvider(key: ProviderKey): IBankProvider {
   const p = PROVIDER_REGISTRY[key];
   if (!p) throw new Error(`Provider "${key}" não registrado.`);
   return p;
-}
-
-export function registerProvider(key: ProviderKey, provider: IBankProvider): void {
-  PROVIDER_REGISTRY[key] = provider;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

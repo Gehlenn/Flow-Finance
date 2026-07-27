@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
         port: 3078,
         host: '0.0.0.0',
       },
-      // PART 9 — Build output compatível com Capacitor (Android/iOS)
+      // Capacitor requires a self-contained web build in dist.
       build: {
         outDir: 'dist',
         emptyOutDir: true,
@@ -83,6 +83,7 @@ export default defineConfig(({ mode }) => {
           exclude: [
           '**/node_modules/**',
           '**/dist/**',
+          '**/.tmp/**',
           'qa-exhaustive.spec.mjs',
           '**/tests/e2e/**',
           '**/tests/integration/**',

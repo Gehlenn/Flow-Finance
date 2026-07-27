@@ -53,7 +53,6 @@ function getTag(block: string, tag: string): string {
   return sgmlMatch ? sgmlMatch[1].trim() : '';
 }
 
-// ─── PART 1 — parseOFX ────────────────────────────────────────────────────────
 
 /**
  * Parseia conteúdo OFX/QFX e retorna array de transações.
@@ -146,30 +145,4 @@ export function parseOFX(fileContent: string): Transaction[] {
   }
 
   return results;
-}
-
-// ─── Helpers re-exportados ────────────────────────────────────────────────────
-
-/** Detecta se uma string é provável OFX */
-export function isOFXContent(content: string): boolean {
-  return /OFXHEADER|<OFX>|<STMTTRN>/i.test(content.slice(0, 1000));
-}
-
-/** Retorna resumo de um array de transações OFX */
-export function summarizeOFXParse(txs: Transaction[]): {
-  total: number;
-  income: number;
-  expenses: number;
-  earliest: string | null;
-  latest: string | null;
-} {
-  if (txs.length === 0) return { total: 0, income: 0, expenses: 0, earliest: null, latest: null };
-  const sorted = [...txs].sort((a, b) => a.date.localeCompare(b.date));
-  return {
-    total:    txs.length,
-    income:   txs.filter(t => t.type === TransactionType.RECEITA).reduce((s, t) => s + t.amount, 0),
-    expenses: txs.filter(t => t.type === TransactionType.DESPESA).reduce((s, t) => s + t.amount, 0),
-    earliest: sorted[0]?.date ?? null,
-    latest:   sorted[sorted.length - 1]?.date ?? null,
-  };
 }

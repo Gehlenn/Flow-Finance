@@ -2,13 +2,13 @@ import { Account } from '../../models/Account';
 import { Category, Goal, Reminder, Transaction, TransactionType, type Alert } from '../../types';
 import type { FinanceServiceContext } from './financeServiceTypes';
 import {
-  applyIdMapToCollection,
   assertScopedEntityOwnership,
   createDefaultAccount,
   createId,
   nowIso,
   forceScopedEntityContext,
 } from './financeServiceHelpers';
+import { applyIdMapToCollection } from '../utils/collectionIds';
 import {
   buildNextReminderReceivables,
   removeReminderReceivableForReminder,

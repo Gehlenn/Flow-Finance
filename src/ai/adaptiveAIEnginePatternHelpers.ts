@@ -1,7 +1,7 @@
 import { Transaction, TransactionType } from '../../types';
 import { makeId } from '../../utils/helpers';
 import { parseAdaptiveDate, getRecentTxs } from './adaptiveAIEngineHelpers';
-import type { FinancialPattern } from './adaptiveAIEngine';
+import type { FinancialPattern } from './adaptiveAIEngineTypes';
 
 function buildPattern(
   type: FinancialPattern['type'],

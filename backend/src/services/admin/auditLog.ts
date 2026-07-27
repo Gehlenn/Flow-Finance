@@ -7,6 +7,7 @@
  * O buffer mantém no máximo `MAX_EVENTS` entradas. Quando cheio, os eventos
  * mais antigos são descartados (FIFO).
  */
+import logger from '../../config/logger';
 import { insertAuditEvent, loadRecentAuditEvents } from '../persistence/postgresStateStore';
 
 export type AuditAction =
@@ -85,8 +86,15 @@ export function recordAuditEvent(
   }
 
   void insertAuditEvent(full).catch((error) => {
-    // Keep runtime resilient; buffer remains the immediate source of truth.
-    void error;
+    logger.warn({
+      error,
+      eventId: full.id,
+      action: full.action,
+      status: full.status,
+      tenantId: full.tenantId,
+      workspaceId: full.workspaceId,
+      fallback: 'audit-log-postgres-write-failed',
+    }, 'Failed to persist audit event; in-memory buffer remains active');
   });
 
   return full;

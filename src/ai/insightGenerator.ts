@@ -3,7 +3,7 @@ import { Account } from '../../models/Account';
 import { makeId, now, formatCurrency } from '../../utils/helpers';
 import { logWarn } from '../utils/logger';
 
-// ─── Model (PART 1) ───────────────────────────────────────────────────────────
+// Insight model
 
 export interface AIInsight {
   id: string;
@@ -42,7 +42,7 @@ function totalExpenses(txs: Transaction[]): number {
     .reduce((sum, t) => sum + t.amount, 0);
 }
 
-// ─── PART 2: generateFinancialInsights ────────────────────────────────────────
+// Financial insight generation
 
 export function generateFinancialInsights(
   transactions: Transaction[],
@@ -128,7 +128,7 @@ export function generateFinancialInsights(
     });
   }
 
-  // ── PART 5: Graph-powered insights ───────────────────────────────────────
+  // Graph-derived insights
   // Lazy-import to avoid circular deps; only when accounts available
   if (accounts.length > 0 && baseTxs.length >= 3) {
     try {

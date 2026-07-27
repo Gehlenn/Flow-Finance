@@ -4,15 +4,15 @@
  * Orquestrador central para sincronização bancária.
  *
  * Pipeline de sync:
- *   connectBank â†’ fetchAccounts â†’ fetchTransactions
- *       â†“
- *   mapToTransactions (PART 4)
- *       â†“
- *   classifyWithAI (PART 5)
- *       â†“
- *   updateAccountBalance (PART 6)
- *       â†“
- *   emit bank_transactions_synced (PART 9)
+ *   connectBank → fetchAccounts → fetchTransactions
+ *       ↓
+ *   mapToTransactions
+ *       ↓
+ *   classifyWithAI
+ *       ↓
+ *   updateAccountBalance
+ *       ↓
+ *   emit bank_transactions_synced
  */
 
 import { Transaction, TransactionType, Category } from '../../types';
@@ -28,7 +28,7 @@ import { API_ENDPOINTS, apiRequest, ApiRequestError } from '../../src/config/api
 import { logError, logWarn } from '../../src/utils/logger';
 import { getActiveWorkspaceScopedStorageKey } from '../../src/utils/workspaceStorage';
 
-// â”€â”€â”€ Storage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Storage ──────────────────────────────────────────────────────────────────
 
 const CONNECTIONS_KEY = 'flow_bank_connections';
 
@@ -247,7 +247,7 @@ export async function connectPluggyItem(
 }
 
 
-// â”€â”€â”€ CRUD helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── CRUD helpers ─────────────────────────────────────────────────────────────
 
 export function getConnections(userId: string): BankConnection[] {
   return readConnections().filter(c => c.user_id === userId);
@@ -321,7 +321,7 @@ export function parseLastSyncDate(lastSync?: string): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-// â”€â”€â”€ PART 2 â€” connectBank â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Bank connection lifecycle
 
 export async function connectBank(
   bankId: string,
@@ -381,7 +381,6 @@ export async function connectBank(
   return conn;
 }
 
-// â”€â”€â”€ PART 2 â€” disconnectBank â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function disconnectBank(connectionId: string): Promise<void> {
   const conn = getConnection(connectionId);
@@ -421,7 +420,7 @@ export async function disconnectBank(connectionId: string): Promise<void> {
   writeConnections(readConnections().filter(c => c.id !== connectionId));
 }
 
-// â”€â”€â”€ PART 2 + 6 â€” syncAccounts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Account synchronization
 
 export async function syncAccounts(
   connectionId: string,
@@ -438,7 +437,7 @@ export async function syncAccounts(
     const rawAccounts = await provider.fetchAccounts(conn.external_account_id);
 
     for (const raw of rawAccounts) {
-      // PART 6 â€” Atualizar saldo da conta vinculada
+      // Keep the linked account balance aligned with the provider snapshot.
       const linked = existingAccounts.find(a =>
         a.name.toLowerCase().includes(conn.bank_name.toLowerCase()) ||
         a.name.toLowerCase().includes('open banking') ||
@@ -464,7 +463,7 @@ export async function syncAccounts(
   }
 }
 
-// â”€â”€â”€ PART 4 â€” mapToTransaction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Provider-to-domain transaction mapping
 
 function mapToTransaction(raw: RawBankTransaction, accountId?: string): Partial<Transaction> & {
   raw_description: string;
@@ -545,7 +544,7 @@ function normalizeBankTransactionsFromDraft(input: Array<Partial<Transaction>>):
     });
 }
 
-// â”€â”€â”€ Detectar duplicatas contra transações existentes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Detectar duplicatas contra transações existentes ────────────────────────
 
 function isDuplicate(raw: RawBankTransaction, existing: Transaction[]): boolean {
   return existing.some(ex => {
@@ -556,7 +555,7 @@ function isDuplicate(raw: RawBankTransaction, existing: Transaction[]): boolean 
   });
 }
 
-// â”€â”€â”€ PART 2 + 5 + 9 â€” syncTransactions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Transaction synchronization
 
 export async function syncTransactions(
   connectionId: string,
@@ -658,10 +657,10 @@ export async function syncTransactions(
       return { connection_id: connectionId, transactions_imported: 0, balance_updated: false, synced_at: new Date().toISOString() };
     }
 
-    // PART 4 â€” Mapear para formato interno
+    // Normalize provider records before classification and persistence.
     const mapped = newRaw.map(r => mapToTransaction(r));
 
-    // PART 5 â€” Classificar com IA (reutiliza classifyImportedTransactions do importService)
+    // Reuse the import pipeline's category classification.
     let classified: ClassifiedBankTransaction[] = mapped as ClassifiedBankTransaction[];
     try {
       classified = await classifyImportedTransactions(mapped as ImportedTransaction[], userId) as ClassifiedBankTransaction[];
@@ -694,7 +693,7 @@ export async function syncTransactions(
     // Atualizar timestamp de sync
     updateStatus(connectionId, 'connected', { last_sync: new Date().toISOString() });
 
-    // PART 9 â€” Emitir evento para acionar insights, autopilot, adaptive learning
+    // Notify downstream insight and learning pipelines after persistence.
     FinancialEventEmitter.bankTransactionsSynced({
       connection_id: connectionId,
       bank_name:     conn.bank_name,
@@ -728,7 +727,7 @@ export async function syncTransactions(
   }
 }
 
-// â”€â”€â”€ Full sync (accounts + transactions) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Full sync (accounts + transactions) ─────────────────────────────────────
 
 export async function fullSync(
   connectionId: string,
@@ -752,7 +751,7 @@ export async function fullSync(
   return syncTransactions(connectionId, existingTransactions, userId, onNewTransactions);
 }
 
-// â”€â”€â”€ Helpers para UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helpers para UI ──────────────────────────────────────────────────────────
 
 export function formatLastSync(lastSync?: string): string {
   const parsed = parseLastSyncDate(lastSync);

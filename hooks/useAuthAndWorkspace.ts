@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { User as FirebaseUser } from 'firebase/auth';
 import { auth, isFirebaseConfigured, onAuthStateChanged } from '../services/firebase';
 import { addBreadcrumb, clearUser, setUser } from '../src/config/sentry';
 import { getStoredWorkspaceId, setStoredWorkspaceId } from '../src/config/api.config';
@@ -13,6 +14,7 @@ import {
   bootstrapBackendSessionFromFirebase,
   bootstrapBackendSessionWithPasswordLogin,
   deriveDevelopmentUserId,
+  type BackendSessionPayload,
 } from '../src/services/backendSession';
 import { clearEphemeralAccessToken, setEphemeralAccessToken } from '../src/services/authSessionStore';
 import {
@@ -316,7 +318,7 @@ export function useAuthAndWorkspace() {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         setCloudSyncEnabled(false);
         setBackendSyncEnabled(false);
@@ -334,7 +336,7 @@ export function useAuthAndWorkspace() {
 
         if (firebaseUser.email) {
           void firebaseUser.getIdToken()
-            .then((idToken) => bootstrapBackendSessionFromFirebase({
+            .then((idToken: string) => bootstrapBackendSessionFromFirebase({
               idToken,
               userId: firebaseUser.uid,
               email: firebaseUser.email,
@@ -342,7 +344,7 @@ export function useAuthAndWorkspace() {
               isDevelopment: IS_DEV,
               allowLegacyDevelopmentFallback: ALLOW_INSECURE_LOCAL_LOGIN,
             }))
-            .then((payload) => {
+            .then((payload: BackendSessionPayload) => {
               if (!payload?.token) {
                 return;
               }
@@ -355,7 +357,7 @@ export function useAuthAndWorkspace() {
                 name: firebaseUser.displayName,
               });
             })
-            .catch((error) => {
+            .catch((error: unknown) => {
               logWarn('[Auth] Failed to bootstrap backend token', {
                 error,
                 userId: firebaseUser.uid,

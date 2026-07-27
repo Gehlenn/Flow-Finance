@@ -1,7 +1,7 @@
 import { doc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../../services/firebase';
 import type { Alert, Reminder } from '../../types';
-import type { ProfileState } from './firestoreWorkspaceTypes';
+import type { ProfileState } from './profileTypes';
 
 function nowIso(): string {
   return new Date().toISOString();

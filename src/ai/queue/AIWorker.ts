@@ -12,7 +12,7 @@ class AIWorker {
   private isRunning = false;
   private processingTaskId: string | null = null;
   private pollingInterval = 2000; // 2 seconds
-  private pollingTimer: NodeJS.Timeout | null = null;
+  private pollingTimer: ReturnType<typeof setTimeout> | null = null;
 
   start(): void {
     if (this.isRunning) {
@@ -201,11 +201,6 @@ class AIWorker {
 // Singleton instance
 export const aiWorker = new AIWorker();
 
-// Sprint 3 simple function API.
 export async function runAIWorker(): Promise<void> {
   await aiWorker.runOnce();
-}
-
-export async function runAIWorkerForUser(userId: string): Promise<void> {
-  await aiWorker.runForUser(userId);
 }

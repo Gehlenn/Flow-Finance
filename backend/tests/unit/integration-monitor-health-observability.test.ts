@@ -15,6 +15,22 @@ type LoggerLike = {
 };
 
 describe('IntegrationMonitor health observability', () => {
+  it('does not duplicate telemetry-owned AI failure logging', async () => {
+    const error = vi.fn();
+    const telemetry = {
+      executeWithTelemetry: vi.fn().mockRejectedValue(new Error('provider offline')),
+      recordSuccess: vi.fn(),
+    };
+    const monitor = new IntegrationMonitor(telemetry as never, { error } as LoggerLike as never);
+
+    await expect(
+      monitor.executeAICall('openai', 'ai_chat', async () => 'unreachable'),
+    ).rejects.toThrow('provider offline');
+
+    expect(error).not.toHaveBeenCalled();
+    expect(telemetry.recordSuccess).not.toHaveBeenCalled();
+  });
+
   it('logs contextual data when a dependency health check fails', async () => {
     const error = vi.fn();
     const telemetry: TelemetryLike = {

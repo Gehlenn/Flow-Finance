@@ -2,9 +2,10 @@ import { Account } from '../../models/Account';
 import { Goal, Receivable, Reminder, Transaction } from '../../types';
 import type {
   EntityState,
-  SyncEntity,
   WorkspaceScopedEntity,
 } from './firestoreWorkspaceTypes';
+import type { SyncEntity } from './sync/syncTypes';
+import { logWarn } from '../utils/logger';
 
 export function nowIso(): string {
   return new Date().toISOString();
@@ -73,8 +74,12 @@ export function loadE2ESeedEntities(workspaceId: string): EntityState | null {
         reminders: sortReminders(Array.isArray(parsed.reminders) ? parsed.reminders as Reminder[] : []),
         receivables: sortReceivables(Array.isArray(parsed.receivables) ? parsed.receivables as Receivable[] : []),
       };
-    } catch {
-      // fall through to the default seed
+    } catch (error) {
+      logWarn('[FirestoreWorkspace] Failed to parse E2E entity seed', {
+        error,
+        workspaceId,
+        fallback: 'firestore-workspace-e2e-seed-parse-failed',
+      });
     }
   }
 

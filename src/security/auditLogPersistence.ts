@@ -1,7 +1,7 @@
 import { addDoc, collection, serverTimestamp, type Firestore } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { logError } from '../utils/logger';
-import type { AuditLogEntry, AuditLogPersistenceContext } from './auditLogService';
+import type { AuditLogEntry, AuditLogPersistenceContext } from './auditLogTypes';
 
 export interface PersistAuditEventOptions {
   dbInstance?: Firestore | null;

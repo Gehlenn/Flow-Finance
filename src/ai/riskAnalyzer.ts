@@ -15,7 +15,7 @@ function parseRiskDate(value: string): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-// ─── Model (PART 4) ───────────────────────────────────────────────────────────
+// Risk model
 
 export interface FinancialRiskAlert {
   id: string;
@@ -73,7 +73,7 @@ export function buildCashflowPrediction(transactions: Transaction[]): CashflowPr
   };
 }
 
-// ─── PART 5: detectFinancialRisks ────────────────────────────────────────────
+// Financial risk detection
 
 export function detectFinancialRisks(prediction: CashflowPrediction): FinancialRiskAlert[] {
   const alerts: FinancialRiskAlert[] = [];

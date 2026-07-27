@@ -10,13 +10,13 @@
  * REGRA: Nunca modifica transações existentes. Apenas aprende e melhora previsões.
  *
  * Fluxo:
- *   Transactions â†’ detectFinancialPatterns
- *       â†“
- *   Patterns â†’ learnMemory (AI Memory)
- *       â†“
+ *   Transactions → detectFinancialPatterns
+ *       ↓
+ *   Patterns → learnMemory (AI Memory)
+ *       ↓
  *   Memory -> adjustCashflowWithPatterns (predição adaptativa)
- *       â†“
- *   Memory â†’ generateAdaptiveInsights (insights personalizados)
+ *       ↓
+ *   Memory → generateAdaptiveInsights (insights personalizados)
  */
 
 import { Transaction, TransactionType } from '../../types';
@@ -32,26 +32,14 @@ import {
   detectSalaryPattern,
   detectWeekendSpendingPattern,
 } from './adaptiveAIEnginePatternHelpers';
+import type { FinancialPattern } from './adaptiveAIEngineTypes';
 
 export { getDaysUntilSalaryDay } from './adaptiveAIEngineHelpers';
 export { generateAdaptiveInsights } from './adaptiveAIEngineInsightHelpers';
+export type { FinancialPattern } from './adaptiveAIEngineTypes';
 
-// â”€â”€â”€ PART 2 â€” FinancialPattern model â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export interface FinancialPattern {
-  id: string;
-  type:
-    | 'weekend_spending'
-    | 'frequent_merchant'
-    | 'salary_day'
-    | 'delivery_pattern'
-    | 'category_preference';
-  value: string;
-  confidence: number;
-  updated_at: string;
-}
-
-// â”€â”€â”€ Engine state (learning metrics) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Engine state (learning metrics) ─────────────────────────────────────────
 
 export interface AdaptiveLearningState {
   patterns_detected: number;
@@ -63,7 +51,7 @@ export interface AdaptiveLearningState {
 }
 
 
-// â”€â”€â”€ PART 3 â€” Pattern Detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Pattern detection
 
 export function detectFinancialPatterns(transactions: Transaction[]): FinancialPattern[] {
   const base = transactions.filter((transaction) => !transaction.generated);
@@ -80,7 +68,7 @@ export function detectFinancialPatterns(transactions: Transaction[]): FinancialP
     ...detectCategoryPreferencePattern(expenses),
   ];
 }
-// â”€â”€â”€ PART 4 â€” Memory Integration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Memory integration
 
 export async function storePatternMemories(
   userId: string,
@@ -107,7 +95,7 @@ export async function storePatternMemories(
   }
 }
 
-// â”€â”€â”€ PART 5 â€” Adaptive Cashflow Prediction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Adaptive cash-flow prediction
 
 export function adjustCashflowWithPatterns(
   base: CashflowPrediction,
@@ -126,7 +114,7 @@ export function adjustCashflowWithPatterns(
     else if (weekendMem.value === 'low') multiplier -= 0.05 * weekendMem.confidence;
   }
 
-  // Delivery pattern â†’ adicionar custo extra
+  // Delivery pattern → adicionar custo extra
   const deliveryMem = get('delivery_pattern');
   if (deliveryMem) {
     if (deliveryMem.value === 'heavy') multiplier += 0.08 * deliveryMem.confidence;
@@ -157,7 +145,7 @@ export function adjustCashflowWithPatterns(
   };
 }
 
-// â”€â”€â”€ PART 6 â€” Category Learning (merchant â†’ category mapping) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Merchant-to-category learning
 
 export async function learnMerchantCategories(
   userId: string,
@@ -182,7 +170,7 @@ export async function learnMerchantCategories(
 }
 
 
-// --- PART 8 — Run Adaptive Learning (função principal) ---
+// Adaptive learning orchestration
 
 export interface AdaptiveLearningResult {
   patterns: FinancialPattern[];
@@ -239,7 +227,7 @@ export async function runAdaptiveLearning(
   };
 }
 
-// â”€â”€â”€ Sync version (sem async â€” para uso em renders) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Sync version (sem async — para uso em renders) ───────────────────────────
 
 export function getAdaptiveLearningStats(userId: string): {
   is_learning: boolean;

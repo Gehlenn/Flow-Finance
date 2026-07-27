@@ -4,10 +4,9 @@ import {
   loadWorkspaceEntities,
   replaceWorkspaceEntityCollection,
 } from '../firestoreWorkspaceStore';
-import type { SyncEntityIdMap } from '../firestoreWorkspaceTypes';
 import { pullFromCloud, pushToCloud } from '../localSyncService';
+import type { SyncEntity } from './syncTypes';
 
-export type SyncEntity = 'accounts' | 'transactions' | 'goals' | 'reminders' | 'receivables';
 export type SyncDriver = 'firestore' | 'backend';
 
 type SyncRecord = { id: string };
@@ -176,4 +175,4 @@ export function extractSyncPayloads<TPayload>(
     .map((item) => item.payload as TPayload);
 }
 
-export type { PushResponse, PullResponse, SyncItem, SyncEntityIdMap };
+export type { PushResponse, PullResponse, SyncItem };

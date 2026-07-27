@@ -9,9 +9,7 @@ import * as Sentry from '@sentry/node';
 export type FeatureFlagName =
   | 'open_finance_enabled'
   | 'ai_chat_enabled'
-  | 'ai_analysis_enabled'
   | 'ai_deep_analysis_enabled'
-  | 'ai_fallback_enabled'
   | 'ai_provider_fallback_enabled'
   | 'clinic_automation_ingest_enabled'
   | 'clinic_automation_auto_post_enabled'
@@ -384,17 +382,6 @@ export function createDefaultEnhancedFeatureFlagService(): EnhancedFeatureFlagSe
       enabled: false,
       allowedEnvironments: ['staging', 'production'],
       description: 'Postar automaticamente dados da clínica no Flow'
-    },
-    {
-      name: 'ai_analysis_enabled',
-      enabled: true,
-      allowedEnvironments: ['development', 'staging', 'production'],
-      description: 'AI financial analysis (alias for ai_deep_analysis_enabled)'
-    },
-    {
-      name: 'ai_fallback_enabled',
-      enabled: true,
-      description: 'AI provider fallback (alias for ai_provider_fallback_enabled)'
     },
     {
       name: 'external_integrations_monitoring_enabled',

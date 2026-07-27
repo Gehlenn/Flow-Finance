@@ -264,6 +264,34 @@ describe('CashFlow clarity', () => {
     expect(screen.queryByText(/Revisar entradas confirmadas/i)).toBeNull();
   }, 20_000);
 
+  it('normaliza o contrato estrategico summary/actions declarado pelo backend', async () => {
+    vi.spyOn(GeminiService.prototype, 'generateStrategicReport').mockResolvedValueOnce({
+      summary: 'O caixa confirmado suporta a operacao atual.',
+      actions: [
+        'Confirmar os recebiveis com vencimento nesta semana.',
+        'Revisar as saidas recorrentes antes de assumir novo compromisso.',
+      ],
+    });
+
+    render(
+      <CashFlow
+        activeWorkspaceId={workspaceId}
+        activeWorkspaceName="Clinica Flow"
+        transactions={[]}
+        hideValues={false}
+        theme="light"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: /Estrat/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Gerar diagn/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/O caixa confirmado suporta a operacao atual/i).length).toBeGreaterThan(0);
+    });
+    expect(screen.getAllByText(/Confirmar os recebiveis com vencimento nesta semana/i).length).toBeGreaterThan(0);
+  }, 20_000);
+
   it('nao trata diagnostico local da demo como falha de IA', async () => {
     vi.spyOn(GeminiService.prototype, 'generateStrategicReport').mockResolvedValueOnce({
       executiveSummary: 'Diagnostico local pronto para demonstracao.',

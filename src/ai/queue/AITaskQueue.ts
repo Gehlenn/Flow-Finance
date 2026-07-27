@@ -220,14 +220,6 @@ class AITaskQueue {
 // Singleton instance
 export const aiTaskQueue = new AITaskQueue();
 
-// Sprint 3 simple function API.
-export function enqueueTask<T = unknown>(type: AITaskType, payload: T): string {
-  if (!aiTaskQueue.isInitialized()) {
-    aiTaskQueue.initialize();
-  }
-  return aiTaskQueue.enqueueTask(type, payload, 'system');
-}
-
 export function enqueueTaskForUser<T = unknown>(
   userId: string,
   type: AITaskType,

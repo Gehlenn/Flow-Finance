@@ -30,7 +30,6 @@ import externalIntegrationRoutes from './routes/externalIntegration';
 import integrationKeyRoutes from './routes/integrationKeys';
 import clinicIntegrationRoutes from './routes/clinicIntegration';
 import businessIntegrationRoutes from './routes/businessIntegration';
-import { featureGateOpenFinance } from './middleware/featureGate';
 import workspaceRoutes from './routes/workspace';
 import {
   initializeAIProviders,
@@ -325,7 +324,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/saas', saasRoutes);
 
 // Banking routes (Open Finance integration)
-app.use('/api/banking', featureGateOpenFinance, bankingRoutes);
+app.use('/api/banking', bankingRoutes);
 
 // Finance metrics routes (D3/D4 computations)
 app.use('/api/finance', financeRoutes);

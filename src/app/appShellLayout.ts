@@ -1,11 +1,11 @@
-export type AppShellSyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
+import type { SyncStatus } from '../services/sync/syncTypes';
 
 const FAB_ENABLED_TABS = new Set(['dashboard']);
 const WIDE_CONTENT_TABS = new Set(['dashboard', 'history', 'flow']);
 
 export function shouldShowTopStatus(input: {
   isDemoBootstrapActive: boolean;
-  syncStatus: AppShellSyncStatus;
+  syncStatus: SyncStatus;
 }): boolean {
   return (
     input.isDemoBootstrapActive

@@ -7,19 +7,12 @@ import {
   parseMemoryDate,
   type MemorySource,
 } from './aiMemoryHelpers';
+import type { AIMemory } from './aiMemoryTypes';
 import { Transaction, TransactionType } from '../../types';
 
 const STORAGE_KEY = 'flow_ai_memory';
 
-export interface AIMemory {
-  id: string;
-  user_id: string;
-  key: string;
-  value: string;
-  confidence: number;
-  updated_at: string;
-  metadata?: Record<string, unknown>;
-}
+export type { AIMemory } from './aiMemoryTypes';
 
 function readAll(): AIMemory[] {
   try {

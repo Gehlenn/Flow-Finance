@@ -1,5 +1,3 @@
-import { logInfo, logWarn } from '../utils/logger';
-
 type SeverityLevel = 'fatal' | 'error' | 'warning' | 'log' | 'info' | 'debug';
 type SentryModule = typeof import('@sentry/react');
 type SentryScopeLike = {
@@ -35,7 +33,15 @@ export const resolveSentryDsn = (env: SentryEnv): string => {
   return String(env.SENTRY_DSN || '').trim();
 };
 
-const getDsn = (): string => resolveSentryDsn(import.meta.env as unknown as SentryEnv);
+const getSentryEnv = (): SentryEnv => ({
+  VITE_SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN,
+  VITE_SENTRY_ENVIRONMENT: import.meta.env.VITE_SENTRY_ENVIRONMENT,
+  VITE_API_DEV_URL: import.meta.env.VITE_API_DEV_URL,
+  VITE_API_PROD_URL: import.meta.env.VITE_API_PROD_URL,
+  SENTRY_DSN: import.meta.env.SENTRY_DSN,
+});
+
+const getDsn = (): string => resolveSentryDsn(getSentryEnv());
 const getEnvironment = (): string => String(
   import.meta.env.VITE_SENTRY_ENVIRONMENT ||
   import.meta.env.MODE ||
@@ -45,7 +51,7 @@ const isSentryDevEnabled = (): boolean => String(import.meta.env.VITE_SENTRY_DEV
 export const isSentryConfigured = (): boolean => Boolean(getDsn().trim());
 
 const getTracePropagationTargets = (): (string | RegExp)[] => {
-  const env = import.meta.env as unknown as SentryEnv;
+  const env = getSentryEnv();
   const explicitTargets = [
     String(env.VITE_API_DEV_URL || '').trim(),
     String(env.VITE_API_PROD_URL || '').trim(),
@@ -68,10 +74,7 @@ async function loadSentry(): Promise<SentryModule | null> {
         return mod;
       })
       .catch((error) => {
-        logWarn('Failed to load Sentry module', {
-          error,
-          fallback: 'sentry-module-load-failed',
-        });
+        console.warn('[Sentry] Failed to load module', error);
         return null;
       });
   }
@@ -90,8 +93,7 @@ export const initSentry = () => {
   const hasFrontendDsn = Boolean(String(import.meta.env.VITE_SENTRY_DSN || '').trim());
 
   if (import.meta.env.PROD && !hasFrontendDsn) {
-    logWarn('[Sentry] DSN ausente em producao', {
-      fallback: 'sentry-dsn-missing-production',
+    console.warn('[Sentry] DSN ausente em producao', {
       hasLegacyFallbackDsn: Boolean(String(import.meta.env.SENTRY_DSN || '').trim()),
     });
   }
@@ -147,9 +149,7 @@ export const initSentry = () => {
     });
 
     sentryInitialized = true;
-    logInfo('Sentry initialized for error tracking', {
-      fallback: 'sentry-initialized',
-    });
+    console.info('[Sentry] Initialized for error tracking');
   });
 };
 

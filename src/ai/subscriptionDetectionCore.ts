@@ -1,4 +1,4 @@
-export type SharedSubscriptionCycle = 'monthly' | 'weekly' | 'annual' | 'unknown';
+export type SubscriptionBillingCycle = 'monthly' | 'weekly' | 'annual' | 'unknown';
 
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -51,7 +51,7 @@ export function roundSubscriptionAmount(amount: number): number {
 
 export function inferSubscriptionCycleFromDates(
   dates: string[],
-): SharedSubscriptionCycle {
+): SubscriptionBillingCycle {
   if (dates.length < 2) return 'unknown';
 
   const sorted = dates

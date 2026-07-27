@@ -91,16 +91,10 @@ export class IntegrationTelemetry {
           ...config
         };
 
-        try {
-          const result = await telemetry.executeWithTelemetry(
-            context,
-            () => Promise.resolve(originalMethod.apply(this, args))
-          );
-          return result;
-        } catch (error) {
-          telemetry.captureException(error instanceof Error ? error : new Error(String(error)), context);
-          throw error;
-        }
+        return telemetry.executeWithTelemetry(
+          context,
+          () => Promise.resolve(originalMethod.apply(this, args))
+        );
       };
       return descriptor;
     };

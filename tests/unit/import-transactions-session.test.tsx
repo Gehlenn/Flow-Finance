@@ -488,6 +488,47 @@ describe('ImportTransactions session state', () => {
     expect(screen.getByText(/aprendizado pendente/i)).toBeTruthy();
     expect(screen.getByText(/nao foi salvo para todos os itens/i)).toBeTruthy();
   });
+
+  it('mantem a importacao concluida e observa falha na emissao do evento auxiliar', async () => {
+    const emissionError = new Error('event pipeline down');
+    const eventSpy = vi
+      .spyOn(FinancialEventEmitter, 'transactionsImported')
+      .mockImplementationOnce(() => {
+        throw emissionError;
+      });
+
+    render(
+      <ImportTransactionsPage
+        transactions={[]}
+        userId="user-1"
+        hideValues={false}
+        onAddTransactions={vi.fn()}
+      />,
+    );
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, {
+      target: { files: [new File(['csv'], 'extrato.csv', { type: 'text/csv' })] },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /importar .* movimento/i })).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /importar .* movimento/i }));
+
+    expect(await screen.findByText('Importação concluída!')).toBeTruthy();
+    expect(importTransactionsLoggerMock.logWarn).toHaveBeenCalledWith(
+      '[ImportTransactions] Failed to emit transactions imported event',
+      expect.objectContaining({
+        error: emissionError,
+        transactionCount: 1,
+        format: 'csv',
+        fallback: 'import-transactions-event-emission-failed',
+      }),
+    );
+
+    eventSpy.mockRestore();
+  });
 });
 
 

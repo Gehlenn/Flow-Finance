@@ -3,6 +3,9 @@ import logger from './logger';
 import * as openai from './openai';
 import * as gemini from './gemini';
 import { estimateAICost } from '../services/ai/aiCostMonitor';
+import type { AIProviderResponse, AIResponseEnvelope } from './aiTypes';
+
+export type { AIProviderResponse, AIResponseEnvelope } from './aiTypes';
 
 /**
  * AI Provider Wrapper with automatic fallback and structured observability
@@ -26,22 +29,6 @@ type AIProviderError = {
   status?: number;
   code?: string;
   message?: string;
-};
-
-export type AIProviderResponse = {
-  content: string;
-  provider: 'openai' | 'gemini';
-  model: string;
-  inputTokens: number;
-  outputTokens: number;
-  tokensUsed: number;
-  latencyMs?: number;
-};
-
-export type AIResponseEnvelope = AIProviderResponse & {
-  workspaceId: string | null;
-  estimatedCostUsd: number;
-  costEvidence: string;
 };
 
 function isAIProviderError(err: unknown): err is AIProviderError {

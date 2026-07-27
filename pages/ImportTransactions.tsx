@@ -345,7 +345,7 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
       error_count: result?.errors.length ?? 0,
     });
 
-    // PART 7 — Emitir evento de importação
+    // Notify category learning without blocking a successful import.
     try {
       FinancialEventEmitter.transactionsImported({
         count: toImport.length,
@@ -353,7 +353,14 @@ const ImportTransactionsPage: React.FC<ImportTransactionsPageProps> = ({
         filename: result?.filename,
         source: 'import',
       });
-    } catch { /* non-critical */ }
+    } catch (error) {
+      logWarn('[ImportTransactions] Failed to emit transactions imported event', {
+        error,
+        transactionCount: toImport.length,
+        format: result?.format,
+        fallback: 'import-transactions-event-emission-failed',
+      });
+    }
 
     setPhase('done');
   };

@@ -6,7 +6,7 @@ import { logWarn } from '../utils/logger';
 const STORAGE_KEY = 'flow_ai_debug';
 const MAX_LOGS = 100; // Limite para não encher o localStorage
 
-// ─── Model (PART 4) ───────────────────────────────────────────────────────────
+// Debug entry model
 
 export interface AIDebugEntry {
   id: string;
@@ -37,7 +37,7 @@ function readLogs(): AIDebugEntry[] {
   }
 }
 
-// ─── PART 5: Functions ───────────────────────────────────────────────────────
+// Debug entry operations
 
 export function logAIDebug(entry: Omit<AIDebugEntry, 'id' | 'timestamp'>): void {
   const logs = readLogs();

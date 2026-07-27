@@ -1,4 +1,4 @@
-import type { FinanceCategory } from './transactionCategorizer';
+import type { FinanceCategory } from './categoryTypes';
 
 export const categorizationRules: Record<string, FinanceCategory> = {
   // Transporte

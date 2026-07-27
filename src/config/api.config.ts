@@ -268,7 +268,7 @@ function getPlatform(): string {
       return platform || 'native';
     }
   } catch {
-    /* */
+    return 'web';
   }
   return 'web';
 }

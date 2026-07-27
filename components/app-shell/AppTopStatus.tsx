@@ -1,14 +1,14 @@
 import React from "react";
 import { BadgeInfo, CloudCheck, CloudOff, Loader2 } from "lucide-react";
-import type { AppShellSyncStatus } from "../../src/app/appShellLayout";
+import type { SyncStatus } from "../../src/services/sync/syncTypes";
 
 export interface AppTopStatusProps {
   showTopStatus: boolean;
   isDemoBootstrapActive: boolean;
-  syncStatus: AppShellSyncStatus;
+  syncStatus: SyncStatus;
 }
 
-function getTopStatusClassName(syncStatus: AppShellSyncStatus): string {
+function getTopStatusClassName(syncStatus: SyncStatus): string {
   return `flow-status-pill inline-flex max-w-[calc(100vw-1rem)] items-center gap-1.5 rounded-full px-2.5 py-1.5 md:gap-2 md:px-3 md:py-1.5 ${
     syncStatus === "synced"
       ? "bg-emerald-500/90"

@@ -1,7 +1,7 @@
 /**
  * BANK SYNC ENGINE — src/services/finance/bankSyncEngine.ts
  *
- * PART 3 — Orquestra sincronização automática de todos os bancos conectados.
+ * Orquestra sincronização automática de todos os bancos conectados.
  *
  * Pipeline completo:
  *   1. Busca todas as conexões ativas do usuário
@@ -24,14 +24,13 @@ import {
   parseLastSyncDate,
 } from '../../services/integrations/openBankingService';
 import { FinancialEventEmitter } from '../events/eventEngine';
-import type { SalaryDetectionResult } from '../ai/salaryDetector';
-import type { FixedExpenseReport } from '../ai/fixedExpenseDetector';
 import { logWarn } from '../utils/logger';
 import {
   analyzeBankSyncTransactions,
   normalizeImportedTransactionId,
   saveSyncReport,
 } from './bankSyncEngineHelpers';
+import type { BankSyncConnectionResult, BankSyncReport } from './bankSyncTypes';
 export {
   formatSyncDuration,
   getLastSyncReport,
@@ -69,30 +68,6 @@ export interface BankSyncStep {
   timestamp:    string;
 }
 
-export interface BankSyncConnectionResult {
-  connection_id:         string;
-  bank_name:             string;
-  status:                'success' | 'error' | 'skipped';
-  transactions_imported: number;
-  balance_updated:       boolean;
-  new_balance?:          number;
-  error?:                string;
-  sync_duration_ms:      number;
-}
-
-export interface BankSyncReport {
-  started_at:            string;
-  finished_at:           string;
-  duration_ms:           number;
-  connections_synced:    number;
-  connections_failed:    number;
-  total_imported:        number;
-  results:               BankSyncConnectionResult[];
-  salary_analysis?:      SalaryDetectionResult;
-  fixed_expense_report?: FixedExpenseReport;
-}
-
-// ─── PART 3 — runBankSync ─────────────────────────────────────────────────────
 
 /**
  * Executa sincronização bancária completa.

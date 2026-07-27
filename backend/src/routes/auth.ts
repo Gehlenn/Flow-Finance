@@ -33,7 +33,7 @@ router.get('/oauth/google/start', authLimiterByUser, startGoogleOAuthController)
 
 /**
  * GET /api/auth/oauth/google/callback
- * Callback OAuth Google (scaffold mock-first)
+ * Exchanges the Google authorization callback for an application session.
  */
 router.get('/oauth/google/callback', authLimiterByUser, googleOAuthCallbackController);
 

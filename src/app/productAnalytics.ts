@@ -2,37 +2,16 @@ import { track } from '@vercel/analytics';
 import { API_ENDPOINTS, getAuthHeaders, getStoredWorkspaceId } from '../config/api.config';
 import { addBreadcrumb } from '../config/sentry';
 import { logWarn } from '../utils/logger';
-import { sanitizeAnalyticsPropertiesForEvent } from './productAnalyticsContract';
+import {
+  sanitizeAnalyticsPropertiesForEvent,
+  type ProductAnalyticsEvent,
+  type ProductAnalyticsProperties,
+} from './productAnalyticsContract';
 
-type AnalyticsValue = string | number | boolean | null | undefined;
-
-export type ProductAnalyticsEvent =
-  | 'activation_first_transaction'
-  | 'activation_first_dashboard_useful'
-  | 'activation_financial_base_completed'
-  | 'onboarding_started'
-  | 'workspace_created'
-  | 'transaction_imported'
-  | 'forecast_viewed'
-  | 'ai_insight_opened'
-  | 'decision_saved'
-  | 'return_visit'
-  | 'weekly_review_completed'
-  | 'weekly_cash_review_completed'
-  | 'ai_question_submitted'
-  | 'ai_consultation_completed'
-  | 'ai_response_action_created'
-  | 'ai_response_flow_opened'
-  | 'ai_fallback_observed'
-  | 'billing_checkout_started'
-  | 'billing_checkout_redirected'
-  | 'billing_checkout_failed'
-  | 'billing_portal_started'
-  | 'billing_portal_redirected'
-  | 'billing_portal_failed'
-  | 'integration_error_observed';
-
-export type ProductAnalyticsProperties = Record<string, AnalyticsValue>;
+export type {
+  ProductAnalyticsEvent,
+  ProductAnalyticsProperties,
+} from './productAnalyticsContract';
 const STORAGE_PREFIX = 'flow:product-analytics:v1';
 
 function getStorageKey(eventName: ProductAnalyticsEvent, scope: string): string {
@@ -69,7 +48,7 @@ function markTracked(eventName: ProductAnalyticsEvent, scope: string): void {
   try {
     window.localStorage.setItem(getStorageKey(eventName, scope), '1');
   } catch {
-    // Non-critical: analytics dedupe must never block product flows.
+    return;
   }
 }
 

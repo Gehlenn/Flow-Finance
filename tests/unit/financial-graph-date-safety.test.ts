@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { buildFinancialGraph, getCategorySpending, getTopMerchants } from '../../src/ai/financialGraph';
 import { Category, TransactionType, type Transaction } from '../../types';
-import { type Account } from '../../src/models/Account';
+import { type Account } from '../../models/Account';
 
 function makeTransaction(overrides: Partial<Transaction> = {}): Transaction {
   return {

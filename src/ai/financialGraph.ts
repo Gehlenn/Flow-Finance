@@ -9,10 +9,6 @@ export type { FinancialGraph } from './financialGraphTypes';
 let _graphCache: FinancialGraph | null = null;
 let _cacheKey = '';
 
-export function getGraphCache(): FinancialGraph | null {
-  return _graphCache;
-}
-
 export function invalidateGraphCache(): void {
   _graphCache = null;
   _cacheKey = '';

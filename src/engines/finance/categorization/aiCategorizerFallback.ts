@@ -1,5 +1,5 @@
 import { learnMemory } from '../../../ai/aiMemory';
-import type { FinanceCategory } from './transactionCategorizer';
+import type { FinanceCategory } from './categoryTypes';
 import { normalizeToFinanceCategory } from '../../../services/ai/categorizationSchema';
 
 function normalize(text: string): string {

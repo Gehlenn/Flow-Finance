@@ -15,6 +15,7 @@ import {
   buildCashflowTimeline,
   buildExpenseCategoryData,
   filterTransactionsByTimeframe,
+  type CashflowTimeframe,
 } from '../src/engines/finance/analyticsEngine';
 import { calculateCashflowSummary } from '../src/engines/finance/cashflowEngine';
 import { logWarn } from '../src/utils/logger';
@@ -100,8 +101,7 @@ function normalizeStateLabel(state: unknown): 'confirmed' | 'pending' | 'overdue
 }
 
 function classifyRevenueState(transaction: Transaction, referenceDate: Date = new Date()): 'confirmed' | 'pending' | 'overdue' {
-  const metadata = transaction as unknown as Record<string, unknown>;
-  const explicitState = normalizeStateLabel(metadata.status);
+  const explicitState = normalizeStateLabel('status' in transaction ? transaction.status : undefined);
   if (explicitState) {
     return explicitState;
   }
@@ -265,7 +265,6 @@ const ReceivableRow: React.FC<{
 };
 
 const CASHFLOW_TIMEFRAMES = ['7d', '30d', '12m', 'custom'] as const;
-type CashflowTimeframe = typeof CASHFLOW_TIMEFRAMES[number];
 const REVENUE_SECTIONS = ['realizado', 'previsto', 'pendencias', 'estrategia'] as const;
 type RevenueSection = typeof REVENUE_SECTIONS[number];
 const STRATEGIC_FALLBACK_PLAN = [
@@ -273,6 +272,16 @@ const STRATEGIC_FALLBACK_PLAN = [
   'Conferir recebiveis pendentes e vencidos antes de tratar previsao como caixa disponivel.',
   'Validar saidas ja confirmadas para decidir o que pode ser adiado ou renegociado.',
 ];
+type StrategicReportDiagnostic = {
+  kind: string;
+  message: string;
+  suggestion: string;
+};
+type StrategicReport = {
+  executiveSummary: string;
+  actionPlan: string[];
+  diagnostic: StrategicReportDiagnostic;
+};
 const PANEL_SURFACE = 'rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-900';
 const MODAL_SURFACE = 'rounded-xl bg-white shadow-[0_14px_32px_-24px_rgba(15,23,42,0.32)] dark:bg-slate-900';
 const REVENUE_SECTION_META: Record<RevenueSection, { label: string; description: string }> = {
@@ -330,7 +339,31 @@ function dedupeStrategicActionPlan(actionPlan?: unknown): string[] {
   return normalizedSteps.length > 0 ? normalizedSteps.slice(0, 3) : [...STRATEGIC_FALLBACK_PLAN];
 }
 
-function buildStrategicFallbackReport(reason: string) {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readNonEmptyString(record: Record<string, unknown>, key: string): string | null {
+  const value = record[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function hasStrategicReportShape(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const hasSummary =
+    typeof value.executiveSummary === 'string'
+    || typeof value.summary === 'string';
+  const hasActionPlan =
+    Array.isArray(value.actionPlan)
+    || Array.isArray(value.actions);
+
+  return hasSummary && hasActionPlan;
+}
+
+function buildStrategicFallbackReport(reason: string): StrategicReport {
   return {
     executiveSummary: 'Diagnostico de caixa incompleto',
     actionPlan: [...STRATEGIC_FALLBACK_PLAN],
@@ -342,30 +375,36 @@ function buildStrategicFallbackReport(reason: string) {
   };
 }
 
-function normalizeStrategicReport(report: any, fallbackReason: string) {
-  if (!report || typeof report !== 'object') {
+function normalizeStrategicReport(report: unknown, fallbackReason: string): StrategicReport {
+  if (!isRecord(report)) {
     return buildStrategicFallbackReport(fallbackReason);
   }
 
-  const executiveSummary = typeof report.executiveSummary === 'string' && report.executiveSummary.trim()
-    ? report.executiveSummary.trim()
-    : 'Diagnostico de caixa incompleto';
+  const executiveSummary =
+    readNonEmptyString(report, 'executiveSummary')
+    ?? readNonEmptyString(report, 'summary')
+    ?? 'Diagnostico de caixa incompleto';
 
-  const actionPlan = dedupeStrategicActionPlan(report.actionPlan);
+  const rawActionPlan = Array.isArray(report.actionPlan)
+    ? report.actionPlan
+    : report.actions;
+  const actionPlan = dedupeStrategicActionPlan(rawActionPlan);
   if (executiveSummary === 'Diagnostico de caixa incompleto' || actionPlan.length < 2) {
     return buildStrategicFallbackReport(fallbackReason);
   }
 
-  const diagnostic = report.diagnostic && typeof report.diagnostic === 'object'
-    ? report.diagnostic
-    : {
-        kind: fallbackReason,
-        message: 'O diagnostico consultivo nao retornou conteudo completo para este recorte',
-        suggestion: 'Tente outro recorte e revise recebiveis e saidas confirmadas',
-      };
+  const rawDiagnostic = isRecord(report.diagnostic) ? report.diagnostic : {};
+  const diagnostic: StrategicReportDiagnostic = {
+    kind: readNonEmptyString(rawDiagnostic, 'kind') ?? fallbackReason,
+    message:
+      readNonEmptyString(rawDiagnostic, 'message')
+      ?? 'O diagnostico consultivo nao retornou conteudo completo para este recorte',
+    suggestion:
+      readNonEmptyString(rawDiagnostic, 'suggestion')
+      ?? 'Tente outro recorte e revise recebiveis e saidas confirmadas',
+  };
 
   return {
-    ...report,
     executiveSummary,
     actionPlan,
     diagnostic,
@@ -386,7 +425,7 @@ const CashFlow: React.FC<CashFlowProps> = ({
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
   const [isConsultancyOpen, setIsConsultancyOpen] = useState(false);
-  const [report, setReport] = useState<any>(null);
+  const [report, setReport] = useState<StrategicReport | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [showCopyToast, setShowCopyToast] = useState(false);
@@ -407,14 +446,19 @@ const CashFlow: React.FC<CashFlowProps> = ({
     const savedReport = localStorage.getItem(reportStorageKey);
     if (savedReport) {
       try {
-        const parsed = JSON.parse(savedReport);
-        // Validar shape mínimo
-        if (parsed && typeof parsed === 'object' && Array.isArray(parsed.actionPlan)) {
-          setReport(parsed);
+        const parsed: unknown = JSON.parse(savedReport);
+        if (hasStrategicReportShape(parsed)) {
+          setReport(normalizeStrategicReport(parsed, 'stored_report_invalid'));
+        } else {
+          logWarn('[CashFlow] Failed to parse stored strategic report', {
+            reportStorageKey,
+            fallback: 'cashflow-parse-stored-report-failed',
+          });
         }
       } catch (error) {
         logWarn('[CashFlow] Failed to parse stored strategic report', {
           error,
+          reportStorageKey,
           fallback: 'cashflow-parse-stored-report-failed',
         });
       }

@@ -18,12 +18,11 @@ export type ReminderOperationalState = 'active' | 'overdue' | 'completed' | 'can
 const startOfDay = (date: Date): number => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 
 const getReminderMetadataStatus = (reminder: Reminder): string | null => {
-  const metadata = reminder as unknown as Record<string, unknown>;
-  if (typeof metadata.status !== 'string') {
+  if (!('status' in reminder) || typeof reminder.status !== 'string') {
     return null;
   }
 
-  return metadata.status.toLowerCase();
+  return reminder.status.toLowerCase();
 };
 
 export const classifyReminderOperationalState = (
@@ -47,8 +46,8 @@ export const classifyReminderOperationalState = (
 };
 
 export const isFinancialReminder = (reminder: Reminder): boolean => {
-  const metadata = reminder as unknown as Record<string, unknown>;
-  return Boolean((reminder.amount && reminder.amount > 0) || metadata.kind === 'financial');
+  const hasFinancialKind = 'kind' in reminder && reminder.kind === 'financial';
+  return Boolean((reminder.amount && reminder.amount > 0) || hasFinancialKind);
 };
 
 const ASSISTANT_CLASSES = {
