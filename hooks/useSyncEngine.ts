@@ -382,7 +382,9 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
         error,
         fallback: 'use-sync-engine-entities-sync-failed',
       });
-      if (cloudSyncEnabled) {
+      if (prefersBackendSync) {
+        onDisableBackendSync();
+      } else if (cloudSyncEnabled) {
         onDisableCloudSync();
       } else {
         onDisableBackendSync();

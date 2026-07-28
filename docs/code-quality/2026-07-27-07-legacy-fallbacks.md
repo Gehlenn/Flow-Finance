@@ -1,6 +1,6 @@
 # Track 07 - Legacy, deprecation, compatibility and fallbacks
 
-Date: 2026-07-27  
+Date: 2026-07-27
 Scope: remove only obsolete legacy, compatibility, deprecated, or fallback paths supported by high-confidence evidence.
 
 > Final integration note: the same reachability standard used for the receipt

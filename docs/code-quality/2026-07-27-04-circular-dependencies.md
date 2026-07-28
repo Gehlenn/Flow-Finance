@@ -1,6 +1,6 @@
 # Dependências circulares — assessment e correção
 
-Data: 2026-07-27  
+Data: 2026-07-27
 Escopo: grafo de imports da aplicação React/Vite e do backend Express, no estado combinado do worktree.
 
 ## Veredito

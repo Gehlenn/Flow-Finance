@@ -1,6 +1,6 @@
 # Error handling, recovery and observability - assessment
 
-Data: 2026-07-27  
+Data: 2026-07-27
 Escopo: TypeScript/TSX de produção da aplicação React/Vite e do backend Express, no snapshot combinado do worktree.
 
 ## Veredito

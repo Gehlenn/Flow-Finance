@@ -91,6 +91,14 @@ describe('cloudSyncClient', () => {
     expect(syncMocks.loadWorkspaceEntitiesMock).not.toHaveBeenCalled();
   });
 
+  it('propagates an unavailable backend pull instead of returning empty financial collections', async () => {
+    syncMocks.pullFromCloudMock.mockRejectedValueOnce(new Error('backend unavailable'));
+
+    await expect(
+      pullSyncEntities({ workspaceId: 'ws-1' }, undefined, { driver: 'backend' }),
+    ).rejects.toThrow('backend unavailable');
+  });
+
   it('uses backend push when backend driver is requested', async () => {
     syncMocks.pushToCloudMock.mockResolvedValueOnce({
       success: true,
@@ -118,5 +126,17 @@ describe('cloudSyncClient', () => {
       ]),
     );
     expect(syncMocks.replaceWorkspaceEntityCollectionMock).not.toHaveBeenCalled();
+  });
+
+  it('propagates an unavailable backend push instead of fabricating a successful write', async () => {
+    syncMocks.pushToCloudMock.mockRejectedValueOnce(new Error('backend unavailable'));
+
+    await expect(replaceSyncEntityCollection(
+      'accounts',
+      [{ id: 'acc-1', name: 'Banco' }],
+      [],
+      { userId: 'user-1', tenantId: 'tenant-1', workspaceId: 'ws-1' },
+      { driver: 'backend' },
+    )).rejects.toThrow('backend unavailable');
   });
 });

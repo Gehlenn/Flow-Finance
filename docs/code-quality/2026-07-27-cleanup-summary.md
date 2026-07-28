@@ -1,6 +1,6 @@
 # Code quality cleanup — final integration
 
-Date: 2026-07-27  
+Date: 2026-07-27
 Scope: Flow Finance web application, backend, scripts, tests, package manifests,
 and dependency graph.
 
@@ -20,9 +20,11 @@ evidence, decisions, and deferred items:
 7. [Legacy, compatibility, and fallbacks](./2026-07-27-07-legacy-fallbacks.md)
 8. [AI slop, stubs, and comments](./2026-07-27-08-ai-slop-comments.md)
 
-The final combined tree removes 59 tracked files and 15 direct dependencies.
-Knip reports no unused files, unused dependencies, unlisted dependencies, or
-unresolved imports.
+The initial cleanup removes 59 tracked files and 15 direct dependencies. The
+adversarial pass then removes the final unused root `@types/supertest`
+declaration and adds only the platform/tooling dependencies needed for iOS,
+Knip, and Madge. Knip reports no unused files, unused dependencies, unlisted
+dependencies, or unresolved imports.
 
 ## Implemented high-confidence changes
 
@@ -61,21 +63,51 @@ unresolved imports.
 - Removed the final test-only import engine and `pdf-parse` after the clean Knip
   run exposed the orphaned chain.
 
+## Adversarial hardening
+
+- Made backend sync pull failures propagate instead of replacing loaded
+  financial entities with empty collections.
+- Made backend sync push failures propagate instead of fabricating successful
+  writes; the sync engine now disables the failed backend driver and preserves
+  current entities.
+- Kept goal hydration explicitly best-effort as a separate, logged adapter
+  rather than weakening the primary sync contract.
+- Made the public Pluggy webhook fail closed with `503` when the provider is
+  active without `PLUGGY_WEBHOOK_SECRET`; invalid secrets remain `401` and the
+  disabled provider remains an inert `202`.
+- Added the Pluggy signing header and `202`/`401`/`503` outcomes to OpenAPI.
+- Installed local, pinned Knip 5.80.0 and Madge 8.0.0 gates and added the
+  combined architecture check to the canonical build workflow.
+- Added the missing Capacitor iOS dependency and split clean-checkout platform
+  setup into Android and iOS commands used by their respective CI jobs.
+
 ## Final validation
 
 | Gate | Result |
 | --- | --- |
-| Root and backend dependency trees | `npm ls --depth=0` clean |
+| Root dependency tree | `npm ls --depth=0` clean |
+| Backend clean-install contract | lockfile dry-run PASS; the final local exact `npm ci` hit a 10-minute Windows timeout and left only ignored `node_modules` state for remote CI to replace |
 | App and backend TypeScript | PASS |
+| Clean-install contract | `npm ci --dry-run --ignore-scripts` PASS |
 | Knip files/dependencies/unlisted/unresolved | `files: []`, `issues: []` |
 | Madge app and backend | 0 circular dependencies in both graphs |
+| Capacitor doctor | core/CLI/Android/iOS aligned at 8.3.0; Android PASS |
 | Production build | PASS, 2,820 modules transformed |
 | Critical coverage suite | 171/171 tests; 99.54% statements, 98.15% branches, 100% functions, 99.74% lines |
-| Backend unit suite | 101 files, 481/481 tests |
+| Backend unit suite | 102 files, 485/485 tests |
+| Sync/webhook/observability regressions | 42/42 tests |
 | Stable full suite | 236 test files completed |
 | Documentation encoding check | PASS |
+| Documentation link check | PASS |
 | Secret scan | PASS |
+| Visual baseline and E2E matrix contract | PASS |
 | Git whitespace check | PASS |
+
+The backend TypeScript and 485-test results above were recorded before the
+final exact-install attempt. That attempt did not change tracked files, but its
+timeout left the ignored local dependency directory incomplete; the remote
+clean-checkout workflow is therefore the authoritative final installation
+check.
 
 ## Deliberately deferred
 
@@ -93,5 +125,6 @@ unresolved imports.
 ## Worktree provenance
 
 `tests/unit/observability-client.test.ts` was already modified before this
-cleanup began. It was preserved without edits from these tracks and passed in
-the stable full suite.
+cleanup began. Those changes remain isolated from the cleanup commit. During
+focused validation, its stale fallback-version expectation was corrected from
+`0.9.6` to the current `0.9.7`; the focused observability test now passes.

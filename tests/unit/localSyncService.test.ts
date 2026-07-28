@@ -2,7 +2,7 @@
  * Testes para src/services/localSyncService.ts
  *
  * Cobre:
- *  - pushToCloud: chama a API com o payload correto e tolera falhas silenciosamente
+ *  - pushToCloud: chama a API com o payload correto e propaga falhas
  *  - pullFromCloud: retorna dados estruturados da API
  *  - hydrateGoalsFromCloud: mescla corretamente cloud → localStorage (upsert + tombstone)
  */
@@ -75,22 +75,12 @@ describe('pushToCloud', () => {
     );
   });
 
-  it('nao lanca excecao quando a API falha', async () => {
+  it('propaga a falha da API para que o chamador nao confirme uma escrita inexistente', async () => {
     apiRequestMock.mockRejectedValueOnce(new Error('Network error'));
 
     await expect(
       pushToCloud('goals', [{ id: 'g1', updatedAt: '2026-01-01T00:00:00.000Z' }]),
-    ).resolves.toBeNull();
-
-    expect(logWarnMock).toHaveBeenCalledWith(
-      '[LocalSync] pushToCloud failed; keeping local state as source of truth',
-      expect.objectContaining({
-        entity: 'goals',
-        itemCount: 1,
-        error: expect.any(Error),
-        fallback: 'local-sync-push-failed',
-      }),
-    );
+    ).rejects.toThrow('Network error');
   });
 
   it('nao chama a API quando lista de items esta vazia', async () => {
@@ -119,19 +109,10 @@ describe('pullFromCloud', () => {
     );
   });
 
-  it('retorna null quando a API falha', async () => {
+  it('propaga a falha da API para o sync principal preservar o estado atual', async () => {
     apiRequestMock.mockRejectedValueOnce(new Error('timeout'));
 
-    const result = await pullFromCloud();
-    expect(result).toBeNull();
-    expect(logWarnMock).toHaveBeenCalledWith(
-      '[LocalSync] pullFromCloud failed; returning null to preserve local state',
-      expect.objectContaining({
-        since: null,
-        error: expect.any(Error),
-        fallback: 'local-sync-pull-failed',
-      }),
-    );
+    await expect(pullFromCloud()).rejects.toThrow('timeout');
   });
 
   it('inclui parametro since na query string quando fornecido', async () => {
@@ -246,6 +227,12 @@ describe('hydrateGoalsFromCloud', () => {
 
     const updated = await hydrateGoalsFromCloud();
     expect(updated).toBe(false);
+    expect(logWarnMock).toHaveBeenCalledWith(
+      '[LocalSync] Goal hydration skipped because cloud sync is unavailable',
+      expect.objectContaining({
+        fallback: 'local-sync-goal-hydration-unavailable',
+      }),
+    );
   });
 
   it('warns and recovers when local goals cache is corrupted', async () => {

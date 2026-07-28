@@ -1,6 +1,6 @@
 # Track 08 - AI slop, stubs and comments
 
-Date: 2026-07-27  
+Date: 2026-07-27
 Scope: production TypeScript/TSX comments and apparent scaffolding in the combined worktree.
 
 > Final integration note: exact Unicode inspection found double-encoded symbols

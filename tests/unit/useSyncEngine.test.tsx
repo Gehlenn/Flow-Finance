@@ -213,6 +213,40 @@ describe('useSyncEngine', () => {
     expect(result.current.hasLoadedEntities).toBe(false);
   });
 
+  it('preserva entidades carregadas quando o backend fica indisponivel', async () => {
+    const onDisableCloudSync = vi.fn();
+    const onDisableBackendSync = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ workspaceId }) => useSyncEngine({
+        userId: 'user-1',
+        activeTenantId: 'tenant-1',
+        activeWorkspaceId: workspaceId,
+        isE2EBootstrapActive: false,
+        isDemoBootstrapActive: false,
+        cloudSyncEnabled: true,
+        backendSyncEnabled: true,
+        onDisableCloudSync,
+        onDisableBackendSync,
+      }),
+      { initialProps: { workspaceId: 'ws-1' } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.hasLoadedEntities).toBe(true);
+      expect(result.current.entities.accounts[0]?.id).toBe('acc-1');
+    });
+
+    syncEngineMocks.mockPullSyncEntities.mockRejectedValueOnce(new Error('backend unavailable'));
+    rerender({ workspaceId: 'ws-2' });
+
+    await waitFor(() => {
+      expect(onDisableBackendSync).toHaveBeenCalledTimes(1);
+    });
+
+    expect(result.current.entities.accounts[0]?.id).toBe('acc-1');
+    expect(result.current.hasLoadedEntities).toBe(true);
+  });
+
   it('registra erro de permissao do Firestore ao assinar o perfil', async () => {
     syncEngineMocks.mockSubscribeToUserProfile.mockImplementationOnce((_userId, _onNext, onError) => {
       onError?.({ code: 'permission-denied', message: 'missing or insufficient permissions' });
@@ -318,6 +352,41 @@ describe('useSyncEngine', () => {
       }),
     );
     expect(onDisableCloudSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('desabilita o backend e preserva entidades quando uma escrita backend falha', async () => {
+    syncEngineMocks.mockReplaceSyncEntityCollection.mockRejectedValueOnce(new Error('backend unavailable'));
+
+    const onDisableCloudSync = vi.fn();
+    const onDisableBackendSync = vi.fn();
+    const { result } = renderHook(() => useSyncEngine({
+      userId: 'user-1',
+      activeTenantId: 'tenant-1',
+      activeWorkspaceId: 'ws-1',
+      isE2EBootstrapActive: false,
+      isDemoBootstrapActive: false,
+      cloudSyncEnabled: true,
+      backendSyncEnabled: true,
+      onDisableCloudSync,
+      onDisableBackendSync,
+    }));
+
+    await waitFor(() => {
+      expect(result.current.hasLoadedEntities).toBe(true);
+      expect(result.current.entities.accounts[0]?.id).toBe('acc-1');
+    });
+
+    await expect(async () => {
+      await act(async () => {
+        await result.current.syncEntities({
+          accounts: [{ id: 'acc-2', name: 'Banco', type: 'bank', balance: 10, currency: 'BRL', user_id: 'user-1', workspace_id: 'ws-1', tenant_id: 'tenant-1', created_at: '2026-04-01' }],
+        });
+      });
+    }).rejects.toThrow('backend unavailable');
+
+    expect(onDisableBackendSync).toHaveBeenCalledTimes(1);
+    expect(onDisableCloudSync).not.toHaveBeenCalled();
+    expect(result.current.entities.accounts[0]?.id).toBe('acc-1');
   });
 
   it('usa cache local de profile quando backend sync esta ativo, sem assinar Firestore', async () => {
