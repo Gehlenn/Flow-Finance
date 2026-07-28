@@ -13,10 +13,6 @@
         "src/**/*.test.{ts,tsx}",
         "vite.config.ts",
         "vitest.*.config.ts",
-        "playwright.config.ts",
-        "capacitor.config.ts",
-        "postcss.config.cjs",
-        "setup.js",
         "qa-exhaustive.spec.mjs",
         "scripts/**/*.{js,mjs,ts}",
         "tests/**/*.{ts,tsx}",
@@ -24,7 +20,9 @@
         "public/**/*.{js,mjs}!"
       ],
       "ignoreDependencies": [
-        "firebase-tools"
+        "@capacitor/ios",
+        "firebase-tools",
+        "madge"
       ],
       "project": [
         "App*.tsx",
@@ -43,8 +41,6 @@
         "pages/**/*.{ts,tsx}!",
         "services/**/*.{ts,tsx}",
         "services/**/*.{ts,tsx}!",
-        "shared/**/*.{ts,tsx}",
-        "shared/**/*.{ts,tsx}!",
         "src/**/*.{ts,tsx}",
         "src/**/*.{ts,tsx}!",
         "utils/**/*.{ts,tsx}",
@@ -61,8 +57,6 @@
       "entry": [
         "api/index.ts",
         "api/index.ts!",
-        "src/index.ts",
-        "src/index.ts!",
         "scripts/**/*.ts",
         "tests/**/*.ts",
         "src/**/*.test.ts"
