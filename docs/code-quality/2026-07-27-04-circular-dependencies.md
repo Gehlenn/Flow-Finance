@@ -90,7 +90,10 @@ Esses ciclos não chegavam ao bundle como dependências de valores quando o Type
 - Corrigidas as duas importações de `FinanceCategory` para o contrato já existente `categoryTypes.ts`.
 - O catálogo de salário passou a possuir `IncomeType`; keywords são readonly e `matchesKeywords` aceita coleções readonly.
 - Diagnósticos internos do Sentry foram desacoplados do logger.
-- Nenhuma dependência de auditoria foi adicionada aos manifests. Madge e Knip foram executados temporariamente por `npx`.
+- A pesquisa inicial executou Madge e Knip temporariamente por `npx`. A
+  integração adversarial posterior fixou os gates; Madge 8.0.0 ficou isolado
+  em `tools/architecture` com TypeScript 5.9.3 para não enfraquecer o contrato
+  estrito do projeto em TypeScript 6.
 
 ## Validação
 
@@ -139,8 +142,9 @@ O Knip emitiu somente hints de refinamento da configuração, sem arquivo órfã
 
 1. Tratar módulos `*Types.ts` como folhas: eles podem depender de tipos de domínio inferiores, mas nunca de services/helpers de runtime.
 2. Helpers e adapters devem importar contratos dessas folhas, não do entrypoint que os carrega.
-3. Manter Madge como gate executável documentado antes de grandes extrações. Não há justificativa atual para adicionar a ferramenta como dependência permanente.
-4. Se o gate for incorporado ao CI, fixar uma versão da ferramenta no comando ou adicioná-la como devDependency em uma mudança separada, com avaliação de custo/manutenção.
+3. Manter Madge como gate permanente antes de grandes extrações.
+4. Preservar o pacote isolado em `tools/architecture`; não mover Madge para as
+   dependências raiz enquanto seu peer de TypeScript não aceitar TypeScript 6.
 5. Não interpretar automaticamente todo ciclo Madge como risco de runtime; confirmar cada aresta como value, type-only, barrel ou import externo antes de editar.
 
 ## Riscos residuais

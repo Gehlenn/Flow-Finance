@@ -77,7 +77,9 @@ dependencies, or unresolved imports.
   disabled provider remains an inert `202`.
 - Added the Pluggy signing header and `202`/`401`/`503` outcomes to OpenAPI.
 - Installed local, pinned Knip 5.80.0 and Madge 8.0.0 gates and added the
-  combined architecture check to the canonical build workflow.
+  combined architecture check to the canonical build workflow. Madge is
+  isolated with TypeScript 5.9.3 under `tools/architecture`, so its peer range
+  does not weaken the root TypeScript 6 dependency contract.
 - Added the missing Capacitor iOS dependency and split clean-checkout platform
   setup into Android and iOS commands used by their respective CI jobs.
 

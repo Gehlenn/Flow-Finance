@@ -32,6 +32,7 @@ jobs:
         cache-dependency-path: |
           package-lock.json
           backend/package-lock.json
+          tools/architecture/package-lock.json
 
     - name: Install dependencies
       run: npm ci
