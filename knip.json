@@ -20,9 +20,10 @@
         "public/**/*.{js,mjs}!"
       ],
       "ignoreDependencies": [
+        "@capacitor/android",
+        "@capacitor/core",
         "@capacitor/ios",
-        "firebase-tools",
-        "madge"
+        "firebase-tools"
       ],
       "project": [
         "App*.tsx",
