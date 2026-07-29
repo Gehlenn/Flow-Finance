@@ -273,6 +273,41 @@ function getPlatform(): string {
   return 'web';
 }
 
+const IDEMPOTENT_HTTP_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+function createIdempotencyKey(): string {
+  const cryptoApi = globalThis.crypto;
+
+  if (typeof cryptoApi?.randomUUID === 'function') {
+    return cryptoApi.randomUUID();
+  }
+
+  if (typeof cryptoApi?.getRandomValues !== 'function') {
+    throw new Error('Secure random generator unavailable for idempotent request');
+  }
+
+  const bytes = cryptoApi.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function getRequestHeaders(headersInit: HeadersInit | undefined, idempotencyKey: string | null): Headers {
+  const headers = new Headers(getAuthHeaders());
+
+  if (headersInit) {
+    new Headers(headersInit).forEach((value, key) => headers.set(key, value));
+  }
+
+  if (idempotencyKey && !headers.has('Idempotency-Key')) {
+    headers.set('Idempotency-Key', idempotencyKey);
+  }
+
+  return headers;
+}
+
 // API Request Wrapper
 
 export async function apiRequest<T>(
@@ -282,6 +317,14 @@ export async function apiRequest<T>(
   const timeout = options?.timeout ?? API_CONFIG.TIMEOUT;
   const maxRetries = options?.retries ?? API_CONFIG.RETRY_ATTEMPTS;
   const silent = options?.silent === true;
+  const method = options?.method?.toUpperCase() ?? 'GET';
+  const callerProvidedIdempotencyKey = options?.headers
+    ? new Headers(options.headers).has('Idempotency-Key')
+    : false;
+  const idempotencyKey =
+    IDEMPOTENT_HTTP_METHODS.has(method) && !callerProvidedIdempotencyKey
+      ? createIdempotencyKey()
+      : null;
   
   let lastError: unknown = null;
   let workspaceRecoveryAttempted = false;
@@ -291,10 +334,7 @@ export async function apiRequest<T>(
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      const headers = {
-        ...getAuthHeaders(),
-        ...(options?.headers || {}),
-      };
+      const headers = getRequestHeaders(options?.headers, idempotencyKey);
 
       const response = await fetch(endpoint, {
         ...options,

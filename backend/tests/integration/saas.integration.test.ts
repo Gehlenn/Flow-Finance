@@ -12,6 +12,16 @@ import {
 } from '../../src/utils/saasStore';
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
 
+const usageAuthorityMocks = vi.hoisted(() => ({
+  getAuthoritativeWorkspaceUsage: vi.fn().mockResolvedValue(null),
+  isFirestoreAiUsageAuthorityEnabled: vi.fn().mockReturnValue(false),
+}));
+
+vi.mock('../../src/services/usage/workspaceUsageAuthority', () => ({
+  getAuthoritativeWorkspaceUsage: usageAuthorityMocks.getAuthoritativeWorkspaceUsage,
+  isFirestoreAiUsageAuthorityEnabled: usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled,
+}));
+
 vi.mock('../../src/config/database', () => ({
   query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
   testConnection: vi.fn().mockResolvedValue(false),
@@ -79,6 +89,7 @@ describe('SaaS API workspace scope', () => {
     process.env.OPEN_FINANCE_STORE_DRIVER = 'memory';
     process.env.DISABLE_LEGACY_STATE_BLOBS = 'true';
     process.env.FEATURE_OPEN_FINANCE = 'true';
+    process.env.VERCEL = '';
     process.env.WORKSPACE_STORE_FILE = workspaceStoreFile;
     process.env.SAAS_STORE_FILE = saasStoreFile;
     fs.mkdirSync(path.dirname(workspaceStoreFile), { recursive: true });
@@ -93,8 +104,13 @@ describe('SaaS API workspace scope', () => {
     process.env.OPEN_FINANCE_STORE_DRIVER = 'memory';
     process.env.DISABLE_LEGACY_STATE_BLOBS = 'true';
     process.env.FEATURE_OPEN_FINANCE = 'true';
+    process.env.VERCEL = '';
     process.env.WORKSPACE_STORE_FILE = workspaceStoreFile;
     process.env.SAAS_STORE_FILE = saasStoreFile;
+    usageAuthorityMocks.getAuthoritativeWorkspaceUsage.mockReset();
+    usageAuthorityMocks.getAuthoritativeWorkspaceUsage.mockResolvedValue(null);
+    usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReset();
+    usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(false);
     resetSaasStoreForTests();
     resetWorkspaceStoreForTests();
   });
@@ -182,6 +198,107 @@ describe('SaaS API workspace scope', () => {
       aiQueries: 8,
       bankConnections: 2,
     });
+  });
+
+  it('GET /api/saas/usage returns the authoritative Firestore month snapshot when available', async () => {
+    const ownerUserId = 'owner-saas-authoritative-usage';
+    const created = await request(app)
+      .post('/api/tenant')
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .send({ name: 'Workspace Authoritative Usage' });
+
+    usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(true);
+    await setWorkspaceUsage(created.body.workspaceId, {
+      '2026-07': {
+        transactions: 9,
+        aiQueries: 99,
+        bankConnections: 2,
+      },
+    });
+    usageAuthorityMocks.getAuthoritativeWorkspaceUsage.mockResolvedValueOnce({
+      workspaceId: created.body.workspaceId,
+      monthKey: '2026-07',
+      plan: 'pro',
+      usage: {
+        transactions: 7,
+        aiQueries: 3,
+        bankConnections: 1,
+      },
+    });
+
+    const response = await request(app)
+      .get('/api/saas/usage')
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .set('x-workspace-id', created.body.workspaceId);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      scope: 'workspace',
+      workspaceId: created.body.workspaceId,
+      currentMonthKey: '2026-07',
+      plan: 'pro',
+      usage: {
+        '2026-07': {
+          transactions: 9,
+          aiQueries: 3,
+          bankConnections: 2,
+        },
+      },
+    });
+  });
+
+  it('GET /api/saas/usage fails closed in production when Firestore is unavailable', async () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+
+    try {
+      const ownerUserId = 'owner-saas-usage-unavailable';
+      const created = await request(app)
+        .post('/api/tenant')
+        .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+        .send({ name: 'Workspace Usage Unavailable' });
+
+      process.env.NODE_ENV = 'production';
+      usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(true);
+
+      const response = await request(app)
+        .get('/api/saas/usage')
+        .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+        .set('x-workspace-id', created.body.workspaceId);
+
+      expect(response.status).toBe(503);
+      expect(response.body.message).toBe('Workspace usage authority is unavailable');
+    } finally {
+      process.env.NODE_ENV = previousNodeEnv;
+    }
+  });
+
+  it('GET /api/saas/usage fails closed on Vercel when Firestore is unavailable', async () => {
+    const previousVercel = process.env.VERCEL;
+
+    try {
+      const ownerUserId = 'owner-saas-usage-vercel';
+      const created = await request(app)
+        .post('/api/tenant')
+        .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+        .send({ name: 'Workspace Usage Vercel' });
+
+      process.env.VERCEL = '1';
+      usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(true);
+
+      const response = await request(app)
+        .get('/api/saas/usage')
+        .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+        .set('x-workspace-id', created.body.workspaceId);
+
+      expect(response.status).toBe(503);
+      expect(response.body.message).toBe('Workspace usage authority is unavailable');
+    } finally {
+      if (previousVercel === undefined) {
+        delete process.env.VERCEL;
+      } else {
+        process.env.VERCEL = previousVercel;
+      }
+    }
   });
 
   it('POST /api/saas/billing-hooks rejects production mock events before persistence', async () => {

@@ -81,6 +81,7 @@ export function createCorsOptions(params?: {
       'X-Client-Version',
       'X-Client-Platform',
       'X-Workspace-Id',
+      'Idempotency-Key',
       'sentry-trace',
       'baggage',
     ],

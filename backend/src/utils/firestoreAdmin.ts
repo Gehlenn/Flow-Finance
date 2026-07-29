@@ -34,7 +34,12 @@ export function isServiceAccountConfigured(): boolean {
 }
 
 export function isFirebaseConfigured(): boolean {
-  return isServiceAccountConfigured() || Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+  const hasEmulatorProject = Boolean(
+    process.env.FIRESTORE_EMULATOR_HOST &&
+      (process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT),
+  );
+
+  return hasEmulatorProject || isServiceAccountConfigured() || Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS);
 }
 
 // Lazy singleton initializer
@@ -52,9 +57,12 @@ export async function getFirestoreOrNull(callerLabel = 'FirestoreAdmin'): Promis
 
   if (!isFirebaseConfigured()) return null;
 
+  const usingEmulator = Boolean(process.env.FIRESTORE_EMULATOR_HOST);
+
   try {
     const existingApp = getApps()[0];
     const usingServiceAccount = isServiceAccountConfigured();
+    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT;
 
     const app =
       existingApp ||
@@ -62,16 +70,23 @@ export async function getFirestoreOrNull(callerLabel = 'FirestoreAdmin'): Promis
         usingServiceAccount
           ? {
               credential: cert({
-                projectId: String(process.env.FIREBASE_PROJECT_ID),
+                projectId: String(projectId),
                 clientEmail: String(process.env.FIREBASE_CLIENT_EMAIL),
                 privateKey: String(process.env.FIREBASE_PRIVATE_KEY).replace(/\\n/g, '\n'),
               }),
-              projectId: String(process.env.FIREBASE_PROJECT_ID),
+              projectId: String(projectId),
               databaseURL: process.env.FIREBASE_DATABASE_URL,
             }
+          : usingEmulator
+            ? {
+                // The Admin SDK routes to FIRESTORE_EMULATOR_HOST and does not
+                // require production credentials when an explicit project is set.
+                projectId,
+                databaseURL: process.env.FIREBASE_DATABASE_URL,
+              }
           : {
               credential: applicationDefault(),
-              projectId: process.env.FIREBASE_PROJECT_ID,
+              projectId,
               databaseURL: process.env.FIREBASE_DATABASE_URL,
             },
       );
@@ -86,6 +101,7 @@ export async function getFirestoreOrNull(callerLabel = 'FirestoreAdmin'): Promis
         error: error instanceof Error ? error.message : error,
         callerLabel,
         usingServiceAccount: isServiceAccountConfigured(),
+        usingEmulator,
         hasGoogleApplicationCredentials: Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS),
         hasDatabaseUrl: Boolean(process.env.FIREBASE_DATABASE_URL),
         fallback: 'firestore-init-failed',

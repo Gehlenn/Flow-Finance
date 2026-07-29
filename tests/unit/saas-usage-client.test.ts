@@ -55,8 +55,8 @@ describe('saasUsageClient', () => {
     await expect(readWorkspaceUsageFromServer('ws-1')).rejects.toThrow('Usage read failed: 503');
   });
 
-  it('uses the local calendar month for usage aggregation', () => {
-    expect(getCurrentMonthKey(new Date(2026, 3, 30, 23, 59))).toBe('2026-04');
-    expect(getCurrentMonthKey(new Date(2026, 4, 1, 0, 0))).toBe('2026-05');
+  it('uses the server billing month in UTC for usage aggregation', () => {
+    expect(getCurrentMonthKey(new Date('2026-04-30T23:59:59.999Z'))).toBe('2026-04');
+    expect(getCurrentMonthKey(new Date('2026-05-01T00:00:00.000Z'))).toBe('2026-05');
   });
 });

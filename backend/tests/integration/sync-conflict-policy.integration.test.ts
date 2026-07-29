@@ -10,6 +10,7 @@ vi.mock('../../src/config/database', () => ({
   query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
   testConnection: vi.fn().mockResolvedValue(false),
   checkDatabaseHealth: vi.fn().mockResolvedValue(false),
+  hasDatabaseConfig: vi.fn().mockReturnValue(false),
   closePool: vi.fn().mockResolvedValue(undefined),
   pool: {
     query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),

@@ -24,6 +24,8 @@ describe('firestore.rules multi-tenant coverage', () => {
     expect(rules).toContain('match /billing_hooks/{eventId}');
     const usageRules = rules.split('match /saas_usage/{usageId}')[1]?.split('match /billing_state/{stateId}')[0];
     expect(usageRules).toContain('allow create, update, delete: if false');
+    expect(usageRules).toContain('match /{authorityDocument=**}');
+    expect(usageRules).toContain('allow read, write: if false');
   });
 
   it('keeps billing hook writes server-only', () => {
