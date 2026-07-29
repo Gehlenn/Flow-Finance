@@ -303,6 +303,8 @@ describe('WorkspaceAdminPage', () => {
     expect(screen.queryByText(/Abrir portal financeiro/i)).toBeNull();
     expect(screen.queryByText(/^Definir Free$/i)).toBeNull();
     expect(screen.queryByText(/^Definir Pro$/i)).toBeNull();
+    expect(screen.queryByPlaceholderText(/ID do usuario do membro/i)).toBeNull();
+    expect(workspaceAdminMocks.addWorkspaceMember).not.toHaveBeenCalled();
     expect(screen.getByText(/beta demo/i)).toBeTruthy();
     expect(screen.getByText(/Plano atual: PRO/i)).toBeTruthy();
   });

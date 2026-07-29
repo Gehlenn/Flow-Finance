@@ -7,27 +7,24 @@ import {
 } from '../demo/demoBootstrap';
 import { trackProductEventOnce } from '../app/productAnalytics';
 import {
-  addWorkspaceMember,
-  createPersonalWorkspace as createPersonalWorkspaceInFirestore,
-  ensureActiveWorkspaceForUser,
   listWorkspaceAuditEvents,
   listWorkspaceAuditEventsPage,
-  listWorkspaceMembers,
-  listUserWorkspaceSummaries,
-  removeWorkspaceMember,
-  type AuditLogDocument,
-  type AuditLogCursor,
-  type UserIdentity,
-  type WorkspaceMemberDocument,
-  type WorkspaceImportDocument,
-  type WorkspaceInsightDocument,
-  type WorkspaceSubscriptionDocument,
-  type WorkspaceSummary,
-} from './firestoreWorkspaceStore';
+} from './firestoreWorkspaceAuditStore';
 import {
   listWorkspaceCollectionDocuments,
   upsertWorkspaceCollectionDocument,
 } from './firestoreWorkspaceEntityStore';
+import type {
+  AuditLogCursor,
+  AuditLogDocument,
+  UserIdentity,
+  WorkspaceImportDocument,
+  WorkspaceInsightDocument,
+  WorkspaceMemberDocument,
+  WorkspaceRole,
+  WorkspaceSubscriptionDocument,
+  WorkspaceSummary,
+} from './firestoreWorkspaceTypes';
 import {
   buildE2EWorkspaceSummary,
   canUseE2EWorkspaceFallback,
@@ -36,12 +33,9 @@ import {
 import { logWarn } from '../utils/logger';
 
 export {
-  addWorkspaceMember,
   listWorkspaceAuditEvents,
   listWorkspaceAuditEventsPage,
   listWorkspaceCollectionDocuments,
-  listWorkspaceMembers,
-  removeWorkspaceMember,
   upsertWorkspaceCollectionDocument,
 };
 export type {
@@ -53,11 +47,10 @@ export type {
   WorkspaceRole,
   WorkspaceSubscriptionDocument,
   WorkspaceSummary,
-} from './firestoreWorkspaceStore';
+} from './firestoreWorkspaceTypes';
 
 export const WORKSPACE_CHANGED_EVENT = 'flow:workspace-changed';
 const DEFAULT_WORKSPACE_NAME = 'Workspace Pessoal';
-const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
 
 export function getCurrentWorkspaceIdentity(): UserIdentity | undefined {
   const currentUser = auth.currentUser;
@@ -96,20 +89,21 @@ function buildDefaultTenantName(identity: UserIdentity): string {
   return trimmed && trimmed.length > 0 ? `Tenant de ${trimmed}` : 'Tenant Pessoal';
 }
 
-function canUseFirestoreWorkspaceFallback(): boolean {
-  if (import.meta.env.DEV) {
-    return true;
-  }
-
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  return LOCAL_HOSTNAMES.has(window.location.hostname);
-}
-
 type BackendWorkspaceListResponse = {
   workspaces?: WorkspaceSummary[];
+};
+
+type BackendWorkspaceMembersResponse = {
+  users?: BackendWorkspaceMember[];
+};
+
+type BackendWorkspaceMember = {
+  userId?: string;
+  workspaceId?: string;
+  tenantId?: string;
+  role?: WorkspaceRole;
+  joinedAt?: string;
+  status?: 'active' | 'invited' | 'removed';
 };
 
 function normalizeWorkspaceSummary(input: Partial<WorkspaceSummary> | null | undefined): WorkspaceSummary | null {
@@ -156,7 +150,7 @@ async function fetchBackendWorkspaceSummaries(): Promise<WorkspaceSummary[]> {
     .filter((workspace): workspace is WorkspaceSummary => Boolean(workspace));
 }
 
-async function createBackendWorkspace(identity: UserIdentity): Promise<WorkspaceSummary> {
+async function createBackendWorkspace(identity: UserIdentity, explicitName?: string): Promise<WorkspaceSummary> {
   if (typeof fetch !== 'function') {
     throw new Error('Fetch API unavailable for backend workspace creation');
   }
@@ -166,7 +160,7 @@ async function createBackendWorkspace(identity: UserIdentity): Promise<Workspace
     credentials: 'include',
     headers: getAuthHeaders({ includeWorkspace: false }),
     body: JSON.stringify({
-      name: buildDefaultWorkspaceName(identity),
+      name: explicitName?.trim() || buildDefaultWorkspaceName(identity),
     }),
   });
 
@@ -186,6 +180,64 @@ async function createBackendWorkspace(identity: UserIdentity): Promise<Workspace
     tenantName: buildDefaultTenantName(identity),
     isDefault: payload.isDefault ?? true,
   };
+}
+
+function getWorkspaceUsersEndpoint(workspaceId: string): string {
+  return `${API_ENDPOINTS.WORKSPACE.ROOT}/${encodeURIComponent(workspaceId)}/users`;
+}
+
+function normalizeWorkspaceMember(input: BackendWorkspaceMember | null | undefined): WorkspaceMemberDocument | null {
+  if (
+    !input
+    || typeof input.userId !== 'string'
+    || typeof input.workspaceId !== 'string'
+    || typeof input.tenantId !== 'string'
+    || typeof input.joinedAt !== 'string'
+    || !input.joinedAt.trim()
+  ) {
+    return null;
+  }
+
+  const role = input.role === 'owner' || input.role === 'admin' || input.role === 'member' || input.role === 'viewer'
+    ? input.role
+    : 'member';
+  const createdAt = input.joinedAt;
+
+  return {
+    id: `${input.workspaceId}_${input.userId}`,
+    tenantId: input.tenantId,
+    workspaceId: input.workspaceId,
+    userId: input.userId,
+    role,
+    status: input.status === 'invited' ? 'invited' : input.status === 'removed' ? 'disabled' : 'active',
+    createdAt,
+    updatedAt: createdAt,
+  };
+}
+
+async function fetchWorkspaceMembers(workspaceId: string): Promise<WorkspaceMemberDocument[]> {
+  if (typeof fetch !== 'function') {
+    throw new Error('Fetch API unavailable for workspace member list');
+  }
+
+  const response = await fetch(getWorkspaceUsersEndpoint(workspaceId), {
+    method: 'GET',
+    credentials: 'include',
+    headers: getAuthHeaders({ workspaceId }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Workspace member list failed: ${response.status}`);
+  }
+
+  const payload = await response.json() as BackendWorkspaceMembersResponse;
+  if (!Array.isArray(payload.users)) {
+    throw new Error('Workspace member list returned an invalid payload');
+  }
+
+  return payload.users
+    .map((member) => normalizeWorkspaceMember(member))
+    .filter((member): member is WorkspaceMemberDocument => Boolean(member && member.status === 'active'));
 }
 
 async function ensureActiveWorkspaceFromBackend(identity: UserIdentity): Promise<WorkspaceSummary> {
@@ -244,19 +296,77 @@ export async function listUserWorkspaces(userId?: string | null): Promise<Worksp
     }
   }
 
-  return listUserWorkspaceSummaries(userId);
+  return fetchBackendWorkspaceSummaries();
 }
 
 export async function createPersonalWorkspace(identity?: UserIdentity, name?: string): Promise<WorkspaceSummary> {
-  const workspace = await createPersonalWorkspaceInFirestore(resolveIdentity(identity), name);
+  const workspace = await createBackendWorkspace(resolveIdentity(identity), name);
   setActiveWorkspaceId(workspace.workspaceId);
   trackProductEventOnce('workspace_created', workspace.workspaceId, {
     source: 'workspace_session',
     plan: workspace.plan,
-    provisioning: 'firestore',
+    provisioning: 'backend',
     is_default: workspace.isDefault,
   });
   return workspace;
+}
+
+export async function listWorkspaceMembers(workspaceId: string): Promise<WorkspaceMemberDocument[]> {
+  return fetchWorkspaceMembers(workspaceId);
+}
+
+export async function addWorkspaceMember(input: {
+  tenantId: string;
+  workspaceId: string;
+  userId: string;
+  role: WorkspaceRole;
+  invitedByUserId: string;
+}): Promise<WorkspaceMemberDocument> {
+  if (typeof fetch !== 'function') {
+    throw new Error('Fetch API unavailable for workspace member creation');
+  }
+
+  const response = await fetch(getWorkspaceUsersEndpoint(input.workspaceId), {
+    method: 'POST',
+    credentials: 'include',
+    headers: getAuthHeaders({ workspaceId: input.workspaceId }),
+    body: JSON.stringify({ userId: input.userId, role: input.role }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Workspace member creation failed: ${response.status}`);
+  }
+
+  const member = normalizeWorkspaceMember(await response.json() as BackendWorkspaceMember);
+  if (!member) {
+    throw new Error('Workspace member creation returned an invalid payload');
+  }
+
+  return member;
+}
+
+export async function removeWorkspaceMember(input: {
+  tenantId: string;
+  workspaceId: string;
+  userId: string;
+  removedByUserId: string;
+}): Promise<void> {
+  if (typeof fetch !== 'function') {
+    throw new Error('Fetch API unavailable for workspace member removal');
+  }
+
+  const response = await fetch(
+    `${getWorkspaceUsersEndpoint(input.workspaceId)}/${encodeURIComponent(input.userId)}`,
+    {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: getAuthHeaders({ workspaceId: input.workspaceId }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Workspace member removal failed: ${response.status}`);
+  }
 }
 
 export async function ensureActiveWorkspace(identity?: UserIdentity): Promise<WorkspaceSummary> {
@@ -282,36 +392,8 @@ export async function ensureActiveWorkspace(identity?: UserIdentity): Promise<Wo
     logWarn('[WorkspaceSession] Backend workspace bootstrap failed', {
       endpoint: API_ENDPOINTS.WORKSPACE.ROOT,
       error,
-      fallback: canUseFirestoreWorkspaceFallback()
-        ? 'workspace-bootstrap-backend-to-firestore'
-        : 'workspace-bootstrap-backend-failed',
+      fallback: 'workspace-bootstrap-backend-failed',
     });
-
-    if (!canUseFirestoreWorkspaceFallback()) {
-      throw error;
-    }
+    throw error;
   }
-
-  const storedWorkspaceId = getStoredWorkspaceId();
-  const workspaces = await listUserWorkspaces(resolvedIdentity.userId);
-
-  const storedWorkspace = storedWorkspaceId
-    ? workspaces.find((workspace) => workspace.workspaceId === storedWorkspaceId)
-    : undefined;
-
-  if (storedWorkspace) {
-    return storedWorkspace;
-  }
-
-  const selectedWorkspace = workspaces[0] || await ensureActiveWorkspaceForUser(resolvedIdentity);
-  setActiveWorkspaceId(selectedWorkspace.workspaceId);
-  if (!workspaces[0]) {
-    trackProductEventOnce('workspace_created', selectedWorkspace.workspaceId, {
-      source: 'workspace_session',
-      plan: selectedWorkspace.plan,
-      provisioning: 'firestore',
-      is_default: selectedWorkspace.isDefault,
-    });
-  }
-  return selectedWorkspace;
 }

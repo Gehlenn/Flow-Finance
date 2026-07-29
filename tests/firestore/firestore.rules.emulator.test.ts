@@ -207,13 +207,13 @@ describe('firestore rules emulator', () => {
     await assertFails(deleteDoc(stateRef));
   });
 
-  it('allows managers to update workspace metadata but not billing-authoritative fields', async () => {
+  it('blocks direct workspace metadata and billing-authoritative writes', async () => {
     const ownerDb = testEnv.authenticatedContext('owner-1').firestore();
     const adminDb = testEnv.authenticatedContext('admin-1').firestore();
     const ownerWorkspaceRef = doc(ownerDb, 'workspaces', 'ws-1');
     const adminWorkspaceRef = doc(adminDb, 'workspaces', 'ws-1');
 
-    await assertSucceeds(setDoc(ownerWorkspaceRef, { name: 'Workspace Renamed' }, { merge: true }));
+    await assertFails(setDoc(ownerWorkspaceRef, { name: 'Workspace Renamed' }, { merge: true }));
 
     for (const protectedChange of [
       { plan: 'free' },
@@ -230,10 +230,10 @@ describe('firestore rules emulator', () => {
     }
   });
 
-  it('requires client-created tenants and workspaces to start on the free plan', async () => {
+  it('blocks direct tenant and workspace creation', async () => {
     const db = testEnv.authenticatedContext('owner-1').firestore();
 
-    await assertSucceeds(setDoc(doc(db, 'tenants', 'tenant-free'), {
+    await assertFails(setDoc(doc(db, 'tenants', 'tenant-free'), {
       id: 'tenant-free',
       name: 'Free tenant',
       plan: 'free',
@@ -252,7 +252,7 @@ describe('firestore rules emulator', () => {
       ownerUserId: 'owner-1',
       billingCustomerId: 'cus_attacker',
     }));
-    await assertSucceeds(setDoc(doc(db, 'workspaces', 'ws-free'), {
+    await assertFails(setDoc(doc(db, 'workspaces', 'ws-free'), {
       id: 'ws-free',
       tenantId: 'tenant-free',
       name: 'Free workspace',
@@ -276,14 +276,29 @@ describe('firestore rules emulator', () => {
     }));
   });
 
-  it('keeps tenant plan and owner immutable after creation', async () => {
+  it('blocks all direct tenant mutations', async () => {
     const db = testEnv.authenticatedContext('owner-1').firestore();
     const tenantRef = doc(db, 'tenants', 'tenant-1');
 
-    await assertSucceeds(setDoc(tenantRef, { name: 'Tenant Renamed' }, { merge: true }));
+    await assertFails(setDoc(tenantRef, { name: 'Tenant Renamed' }, { merge: true }));
     await assertFails(setDoc(tenantRef, { plan: 'free' }, { merge: true }));
     await assertFails(setDoc(tenantRef, { ownerUserId: 'admin-1' }, { merge: true }));
-    await assertSucceeds(deleteDoc(tenantRef));
+    await assertFails(deleteDoc(tenantRef));
+  });
+
+  it('allows profile fields while reserving active workspace pointers for the server', async () => {
+    const ownerDb = testEnv.authenticatedContext('owner-1').firestore();
+    const newUserDb = testEnv.authenticatedContext('profile-1').firestore();
+
+    await assertSucceeds(setDoc(doc(ownerDb, 'users', 'owner-1'), {
+      displayName: 'Owner Profile',
+      locale: 'pt-BR',
+    }));
+    await assertSucceeds(setDoc(doc(ownerDb, 'users', 'owner-1'), { displayName: 'Updated Owner' }, { merge: true }));
+    await assertFails(setDoc(doc(ownerDb, 'users', 'owner-1'), { activeTenantId: 'tenant-1' }, { merge: true }));
+    await assertSucceeds(setDoc(doc(newUserDb, 'users', 'profile-1'), { displayName: 'New Profile' }));
+    await assertFails(setDoc(doc(newUserDb, 'users', 'profile-2'), { displayName: 'Other Profile' }));
+    await assertFails(setDoc(doc(newUserDb, 'users', 'profile-1'), { activeWorkspaceId: 'ws-1' }, { merge: true }));
   });
 
   it('blocks client writes to billing hooks even for workspace owners', async () => {
@@ -297,6 +312,27 @@ describe('firestore rules emulator', () => {
       amount: 1,
       at: '2026-04-02T00:00:00.000Z',
     }));
+  });
+
+  it('keeps legacy SaaS usage read-only for every client role', async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'workspaces', 'ws-1', 'saas_usage', 'summary'), {
+        '2026-07': { transactions: 2, aiQueries: 1, bankConnections: 0 },
+      });
+    });
+
+    const ownerDb = testEnv.authenticatedContext('owner-1').firestore();
+    const adminDb = testEnv.authenticatedContext('admin-1').firestore();
+    const viewerDb = testEnv.authenticatedContext('viewer-1').firestore();
+
+    await assertSucceeds(getDoc(doc(viewerDb, 'workspaces', 'ws-1', 'saas_usage', 'summary')));
+    await assertFails(setDoc(doc(ownerDb, 'workspaces', 'ws-1', 'saas_usage', 'new'), {
+      '2026-07': { transactions: 999, aiQueries: 999, bankConnections: 999 },
+    }));
+    await assertFails(setDoc(doc(adminDb, 'workspaces', 'ws-1', 'saas_usage', 'summary'), {
+      '2026-07': { transactions: 999, aiQueries: 999, bankConnections: 999 },
+    }, { merge: true }));
+    await assertFails(deleteDoc(doc(ownerDb, 'workspaces', 'ws-1', 'saas_usage', 'summary')));
   });
 
   it('blocks outsiders from reading audit events', async () => {

@@ -22,6 +22,8 @@ describe('firestore.rules multi-tenant coverage', () => {
     expect(rules).toContain('match /saas_usage/{usageId}');
     expect(rules).toContain('match /billing_state/{stateId}');
     expect(rules).toContain('match /billing_hooks/{eventId}');
+    const usageRules = rules.split('match /saas_usage/{usageId}')[1]?.split('match /billing_state/{stateId}')[0];
+    expect(usageRules).toContain('allow create, update, delete: if false');
   });
 
   it('keeps billing hook writes server-only', () => {
@@ -32,20 +34,23 @@ describe('firestore.rules multi-tenant coverage', () => {
     expect(rules).toContain('match /billing_state/{stateId} {\n        allow read: if isWorkspaceMember(workspaceId);\n        allow create, update, delete: if false;');
   });
 
-  it('protects billing-authoritative workspace and tenant fields from client updates', () => {
-    expect(rules).toContain('function keepsWorkspaceBillingAuthorityImmutable()');
-    expect(rules).toContain("'billingCustomerId'");
-    expect(rules).toContain("'subscription'");
-    expect(rules).toContain('&& keepsWorkspaceBillingAuthorityImmutable();');
-    expect(rules).toContain('function keepsTenantAuthorityImmutable()');
-    expect(rules).toContain("'ownerUserId'");
-    expect(rules).toContain('&& keepsTenantAuthorityImmutable();');
+  it('keeps billing-authoritative workspace and tenant fields server-only', () => {
+    expect(rules).toContain('match /tenants/{tenantId} {\n      allow create: if false;');
+    expect(rules).toContain('match /workspaces/{workspaceId} {\n      allow create: if false;');
+    expect(rules).toContain('allow update, delete: if false;');
   });
 
-  it('requires client-created tenants and workspaces to start on the free plan', () => {
-    expect(rules).toContain("request.resource.data.plan == 'free'");
-    expect(rules).toContain('hasNoBillingAuthorityFields(request.resource.data);');
-    expect(rules).toContain('request.resource.data.id == workspaceId');
+  it('keeps tenant, workspace, and membership mutations server-only', () => {
+    expect(rules).toContain('match /tenants/{tenantId} {\n      allow create: if false;');
+    expect(rules).toContain('allow update, delete: if false;');
+    expect(rules).toContain('match /tenant_members/{memberId}');
+    expect(rules).toContain('match /workspace_members/{memberId}');
+    expect(rules).toContain('allow create, update, delete: if false;');
+  });
+
+  it('prevents clients from changing server-authoritative active workspace pointers', () => {
+    expect(rules).toContain("!request.resource.data.keys().hasAny(['activeTenantId', 'activeWorkspaceId'])");
+    expect(rules).toContain("!request.resource.data.diff(resource.data).affectedKeys().hasAny(['activeTenantId', 'activeWorkspaceId'])");
   });
 
   it('covers future workspace-scoped collections', () => {

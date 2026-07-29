@@ -4,14 +4,10 @@ export type {
   WorkspaceUsageSnapshot,
 } from './firestoreBillingTypes';
 export {
-  DEFAULT_USAGE,
   getCurrentMonthKey,
   getDefaultUsageSnapshot,
-  incrementWorkspaceUsage,
-  readWorkspaceUsage,
-  resetWorkspaceUsage,
-  writeWorkspaceUsage,
-} from './firestoreBillingUsageStore';
+  readWorkspaceUsageFromServer,
+} from './saasUsageClient';
 export {
   getWorkspaceBillingOverview,
   getWorkspaceBillingState,

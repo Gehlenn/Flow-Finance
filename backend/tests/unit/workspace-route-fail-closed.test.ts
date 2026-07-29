@@ -86,4 +86,27 @@ describe('workspace route fail-closed behavior', () => {
     expect(res.body.workspaceId).toBe('ws-1');
     expect(routeMocks.createWorkspaceAsync).toHaveBeenCalledWith('Workspace Production', 'user-1', undefined);
   });
+
+  it('rejects invalid membership roles before calling the service', async () => {
+    const app = createApp();
+
+    const res = await request(app)
+      .post('/api/workspace/ws-1/users')
+      .send({ userId: 'user-2', role: 'super-admin' });
+
+    expect(res.status).toBe(400);
+    expect(routeMocks.addUserToWorkspaceAsync).not.toHaveBeenCalled();
+  });
+
+  it('forwards the authenticated actor to membership mutations', async () => {
+    routeMocks.addUserToWorkspaceAsync.mockResolvedValueOnce({ userId: 'user-2', workspaceId: 'ws-1' });
+    routeMocks.removeUserFromWorkspaceAsync.mockResolvedValueOnce(true);
+    const app = createApp();
+
+    await request(app).post('/api/workspace/ws-1/users').send({ userId: 'user-2', role: 'member' });
+    await request(app).delete('/api/workspace/ws-1/users/user-2');
+
+    expect(routeMocks.addUserToWorkspaceAsync).toHaveBeenCalledWith('ws-1', 'user-2', 'member', 'user-1');
+    expect(routeMocks.removeUserFromWorkspaceAsync).toHaveBeenCalledWith('user-2', 'ws-1', 'user-1');
+  });
 });

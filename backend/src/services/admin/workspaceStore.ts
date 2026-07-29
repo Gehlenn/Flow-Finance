@@ -64,6 +64,7 @@ import {
   setLastWorkspaceForUserInFirestore,
   updateWorkspaceBillingInFirestore,
 } from './workspaceStoreFirestore';
+import { assertCanAssignWorkspaceRole, assertCanRemoveWorkspaceMember } from './workspaceMembershipPolicy';
 
 const POSTGRES_STATE_KEY = 'workspace_store_state';
 const EMPTY_STATE: WorkspaceStoreState = {
@@ -170,6 +171,19 @@ function persistState(state: WorkspaceStoreState): void {
 
 function isDurableWorkspacePersistenceRequired(): boolean {
   return process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+}
+
+async function useFirestoreAuthorityOrFailClosed(): Promise<boolean> {
+  const firestore = await getWorkspaceFirestoreStatus();
+  if (firestore.ready) {
+    return true;
+  }
+
+  if (isDurableWorkspacePersistenceRequired()) {
+    throw new AppError(503, 'Persistencia duravel de workspace indisponivel');
+  }
+
+  return false;
 }
 
 export async function getWorkspacePersistenceHealthCheck(): Promise<WorkspacePersistenceHealthCheck> {
@@ -378,8 +392,7 @@ export function createTenant(name: string, ownerUserId: string): { tenant: Tenan
 }
 
 export async function createTenantAsync(name: string, ownerUserId: string): Promise<{ tenant: Tenant; workspace: Workspace }> {
-  const persistence = await getWorkspacePersistenceHealthCheck();
-  if (persistence.mode === 'firebase' && persistence.durable) {
+  if (await useFirestoreAuthorityOrFailClosed()) {
     return createTenantInFirestore(name, ownerUserId);
   }
 
@@ -494,8 +507,7 @@ export function createWorkspace(name: string, ownerUserId: string, tenantId?: st
 }
 
 export async function createWorkspaceAsync(name: string, ownerUserId: string, tenantId?: string): Promise<Workspace> {
-  const persistence = await getWorkspacePersistenceHealthCheck();
-  if (persistence.mode === 'firebase' && persistence.durable) {
+  if (await useFirestoreAuthorityOrFailClosed()) {
     if (!tenantId) {
       return (await createTenantInFirestore(name, ownerUserId)).workspace;
     }
@@ -698,14 +710,15 @@ export async function addUserToWorkspaceAsync(
   workspaceId: string,
   userId: string,
   role: Role = 'member',
-  invitedBy?: string,
+  actorUserId: string,
 ): Promise<WorkspaceUser | undefined> {
-  const firestoreStatus = await getWorkspaceFirestoreStatus();
-  if (firestoreStatus.ready) {
-    return addWorkspaceUserToFirestore(workspaceId, userId, role, invitedBy);
+  if (await useFirestoreAuthorityOrFailClosed()) {
+    return addWorkspaceUserToFirestore(workspaceId, userId, role, actorUserId);
   }
 
-  return addUserToWorkspace(workspaceId, userId, role, invitedBy);
+  const actorRole = getUserRoleInWorkspace(actorUserId, workspaceId);
+  assertCanAssignWorkspaceRole(actorRole, role);
+  return addUserToWorkspace(workspaceId, userId, role, actorUserId);
 }
 
 export function getWorkspaceUsers(workspaceId: string): WorkspaceUser[] {
@@ -782,12 +795,18 @@ export function removeUserFromWorkspace(userId: string, workspaceId: string): bo
   return true;
 }
 
-export async function removeUserFromWorkspaceAsync(userId: string, workspaceId: string): Promise<boolean> {
-  const firestoreStatus = await getWorkspaceFirestoreStatus();
-  if (firestoreStatus.ready) {
-    return removeWorkspaceUserFromFirestore(userId, workspaceId);
+export async function removeUserFromWorkspaceAsync(userId: string, workspaceId: string, actorUserId: string): Promise<boolean> {
+  if (await useFirestoreAuthorityOrFailClosed()) {
+    return removeWorkspaceUserFromFirestore(userId, workspaceId, actorUserId);
   }
 
+  const target = getWorkspaceUserInternal(loadState(), workspaceId, userId);
+  if (!target || target.status !== 'active') {
+    return false;
+  }
+  const activeOwnerCount = getWorkspaceUsers(workspaceId)
+    .filter((membership) => membership.status === 'active' && membership.role === 'owner').length;
+  assertCanRemoveWorkspaceMember(getUserRoleInWorkspace(actorUserId, workspaceId), target, activeOwnerCount);
   return removeUserFromWorkspace(userId, workspaceId);
 }
 

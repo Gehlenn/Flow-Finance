@@ -103,7 +103,7 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
   const demoWorkspacePlan = useMemo(() => getDemoBootstrapPlan(), []);
   const demoMode = demoWorkspacePlan !== null;
 
-  const canManageMembers = canManageWorkspaceMembers(activeWorkspace?.role || activeWorkspaceRole);
+  const canManageMembers = !demoMode && canManageWorkspaceMembers(activeWorkspace?.role || activeWorkspaceRole);
   const canManageBilling = canManageWorkspaceBilling(activeWorkspace?.role || activeWorkspaceRole);
   const canSeeAudit = canViewWorkspaceAudit(activeWorkspace?.role || activeWorkspaceRole);
 

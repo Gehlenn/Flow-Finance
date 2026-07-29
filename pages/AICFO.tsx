@@ -32,7 +32,7 @@ import {
 import type { Tab } from '../hooks/navigationTypes';
 import { clearCFOConversation, loadCFOConversation, saveCFOConversation, type CFOConversationMessage } from '../src/ai/cfoConversationStore';
 import UpgradePromptCard from '../components/UpgradePromptCard';
-import { getWorkspaceBillingOverview, incrementWorkspaceUsage } from '../src/services/firestoreBillingStore';
+import { getWorkspaceBillingOverview } from '../src/services/firestoreBillingStore';
 import { ensureActiveWorkspace, getCurrentWorkspaceIdentity } from '../src/services/workspaceSession';
 import { getDemoBootstrapIdentity, getDemoBootstrapPlan } from '../src/demo/demoBootstrap';
 
@@ -768,27 +768,28 @@ const AICFO: React.FC<AICFOProps> = ({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  const incrementAiQueryUsage = React.useCallback(async () => {
-    setMonthlyAiQueriesUsed((currentUsage) => currentUsage + 1);
-
-    if (!workspaceId) {
+  const refreshAiQueryUsage = React.useCallback(async () => {
+    if (demoWorkspacePlan || !workspaceId) {
       return;
     }
 
     try {
-      await incrementWorkspaceUsage({
-        workspaceId,
-        resource: 'aiQueries',
-        amount: 1,
+      const workspace = await ensureActiveWorkspace(getCurrentWorkspaceIdentity());
+      const overview = await getWorkspaceBillingOverview({
+        tenantId: workspace.tenantId,
+        workspaceId: workspace.workspaceId,
       });
+
+      setMonthlyAiQueriesUsed(overview.currentMonthUsage.aiQueries);
+      setUsageDiagnostic(null);
     } catch (error) {
-      logWarn('[AICFO] Failed to persist workspace AI usage', {
+      logWarn('[AICFO] Failed to refresh server-side AI usage', {
         error,
         workspaceId,
-        fallback: 'aicfo-usage-persist-failed',
+        fallback: 'aicfo-usage-refresh-failed',
       });
     }
-  }, [workspaceId]);
+  }, [demoWorkspacePlan, workspaceId]);
 
   const sendMessage = async (question: string) => {
     if (!question.trim() || isLoading) return;
@@ -810,7 +811,6 @@ const AICFO: React.FC<AICFOProps> = ({
     setIsLoading(true);
     setLearningDiagnostic(null);
     setPaywallVisible(false);
-    void incrementAiQueryUsage();
 
     // Detectar intent
     const intent = analyzeFinancialQuestion(question);
@@ -839,6 +839,7 @@ const AICFO: React.FC<AICFOProps> = ({
 
     try {
       const response = await generateCFOResponse(question, financialContext, intent);
+      void refreshAiQueryUsage();
       const resolvedExplainability = response.explainability ?? questionExplainability;
       const resolvedResponseDepth = response.response_depth ?? buildCFOResponseDepth(resolvedExplainability);
       if (!response.diagnostic && response.answer.trim()) {

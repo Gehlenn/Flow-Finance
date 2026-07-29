@@ -6,16 +6,10 @@ import {
 } from './firestoreWorkspaceEntityStore';
 export { saveUserProfile, subscribeToUserProfile } from './firestoreWorkspaceProfileStore';
 export {
-  addWorkspaceMember,
-  createPersonalWorkspace,
-  ensureActiveWorkspaceForUser,
   listWorkspaceAuditEvents,
   listWorkspaceAuditEventsPage,
-  listWorkspaceMembers,
-  listUserWorkspaceSummaries,
-  removeWorkspaceMember,
   writeAuditLogEvent,
-} from './firestoreWorkspaceGovernanceStore';
+} from './firestoreWorkspaceAuditStore';
 export type {
   AuditLogCursor,
   AuditLogDocument,

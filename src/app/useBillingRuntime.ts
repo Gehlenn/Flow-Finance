@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-import type { BillingHookTransport, UsageStoreAdapter } from '../saas';
+import type { BillingHookTransport } from '../saas';
 
 export interface UseBillingRuntimeArgs {
   isDemoBootstrapActive: boolean;
@@ -9,10 +9,7 @@ export interface UseBillingRuntimeArgs {
   userId?: string | null;
   workspaceId?: string | null;
   configureBillingTransport: (transport: BillingHookTransport | null) => void;
-  configureUsageStoreAdapter: (adapter: UsageStoreAdapter) => Promise<void> | void;
-  resetUsageStoreAdapter: () => Promise<void> | void;
   createBillingTransport: () => BillingHookTransport;
-  createUsageStoreAdapter: () => UsageStoreAdapter;
 }
 
 function shouldDisableBillingRuntime({
@@ -41,10 +38,7 @@ export function useBillingRuntime({
   userId,
   workspaceId,
   configureBillingTransport,
-  configureUsageStoreAdapter,
-  resetUsageStoreAdapter,
   createBillingTransport,
-  createUsageStoreAdapter,
 }: UseBillingRuntimeArgs): void {
   useEffect(() => {
     if (shouldDisableBillingRuntime({
@@ -55,26 +49,20 @@ export function useBillingRuntime({
       workspaceId,
     })) {
       configureBillingTransport(null);
-      void resetUsageStoreAdapter();
       return;
     }
 
     configureBillingTransport(createBillingTransport());
-    void configureUsageStoreAdapter(createUsageStoreAdapter());
 
     return () => {
       configureBillingTransport(null);
-      void resetUsageStoreAdapter();
     };
   }, [
     configureBillingTransport,
-    configureUsageStoreAdapter,
     createBillingTransport,
-    createUsageStoreAdapter,
     isDemoBootstrapActive,
     isE2EBootstrapActive,
     isLoggedIn,
-    resetUsageStoreAdapter,
     userId,
     workspaceId,
   ]);
