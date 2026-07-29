@@ -1,43 +1,22 @@
 import { AppError } from './AppError';
+import {
+  getPlanFeatures as getCatalogPlanFeatures,
+  getPlanLimit as getCatalogPlanLimit,
+  getPlanLimits as getCatalogPlanLimits,
+  type FeatureKey,
+  type PlanId,
+  type PlanLimits,
+  type ResourceKind,
+} from './saasCatalog';
 
-export type PlanName = 'free' | 'pro';
+export type PlanName = PlanId;
 export type UserRole = 'owner' | 'admin' | 'member' | 'viewer';
-export type ResourceKind = 'transactions' | 'aiQueries' | 'bankConnections';
-export type FeatureKey =
-  | 'advancedInsights'
-  | 'multiBankSync'
-  | 'adminConsole'
-  | 'prioritySupport'
-  | 'billingManagement';
+export type { FeatureKey, PlanLimits, ResourceKind } from './saasCatalog';
 export interface SaaSContext {
   userId: string;
   role: UserRole;
   plan: PlanName;
 }
-export interface PlanLimits {
-  transactionsPerMonth: number;
-  aiQueriesPerMonth: number;
-  bankConnections: number;
-}
-
-const PLAN_LIMITS: Record<PlanName, PlanLimits> = {
-  free: {
-    transactionsPerMonth: 500,
-    aiQueriesPerMonth: 100,
-    bankConnections: 1,
-  },
-  pro: {
-    transactionsPerMonth: 10000,
-    aiQueriesPerMonth: 5000,
-    bankConnections: 20,
-  },
-};
-
-const PLAN_FEATURES: Record<PlanName, FeatureKey[]> = {
-  free: ['advancedInsights'],
-  pro: ['advancedInsights', 'multiBankSync', 'adminConsole', 'prioritySupport', 'billingManagement'],
-};
-
 const ROLE_PERMISSIONS: Record<UserRole, Set<string>> = {
   owner: new Set(['*']),
   viewer: new Set([
@@ -93,7 +72,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Set<string>> = {
 };
 
 export function getPlanLimits(plan: PlanName): PlanLimits {
-  return PLAN_LIMITS[plan];
+  return getCatalogPlanLimits(plan);
 }
 
 export function canPerform(context: SaaSContext, permission: string): boolean {
@@ -123,8 +102,8 @@ export function assertCanPerform(context: SaaSContext, permission: string): void
   }
 }
 
-export function getPlanFeatures(plan: PlanName): FeatureKey[] {
-  return PLAN_FEATURES[plan] || [];
+export function getPlanFeatures(plan: string): FeatureKey[] {
+  return getCatalogPlanFeatures(plan);
 }
 
 export function hasFeature(context: SaaSContext, feature: FeatureKey): boolean {
@@ -144,14 +123,7 @@ export function assertFeatureEnabled(context: SaaSContext, feature: FeatureKey):
 }
 
 export function getPlanLimit(plan: PlanName, resource: ResourceKind): number {
-  const limits = getPlanLimits(plan);
-  if (resource === 'transactions') {
-    return limits.transactionsPerMonth;
-  }
-  if (resource === 'aiQueries') {
-    return limits.aiQueriesPerMonth;
-  }
-  return limits.bankConnections;
+  return getCatalogPlanLimit(plan, resource);
 }
 
 export function assertWithinPlanLimit(

@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
-const SyncEntitySchema = z.enum(['accounts', 'transactions', 'goals', 'reminders', 'receivables', 'subscriptions']);
+export const SYNC_ENTITIES = ['accounts', 'transactions', 'goals', 'reminders', 'receivables', 'subscriptions'] as const;
+
+const SyncEntitySchema = z.enum(SYNC_ENTITIES);
 
 const SyncItemSchema = z.object({
   id: z.string().min(1),
@@ -19,5 +21,6 @@ export const SyncPullQuerySchema = z.object({
   since: z.string().optional(),
 });
 
-export type SyncEntity = z.infer<typeof SyncEntitySchema>;
+export type SyncEntity = (typeof SYNC_ENTITIES)[number];
 export type SyncItem = z.infer<typeof SyncItemSchema>;
+export type SyncPushRequest = z.infer<typeof SyncPushSchema>;

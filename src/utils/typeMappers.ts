@@ -3,7 +3,6 @@
 
 import { Transaction, TransactionType, Category, Reminder, ReminderType } from '../../types';
 import { Account } from '../../models/Account';
-// import { User, FinancialGoal, Subscription, BankConnection, SubscriptionPlan } from '../domain/entities'; // Descomente se for expandir mappers
 
 function readString(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback;

@@ -1,3 +1,6 @@
+import { PLAN_IDS } from '../../shared/saasCatalog';
+import { SYNC_ENTITIES } from '../validation/sync.schema';
+
 export const OPENAPI_COMPONENTS = {
       securitySchemes: {
         BearerAuth: {
@@ -282,7 +285,7 @@ export const OPENAPI_COMPONENTS = {
           type: 'object',
           required: ['id', 'name', 'priceMonthlyCents', 'currency', 'limits', 'features'],
           properties: {
-            id: { type: 'string', enum: ['free', 'pro'] },
+            id: { type: 'string', enum: PLAN_IDS },
             name: { type: 'string' },
             priceMonthlyCents: { type: 'integer', minimum: 0 },
             currency: { type: 'string', enum: ['BRL'] },
@@ -307,7 +310,7 @@ export const OPENAPI_COMPONENTS = {
           properties: {
             scope: { type: 'string', enum: ['workspace'] },
             workspaceId: { type: 'string' },
-            currentPlan: { type: 'string', enum: ['free', 'pro'] },
+            currentPlan: { type: 'string', enum: PLAN_IDS },
             mockBillingEnabled: { type: 'boolean' },
             stripeConfigured: { type: 'boolean' },
             stripePortalEnabled: { type: 'boolean' },
@@ -381,7 +384,7 @@ export const OPENAPI_COMPONENTS = {
           required: ['plan'],
           properties: {
             workspaceId: { type: 'string' },
-            plan: { type: 'string', enum: ['free', 'pro'] },
+            plan: { type: 'string', enum: PLAN_IDS },
           },
         },
         WorkspacePlanChangeResponse: {
@@ -390,8 +393,8 @@ export const OPENAPI_COMPONENTS = {
           properties: {
             scope: { type: 'string', enum: ['workspace'] },
             workspaceId: { type: 'string' },
-            previousPlan: { type: 'string', enum: ['free', 'pro'] },
-            currentPlan: { type: 'string', enum: ['free', 'pro'] },
+            previousPlan: { type: 'string', enum: PLAN_IDS },
+            currentPlan: { type: 'string', enum: PLAN_IDS },
             changed: { type: 'boolean' },
             source: { type: 'string', enum: ['mock_api', 'billing_hook'] },
           },
@@ -401,7 +404,7 @@ export const OPENAPI_COMPONENTS = {
           required: ['plan', 'event', 'amount', 'at'],
           properties: {
             workspaceId: { type: 'string' },
-            plan: { type: 'string', enum: ['free', 'pro'] },
+            plan: { type: 'string', enum: PLAN_IDS },
             event: { type: 'string', enum: ['usage_recorded', 'limit_reached', 'upgrade_required', 'plan_changed'] },
             resource: { type: 'string', enum: ['transactions', 'aiQueries', 'bankConnections'] },
             amount: { type: 'number', minimum: 0 },
@@ -416,7 +419,7 @@ export const OPENAPI_COMPONENTS = {
             success: { type: 'boolean', enum: [true] },
             scope: { type: 'string', enum: ['workspace'] },
             workspaceId: { type: 'string' },
-            currentPlan: { type: 'string', enum: ['free', 'pro'] },
+            currentPlan: { type: 'string', enum: PLAN_IDS },
             changed: { type: 'boolean' },
             events: { type: 'integer', minimum: 0 },
           },
@@ -774,7 +777,7 @@ export const OPENAPI_PATHS = {
                   type: 'object',
                   required: ['entity', 'items'],
                   properties: {
-                    entity: { type: 'string', enum: ['accounts', 'transactions', 'goals', 'reminders', 'subscriptions'] },
+                    entity: { type: 'string', enum: SYNC_ENTITIES },
                     items: {
                       type: 'array',
                       items: { $ref: '#/components/schemas/SyncItem' },
@@ -1311,7 +1314,58 @@ export const OPENAPI_PATHS = {
           },
         },
       },
-      '/api/billing/subscription': { post: { tags: ['Billing'], summary: 'Create or change subscription', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Subscription updated' } } } },
+      '/api/billing/subscription': {
+        post: {
+          tags: ['Billing'],
+          summary: 'Create or change subscription',
+          security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['plan'],
+                  properties: {
+                    plan: { type: 'string', enum: PLAN_IDS },
+                    billingEmail: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '201': {
+              description: 'Subscription created or changed',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: ['workspaceId', 'subscription', 'entitlements', 'plan'],
+                    properties: {
+                      workspaceId: { type: 'string' },
+                      plan: { type: 'string', enum: PLAN_IDS },
+                      subscription: {
+                        type: 'object',
+                        required: ['subscriptionId', 'provider', 'status', 'plan', 'startedAt'],
+                        properties: {
+                          subscriptionId: { type: 'string' },
+                          provider: { type: 'string', enum: ['internal', 'stripe'] },
+                          status: { type: 'string', enum: ['trialing', 'active', 'past_due', 'canceled'] },
+                          plan: { type: 'string', enum: PLAN_IDS },
+                          startedAt: { type: 'string', format: 'date-time' },
+                          renewsAt: { type: 'string', format: 'date-time' },
+                        },
+                      },
+                      entitlements: { type: 'object', description: 'Workspace feature and limit entitlements' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       '/api/billing/export': { get: { tags: ['Billing'], summary: 'Export workspace data (not yet available)', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '501': { description: 'Export not implemented yet' } } } },
       '/api/admin/users': { get: { tags: ['Admin'], summary: 'List workspace users', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'User list' } } } },
       '/api/admin/audit-logs': { get: { tags: ['Admin'], summary: 'List audit logs', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Audit log list' } } } },

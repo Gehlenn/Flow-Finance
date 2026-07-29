@@ -1,5 +1,7 @@
 import { randomUUID } from 'crypto';
-import type { SyncEntity, SyncItem } from '../../validation/sync.schema';
+import { SYNC_ENTITIES, type SyncEntity, type SyncItem } from '../../validation/sync.schema';
+
+export { SYNC_ENTITIES as ENTITIES } from '../../validation/sync.schema';
 
 export type StoredSyncItem = SyncItem & {
   serverUpdatedAt: string;
@@ -25,8 +27,6 @@ export type SyncOwnershipContext = {
   workspaceId: string;
 };
 
-export const ENTITIES: SyncEntity[] = ['accounts', 'transactions', 'goals', 'reminders', 'receivables', 'subscriptions'];
-
 export function createEmptyEntities(): SyncEntityPayload {
   return {
     accounts: [],
@@ -40,7 +40,7 @@ export function createEmptyEntities(): SyncEntityPayload {
 
 export function normalizeEntities(entities?: Partial<SyncEntityPayload>): SyncEntityPayload {
   const normalized = createEmptyEntities();
-  for (const entity of ENTITIES) {
+  for (const entity of SYNC_ENTITIES) {
     normalized[entity] = Array.isArray(entities?.[entity]) ? [...(entities?.[entity] || [])] : [];
   }
   return normalized;
@@ -171,7 +171,7 @@ export function filterEntitiesBySince(entities: SyncEntityPayload, since?: strin
   const sinceMs = since ? new Date(since).getTime() : null;
   const serverTime = new Date().toISOString();
 
-  const filtered = ENTITIES.reduce<SyncEntityPayload>((acc, entity) => {
+  const filtered = SYNC_ENTITIES.reduce<SyncEntityPayload>((acc, entity) => {
     const items = entities[entity];
     acc[entity] = sinceMs === null
       ? items

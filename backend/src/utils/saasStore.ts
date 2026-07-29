@@ -40,6 +40,7 @@ import type {
   UsageSnapshot,
   WorkspaceUsageEvent,
 } from './saasStoreTypes';
+import { PLAN_USAGE_LIMITS } from '../../shared/saasCatalog';
 
 export type {
   BillingHookEvent,
@@ -85,10 +86,7 @@ const AI_COST_DISCLAIMER = 'Estimated from token metadata in usage events; not a
 
 let stateCache: SaasStoreState | null = null;
 
-export const PLAN_LIMITS: Record<PlanId, UsageSnapshot> = {
-  free: { transactions: 500, aiQueries: 100, bankConnections: 1 },
-  pro: { transactions: 10000, aiQueries: 5000, bankConnections: 20 },
-};
+export const PLAN_LIMITS: Record<PlanId, UsageSnapshot> = PLAN_USAGE_LIMITS;
 
 function loadState(): SaasStoreState {
   if (stateCache) {

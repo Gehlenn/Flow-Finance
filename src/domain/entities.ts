@@ -5,15 +5,6 @@
  * These entities contain only business rules and invariants.
  */
 
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  subscriptionPlan: SubscriptionPlan;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface Account {
   id: string;
   userId: string;
@@ -56,22 +47,6 @@ export interface FinancialGoal {
   updatedAt: Date;
 }
 
-export interface Subscription {
-  id: string;
-  userId: string;
-  name: string;
-  amount: number;
-  cycle: 'monthly' | 'yearly';
-  merchant: string;
-  lastCharge: Date;
-  nextExpected: Date;
-  totalSpent: number;
-  logo?: string;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface BankConnection {
   id: string;
   userId: string;
@@ -83,31 +58,6 @@ export interface BankConnection {
   balance?: number;
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface SubscriptionPlan {
-  id: string;
-  name: 'free' | 'pro';
-  price: number;
-  features: string[];
-  limits: {
-    transactionsPerMonth: number;
-    aiQueriesPerMonth: number;
-    bankConnections: number;
-  };
-}
-
-// Domain invariants and business rules
-export class UserEntity {
-  constructor(private user: User) {}
-
-  canAccessFeature(feature: string): boolean {
-    return this.user.subscriptionPlan.features.includes(feature);
-  }
-
-  isWithinLimits(resource: keyof SubscriptionPlan['limits'], currentUsage: number): boolean {
-    return currentUsage < this.user.subscriptionPlan.limits[resource];
-  }
 }
 
 export class AccountEntity {

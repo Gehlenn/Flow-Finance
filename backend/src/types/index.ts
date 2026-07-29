@@ -1,7 +1,9 @@
 // ─── MULTI-TENANT ──────────────────────────────────────────────────────────
 
+import type { PlanId } from '../../shared/saasCatalog';
+
 export type Role = 'owner' | 'admin' | 'member' | 'viewer';
-export type WorkspacePlan = 'free' | 'pro';
+export type WorkspacePlan = PlanId;
 export type WorkspaceFeature =
   | 'advancedInsights'
   | 'multiBankSync'
