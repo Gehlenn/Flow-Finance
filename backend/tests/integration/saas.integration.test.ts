@@ -14,11 +14,13 @@ import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceS
 
 const usageAuthorityMocks = vi.hoisted(() => ({
   getAuthoritativeWorkspaceUsage: vi.fn().mockResolvedValue(null),
+  getAuthoritativeWorkspaceUsageEvents: vi.fn().mockResolvedValue(null),
   isFirestoreAiUsageAuthorityEnabled: vi.fn().mockReturnValue(false),
 }));
 
 vi.mock('../../src/services/usage/workspaceUsageAuthority', () => ({
   getAuthoritativeWorkspaceUsage: usageAuthorityMocks.getAuthoritativeWorkspaceUsage,
+  getAuthoritativeWorkspaceUsageEvents: usageAuthorityMocks.getAuthoritativeWorkspaceUsageEvents,
   isFirestoreAiUsageAuthorityEnabled: usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled,
 }));
 
@@ -109,6 +111,8 @@ describe('SaaS API workspace scope', () => {
     process.env.SAAS_STORE_FILE = saasStoreFile;
     usageAuthorityMocks.getAuthoritativeWorkspaceUsage.mockReset();
     usageAuthorityMocks.getAuthoritativeWorkspaceUsage.mockResolvedValue(null);
+    usageAuthorityMocks.getAuthoritativeWorkspaceUsageEvents.mockReset();
+    usageAuthorityMocks.getAuthoritativeWorkspaceUsageEvents.mockResolvedValue(null);
     usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReset();
     usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(false);
     resetSaasStoreForTests();
@@ -416,4 +420,211 @@ describe('SaaS API workspace scope', () => {
     expect(aiEvent?.aiCost).toBeDefined();
     expect(aiEvent?.aiCost.basis).toBe('estimated_from_tokens');
   }, 15000);
+
+  it('GET /api/saas/metering replaces only current-month AI usage and events when the authority is enabled', async () => {
+    const ownerUserId = 'owner-saas-authoritative-metering';
+    const created = await request(app)
+      .post('/api/tenant')
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .send({ name: 'Workspace Authoritative Metering' });
+    const now = new Date();
+    const monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+    const historicalMonth = now.getUTCMonth() === 0
+      ? `${now.getUTCFullYear() - 1}-12`
+      : `${now.getUTCFullYear()}-${String(now.getUTCMonth()).padStart(2, '0')}`;
+    const currentAt = `${monthKey}-15T12:00:00.000Z`;
+    const historicalAt = `${historicalMonth}-15T12:00:00.000Z`;
+
+    await setWorkspaceUsage(created.body.workspaceId, {
+      [historicalMonth]: { transactions: 1, aiQueries: 6, bankConnections: 0 },
+      [monthKey]: { transactions: 2, aiQueries: 99, bankConnections: 1 },
+    });
+    await recordWorkspaceUsage(created.body.workspaceId, {
+      resource: 'aiQueries',
+      amount: 1,
+      at: currentAt,
+    });
+    await recordWorkspaceUsage(created.body.workspaceId, {
+      resource: 'aiQueries',
+      amount: 1,
+      at: historicalAt,
+      metadata: {
+        aiUsage: {
+          provider: 'openai',
+          model: 'gpt-4o-mini',
+          inputTokens: 100,
+          outputTokens: 50,
+          tokensUsed: 150,
+        },
+      },
+    });
+
+    usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(true);
+    usageAuthorityMocks.getAuthoritativeWorkspaceUsage.mockResolvedValue({
+      workspaceId: created.body.workspaceId,
+      monthKey,
+      plan: 'free',
+      usage: { transactions: 0, aiQueries: 3, bankConnections: 0 },
+    });
+    usageAuthorityMocks.getAuthoritativeWorkspaceUsageEvents.mockResolvedValue({
+      monthKey,
+      events: [{
+        id: `authority-${monthKey}`,
+        workspaceId: created.body.workspaceId,
+        userId: ownerUserId,
+        resource: 'aiQueries',
+        amount: 3,
+        at: currentAt,
+      }],
+    });
+
+    const response = await request(app)
+      .get('/api/saas/metering')
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .set('x-workspace-id', created.body.workspaceId);
+
+    expect(response.status).toBe(200);
+    expect(response.body.summary.months[monthKey]).toEqual({
+      transactions: 2,
+      aiQueries: 3,
+      bankConnections: 1,
+    });
+    expect(response.body.summary.months[historicalMonth].aiQueries).toBe(6);
+    expect(response.body.summary.costCoverage.aiQueries.status).toBe('partial');
+    expect(response.body.events).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: `authority-${monthKey}`, resource: 'aiQueries', amount: 3 }),
+      expect.objectContaining({ resource: 'aiQueries', at: historicalAt }),
+    ]));
+    expect(response.body.events).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ resource: 'aiQueries', at: currentAt, amount: 1 }),
+    ]));
+  });
+
+  it('GET /api/saas/metering fails closed in production when the enabled authority cannot be read', async () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    try {
+      const ownerUserId = 'owner-saas-metering-unavailable';
+      const created = await request(app)
+        .post('/api/tenant')
+        .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+        .send({ name: 'Workspace Metering Unavailable' });
+
+      process.env.NODE_ENV = 'production';
+      usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(true);
+      usageAuthorityMocks.getAuthoritativeWorkspaceUsage.mockResolvedValue(null);
+      usageAuthorityMocks.getAuthoritativeWorkspaceUsageEvents.mockResolvedValue(null);
+
+      const response = await request(app)
+        .get('/api/saas/metering')
+        .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+        .set('x-workspace-id', created.body.workspaceId);
+
+      expect(response.status).toBe(503);
+      expect(response.body.message).toBe('Workspace usage authority is unavailable');
+    } finally {
+      process.env.NODE_ENV = previousNodeEnv;
+    }
+  });
+
+  it('GET /api/saas/metering reports unavailable AI cost coverage when no token sample exists', async () => {
+    const ownerUserId = 'owner-saas-metering-cost-unavailable';
+    const created = await request(app)
+      .post('/api/tenant')
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .send({ name: 'Workspace Metering Cost Unavailable' });
+    const now = new Date();
+    const monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+
+    usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(true);
+    usageAuthorityMocks.getAuthoritativeWorkspaceUsage.mockResolvedValue({
+      workspaceId: created.body.workspaceId,
+      monthKey,
+      plan: 'free',
+      usage: { transactions: 0, aiQueries: 1, bankConnections: 0 },
+    });
+    usageAuthorityMocks.getAuthoritativeWorkspaceUsageEvents.mockResolvedValue({
+      monthKey,
+      events: [{
+        id: 'authority-without-token-metadata',
+        workspaceId: created.body.workspaceId,
+        resource: 'aiQueries',
+        amount: 1,
+        at: `${monthKey}-15T12:00:00.000Z`,
+      }],
+    });
+
+    const response = await request(app)
+      .get('/api/saas/metering')
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .set('x-workspace-id', created.body.workspaceId);
+
+    expect(response.status).toBe(200);
+    expect(response.body.summary.aiCost.sampleCount).toBe(0);
+    expect(response.body.summary.costCoverage.aiQueries.status).toBe('unavailable');
+  });
+
+  it('GET /api/saas/metering keeps an in-range authority event when a newer one is after to', async () => {
+    const ownerUserId = 'owner-saas-metering-range-before-limit';
+    const created = await request(app)
+      .post('/api/tenant')
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .send({ name: 'Workspace Metering Range Before Limit' });
+    const now = new Date();
+    const monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+    const inRangeAt = `${monthKey}-10T00:00:00.000Z`;
+    const afterRangeAt = `${monthKey}-20T00:00:00.000Z`;
+
+    usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(true);
+    usageAuthorityMocks.getAuthoritativeWorkspaceUsage.mockResolvedValue({
+      workspaceId: created.body.workspaceId,
+      monthKey,
+      plan: 'free',
+      usage: { transactions: 0, aiQueries: 1, bankConnections: 0 },
+    });
+    usageAuthorityMocks.getAuthoritativeWorkspaceUsageEvents.mockResolvedValue({
+      monthKey,
+      events: [
+        { id: 'in-range', workspaceId: created.body.workspaceId, resource: 'aiQueries', amount: 1, at: inRangeAt },
+        { id: 'after-range', workspaceId: created.body.workspaceId, resource: 'aiQueries', amount: 1, at: afterRangeAt },
+      ],
+    });
+
+    const response = await request(app)
+      .get('/api/saas/metering')
+      .query({ to: `${monthKey}-15T00:00:00.000Z`, limit: 1 })
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .set('x-workspace-id', created.body.workspaceId);
+
+    expect(response.status).toBe(200);
+    expect(response.body.events).toEqual([expect.objectContaining({ id: 'in-range' })]);
+    expect(usageAuthorityMocks.getAuthoritativeWorkspaceUsageEvents).toHaveBeenCalledWith(created.body.workspaceId, {
+      limit: 1,
+      from: undefined,
+      to: `${monthKey}-15T00:00:00.000Z`,
+    });
+  });
+
+  it('GET /api/saas/metering rejects invalid and inverted ISO timestamp ranges', async () => {
+    const ownerUserId = 'owner-saas-metering-invalid-range';
+    const created = await request(app)
+      .post('/api/tenant')
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .send({ name: 'Workspace Metering Invalid Range' });
+    const requester = request(app)
+      .get('/api/saas/metering')
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .set('x-workspace-id', created.body.workspaceId);
+
+    const invalid = await requester.query({ from: 'not-a-timestamp' });
+    expect(invalid.status).toBe(400);
+    expect(invalid.body.message).toContain('from must be a valid ISO 8601 timestamp');
+
+    const inverted = await request(app)
+      .get('/api/saas/metering')
+      .query({ from: '2026-08-01T00:00:00.000Z', to: '2026-07-01T00:00:00.000Z' })
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .set('x-workspace-id', created.body.workspaceId);
+    expect(inverted.status).toBe(400);
+    expect(inverted.body.message).toBe('from must be earlier than or equal to to');
+  });
 });

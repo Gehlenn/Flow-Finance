@@ -293,6 +293,19 @@ export const OPENAPI_COMPONENTS = {
             metadata: { type: 'object', additionalProperties: true },
           },
         },
+        MeteringCostCoverage: {
+          type: 'object',
+          properties: {
+            aiQueries: {
+              type: 'object',
+              required: ['status', 'reason'],
+              properties: {
+                status: { type: 'string', enum: ['partial', 'unavailable'] },
+                reason: { type: 'string' },
+              },
+            },
+          },
+        },
         MeteringResponse: {
           type: 'object',
           required: ['scope', 'workspaceId', 'filters', 'summary', 'events'],
@@ -307,7 +320,16 @@ export const OPENAPI_COMPONENTS = {
                 resource: { type: 'string', enum: ['transactions', 'aiQueries', 'bankConnections'] },
               },
             },
-            summary: { type: 'object', additionalProperties: true },
+            summary: {
+              type: 'object',
+              properties: {
+                costCoverage: {
+                  $ref: '#/components/schemas/MeteringCostCoverage',
+                  description: 'Present only while the Firestore AI usage authority is enabled. Its current-month reservation events do not contain provider token metadata, so AI cost estimates are incomplete or unavailable.',
+                },
+              },
+              additionalProperties: true,
+            },
             events: { type: 'array', items: { $ref: '#/components/schemas/MeteringEvent' } },
           },
         },
@@ -833,15 +855,16 @@ export const OPENAPI_PATHS = {
           summary: 'Read usage metering and events',
           security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }],
           parameters: [
-            { name: 'from', in: 'query', required: false, schema: { type: 'string' } },
-            { name: 'to', in: 'query', required: false, schema: { type: 'string' } },
+            { name: 'from', in: 'query', required: false, schema: { type: 'string', format: 'date-time' }, description: 'ISO 8601 timestamp with timezone; must be earlier than or equal to to.' },
+            { name: 'to', in: 'query', required: false, schema: { type: 'string', format: 'date-time' }, description: 'ISO 8601 timestamp with timezone; must be later than or equal to from.' },
             { name: 'resource', in: 'query', required: false, schema: { type: 'string', enum: ['transactions', 'aiQueries', 'bankConnections'] } },
             { name: 'limit', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
           ],
           responses: {
             '200': { description: 'Metering data', content: { 'application/json': { schema: { $ref: '#/components/schemas/MeteringResponse' } } } },
-            '400': { description: 'workspaceId missing', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+            '400': { description: 'workspaceId missing or invalid metering date range', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
             '403': { description: 'Workspace access denied', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+            '503': { description: 'AI usage authority unavailable during enabled cutover', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           },
         },
       },
