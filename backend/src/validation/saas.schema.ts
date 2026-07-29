@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import logger from '../config/logger';
+import { BILLING_HOOK_EVENTS, PLAN_IDS, RESOURCE_KINDS } from '../../shared/saasCatalog';
 
 const UsageSnapshotSchema = z.object({
   transactions: z.number().int().min(0),
@@ -14,7 +15,7 @@ export const UsageUpsertSchema = z.object({
 
 export const UsageIncrementSchema = z.object({
   workspaceId: z.string().min(1).optional(),
-  resource: z.enum(['transactions', 'aiQueries', 'bankConnections']),
+  resource: z.enum(RESOURCE_KINDS),
   amount: z.number().int().min(1).default(1),
   at: z.string().min(1).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
@@ -27,9 +28,9 @@ export const UsageResetSchema = z.object({
 
 export const BillingHookSchema = z.object({
   workspaceId: z.string().min(1).optional(),
-  plan: z.enum(['free', 'pro']),
-  event: z.enum(['usage_recorded', 'limit_reached', 'upgrade_required', 'plan_changed']),
-  resource: z.enum(['transactions', 'aiQueries', 'bankConnections']).optional(),
+  plan: z.enum(PLAN_IDS),
+  event: z.enum(BILLING_HOOK_EVENTS),
+  resource: z.enum(RESOURCE_KINDS).optional(),
   amount: z.number().min(0),
   at: z.string().min(1),
   metadata: z.record(z.string(), z.unknown()).optional(),
@@ -37,7 +38,7 @@ export const BillingHookSchema = z.object({
 
 export const PlanChangeSchema = z.object({
   workspaceId: z.string().min(1).optional(),
-  plan: z.enum(['free', 'pro']),
+  plan: z.enum(PLAN_IDS),
 });
 
 /**
@@ -107,3 +108,11 @@ export const StripeCheckoutSchema = z.object({
 export const StripePortalSchema = z.object({
   returnUrl: safeReturnUrl(),
 });
+
+export type UsageUpsertRequest = z.infer<typeof UsageUpsertSchema>;
+export type UsageIncrementRequest = z.infer<typeof UsageIncrementSchema>;
+export type UsageResetRequest = z.infer<typeof UsageResetSchema>;
+export type BillingHookRequest = z.infer<typeof BillingHookSchema>;
+export type PlanChangeRequest = z.infer<typeof PlanChangeSchema>;
+export type StripeCheckoutRequest = z.infer<typeof StripeCheckoutSchema>;
+export type StripePortalRequest = z.infer<typeof StripePortalSchema>;

@@ -1,4 +1,10 @@
-export type ResourceKind = 'transactions' | 'aiQueries' | 'bankConnections';
+import type {
+  BillingHookEvent as CatalogBillingHookEvent,
+  PlanId as CatalogPlanId,
+  ResourceKind as CatalogResourceKind,
+} from '../../shared/saasCatalog';
+
+export type ResourceKind = CatalogResourceKind;
 
 export type UsageSnapshot = {
   transactions: number;
@@ -6,13 +12,9 @@ export type UsageSnapshot = {
   bankConnections: number;
 };
 
-export type PlanId = 'free' | 'pro';
+export type PlanId = CatalogPlanId;
 
-export type BillingHookEvent =
-  | 'usage_recorded'
-  | 'limit_reached'
-  | 'upgrade_required'
-  | 'plan_changed';
+export type BillingHookEvent = CatalogBillingHookEvent;
 
 export type BillingHookPayload = {
   userId?: string;

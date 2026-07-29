@@ -12,6 +12,13 @@ import {
   StripeCheckoutSchema,
   StripePortalSchema,
   UsageUpsertSchema,
+  type BillingHookRequest,
+  type PlanChangeRequest,
+  type StripeCheckoutRequest,
+  type StripePortalRequest,
+  type UsageIncrementRequest,
+  type UsageResetRequest,
+  type UsageUpsertRequest,
 } from '../validation/saas.schema';
 import logger from '../config/logger';
 import { billingService } from '../billing/billingService';
@@ -50,6 +57,7 @@ import {
   queryWorkspaceMeteringSummary,
   queryWorkspaceUsageEvents,
 } from '../services/persistence/postgresStateStore';
+import { isResourceKind } from '../../shared/saasCatalog';
 
 const router = Router();
 
@@ -131,9 +139,7 @@ router.get('/usage', authz('billing:read'), asyncHandler(async (req: Request, re
 }));
 
 router.put('/usage', authz('billing:manage'), validate(UsageUpsertSchema), asyncHandler(async (req: Request, res: Response) => {
-  const payload = req.body as {
-    usage: Record<string, { transactions: number; aiQueries: number; bankConnections: number }>;
-  };
+  const payload = req.body as UsageUpsertRequest;
   const workspaceId = await requireAuthorizedWorkspace(req);
 
   await setWorkspaceUsage(workspaceId, payload.usage);
@@ -141,12 +147,7 @@ router.put('/usage', authz('billing:manage'), validate(UsageUpsertSchema), async
 }));
 
 router.post('/usage/increment', authz('billing:manage'), validate(UsageIncrementSchema), asyncHandler(async (req: Request, res: Response) => {
-  const payload = req.body as {
-    resource: 'transactions' | 'aiQueries' | 'bankConnections';
-    amount?: number;
-    at?: string;
-    metadata?: Record<string, unknown>;
-  };
+  const payload = req.body as UsageIncrementRequest;
   const workspaceId = await requireAuthorizedWorkspace(req);
   const total = await recordWorkspaceUsage(workspaceId, {
     resource: payload.resource,
@@ -166,7 +167,7 @@ router.post('/usage/increment', authz('billing:manage'), validate(UsageIncrement
 }));
 
 router.post('/usage/reset', authz('billing:manage'), validate(UsageResetSchema), asyncHandler(async (req: Request, res: Response) => {
-  const payload = req.body as { monthKey?: string };
+  const payload = req.body as UsageResetRequest;
   const workspaceId = await requireAuthorizedWorkspace(req);
   await resetWorkspaceUsage(workspaceId, payload.monthKey);
   res.json({ success: true, scope: 'workspace', workspaceId, monthKey: payload.monthKey || null });
@@ -182,9 +183,7 @@ router.get('/metering', authz('billing:read'), asyncHandler(async (req: Request,
   const filters = {
     from: typeof req.query.from === 'string' ? req.query.from : undefined,
     to: typeof req.query.to === 'string' ? req.query.to : undefined,
-    resource: typeof req.query.resource === 'string'
-      ? req.query.resource as 'transactions' | 'aiQueries' | 'bankConnections'
-      : undefined,
+    resource: isResourceKind(req.query.resource) ? req.query.resource : undefined,
   };
 
   const eventFilters = {
@@ -215,9 +214,10 @@ router.get('/metering', authz('billing:read'), asyncHandler(async (req: Request,
 }));
 
 router.post('/stripe/checkout-session', authz('billing:manage'), validate(StripeCheckoutSchema), asyncHandler(async (req: Request, res: Response) => {
+  const payload = req.body as StripeCheckoutRequest;
   const workspaceId = await requireAuthorizedWorkspace(req);
   const userId = req.userId as string;
-  const returnUrl = String(req.body.returnUrl);
+  const returnUrl = payload.returnUrl;
 
   const session = await createStripeCheckoutSession({
     userId,
@@ -230,15 +230,16 @@ router.post('/stripe/checkout-session', authz('billing:manage'), validate(Stripe
 }));
 
 router.post('/stripe/portal-session', authz('billing:manage'), validate(StripePortalSchema), asyncHandler(async (req: Request, res: Response) => {
+  const payload = req.body as StripePortalRequest;
   const workspaceId = await requireAuthorizedWorkspace(req);
   const userId = req.userId as string;
-  const returnUrl = String(req.body.returnUrl);
+  const returnUrl = payload.returnUrl;
   const session = await createStripePortalSession({ userId, returnUrl, workspaceId });
   res.json(session);
 }));
 
 router.post('/plan', authz('billing:manage'), validate(PlanChangeSchema), asyncHandler(async (req: Request, res: Response) => {
-  const payload = req.body as { plan: 'free' | 'pro' };
+  const payload = req.body as PlanChangeRequest;
   const workspaceId = await requireAuthorizedWorkspace(req);
 
   const result = await changeWorkspacePlan({
@@ -258,14 +259,7 @@ router.post('/plan', authz('billing:manage'), validate(PlanChangeSchema), asyncH
 }));
 
 router.post('/billing-hooks', authz('billing:manage'), validate(BillingHookSchema), asyncHandler(async (req: Request, res: Response) => {
-  const payload = req.body as {
-    plan: 'free' | 'pro';
-    event: 'usage_recorded' | 'limit_reached' | 'upgrade_required' | 'plan_changed';
-    resource?: 'transactions' | 'aiQueries' | 'bankConnections';
-    amount: number;
-    at: string;
-    metadata?: Record<string, unknown>;
-  };
+  const payload = req.body as BillingHookRequest;
   const workspaceId = await requireAuthorizedWorkspace(req);
 
   const result = await applyWorkspaceBillingHook({

@@ -12,6 +12,7 @@ import {
 } from '../../types';
 import type { AuditAction, AuditEvent, AuditStatus } from './auditLog';
 import { isPostgresStateStoreEnabled } from '../persistence/postgresStateStore';
+import { getPlanEntitlements } from '../../../shared/saasCatalog';
 
 export interface WorkspaceStoreState {
   tenants: Tenant[];
@@ -23,25 +24,7 @@ export interface WorkspaceStoreState {
 export const DEFAULT_WORKSPACE_STORE_FILE = path.resolve(__dirname, '../../../data/workspaces.json');
 
 export function buildEntitlements(plan: WorkspacePlan): WorkspaceEntitlements {
-  if (plan === 'pro') {
-    return {
-      features: ['advancedInsights', 'multiBankSync', 'adminConsole', 'prioritySupport', 'billingManagement'],
-      limits: {
-        transactionsPerMonth: 10000,
-        aiQueriesPerMonth: 5000,
-        bankConnections: 20,
-      },
-    };
-  }
-
-  return {
-    features: ['advancedInsights'],
-    limits: {
-      transactionsPerMonth: 500,
-      aiQueriesPerMonth: 100,
-      bankConnections: 1,
-    },
-  };
+  return getPlanEntitlements(plan === 'pro' ? 'pro' : 'free');
 }
 
 export function normalizeWorkspace(workspace: Workspace): Workspace {

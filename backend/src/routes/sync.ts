@@ -2,7 +2,13 @@ import { Router, Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth';
 import { authz } from '../middleware/authz';
 import { validate } from '../middleware/validate';
-import { SyncPullQuerySchema, SyncPushSchema } from '../validation/sync.schema';
+import {
+  SyncPullQuerySchema,
+  SyncPushSchema,
+  type SyncEntity,
+  type SyncItem,
+  type SyncPushRequest,
+} from '../validation/sync.schema';
 import { getCloudSyncStoreStatus, pullSyncItems, pushSyncItems } from '../services/sync/cloudSyncStore';
 import logger from '../config/logger';
 import { asyncHandler } from '../middleware/errorHandler';
@@ -11,13 +17,7 @@ import { recordAuditEvent } from '../services/admin/auditLog';
 
 const router = Router();
 
-type SyncEntity = 'accounts' | 'transactions' | 'goals' | 'reminders' | 'receivables' | 'subscriptions';
-type SyncPayloadItem = {
-  id: string;
-  updatedAt: string;
-  deleted?: boolean;
-  payload?: Record<string, unknown>;
-};
+type SyncPayloadItem = SyncItem;
 
 router.use(authMiddleware);
 router.use(workspaceContextMiddleware);
@@ -91,7 +91,7 @@ router.post('/push', authz('sync:write'), validate(SyncPushSchema), asyncHandler
   const userId = req.userId as string;
   const tenantId = req.tenantId as string;
   const workspaceId = req.workspaceId as string;
-  const payload = req.body as { entity: SyncEntity; items: SyncPayloadItem[] };
+  const payload = req.body as SyncPushRequest;
 
   const scopedItems = payload.items.map((item) => withScopedPayload(item, { userId, tenantId, workspaceId }));
   const result = await pushSyncItems(workspaceId, payload.entity, scopedItems, { userId, workspaceId });

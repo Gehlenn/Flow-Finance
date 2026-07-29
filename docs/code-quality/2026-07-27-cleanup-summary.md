@@ -117,6 +117,8 @@ check.
   storage/sync casts before those boundaries can be tightened safely.
 - Billing/SaaS and some frontend/backend subscription contracts need a product
   decision before they can share a single owner.
+- The follow-up assessment and behavior-preserving contract consolidation are
+  recorded in `docs/code-quality/2026-07-29-contract-hardening-follow-up.md`.
 - Active provider, persistence, offline, authentication, import, security, and
   observability fallbacks remain because they implement explicit operational
   behavior. Their individual evidence is recorded in tracks 6 and 7.

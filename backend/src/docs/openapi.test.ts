@@ -1,6 +1,8 @@
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
+import { PLAN_IDS } from '../../shared/saasCatalog';
 import app from '../index';
+import { SYNC_ENTITIES } from '../validation/sync.schema';
 import { buildOpenApiSpec, isApiDocsEnabled, renderSwaggerHtml } from './openapi';
 
 describe('openapi docs', () => {
@@ -65,6 +67,41 @@ describe('openapi docs', () => {
     expect(spec.paths['/api/saas/stripe/portal-session'].post?.responses?.['200']?.content?.['application/json']?.schema?.$ref)
       .toBe('#/components/schemas/StripePortalResponse');
     expect(spec.paths['/api/saas/billing-hooks'].post?.requestBody).toBeDefined();
+    expect(spec.paths['/api/sync/push'].post?.requestBody).toMatchObject({
+      content: {
+        'application/json': {
+          schema: {
+            properties: {
+              entity: { enum: SYNC_ENTITIES },
+            },
+          },
+        },
+      },
+    });
+    expect(spec.paths['/api/billing/subscription'].post?.requestBody).toMatchObject({
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            required: expect.arrayContaining(['plan']),
+            properties: {
+              plan: { enum: PLAN_IDS },
+              billingEmail: { type: 'string' },
+            },
+          },
+        },
+      },
+    });
+    expect(spec.paths['/api/billing/subscription'].post?.responses?.['201']).toMatchObject({
+      content: {
+        'application/json': {
+          schema: {
+            required: expect.arrayContaining(['workspaceId', 'subscription', 'entitlements', 'plan']),
+          },
+        },
+      },
+    });
+    expect(spec.paths['/api/billing/subscription'].post?.responses?.['200']).toBeUndefined();
   });
 
   it('enables docs outside production and disables in production', () => {
