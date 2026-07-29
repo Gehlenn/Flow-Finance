@@ -67,6 +67,8 @@ describe('openapi docs', () => {
     expect(spec.paths['/api/saas/stripe/portal-session'].post?.responses?.['200']?.content?.['application/json']?.schema?.$ref)
       .toBe('#/components/schemas/StripePortalResponse');
     expect(spec.paths['/api/saas/billing-hooks'].post?.requestBody).toBeDefined();
+    expect(spec.paths['/api/saas/billing-hooks'].post?.description).toContain('Mock/test-only');
+    expect(spec.paths['/api/saas/billing-hooks'].post?.responses?.['403']).toBeDefined();
     expect(spec.paths['/api/sync/push'].post?.requestBody).toMatchObject({
       content: {
         'application/json': {
@@ -100,6 +102,10 @@ describe('openapi docs', () => {
           },
         },
       },
+    });
+    expect(spec.paths['/api/billing/subscription'].post?.description).toContain('Mock/test-only');
+    expect(spec.paths['/api/billing/subscription'].post?.responses?.['403']).toMatchObject({
+      description: expect.stringContaining('disabled outside mock/test'),
     });
     expect(spec.paths['/api/billing/subscription'].post?.responses?.['200']).toBeUndefined();
   });

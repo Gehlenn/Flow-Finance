@@ -3,6 +3,7 @@ import { AppError } from '../shared/AppError';
 import { Workspace, WorkspacePlan, WorkspaceSubscription } from '../types';
 import { getWorkspaceAsync, updateWorkspaceBillingAsync } from '../services/admin/workspaceStore';
 import { recordAuditEvent } from '../services/admin/auditLog';
+import { isMockBillingEnabled } from '../services/saas/billingService';
 
 function makeRenewalDate(plan: WorkspacePlan): string {
   const renewal = new Date();
@@ -17,6 +18,10 @@ export class BillingService {
     actorUserId: string;
     billingEmail?: string;
   }): Promise<Workspace> {
+    if (!isMockBillingEnabled()) {
+      throw new AppError(403, 'Mock billing updates are disabled in this environment');
+    }
+
     const workspace = await getWorkspaceAsync(input.workspaceId);
     if (!workspace) {
       throw new AppError(404, 'Workspace not found');

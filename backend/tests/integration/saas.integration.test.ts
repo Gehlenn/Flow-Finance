@@ -4,7 +4,7 @@ import request from 'supertest';
 import type { Express } from 'express';
 import { beforeAll, beforeEach, vi } from 'vitest';
 import { createTestAuthorizationHeader } from '../helpers/auth';
-import { resetSaasStoreForTests } from '../../src/utils/saasStore';
+import { getBillingHooksForWorkspace, resetSaasStoreForTests } from '../../src/utils/saasStore';
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
 
 vi.mock('../../src/config/database', () => ({
@@ -164,6 +164,43 @@ describe('SaaS API workspace scope', () => {
       aiQueries: 8,
       bankConnections: 2,
     });
+  });
+
+  it('POST /api/saas/billing-hooks rejects production mock events before persistence', async () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    const previousAllowMockBillingUpdates = process.env.ALLOW_MOCK_BILLING_UPDATES;
+
+    try {
+      const ownerUserId = 'owner-saas-production-hook';
+      const created = await request(app)
+        .post('/api/tenant')
+        .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+        .send({ name: 'Workspace Production Hook' });
+
+      process.env.NODE_ENV = 'production';
+      process.env.ALLOW_MOCK_BILLING_UPDATES = 'true';
+
+      const response = await request(app)
+        .post('/api/saas/billing-hooks')
+        .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+        .set('x-workspace-id', created.body.workspaceId)
+        .send({
+          plan: 'pro',
+          event: 'plan_changed',
+          amount: 0,
+          at: '2026-07-29T12:00:00.000Z',
+        });
+
+      expect(response.status).toBe(403);
+      expect(getBillingHooksForWorkspace(created.body.workspaceId)).toHaveLength(0);
+    } finally {
+      process.env.NODE_ENV = previousNodeEnv;
+      if (previousAllowMockBillingUpdates === undefined) {
+        delete process.env.ALLOW_MOCK_BILLING_UPDATES;
+      } else {
+        process.env.ALLOW_MOCK_BILLING_UPDATES = previousAllowMockBillingUpdates;
+      }
+    }
   });
 
   it('GET /api/saas/metering returns workspace-scoped usage summary and events', async () => {

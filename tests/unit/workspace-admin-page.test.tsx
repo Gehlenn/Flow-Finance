@@ -13,8 +13,8 @@ const workspaceAdminMocks = vi.hoisted(() => ({
   setActiveWorkspaceId: vi.fn(),
   getWorkspaceBillingOverview: vi.fn(),
   listWorkspaceBillingHooks: vi.fn(),
-  updateWorkspacePlan: vi.fn(),
   getWorkspacePlanCatalog: vi.fn(),
+  changeWorkspacePlan: vi.fn(),
   createWorkspaceCheckoutSession: vi.fn(),
   createWorkspacePortalSession: vi.fn(),
   locationAssign: vi.fn(),
@@ -36,11 +36,11 @@ vi.mock('../../src/services/workspaceSession', () => ({
 vi.mock('../../src/services/firestoreBillingStore', () => ({
   getWorkspaceBillingOverview: workspaceAdminMocks.getWorkspaceBillingOverview,
   listWorkspaceBillingHooks: workspaceAdminMocks.listWorkspaceBillingHooks,
-  updateWorkspacePlan: workspaceAdminMocks.updateWorkspacePlan,
 }));
 
 vi.mock('../../src/saas/billingClient', () => ({
   getWorkspacePlanCatalog: workspaceAdminMocks.getWorkspacePlanCatalog,
+  changeWorkspacePlan: workspaceAdminMocks.changeWorkspacePlan,
   createWorkspaceCheckoutSession: workspaceAdminMocks.createWorkspaceCheckoutSession,
   createWorkspacePortalSession: workspaceAdminMocks.createWorkspacePortalSession,
 }));
@@ -94,6 +94,14 @@ function setup(
     billingProvider,
     manualPlanChangeAllowed,
     plans: [],
+  });
+  workspaceAdminMocks.changeWorkspacePlan.mockResolvedValue({
+    scope: 'workspace',
+    workspaceId: 'ws-1',
+    previousPlan: currentPlan,
+    currentPlan,
+    changed: false,
+    source: 'mock_api',
   });
   workspaceAdminMocks.listWorkspaceBillingHooks.mockResolvedValue([]);
   workspaceAdminMocks.listWorkspaceMembers.mockResolvedValue([{ id: 'ws-1_user-2', tenantId: 'tenant-1', workspaceId: 'ws-1', userId: 'user-2', role: 'member', status: 'active', createdAt: '2026-04-02T00:00:00.000Z', updatedAt: '2026-04-02T00:00:00.000Z' }]);
@@ -209,10 +217,8 @@ describe('WorkspaceAdminPage', () => {
     fireEvent.click(screen.getByText(/^Definir Pro$/i));
 
     await waitFor(() => {
-      expect(workspaceAdminMocks.updateWorkspacePlan).toHaveBeenCalledWith({
-        tenantId: 'tenant-1',
+      expect(workspaceAdminMocks.changeWorkspacePlan).toHaveBeenCalledWith({
         workspaceId: 'ws-1',
-        userId: 'user-1',
         plan: 'pro',
       });
     });
@@ -258,7 +264,7 @@ describe('WorkspaceAdminPage', () => {
   });
 
   it('shows a visible diagnostic when plan change fails', async () => {
-    workspaceAdminMocks.updateWorkspacePlan.mockRejectedValueOnce(new Error('plan update failed'));
+    workspaceAdminMocks.changeWorkspacePlan.mockRejectedValueOnce(new Error('plan update failed'));
 
     setup('owner', {
       currentPlan: 'free',

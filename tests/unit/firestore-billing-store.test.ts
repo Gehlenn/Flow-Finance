@@ -56,8 +56,6 @@ import {
   listWorkspaceBillingHooks,
   readWorkspaceUsage,
   resetWorkspaceUsage,
-  recordWorkspaceBillingHook,
-  updateWorkspacePlan,
 } from '../../src/services/firestoreBillingStore';
 
 describe('firestoreBillingStore', () => {
@@ -68,11 +66,11 @@ describe('firestoreBillingStore', () => {
     billingMocks.demoPlan.value = null;
   });
 
-  it('reads billing overview from Firestore collections', async () => {
+  it('uses the workspace plan as the billing authority instead of legacy billing state', async () => {
     billingMocks.getDocMock
       .mockResolvedValueOnce({
         exists: () => true,
-        data: () => ({ workspaceId: 'ws-1', tenantId: 'tenant-1', plan: 'pro', status: 'active', updatedAt: '2026-04-02T00:00:00.000Z', updatedByUserId: 'user-1' }),
+        data: () => ({ plan: 'free', updatedAt: '2026-04-03T00:00:00.000Z' }),
       })
       .mockResolvedValueOnce({
         exists: () => true,
@@ -89,58 +87,17 @@ describe('firestoreBillingStore', () => {
 
     const overview = await getWorkspaceBillingOverview({ tenantId: 'tenant-1', workspaceId: 'ws-1' });
 
-    expect(overview.currentPlan).toBe('pro');
+    expect(overview.currentPlan).toBe('free');
+    expect(overview.billingState).toMatchObject({
+      plan: 'free',
+      updatedAt: '2026-04-03T00:00:00.000Z',
+      updatedByUserId: 'system',
+    });
+    expect(billingMocks.getDocMock).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'workspaces/ws-1' }),
+    );
     expect(overview.currentMonthUsage.transactions).toBe(4);
     expect(overview.billingHooks).toHaveLength(1);
-  });
-
-  it('updates the workspace plan and writes audit data', async () => {
-    await updateWorkspacePlan({
-      tenantId: 'tenant-1',
-      workspaceId: 'ws-1',
-      userId: 'user-1',
-      plan: 'pro',
-    });
-
-    expect(billingMocks.setDocMock).toHaveBeenCalledWith(
-      expect.objectContaining({ path: 'workspaces/ws-1/billing_state/current' }),
-      expect.objectContaining({ plan: 'pro' }),
-      { merge: true },
-    );
-    expect(billingMocks.setDocMock).toHaveBeenCalledWith(
-      expect.objectContaining({ path: 'workspaces/ws-1' }),
-      expect.objectContaining({ plan: 'pro' }),
-      { merge: true },
-    );
-    expect(billingMocks.writeAuditLogEventMock).toHaveBeenCalled();
-  });
-
-  it('keeps billing hook context fields stable even when payload carries conflicting workspace data', async () => {
-    const hook = await recordWorkspaceBillingHook({
-      tenantId: 'tenant-1',
-      workspaceId: 'ws-1',
-      payload: {
-        userId: 'user-1',
-        workspaceId: 'ws-legacy',
-        plan: 'pro',
-        event: 'plan_changed',
-        resource: 'transactions',
-        amount: 0,
-        at: '2026-04-02T00:00:00.000Z',
-      },
-    });
-
-    expect(hook.workspaceId).toBe('ws-1');
-    expect(hook.tenantId).toBe('tenant-1');
-    expect(billingMocks.setDocMock).toHaveBeenCalledWith(
-      expect.objectContaining({ path: 'workspaces/ws-1/billing_hooks/generated-1' }),
-      expect.objectContaining({
-        workspaceId: 'ws-1',
-        tenantId: 'tenant-1',
-        plan: 'pro',
-      }),
-      { merge: true },
-    );
   });
 
   it('returns safe defaults when Firebase billing is not configured', async () => {
@@ -176,26 +133,6 @@ describe('firestoreBillingStore', () => {
     await expect(incrementWorkspaceUsage({ workspaceId: '', resource: 'transactions', amount: 1 })).resolves.toBe(0);
     await expect(resetWorkspaceUsage('')).resolves.toBeUndefined();
 
-    await expect(updateWorkspacePlan({
-      tenantId: '',
-      workspaceId: 'ws-1',
-      userId: 'user-1',
-      plan: 'pro',
-    })).rejects.toThrow(/workspaceId and tenantId/i);
-
-    await expect(recordWorkspaceBillingHook({
-      tenantId: 'tenant-1',
-      workspaceId: '',
-      payload: {
-        userId: 'user-1',
-        workspaceId: '',
-        plan: 'pro',
-        event: 'plan_changed',
-        resource: 'transactions',
-        amount: 0,
-        at: '2026-04-02T00:00:00.000Z',
-      },
-      })).rejects.toThrow(/workspaceId and tenantId/i);
   });
 
   it('returns a pro billing overview in demo mode without Firestore reads', async () => {

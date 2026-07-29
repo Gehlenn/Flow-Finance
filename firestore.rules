@@ -100,6 +100,37 @@ service cloud.firestore {
         && memberMatchesWorkspaceTenant(workspaceId);
     }
 
+    function hasNoBillingAuthorityFields(data) {
+      return !data.keys().hasAny([
+        'status',
+        'entitlements',
+        'billingEmail',
+        'billingCustomerId',
+        'subscription',
+      ]);
+    }
+
+    function keepsWorkspaceBillingAuthorityImmutable() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'id',
+        'tenantId',
+        'plan',
+        'status',
+        'entitlements',
+        'billingEmail',
+        'billingCustomerId',
+        'subscription',
+      ]);
+    }
+
+    function keepsTenantAuthorityImmutable() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'id',
+        'plan',
+        'ownerUserId',
+      ]);
+    }
+
     match /users/{userId} {
       allow read, write: if isCurrentUser(userId);
     }
@@ -107,10 +138,15 @@ service cloud.firestore {
     match /tenants/{tenantId} {
       allow create: if isSignedIn()
         && request.resource.data.id == tenantId
-        && request.resource.data.ownerUserId == request.auth.uid;
+        && request.resource.data.ownerUserId == request.auth.uid
+        && request.resource.data.plan == 'free'
+        && hasNoBillingAuthorityFields(request.resource.data);
       allow read: if resource.data.id == tenantId
         && (isTenantOwner(tenantId) || isTenantMember(tenantId));
-      allow update, delete: if resource.data.id == tenantId
+      allow update: if resource.data.id == tenantId
+        && isTenantOwner(tenantId)
+        && keepsTenantAuthorityImmutable();
+      allow delete: if resource.data.id == tenantId
         && isTenantOwner(tenantId);
     }
 
@@ -139,10 +175,14 @@ service cloud.firestore {
 
     match /workspaces/{workspaceId} {
       allow create: if isSignedIn()
+        && request.resource.data.id == workspaceId
         && request.resource.data.createdAt is string
-        && request.resource.data.tenantId is string;
+        && request.resource.data.tenantId is string
+        && request.resource.data.plan == 'free'
+        && hasNoBillingAuthorityFields(request.resource.data);
       allow read: if isWorkspaceMember(workspaceId);
-      allow update: if canManageWorkspace(workspaceId);
+      allow update: if canManageWorkspace(workspaceId)
+        && keepsWorkspaceBillingAuthorityImmutable();
       allow delete: if isWorkspaceOwner(workspaceId);
 
       match /accounts/{accountId} {
@@ -231,11 +271,7 @@ service cloud.firestore {
 
       match /billing_state/{stateId} {
         allow read: if isWorkspaceMember(workspaceId);
-        allow create, update: if canManageWorkspace(workspaceId)
-          && request.resource.data.workspaceId == workspaceId
-          && request.resource.data.tenantId == workspaceDoc(workspaceId).data.tenantId
-          && memberMatchesWorkspaceTenant(workspaceId);
-        allow delete: if isWorkspaceOwner(workspaceId);
+        allow create, update, delete: if false;
       }
 
       match /billing_hooks/{eventId} {

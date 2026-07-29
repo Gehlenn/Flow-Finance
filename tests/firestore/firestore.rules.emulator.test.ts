@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { initializeTestEnvironment, assertFails, assertSucceeds, RulesTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { deleteDoc, deleteField, doc, getDoc, setDoc } from 'firebase/firestore';
 
 const projectId = 'demo-flow-finance';
 const rules = readFileSync(path.resolve(process.cwd(), 'firestore.rules'), 'utf8');
@@ -65,6 +65,26 @@ async function seedWorkspace() {
       updatedAt: '2026-04-02T00:00:00.000Z',
     });
 
+    await setDoc(doc(db, 'workspace_members', 'ws-1_admin-1'), {
+      id: 'ws-1_admin-1',
+      tenantId: 'tenant-1',
+      workspaceId: 'ws-1',
+      userId: 'admin-1',
+      role: 'admin',
+      status: 'active',
+      createdAt: '2026-04-02T00:00:00.000Z',
+      updatedAt: '2026-04-02T00:00:00.000Z',
+    });
+
+    await setDoc(doc(db, 'workspaces', 'ws-1', 'billing_state', 'current'), {
+      workspaceId: 'ws-1',
+      tenantId: 'tenant-1',
+      plan: 'pro',
+      status: 'active',
+      updatedAt: '2026-04-02T00:00:00.000Z',
+      updatedByUserId: 'system',
+    });
+
     await setDoc(doc(db, 'workspaces', 'ws-1', 'accounts', 'acc-1'), {
       id: 'acc-1',
       name: 'Main account',
@@ -104,6 +124,16 @@ async function seedWorkspace() {
       tenantId: 'tenant-1',
       workspaceId: 'ws-1',
       userId: 'viewer-1',
+      status: 'active',
+      createdAt: '2026-04-02T00:00:00.000Z',
+      updatedAt: '2026-04-02T00:00:00.000Z',
+    });
+
+    await setDoc(doc(db, 'tenant_members', 'tenant-1_admin-1'), {
+      id: 'tenant-1_admin-1',
+      tenantId: 'tenant-1',
+      workspaceId: 'ws-1',
+      userId: 'admin-1',
       status: 'active',
       createdAt: '2026-04-02T00:00:00.000Z',
       updatedAt: '2026-04-02T00:00:00.000Z',
@@ -156,16 +186,103 @@ describe('firestore rules emulator', () => {
     }));
   });
 
-  it('allows an owner to update billing state for the workspace', async () => {
+  it('allows workspace members to read billing state', async () => {
     const db = testEnv.authenticatedContext('owner-1').firestore();
-    await assertSucceeds(setDoc(doc(db, 'workspaces', 'ws-1', 'billing_state', 'current'), {
+    await assertSucceeds(getDoc(doc(db, 'workspaces', 'ws-1', 'billing_state', 'current')));
+  });
+
+  it('blocks owners and admins from writing billing state', async () => {
+    const ownerDb = testEnv.authenticatedContext('owner-1').firestore();
+    const adminDb = testEnv.authenticatedContext('admin-1').firestore();
+    const stateRef = doc(ownerDb, 'workspaces', 'ws-1', 'billing_state', 'current');
+
+    await assertFails(setDoc(stateRef, { plan: 'free' }, { merge: true }));
+    await assertFails(setDoc(doc(adminDb, 'workspaces', 'ws-1', 'billing_state', 'pending'), {
       workspaceId: 'ws-1',
       tenantId: 'tenant-1',
-      plan: 'pro',
+      plan: 'free',
       status: 'active',
-      updatedAt: '2026-04-02T00:00:00.000Z',
-      updatedByUserId: 'owner-1',
     }));
+    await assertFails(deleteDoc(stateRef));
+  });
+
+  it('allows managers to update workspace metadata but not billing-authoritative fields', async () => {
+    const ownerDb = testEnv.authenticatedContext('owner-1').firestore();
+    const adminDb = testEnv.authenticatedContext('admin-1').firestore();
+    const ownerWorkspaceRef = doc(ownerDb, 'workspaces', 'ws-1');
+    const adminWorkspaceRef = doc(adminDb, 'workspaces', 'ws-1');
+
+    await assertSucceeds(setDoc(ownerWorkspaceRef, { name: 'Workspace Renamed' }, { merge: true }));
+
+    for (const protectedChange of [
+      { plan: 'free' },
+      { status: 'active' },
+      { entitlements: { aiQueries: 999 } },
+      { billingEmail: 'attacker@example.com' },
+      { billingCustomerId: 'cus_attacker' },
+      { subscription: { id: 'sub_attacker' } },
+      { subscription: deleteField() },
+      { id: 'other-workspace' },
+      { tenantId: 'tenant-other' },
+    ]) {
+      await assertFails(setDoc(adminWorkspaceRef, protectedChange, { merge: true }));
+    }
+  });
+
+  it('requires client-created tenants and workspaces to start on the free plan', async () => {
+    const db = testEnv.authenticatedContext('owner-1').firestore();
+
+    await assertSucceeds(setDoc(doc(db, 'tenants', 'tenant-free'), {
+      id: 'tenant-free',
+      name: 'Free tenant',
+      plan: 'free',
+      ownerUserId: 'owner-1',
+    }));
+    await assertFails(setDoc(doc(db, 'tenants', 'tenant-paid'), {
+      id: 'tenant-paid',
+      name: 'Paid tenant',
+      plan: 'pro',
+      ownerUserId: 'owner-1',
+    }));
+    await assertFails(setDoc(doc(db, 'tenants', 'tenant-billing-field'), {
+      id: 'tenant-billing-field',
+      name: 'Tenant with billing field',
+      plan: 'free',
+      ownerUserId: 'owner-1',
+      billingCustomerId: 'cus_attacker',
+    }));
+    await assertSucceeds(setDoc(doc(db, 'workspaces', 'ws-free'), {
+      id: 'ws-free',
+      tenantId: 'tenant-free',
+      name: 'Free workspace',
+      plan: 'free',
+      createdAt: '2026-04-02T00:00:00.000Z',
+    }));
+    await assertFails(setDoc(doc(db, 'workspaces', 'ws-paid'), {
+      id: 'ws-paid',
+      tenantId: 'tenant-free',
+      name: 'Paid workspace',
+      plan: 'pro',
+      createdAt: '2026-04-02T00:00:00.000Z',
+    }));
+    await assertFails(setDoc(doc(db, 'workspaces', 'ws-billing-field'), {
+      id: 'ws-billing-field',
+      tenantId: 'tenant-free',
+      name: 'Workspace with billing field',
+      plan: 'free',
+      entitlements: { aiQueries: 999 },
+      createdAt: '2026-04-02T00:00:00.000Z',
+    }));
+  });
+
+  it('keeps tenant plan and owner immutable after creation', async () => {
+    const db = testEnv.authenticatedContext('owner-1').firestore();
+    const tenantRef = doc(db, 'tenants', 'tenant-1');
+
+    await assertSucceeds(setDoc(tenantRef, { name: 'Tenant Renamed' }, { merge: true }));
+    await assertFails(setDoc(tenantRef, { plan: 'free' }, { merge: true }));
+    await assertFails(setDoc(tenantRef, { ownerUserId: 'admin-1' }, { merge: true }));
+    await assertSucceeds(deleteDoc(tenantRef));
   });
 
   it('blocks client writes to billing hooks even for workspace owners', async () => {

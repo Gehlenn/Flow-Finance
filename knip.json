@@ -53,7 +53,8 @@
     },
     "backend": {
       "ignoreDependencies": [
-        "pino-pretty"
+        "pino-pretty",
+        "tsx"
       ],
       "entry": [
         "api/index.ts",

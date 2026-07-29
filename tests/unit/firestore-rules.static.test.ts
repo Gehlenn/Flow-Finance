@@ -28,6 +28,26 @@ describe('firestore.rules multi-tenant coverage', () => {
     expect(rules).toContain('match /billing_hooks/{eventId} {\n        allow read: if canManageWorkspace(workspaceId);\n        allow create, update, delete: if false;');
   });
 
+  it('keeps billing state writes server-only', () => {
+    expect(rules).toContain('match /billing_state/{stateId} {\n        allow read: if isWorkspaceMember(workspaceId);\n        allow create, update, delete: if false;');
+  });
+
+  it('protects billing-authoritative workspace and tenant fields from client updates', () => {
+    expect(rules).toContain('function keepsWorkspaceBillingAuthorityImmutable()');
+    expect(rules).toContain("'billingCustomerId'");
+    expect(rules).toContain("'subscription'");
+    expect(rules).toContain('&& keepsWorkspaceBillingAuthorityImmutable();');
+    expect(rules).toContain('function keepsTenantAuthorityImmutable()');
+    expect(rules).toContain("'ownerUserId'");
+    expect(rules).toContain('&& keepsTenantAuthorityImmutable();');
+  });
+
+  it('requires client-created tenants and workspaces to start on the free plan', () => {
+    expect(rules).toContain("request.resource.data.plan == 'free'");
+    expect(rules).toContain('hasNoBillingAuthorityFields(request.resource.data);');
+    expect(rules).toContain('request.resource.data.id == workspaceId');
+  });
+
   it('covers future workspace-scoped collections', () => {
     expect(rules).toContain('match /insights/{insightId}');
     expect(rules).toContain('match /imports/{importId}');
