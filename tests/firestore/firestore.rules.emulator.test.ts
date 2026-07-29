@@ -38,6 +38,7 @@ async function seedWorkspace() {
       tenantName: 'Tenant 1',
       name: 'Workspace 1',
       plan: 'pro',
+      subscription: { id: 'sub-provider' },
       isDefault: true,
       createdAt: '2026-04-02T00:00:00.000Z',
       updatedAt: '2026-04-02T00:00:00.000Z',
