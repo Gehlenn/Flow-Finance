@@ -33,43 +33,22 @@ import {
   setScopedUsage,
   logLegacyStoreLoadFailure,
 } from './saasStoreHelpers';
+import type {
+  BillingHookPayload,
+  PlanId,
+  ResourceKind,
+  UsageSnapshot,
+  WorkspaceUsageEvent,
+} from './saasStoreTypes';
 
-export type ResourceKind = 'transactions' | 'aiQueries' | 'bankConnections';
-
-export type UsageSnapshot = {
-  transactions: number;
-  aiQueries: number;
-  bankConnections: number;
-};
-
-export type PlanId = 'free' | 'pro';
-
-export type BillingHookEvent =
-  | 'usage_recorded'
-  | 'limit_reached'
-  | 'upgrade_required'
-  | 'plan_changed';
-
-export type BillingHookPayload = {
-  userId?: string;
-  workspaceId?: string;
-  plan: PlanId;
-  event: BillingHookEvent;
-  resource?: ResourceKind;
-  amount: number;
-  at: string;
-  metadata?: Record<string, unknown>;
-};
-
-export type WorkspaceUsageEvent = {
-  id: string;
-  workspaceId: string;
-  userId?: string;
-  resource: ResourceKind;
-  amount: number;
-  at: string;
-  metadata?: Record<string, unknown>;
-};
+export type {
+  BillingHookEvent,
+  BillingHookPayload,
+  PlanId,
+  ResourceKind,
+  UsageSnapshot,
+  WorkspaceUsageEvent,
+} from './saasStoreTypes';
 
 export type WorkspaceAICostEstimate = Omit<AICostEstimate, 'evidence'> & {
   basis: 'estimated_from_tokens';
@@ -183,7 +162,7 @@ async function persistState(state: SaasStoreState): Promise<void> {
   });
   // Legacy JSON blob — best-effort backup only, not source of truth.
   if (!areLegacyStateBlobsDisabled()) {
-    void saveJsonState(POSTGRES_STATE_KEY, state as unknown as Record<string, unknown>).catch((error) => {
+    void saveJsonState(POSTGRES_STATE_KEY, state).catch((error) => {
       logger.warn({
         error,
         key: POSTGRES_STATE_KEY,

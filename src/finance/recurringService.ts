@@ -41,14 +41,14 @@ function addInterval(date: Date, type: 'daily' | 'weekly' | 'monthly', interval:
 }
 
 /**
- * STEP 1 — Retorna apenas transações marcadas como recorrentes.
+ * Retorna apenas transações marcadas como recorrentes.
  */
 export function detectRecurringTransactions(transactions: Transaction[]): Transaction[] {
   return transactions.filter(t => t.recurring === true);
 }
 
 /**
- * STEP 2 & 3 — Gera instâncias futuras de uma transação recorrente entre startDate e endDate.
+ * Gera instâncias futuras de uma transação recorrente entre startDate e endDate.
  */
 export function generateRecurringTransactions(
   transactions: Transaction[],
@@ -87,7 +87,7 @@ export function generateRecurringTransactions(
 }
 
 /**
- * STEP 4 — Mescla transações originais com as geradas pelo engine de recorrência.
+ * Mescla transações originais com as geradas pelo engine de recorrência.
  */
 export function expandTransactionsWithRecurring(
   transactions: Transaction[],

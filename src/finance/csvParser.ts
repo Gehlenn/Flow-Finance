@@ -154,7 +154,6 @@ function inferType(desc: string, signed?: number): TransactionType {
   return TransactionType.DESPESA;
 }
 
-// ─── PART 2 — parseCSV ────────────────────────────────────────────────────────
 
 /**
  * Parseia conteúdo CSV de extrato bancário e retorna array de transações.
@@ -270,40 +269,4 @@ export function parseCSV(fileContent: string): Transaction[] {
   }
 
   return results;
-}
-
-// ─── Helpers re-exportados ────────────────────────────────────────────────────
-
-/** Detecta se um conteúdo parece ser CSV financeiro */
-export function isCSVContent(content: string): boolean {
-  const firstLines = content.split('\n').slice(0, 5).join('\n').toLowerCase();
-  return /data|valor|descri|amount|date/.test(firstLines);
-}
-
-/** Retorna detecção de colunas para debug */
-export function detectCSVColumns(fileContent: string): Record<string, number> {
-  const lines = fileContent.split('\n').map(l => l.trim()).filter(Boolean);
-  if (lines.length < 1) return {};
-  const sep = detectSeparator(lines[0]);
-  const headers = splitLine(lines[0], sep);
-  return {
-    date:   findCol(headers, 'data', 'date'),
-    desc:   findCol(headers, 'descri', 'historico'),
-    amount: findCol(headers, 'valor', 'amount'),
-    debit:  findCol(headers, 'debito', 'saida'),
-    credit: findCol(headers, 'credito', 'entrada'),
-  };
-}
-
-/** Retorna resumo de parse */
-export function summarizeCSVParse(txs: Transaction[]): {
-  total: number;
-  income: number;
-  expenses: number;
-} {
-  return {
-    total:    txs.length,
-    income:   txs.filter(t => t.type === TransactionType.RECEITA).reduce((s, t) => s + t.amount, 0),
-    expenses: txs.filter(t => t.type === TransactionType.DESPESA).reduce((s, t) => s + t.amount, 0),
-  };
 }

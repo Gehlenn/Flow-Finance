@@ -18,87 +18,69 @@
 import { API_ENDPOINTS, apiRequest } from '../config/api.config';
 import { logWarn } from '../utils/logger';
 import { hydrateGoalsFromCloud as hydrateGoalsFromCloudImpl } from './localSyncGoalsHydrator';
+import type {
+  LocalSyncEntity,
+  SyncItem,
+  SyncPullResult,
+  SyncPushPayload,
+  SyncPushResult,
+} from './localSyncTypes';
 
-export type LocalSyncEntity = 'goals' | 'accounts' | 'transactions' | 'reminders' | 'receivables' | 'subscriptions';
-
-export interface SyncItem {
-  id: string;
-  updatedAt: string;
-  deleted?: boolean;
-  payload?: Record<string, unknown>;
-}
-
-export interface SyncPushPayload {
-  entity: LocalSyncEntity;
-  items: SyncItem[];
-}
-
-export interface SyncPushResult {
-  success: boolean;
-  upserted: number;
-  deleted: number;
-  latestServerUpdatedAt: string;
-  reconciledIds: Array<{ clientId: string; serverId: string }>;
-}
-
-export interface SyncPullResult {
-  since: string | null;
-  serverTime: string;
-  entities: {
-    goals: SyncItem[];
-    accounts: SyncItem[];
-    transactions: SyncItem[];
-    reminders: SyncItem[];
-    receivables: SyncItem[];
-    subscriptions: SyncItem[];
-  };
-}
+export type {
+  LocalSyncEntity,
+  SyncItem,
+  SyncPullResult,
+  SyncPushPayload,
+  SyncPushResult,
+} from './localSyncTypes';
 
 export async function pushToCloud(
   entity: LocalSyncEntity,
   items: SyncItem[],
-): Promise<SyncPushResult | null> {
-  if (!items.length) return null;
-
-  try {
-    const payload: SyncPushPayload = { entity, items };
-    return await apiRequest<SyncPushResult>(API_ENDPOINTS.SYNC.PUSH, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-      credentials: 'include',
-      retries: 0,
-      silent: true,
-    });
-  } catch (error) {
-    logWarn('[LocalSync] pushToCloud failed; keeping local state as source of truth', {
-      entity,
-      itemCount: items.length,
-      error,
-      fallback: 'local-sync-push-failed',
-    });
-    return null;
+): Promise<SyncPushResult> {
+  if (!items.length) {
+    return {
+      success: true,
+      upserted: 0,
+      deleted: 0,
+      latestServerUpdatedAt: new Date().toISOString(),
+      reconciledIds: [],
+    };
   }
+
+  const payload: SyncPushPayload = { entity, items };
+  return apiRequest<SyncPushResult>(API_ENDPOINTS.SYNC.PUSH, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    credentials: 'include',
+    retries: 0,
+    silent: true,
+  });
 }
 
-export async function pullFromCloud(since?: string): Promise<SyncPullResult | null> {
+export async function pullFromCloud(since?: string): Promise<SyncPullResult> {
+  const qs = since ? `?since=${encodeURIComponent(since)}` : '';
+  return apiRequest<SyncPullResult>(`${API_ENDPOINTS.SYNC.PULL}${qs}`, {
+    method: 'GET',
+    credentials: 'include',
+    retries: 0,
+    silent: true,
+  });
+}
+
+async function pullFromCloudBestEffort(since?: string): Promise<SyncPullResult | null> {
   try {
-    const qs = since ? `?since=${encodeURIComponent(since)}` : '';
-    return await apiRequest<SyncPullResult>(`${API_ENDPOINTS.SYNC.PULL}${qs}`, {
-      method: 'GET',
-      credentials: 'include',
-      retries: 0,
-      silent: true,
-    });
+    return await pullFromCloud(since);
   } catch (error) {
-    logWarn('[LocalSync] pullFromCloud failed; returning null to preserve local state', {
+    logWarn('[LocalSync] Goal hydration skipped because cloud sync is unavailable', {
       since: since ?? null,
       error,
-      fallback: 'local-sync-pull-failed',
+      fallback: 'local-sync-goal-hydration-unavailable',
     });
     return null;
   }
 }
 
 export async function hydrateGoalsFromCloud(): Promise<boolean> {
-  return hydrateGoalsFromCloudImpl(pullFromCloud);
+  return hydrateGoalsFromCloudImpl(pullFromCloudBestEffort);
 }

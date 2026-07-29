@@ -1,6 +1,17 @@
-import { type IncomeType } from './salaryDetector';
+export type IncomeType =
+  | 'salary'
+  | 'freelance'
+  | 'pro_labore'
+  | 'pension'
+  | 'rent_income'
+  | 'investment'
+  | 'other_recurring';
 
-export const SALARY_KEYWORDS: Array<{ keywords: string[]; type: IncomeType; weight: number }> = [
+export const SALARY_KEYWORDS: ReadonlyArray<{
+  keywords: readonly string[];
+  type: IncomeType;
+  weight: number;
+}> = [
   { keywords: ['salário', 'salario', 'folha pagamento', 'folha de pagamento', 'holerite', 'remuneração', 'remuneracao', 'vencimento'], type: 'salary', weight: 1.0 },
   { keywords: ['pro labore', 'pró labore', 'pro-labore', 'pró-labore', 'honorários', 'honorarios', 'prolabore'], type: 'pro_labore', weight: 0.9 },
   { keywords: ['freelance', 'free lance', 'autônomo', 'autonomo', 'pagamento serviços', 'pagamento de serviços', 'prestação serviços'], type: 'freelance', weight: 0.85 },

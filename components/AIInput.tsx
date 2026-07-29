@@ -12,7 +12,7 @@ import {
 import { TransactionDraft, getUncertainFields } from '../src/domain/transactionDraft';
 import { logWarn } from '../src/utils/logger';
 
-// Web Speech API â€” not in all browsers/typings
+// Web Speech API — not in all browsers/typings
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
 }
@@ -30,8 +30,8 @@ interface SpeechRecognitionConstructor {
 }
 declare const SpeechRecognition: SpeechRecognitionConstructor | undefined;
 
-import { 
-  X, Mic, Send, Sparkles, Loader2, Check, 
+import {
+  X, Mic, Send, Sparkles, Loader2, Check,
   ImageIcon, Briefcase, TrendingUp, AlertTriangle,
   ChevronLeft, ChevronRight, Lightbulb, Wallet, ShoppingBag, GraduationCap
 } from 'lucide-react';
@@ -91,7 +91,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
     accounts.length > 0 ? accounts[0].id : undefined
   );
 
-  // â”€â”€ Draft review state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Draft review state ────────────────────────────────────────────────────
   // Quando confiança for média/baixa, o draft fica aqui para revisão antes de salvar.
   const [pendingDraft, setPendingDraft] = useState<TransactionDraft | null>(null);
 
@@ -267,7 +267,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
       recurrenceType: manualData.recurring ? manualData.recurrence_type : undefined,
       recurrenceInterval: manualData.recurring ? manualData.recurrence_interval : undefined,
     });
-    // Manual sempre alta confiança â€” salva direto
+    // Manual sempre alta confiança — salva direto
     onAddTransactions([{
       ...draftToTransaction(draft) as Partial<Transaction>,
       recurring: manualData.recurring,
@@ -322,7 +322,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
     reader.readAsDataURL(file);
   };
 
-  // â”€â”€ Draft Review Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Draft Review Panel ────────────────────────────────────────────────────
   if (pendingDraft) {
     const uncertainFields = getUncertainFields(pendingDraft.fieldConfidences ?? {});
     const isUncertain = (field: string) => uncertainFields.includes(field as keyof typeof pendingDraft.fieldConfidences);
@@ -368,7 +368,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
             {/* Descrição */}
             <div className={`rounded-2xl p-3 border ${isUncertain('description') ? 'border-amber-300 bg-amber-50 dark:bg-amber-500/10' : 'border-slate-100 dark:border-slate-800'}`}>
               <label className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400 block mb-1">
-                Descrição {isUncertain('description') && <span className="text-amber-500 ml-1">âš </span>}
+                Descrição {isUncertain('description') && <span className="text-amber-500 ml-1">⚠</span>}
               </label>
               <input
                 className="w-full text-sm bg-transparent text-slate-800 dark:text-white outline-none"
@@ -380,7 +380,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
             {/* Valor */}
             <div className={`rounded-2xl p-3 border ${isUncertain('amount') ? 'border-amber-300 bg-amber-50 dark:bg-amber-500/10' : 'border-slate-100 dark:border-slate-800'}`}>
               <label className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400 block mb-1">
-                Valor {isUncertain('amount') && <span className="text-amber-500 ml-1">âš </span>}
+                Valor {isUncertain('amount') && <span className="text-amber-500 ml-1">⚠</span>}
               </label>
               <input
                 type="number"
@@ -409,7 +409,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
             {/* Categoria */}
             <div className={`rounded-2xl p-3 border ${isUncertain('category') ? 'border-amber-300 bg-amber-50 dark:bg-amber-500/10' : 'border-slate-100 dark:border-slate-800'}`}>
               <label className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400 block mb-1">
-                Categoria {isUncertain('category') && <span className="text-amber-500 ml-1">âš </span>}
+                Categoria {isUncertain('category') && <span className="text-amber-500 ml-1">⚠</span>}
               </label>
               <select
                 className="w-full text-sm bg-transparent text-slate-800 dark:text-white outline-none"
@@ -445,18 +445,18 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 transition-all">
       <div className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
-        
+
         {/* Header Seletor de Modo */}
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl">
-            <button 
-              onClick={() => setMode('ai')} 
+            <button
+              onClick={() => setMode('ai')}
               className={`px-6 py-2 rounded-xl text-[9px] font-semibold uppercase tracking-[0.08em] transition-all ${mode === 'ai' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}
             >
               Inteligência Artificial
             </button>
-            <button 
-              onClick={() => setMode('manual')} 
+            <button
+              onClick={() => setMode('manual')}
               className={`px-6 py-2 rounded-xl text-[9px] font-semibold uppercase tracking-[0.08em] transition-all ${mode === 'manual' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}
             >
               Lançamento Manual
@@ -521,7 +521,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
               <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
                 <div className="flex items-center justify-between gap-4">
                   <button onClick={() => setTipIndex(prev => (prev - 1 + TIPS.length) % TIPS.length)} className="text-slate-300 hover:text-slate-500 transition-colors"><ChevronLeft size={16}/></button>
-                  <button 
+                  <button
                     onClick={() => {
                       setInputText(TIPS[tipIndex].text);
                       setClickedTipIndex(tipIndex);
@@ -538,13 +538,13 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
 
               {/* Input de Texto */}
               <div className="relative group">
-                <textarea 
+                <textarea
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder="Diga ou escreva o que aconteceu..."
                   className={`w-full h-40 p-6 ${AI_INPUT_CLASSES.neutralInput} rounded-[2rem] border-2 border-transparent focus:border-slate-300 focus:bg-white dark:focus:bg-slate-800 text-slate-700 dark:text-white font-medium outline-none resize-none transition-all shadow-inner`}
                 />
-                
+
                 {isLoading && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm rounded-[2rem]">
                     <Loader2 className="animate-spin text-slate-600" size={32} />
@@ -553,15 +553,15 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                 )}
 
                 <div className="absolute bottom-4 right-4 flex gap-2">
-                   <button 
-                     onClick={() => fileInputRef.current?.click()} 
+                   <button
+                     onClick={() => fileInputRef.current?.click()}
                      className="p-3 bg-white dark:bg-slate-700 text-slate-400 rounded-2xl shadow-sm hover:text-slate-700"
                      title="Subir Comprovante"
                    >
                      <ImageIcon size={20} />
                    </button>
-                   <button 
-                     onClick={toggleListening} 
+                   <button
+                     onClick={toggleListening}
                      className={`p-3 rounded-2xl shadow-sm transition-all ${isListening ? 'bg-rose-500 text-white animate-pulse' : 'bg-white dark:bg-slate-700 text-slate-400 hover:text-rose-500'}`}
                      title="Voz"
                    >
@@ -572,7 +572,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
 
               <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
 
-              <button 
+              <button
                 onClick={handleAIProcess}
                 disabled={isLoading || !inputText.trim() || isSuccess}
                 className={`w-full py-5 rounded-2xl font-semibold text-xs uppercase tracking-[0.08em] shadow-xl flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 transition-all duration-500 ${isSuccess ? 'bg-emerald-500 text-white scale-105' : AI_INPUT_CLASSES.primaryAction}`}
@@ -592,7 +592,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
             <form onSubmit={handleManualSubmit} className={`space-y-4 animate-in slide-in-from-right-4 duration-300 ${isSuccess ? 'opacity-0 scale-95 transition-all duration-500' : ''}`}>
               <div className="space-y-2">
                 <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">Descrição</label>
-                <input 
+                <input
                   type="text" required
                   value={manualData.description}
                   onChange={e => setManualData({...manualData, description: e.target.value})}
@@ -604,7 +604,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">Valor (R$)</label>
-                  <input 
+                  <input
                     type="number" step="0.01" required
                     value={manualData.amount}
                     onChange={e => setManualData({...manualData, amount: e.target.value})}
@@ -614,7 +614,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                 </div>
                 <div className="space-y-2">
                   <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-[0.08em] ml-1">Tipo</label>
-                  <select 
+                  <select
                     value={manualData.type}
                     onChange={e => setManualData({...manualData, type: e.target.value as TransactionType})}
                     className={`w-full p-4 ${AI_INPUT_CLASSES.neutralInput} outline-none font-medium text-sm text-slate-800 dark:text-white border-none appearance-none`}
@@ -691,7 +691,7 @@ const AIInput: React.FC<AIInputProps> = ({ onClose, onAddTransactions, onAddRemi
                 )}
               </div>
 
-              <button 
+              <button
                 type="submit"
                 disabled={isSuccess}
                 className={`w-full py-5 rounded-[1.8rem] font-semibold text-[10px] uppercase tracking-[0.08em] shadow-xl active:scale-95 transition-all mt-4 flex items-center justify-center gap-2 ${isSuccess ? 'bg-emerald-500 text-white scale-105' : AI_INPUT_CLASSES.primaryAction}`}

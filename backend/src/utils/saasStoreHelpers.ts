@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import logger from '../config/logger';
-import type { BillingHookPayload, PlanId, ResourceKind, UsageSnapshot, WorkspaceUsageEvent } from './saasStore';
+import type { BillingHookPayload, PlanId, ResourceKind, UsageSnapshot, WorkspaceUsageEvent } from './saasStoreTypes';
 
 export const EMPTY_USAGE: UsageSnapshot = {
   transactions: 0,

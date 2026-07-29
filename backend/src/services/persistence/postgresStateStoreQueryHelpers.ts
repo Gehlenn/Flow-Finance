@@ -6,7 +6,7 @@ import type {
   PersistedWorkspaceBillingHookRow,
   PersistedWorkspaceSaasState,
   PersistedWorkspaceUsageEventRow,
-} from './postgresStateStore';
+} from './postgresStateStoreTypes';
 
 export function buildWhereClause(
   baseClause: string,

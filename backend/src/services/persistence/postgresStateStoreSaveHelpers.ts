@@ -2,7 +2,7 @@ import { query } from '../../config/database';
 import type {
   PersistedWorkspaceSaasState,
   PersistedWorkspaceStoreState,
-} from './postgresStateStore';
+} from './postgresStateStoreTypes';
 
 async function insertWorkspaceStoreTenants(state: PersistedWorkspaceStoreState): Promise<void> {
   for (const tenant of state.tenants) {

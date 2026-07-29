@@ -1,16 +1,30 @@
 import { logWarn } from '../utils/logger';
 
-export interface OCRImageLike {
-  text?: () => Promise<string>;
+type TesseractModule = typeof import('tesseract.js');
+type TesseractImageLike = Parameters<TesseractModule['recognize']>[0];
+
+export interface OCRTextFallback {
+  text(): Promise<string>;
 }
 
-type TesseractModule = {
-  recognize: (image: unknown, language?: string) => Promise<{ data?: { text?: string } }>;
-};
+export type OCRImageLike = TesseractImageLike | OCRTextFallback;
+
+function isTextFallback(image: OCRImageLike): image is OCRTextFallback {
+  if (
+    typeof image !== 'object'
+    || image === null
+    || !('text' in image)
+    || typeof image.text !== 'function'
+  ) {
+    return false;
+  }
+
+  return typeof Blob === 'undefined' || !(image instanceof Blob);
+}
 
 async function loadTesseract(): Promise<{ mod: TesseractModule | null; err?: unknown }> {
   try {
-    return { mod: (await import('tesseract.js')) as unknown as TesseractModule };
+    return { mod: await import('tesseract.js') };
   } catch (err) {
     return { mod: null, err };
   }
@@ -23,16 +37,18 @@ async function loadTesseract(): Promise<{ mod: TesseractModule | null; err?: unk
  */
 export async function scanReceiptText(image: OCRImageLike): Promise<string> {
   const { mod: tesseract, err } = await loadTesseract();
-  if (tesseract) {
+  if (tesseract && !isTextFallback(image)) {
     const result = await tesseract.recognize(image, 'por+eng');
     return result.data?.text ?? '';
   }
 
-  logWarn('[OCR Scanner] tesseract.js unavailable, using text fallback', {
-    error: err,
-    fallback: 'ocr-tesseract-unavailable',
-  });
-  if (image.text) {
+  if (!tesseract) {
+    logWarn('[OCR Scanner] tesseract.js unavailable, using text fallback', {
+      error: err,
+      fallback: 'ocr-tesseract-unavailable',
+    });
+  }
+  if (isTextFallback(image)) {
     return image.text();
   }
   return '';

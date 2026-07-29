@@ -1,5 +1,6 @@
 import { Account } from '../../models/Account';
-import { Goal, Transaction, Alert, Reminder, Receivable } from '../../types';
+import { Goal, Transaction, Reminder, Receivable } from '../../types';
+import type { SyncEntity } from './sync/syncTypes';
 
 export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer';
 
@@ -119,15 +120,7 @@ export type UserIdentity = {
   email?: string | null;
 };
 
-export type SyncEntity = 'accounts' | 'transactions' | 'goals' | 'reminders' | 'receivables';
 export type WorkspaceScopedEntity = SyncEntity | 'insights' | 'imports' | 'subscriptions';
-
-export type ProfileState = {
-  name: string | null;
-  theme: 'light' | 'dark';
-  alerts: Alert[];
-  reminders: Reminder[];
-};
 
 export type EntityState = {
   accounts: Account[];
@@ -136,5 +129,3 @@ export type EntityState = {
   reminders: Reminder[];
   receivables: Receivable[];
 };
-
-export type SyncEntityIdMap = Record<string, string>;

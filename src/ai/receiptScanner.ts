@@ -33,7 +33,7 @@ export interface ScanResult {
   error?: string;
 }
 
-export async function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
+async function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -46,14 +46,14 @@ export async function fileToBase64(file: File): Promise<{ base64: string; mimeTy
   });
 }
 
-export interface ConfidenceBreakdown {
+interface ConfidenceBreakdown {
   amount: number;
   merchant: number;
   date: number;
   overall: number;
 }
 
-export function calculateConfidence(receipt: Partial<ScannedReceipt>): ConfidenceBreakdown {
+function calculateConfidence(receipt: Partial<ScannedReceipt>): ConfidenceBreakdown {
   let amountConf = 0;
   if (receipt.amount != null && receipt.amount > 0) {
     amountConf = 0.6;
@@ -239,26 +239,6 @@ export function parseReceiptText(text: string): Partial<ScannedReceipt> {
 
   result.confidence = calculateConfidence(result).overall;
   return result;
-}
-
-export async function extractTextFromImage(image: File): Promise<string> {
-  try {
-    const result = await scanReceipt(image);
-    if (!result.success || !result.data) return '';
-
-    const parts = [
-      result.data.description,
-      result.data.amount != null ? String(result.data.amount) : null,
-      result.data.date,
-    ].filter(Boolean);
-    return parts.join(' ').trim();
-  } catch (error) {
-    logWarn('[ReceiptScanner] Failed to extract text from image; returning empty text', {
-      error,
-      fileName: image.name,
-    });
-    return '';
-  }
 }
 
 export async function scanReceipt(image: File): Promise<ScanResult> {

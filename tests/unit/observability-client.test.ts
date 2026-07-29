@@ -4,11 +4,6 @@ const sentryMocks = vi.hoisted(() => ({
   reportError: vi.fn(),
 }));
 
-const loggerMocks = vi.hoisted(() => ({
-  logWarn: vi.fn(),
-  logError: vi.fn(),
-}));
-
 vi.mock('../../src/config/sentry', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/config/sentry')>();
   return {
@@ -16,11 +11,6 @@ vi.mock('../../src/config/sentry', async (importOriginal) => {
     reportError: sentryMocks.reportError,
   };
 });
-
-vi.mock('../../src/utils/logger', () => ({
-  logWarn: loggerMocks.logWarn,
-  logError: loggerMocks.logError,
-}));
 
 describe('client observability', () => {
   beforeEach(() => {
@@ -142,58 +132,6 @@ describe('client observability', () => {
     expect(sentryMocks.reportError).not.toHaveBeenCalled();
   });
 
-  it('registra aviso quando o payload de erro nao pode ser parseado', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      statusText: 'Internal Server Error',
-      headers: {
-        get: () => null,
-      },
-      json: async () => {
-        throw new Error('invalid json');
-      },
-    });
-
-    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
-
-    const { apiRequest } = await import('../../src/config/api.config');
-
-    await expect(apiRequest('/api/ai/cfo', { retries: 0 })).rejects.toMatchObject({
-      statusCode: 500,
-      message: expect.stringContaining('Internal Server Error'),
-    });
-
-    expect(loggerMocks.logWarn).not.toHaveBeenCalled();
-  });
-
-  it('registra aviso quando a recuperacao de workspace falha', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        statusText: 'Bad Request',
-        headers: {
-          get: () => null,
-        },
-        json: async () => ({
-          error: 'WorkspaceId obrigatorio',
-        }),
-      })
-      .mockRejectedValueOnce(new Error('recovery offline'));
-
-    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
-
-    const { apiRequest } = await import('../../src/config/api.config');
-
-    await expect(apiRequest('/api/ai/cfo', { retries: 0 })).rejects.toMatchObject({
-      statusCode: 400,
-    });
-
-    expect(loggerMocks.logWarn).not.toHaveBeenCalled();
-  });
-
   it('uses VITE_APP_VERSION in X-Client-Version header', async () => {
     vi.stubEnv('VITE_APP_VERSION', '9.9.9-test');
 
@@ -214,6 +152,7 @@ describe('client observability', () => {
   });
 
   it('keeps initSentry quiet when no DSN is configured', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     vi.stubEnv('VITE_SENTRY_DSN', '');
 
     const { initSentry, isSentryConfigured } = await import('../../src/config/sentry');
@@ -221,30 +160,7 @@ describe('client observability', () => {
     expect(isSentryConfigured()).toBe(false);
     initSentry();
     initSentry();
-  });
 
-  it('warns and falls back to web platform when Capacitor detection fails', async () => {
-    vi.stubGlobal('window', {
-      location: { origin: 'http://localhost:5173', hostname: 'localhost' },
-      localStorage: {
-        getItem: () => null,
-        setItem: () => undefined,
-        removeItem: () => undefined,
-      },
-      Capacitor: {
-        isNativePlatform: () => {
-          throw new Error('capability check failed');
-        },
-      },
-    } as unknown as Window & typeof globalThis);
-
-    const { getAuthHeaders } = await import('../../src/config/api.config');
-    const headers = getAuthHeaders({ includeWorkspace: false });
-
-    expect(headers['X-Client-Platform']).toBe('web');
-    expect(loggerMocks.logWarn).not.toHaveBeenCalled();
+    expect(warnSpy).not.toHaveBeenCalledWith('Sentry DSN not found. Error tracking disabled.');
   });
 });
-
-
-

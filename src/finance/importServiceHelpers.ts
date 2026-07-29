@@ -1,6 +1,6 @@
 import { Category, TransactionType, type Transaction } from '../../types';
 import { parsePdfStatementText } from '../importers/pdfStatementImporter';
-import type { ImportFormat, ImportedTransaction } from './importService';
+import type { ImportFormat, ImportedTransaction } from './importServiceTypes';
 
 function parseDate(raw: string): string {
   if (!raw) return new Date().toISOString();
@@ -296,24 +296,20 @@ export function parseCSV(content: string): ImportedTransaction[] {
 }
 
 export async function parsePDF(file: File): Promise<ImportedTransaction[]> {
-  try {
-    const text = await file.text();
-    const parsed = parsePdfStatementText(text);
+  const text = await file.text();
+  const parsed = parsePdfStatementText(text);
 
-    return parsed.map((row) => ({
-      raw_date: parseDate(row.date),
-      raw_amount: parseAmount(row.amount),
-      raw_description: row.description,
-      raw_type: inferType(row.description, row.amount),
-      merchant: row.merchant || undefined,
-      selected: true,
-      category: (Object.values(Category) as string[]).includes(row.category)
-        ? (row.category as Category)
-        : undefined,
-    }));
-  } catch {
-    return [];
-  }
+  return parsed.map((row) => ({
+    raw_date: parseDate(row.date),
+    raw_amount: parseAmount(row.amount),
+    raw_description: row.description,
+    raw_type: inferType(row.description, row.amount),
+    merchant: row.merchant || undefined,
+    selected: true,
+    category: (Object.values(Category) as string[]).includes(row.category)
+      ? (row.category as Category)
+      : undefined,
+  }));
 }
 
 export function markImportedDuplicates(

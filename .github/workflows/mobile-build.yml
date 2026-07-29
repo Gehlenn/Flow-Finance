@@ -44,7 +44,7 @@ jobs:
         run: npm run build
 
       - name: Setup Capacitor
-        run: npm run setup:mobile
+        run: npm run setup:mobile:android
 
       - name: Build Android APK
         run: npm run build:android:release
@@ -75,7 +75,7 @@ jobs:
         run: npm run build
 
       - name: Setup Capacitor
-        run: npm run setup:mobile
+        run: npm run setup:mobile:ios
 
       - name: Build iOS
         run: npm run build:ios:release

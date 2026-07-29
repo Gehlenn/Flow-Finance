@@ -189,7 +189,7 @@ const App: React.FC = () => {
 
         window.localStorage.setItem(storageKey, new Date().toISOString());
       } catch {
-        // Non-critical: return visit is only a telemetry hint.
+        daysSinceLastVisit = null;
       }
     }
 

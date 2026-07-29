@@ -161,6 +161,16 @@ describe('importService', () => {
     expect(result.every((tx) => tx.selected)).toBe(true);
   });
 
+  it('parsePDF propaga falhas de leitura para o pipeline traduzir', async () => {
+    const readError = new Error('pdf read failed');
+    const unreadableFile = new File(['%PDF-1.4'], 'extrato.pdf', { type: 'application/pdf' });
+    Object.defineProperty(unreadableFile, 'text', {
+      value: vi.fn().mockRejectedValue(readError),
+    });
+
+    await expect(parsePDF(unreadableFile)).rejects.toBe(readError);
+  });
+
   it('classifyImportedTransactions usa o servico canonico de categorizacao', async () => {
     vi.spyOn(categorizationService, 'classifyTransactionsWithAI').mockResolvedValueOnce([
       {

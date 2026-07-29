@@ -6,21 +6,9 @@
 
 import { logInfo } from '../utils/logger';
 import { hasAuditLogPersistenceContext, persistAuditEvent } from './auditLogPersistence';
+import type { AuditLogEntry, AuditLogPersistenceContext } from './auditLogTypes';
 
-export interface AuditLogEntry {
-  id: string;
-  event_type: string;
-  entity: string;
-  entity_id: string;
-  metadata: Record<string, unknown>;
-  timestamp: string;
-}
-
-export interface AuditLogPersistenceContext {
-  tenantId: string;
-  workspaceId: string;
-  userId: string;
-}
+export type { AuditLogEntry, AuditLogPersistenceContext } from './auditLogTypes';
 
 const MAX_AUDIT_LOG_CACHE = 200;
 const auditLogs: AuditLogEntry[] = [];

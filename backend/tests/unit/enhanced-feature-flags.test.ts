@@ -256,10 +256,15 @@ describe('EnhancedFeatureFlagService', () => {
     it('deve criar serviço com definições padrão', () => {
       const defaultService = createDefaultEnhancedFeatureFlagService();
       const flags = defaultService.getAllFlags();
+      const names = flags.map((flag) => flag.name);
 
       expect(flags.length).toBeGreaterThan(0);
-      expect(flags.map((f) => f.name)).toContain('ai_chat_enabled');
-      expect(flags.map((f) => f.name)).toContain('clinic_automation_ingest_enabled');
+      expect(names).toContain('ai_chat_enabled');
+      expect(names).toContain('ai_deep_analysis_enabled');
+      expect(names).toContain('ai_provider_fallback_enabled');
+      expect(names).toContain('clinic_automation_ingest_enabled');
+      expect(names).not.toContain('ai_analysis_enabled');
+      expect(names).not.toContain('ai_fallback_enabled');
     });
 
     it('deve ter features críticas habilitadas por padrão', () => {

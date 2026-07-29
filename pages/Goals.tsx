@@ -149,10 +149,10 @@ const GoalCard: React.FC<{
 
           <div className="flex items-baseline gap-1 mt-2">
             <p className="text-base font-semibold text-slate-900 dark:text-white">
-              {hideValues ? 'â€¢â€¢â€¢â€¢' : formatCurrency(goal.currentAmount)}
+              {hideValues ? '••••' : formatCurrency(goal.currentAmount)}
             </p>
             <p className="text-[9px] text-slate-400 font-medium">
-              / {hideValues ? 'â€¢â€¢â€¢â€¢' : formatCurrency(goal.targetAmount)}
+              / {hideValues ? '••••' : formatCurrency(goal.targetAmount)}
             </p>
           </div>
 
@@ -521,7 +521,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
                   Aportar em "{contributeGoal.title}"
                 </p>
                 <p className="text-[9px] text-slate-400 font-medium mt-0.5">
-                  Atual: {hideValues ? 'â€¢â€¢â€¢â€¢' : formatCurrency(contributeGoal.currentAmount)} / {hideValues ? 'â€¢â€¢â€¢â€¢' : formatCurrency(contributeGoal.targetAmount)}
+                  Atual: {hideValues ? '••••' : formatCurrency(contributeGoal.currentAmount)} / {hideValues ? '••••' : formatCurrency(contributeGoal.targetAmount)}
                 </p>
               </div>
               <button

@@ -1,7 +1,7 @@
 ﻿/**
  * FIXED EXPENSE DETECTOR — src/services/ai/fixedExpenseDetector.ts
  *
- * PART 5 — Detecta despesas fixas recorrentes:
+ * Detecta despesas fixas recorrentes:
  *   • Aluguel / moradia
  *   • Assinaturas de serviços
  *   • Contas de utilidades (luz, água, gás, internet)
@@ -16,14 +16,16 @@
 import { Transaction, TransactionType } from '../../types';
 import { makeId } from '../../utils/helpers';
 import {
-  avgDayOfMonth,
   detectAmountTrend,
   matchesPattern,
-  median,
   nextExpectedDate,
+} from './fixedExpenseDetectorHelpers';
+import {
+  avgDayOfMonth,
+  median,
   normalize,
   parseLocalDate,
-} from './fixedExpenseDetectorHelpers';
+} from './recurringPatternHelpers';
 import { FIXED_PATTERNS } from './fixedExpenseDetectorCatalog';
 import { type ExpensePattern, type FixedExpense, type FixedExpenseCategory, type FixedExpenseReport } from './fixedExpenseDetectorTypes';
 
@@ -36,7 +38,6 @@ export type {
 
 
 
-// â”€â”€â”€ PART 5 â€” detectFixedExpenses â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Detecta despesas fixas recorrentes nas transações.
@@ -56,7 +57,7 @@ export function detectFixedExpenses(
   const results: FixedExpense[] = [];
   const matchedIds = new Set<string>();
 
-  // â”€â”€ Strategy 1: Pattern catalog matching â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Strategy 1: Pattern catalog matching ──────────────────────────────────
   for (const pattern of FIXED_PATTERNS) {
     const matching = expenses.filter(tx => !matchedIds.has(tx.id) && matchesPattern(tx, pattern));
     if (matching.length === 0) continue;
@@ -114,7 +115,7 @@ export function detectFixedExpenses(
     }
   }
 
-  // â”€â”€ Strategy 2: Pattern-based â€” unmatched stable recurring expenses â”€â”€â”€â”€â”€â”€â”€
+  // ── Strategy 2: Pattern-based — unmatched stable recurring expenses ───────
   const unmatched = expenses.filter(t => !matchedIds.has(t.id));
 
   // Group by description fingerprint
@@ -169,12 +170,12 @@ export function detectFixedExpenses(
       last_date:    sorted[0].date,
       next_expected: nextExpectedDate(sorted[0].date, dom),
       confidence:   0.55 + (group.length >= 3 ? 0.1 : 0),
-      logo:         'ðŸ”„',
+      logo:         '🔄',
       transactions: sorted,
     });
   }
 
-  // â”€â”€ Sort and aggregate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Sort and aggregate ────────────────────────────────────────────────────
   results.sort((a, b) => b.amount - a.amount);
 
   const total_monthly = results.reduce((s, e) => s + e.amount, 0);
@@ -205,7 +206,7 @@ export function detectFixedExpenses(
   };
 }
 
-// â”€â”€â”€ Utility exports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Utility exports ──────────────────────────────────────────────────────────
 
 const CATEGORY_LABELS: Record<FixedExpenseCategory, string> = {
   housing:      'Moradia',
@@ -224,13 +225,13 @@ export function formatExpenseCategory(category: FixedExpenseCategory): string {
 }
 
 const CATEGORY_LOGOS: Record<FixedExpenseCategory, string> = {
-  housing: 'ðŸ ', utilities: 'âš¡', subscription: 'ðŸ“±',
-  insurance: 'ðŸ›¡ï¸', education: 'ðŸŽ“', fitness: 'ðŸ’ª',
-  transport: 'ðŸšŒ', financing: 'ðŸ’³', other_fixed: 'ðŸ”„',
+  housing: '🏠', utilities: '⚡', subscription: '📱',
+  insurance: '🛡️', education: '🎓', fitness: '💪',
+  transport: '🚌', financing: '💳', other_fixed: '🔄',
 };
 
 export function getCategoryLogo(category: FixedExpenseCategory): string {
-  return CATEGORY_LOGOS[category] ?? 'ðŸ“Œ';
+  return CATEGORY_LOGOS[category] ?? '📌';
 }
 
 /** Semaphore-style commitment assessment */

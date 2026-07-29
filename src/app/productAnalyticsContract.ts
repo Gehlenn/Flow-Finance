@@ -1,4 +1,32 @@
-import type { ProductAnalyticsEvent, ProductAnalyticsProperties } from './productAnalytics';
+type AnalyticsValue = string | number | boolean | null | undefined;
+
+export type ProductAnalyticsEvent =
+  | 'activation_first_transaction'
+  | 'activation_first_dashboard_useful'
+  | 'activation_financial_base_completed'
+  | 'onboarding_started'
+  | 'workspace_created'
+  | 'transaction_imported'
+  | 'forecast_viewed'
+  | 'ai_insight_opened'
+  | 'decision_saved'
+  | 'return_visit'
+  | 'weekly_review_completed'
+  | 'weekly_cash_review_completed'
+  | 'ai_question_submitted'
+  | 'ai_consultation_completed'
+  | 'ai_response_action_created'
+  | 'ai_response_flow_opened'
+  | 'ai_fallback_observed'
+  | 'billing_checkout_started'
+  | 'billing_checkout_redirected'
+  | 'billing_checkout_failed'
+  | 'billing_portal_started'
+  | 'billing_portal_redirected'
+  | 'billing_portal_failed'
+  | 'integration_error_observed';
+
+export type ProductAnalyticsProperties = Record<string, AnalyticsValue>;
 
 const SENSITIVE_PROPERTY_PATTERN = /(^id$|_id$|workspace|tenant|user|email|name|cpf|phone|telefone|address|endereco|document|token|cookie|password|secret)/i;
 

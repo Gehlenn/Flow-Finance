@@ -1,4 +1,4 @@
-import type { AIMemory } from './aiMemory';
+import type { AIMemory } from './aiMemoryTypes';
 
 export type MemorySource = 'conversa' | 'transação' | 'inferência recorrente' | 'categorização' | 'manual';
 

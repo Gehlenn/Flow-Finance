@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   redisGet: vi.fn(),
   redisSet: vi.fn(),
+  redisDel: vi.fn(),
   loggerWarn: vi.fn(),
 }));
 
@@ -10,7 +11,7 @@ vi.mock('../../src/config/redis', () => ({
   cache: {
     get: mocks.redisGet,
     set: mocks.redisSet,
-    del: vi.fn(),
+    del: mocks.redisDel,
   },
 }));
 
@@ -49,9 +50,11 @@ describe('PredictionEngine observability', () => {
   beforeEach(() => {
     mocks.redisGet.mockReset();
     mocks.redisSet.mockReset();
+    mocks.redisDel.mockReset();
     mocks.loggerWarn.mockReset();
     mocks.redisGet.mockResolvedValue(null);
     mocks.redisSet.mockResolvedValue(undefined);
+    mocks.redisDel.mockResolvedValue(undefined);
   });
 
   it('nao registra warn quando o cache Redis responde normalmente', async () => {
@@ -114,5 +117,24 @@ describe('PredictionEngine observability', () => {
       }),
       'PredictionEngine: Redis cache write failed, memory-only cache active',
     );
+  });
+
+  it('registra contexto quando a invalidacao do cache Redis falha', async () => {
+    mocks.redisDel.mockRejectedValueOnce(new Error('redis delete failed'));
+    const engine = new PredictionEngine({ defaultPredictionDays: 7 });
+
+    engine.clearCache('user-1');
+
+    await vi.waitFor(() => {
+      expect(mocks.loggerWarn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          err: expect.any(Error),
+          userId: 'user-1',
+          cacheKey: 'prediction:v1:user-1',
+          fallback: 'prediction-engine-cache-delete-failed',
+        }),
+        'PredictionEngine: Redis cache delete failed, TTL expiry remains active',
+      );
+    });
   });
 });

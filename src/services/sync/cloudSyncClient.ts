@@ -4,10 +4,9 @@ import {
   loadWorkspaceEntities,
   replaceWorkspaceEntityCollection,
 } from '../firestoreWorkspaceStore';
-import type { SyncEntityIdMap } from '../firestoreWorkspaceTypes';
 import { pullFromCloud, pushToCloud } from '../localSyncService';
+import type { SyncEntity } from './syncTypes';
 
-export type SyncEntity = 'accounts' | 'transactions' | 'goals' | 'reminders' | 'receivables';
 export type SyncDriver = 'firestore' | 'backend';
 
 type SyncRecord = { id: string };
@@ -106,11 +105,11 @@ export async function pullSyncEntities<TPayload>(
 
   if (options?.driver === 'backend') {
     const result = await pullFromCloud(since);
-    const entities = result?.entities;
+    const entities = result.entities;
 
     return {
-      since: result?.since || since || null,
-      serverTime: result?.serverTime || new Date().toISOString(),
+      since: result.since || since || null,
+      serverTime: result.serverTime || new Date().toISOString(),
       entities: {
         accounts: (entities?.accounts || []) as Array<SyncItem<TPayload>>,
         transactions: (entities?.transactions || []) as Array<SyncItem<TPayload>>,
@@ -149,15 +148,7 @@ export async function replaceSyncEntityCollection<TPayload extends SyncRecord>(
 
   if (options?.driver === 'backend') {
     const items = buildPushItems(nextItems, previousItems);
-    const result = await pushToCloud(entity, items);
-
-    return result || {
-      success: true,
-      upserted: nextItems.length,
-      deleted: Math.max(previousItems.length - nextItems.length, 0),
-      latestServerUpdatedAt: new Date().toISOString(),
-      reconciledIds: [],
-    };
+    return pushToCloud(entity, items);
   }
 
   return replaceWorkspaceEntityCollection(
@@ -176,4 +167,4 @@ export function extractSyncPayloads<TPayload>(
     .map((item) => item.payload as TPayload);
 }
 
-export type { PushResponse, PullResponse, SyncItem, SyncEntityIdMap };
+export type { PushResponse, PullResponse, SyncItem };

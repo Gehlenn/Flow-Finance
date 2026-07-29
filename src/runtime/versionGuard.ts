@@ -146,7 +146,3 @@ export async function checkAppVersion(): Promise<GuardResult> {
     };
   }
 }
-
-export function getLocalVersion(): string {
-  return APP_VERSION;
-}

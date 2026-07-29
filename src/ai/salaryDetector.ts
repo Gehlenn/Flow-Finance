@@ -1,7 +1,7 @@
 /**
  * SALARY DETECTOR — src/services/ai/salaryDetector.ts
  *
- * PART 4 — Detecta renda recorrente (salário, freelance mensal, pró-labore, etc.)
+ * Detecta renda recorrente (salário, freelance mensal, pró-labore, etc.)
  * nas transações do usuário.
  *
  * Estratégias:
@@ -13,25 +13,20 @@
 import { Transaction, TransactionType } from '../../types';
 import { makeId } from '../../utils/helpers';
 import {
-  avgDayOfMonth,
   isRegularInterval,
   matchesKeywords,
-  median,
   nextExpectedDate,
-  parseLocalDate,
 } from './salaryDetectorHelpers';
-import { SALARY_KEYWORDS } from './salaryDetectorCatalog';
+import {
+  avgDayOfMonth,
+  median,
+  parseLocalDate,
+} from './recurringPatternHelpers';
+import { SALARY_KEYWORDS, type IncomeType } from './salaryDetectorCatalog';
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
-export type IncomeType =
-  | 'salary'          // salário CLT
-  | 'freelance'       // renda freelance/autônomo
-  | 'pro_labore'      // pró-labore / sócio
-  | 'pension'         // aposentadoria / pensão
-  | 'rent_income'     // aluguel recebido
-  | 'investment'      // rendimento de investimentos
-  | 'other_recurring' // outra renda recorrente
+export type { IncomeType } from './salaryDetectorCatalog';
 
 export interface RecurringIncome {
   id:              string;
@@ -71,7 +66,6 @@ function detectIncomeType(txs: Transaction[]): { type: IncomeType; employer?: st
   return { type: 'other_recurring', weight: 0.5 };
 }
 
-// ─── PART 4 — detectSalary ────────────────────────────────────────────────────
 
 /**
  * Detecta rendas recorrentes nas transações.

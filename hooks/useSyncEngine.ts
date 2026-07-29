@@ -23,19 +23,11 @@ import {
   createDemoWorkspaceEntities,
 } from '../src/demo/demoBootstrap';
 import { logWarn } from '../src/utils/logger';
-
-export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
-
-export type SyncProfileState = {
-  name: string | null;
-  theme: 'light' | 'dark';
-  alerts: Alert[];
-  reminders: Reminder[];
-};
+import { applyIdMapToCollection } from '../src/utils/collectionIds';
+import type { ProfileState } from '../src/services/profileTypes';
+import type { SyncEntityIdMap, SyncStatus } from '../src/services/sync/syncTypes';
 
 export type SyncEntityState = WorkspaceSyncEntities;
-
-export type SyncEntityIdMap = Record<string, string>;
 
 export type SyncEntitiesResult = {
   entities: SyncEntityState;
@@ -54,21 +46,7 @@ interface UseSyncEngineOptions {
   onDisableBackendSync: () => void;
 }
 
-const DEFAULT_PROFILE: SyncProfileState = createDefaultLocalProfileState();
-
-function applyIdMapToCollection<TItem extends { id: string }>(
-  items: TItem[],
-  idMap?: SyncEntityIdMap,
-): TItem[] {
-  if (!idMap || Object.keys(idMap).length === 0) {
-    return items;
-  }
-
-  return items.map((item) => {
-    const nextId = idMap[item.id];
-    return nextId ? { ...item, id: nextId } : item;
-  });
-}
+const DEFAULT_PROFILE: ProfileState = createDefaultLocalProfileState();
 
 export function useSyncEngine(options: UseSyncEngineOptions) {
   const {
@@ -84,13 +62,13 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
   } = options;
 
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
-  const [profile, setProfile] = useState<SyncProfileState>(DEFAULT_PROFILE);
+  const [profile, setProfile] = useState<ProfileState>(DEFAULT_PROFILE);
   const [entities, setEntities] = useState<SyncEntityState>(() => createEmptyWorkspaceSyncEntities());
   const [isProfileReady, setIsProfileReady] = useState(false);
   const [hasLoadedEntities, setHasLoadedEntities] = useState(false);
 
   const entityRef = useRef<SyncEntityState>(createEmptyWorkspaceSyncEntities());
-  const profileRef = useRef<SyncProfileState>(DEFAULT_PROFILE);
+  const profileRef = useRef<ProfileState>(DEFAULT_PROFILE);
   const bootstrapContext = useMemo(() => ({
     userId,
     tenantId: activeTenantId,
@@ -404,7 +382,9 @@ export function useSyncEngine(options: UseSyncEngineOptions) {
         error,
         fallback: 'use-sync-engine-entities-sync-failed',
       });
-      if (cloudSyncEnabled) {
+      if (prefersBackendSync) {
+        onDisableBackendSync();
+      } else if (cloudSyncEnabled) {
         onDisableCloudSync();
       } else {
         onDisableBackendSync();

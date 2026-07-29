@@ -53,7 +53,17 @@ vi.mock('../../src/services/admin/workspaceStore', () => ({
   })),
 }));
 
-const generateContentMock = vi.fn(async () => 'Resposta CFO de teste');
+const generateContentMock = vi.fn(async () => ({
+  content: 'Resposta CFO de teste',
+  provider: 'gemini' as const,
+  model: 'gemini-test',
+  inputTokens: 10,
+  outputTokens: 5,
+  tokensUsed: 15,
+  workspaceId: 'ws-1',
+  estimatedCostUsd: 0,
+  costEvidence: 'test-fixture',
+}));
 
 vi.mock('../../src/config/ai', async () => {
   const actual = await vi.importActual<typeof import('../../src/config/ai')>('../../src/config/ai');

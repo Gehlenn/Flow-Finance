@@ -56,8 +56,7 @@ export const classifyTransactionFinancialState = (
   transaction: Transaction,
   referenceDate: Date = new Date(),
 ): TransactionFinancialState => {
-  const metadata = transaction as unknown as Record<string, unknown>;
-  const explicitState = normalizeStateLabel(metadata.status);
+  const explicitState = normalizeStateLabel('status' in transaction ? transaction.status : undefined);
   if (explicitState) {
     return explicitState;
   }
@@ -170,7 +169,7 @@ const readStoredSortConfig = (key: string): { key: SortKey; direction: SortDirec
       return { key: parsed.key, direction: parsed.direction };
     }
   } catch {
-    // Ignore malformed persisted values and fall back to defaults.
+    return { key: 'date', direction: 'desc' };
   }
 
   return { key: 'date', direction: 'desc' };

@@ -8,6 +8,7 @@ import type { WorkspaceRole } from '../src/services/workspaceSession';
 import { canAccessFeature } from '../src/app/monetizationPlan';
 import UpgradePromptCard from '../components/UpgradePromptCard';
 import { logWarn } from '../src/utils/logger';
+import type { Tab } from './navigationTypes';
 
 type LazyModule<TProps extends object> = { default: React.ComponentType<TProps> };
 
@@ -50,23 +51,6 @@ const AICFOPage = lazyWithRetry(() => import('../pages/AICFO'));
 const GoalsPage = lazyWithRetry(() => import('../pages/Goals'));
 const ImportTransactionsPage = lazyWithRetry(() => import('../pages/ImportTransactions'));
 const AIControlPanel = lazyWithRetry(() => import('../pages/AIControlPanel'));
-
-export type Tab =
-  | 'dashboard'
-  | 'history'
-  | 'assistant'
-  | 'flow'
-  | 'settings'
-  | 'workspaceadmin'
-  | 'workspaceaudit'
-  | 'accounts'
-  | 'insights'
-  | 'cfo'
-  | 'goals'
-  | 'import'
-  | 'aicontrol'
-  | 'analytics'
-  | 'performance';
 
 const URL_TABS = new Set<Tab>([
   'dashboard',

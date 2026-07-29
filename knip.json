@@ -1,0 +1,77 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "vite": {
+        "config": []
+      },
+      "vitest": false,
+      "entry": [
+        "index.html",
+        "index.tsx",
+        "index.tsx!",
+        "src/**/*.test.{ts,tsx}",
+        "vite.config.ts",
+        "vitest.*.config.ts",
+        "qa-exhaustive.spec.mjs",
+        "scripts/**/*.{js,mjs,ts}",
+        "tests/**/*.{ts,tsx}",
+        "public/**/*.{js,mjs}",
+        "public/**/*.{js,mjs}!"
+      ],
+      "ignoreDependencies": [
+        "@capacitor/android",
+        "@capacitor/core",
+        "@capacitor/ios",
+        "firebase-tools"
+      ],
+      "project": [
+        "App*.tsx",
+        "App*.tsx!",
+        "types.ts",
+        "types.ts!",
+        "build/**/*.{ts,tsx}",
+        "build/**/*.{ts,tsx}!",
+        "components/**/*.{ts,tsx}",
+        "components/**/*.{ts,tsx}!",
+        "hooks/**/*.{ts,tsx}",
+        "hooks/**/*.{ts,tsx}!",
+        "models/**/*.{ts,tsx}",
+        "models/**/*.{ts,tsx}!",
+        "pages/**/*.{ts,tsx}",
+        "pages/**/*.{ts,tsx}!",
+        "services/**/*.{ts,tsx}",
+        "services/**/*.{ts,tsx}!",
+        "src/**/*.{ts,tsx}",
+        "src/**/*.{ts,tsx}!",
+        "utils/**/*.{ts,tsx}",
+        "utils/**/*.{ts,tsx}!",
+        "scripts/**/*.{js,mjs,ts}",
+        "tests/**/*.{ts,tsx}",
+        "public/**/*.{js,mjs}"
+      ]
+    },
+    "backend": {
+      "ignoreDependencies": [
+        "pino-pretty"
+      ],
+      "entry": [
+        "api/index.ts",
+        "api/index.ts!",
+        "scripts/**/*.ts",
+        "tests/**/*.ts",
+        "src/**/*.test.ts"
+      ],
+      "project": [
+        "api/**/*.ts",
+        "api/**/*.ts!",
+        "src/**/*.ts",
+        "src/**/*.ts!",
+        "shared/**/*.ts",
+        "shared/**/*.ts!",
+        "scripts/**/*.ts",
+        "tests/**/*.ts"
+      ]
+    }
+  }
+}

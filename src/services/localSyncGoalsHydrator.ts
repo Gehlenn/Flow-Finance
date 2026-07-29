@@ -1,5 +1,5 @@
 import { logWarn } from '../utils/logger';
-import type { SyncPullResult } from './localSyncService';
+import type { SyncPullResult } from './localSyncTypes';
 
 const GOALS_STORAGE_KEY = 'flow_financial_goals';
 const GOALS_LAST_PULL_KEY = 'flow_financial_goals_last_pull';

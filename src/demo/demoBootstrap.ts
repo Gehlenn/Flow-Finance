@@ -1,6 +1,5 @@
 import { Account } from '../../models/Account';
 import {
-  Alert,
   Category,
   Goal,
   Receivable,
@@ -10,6 +9,7 @@ import {
   TransactionType,
 } from '../../types';
 import { type EntityState, type WorkspaceSummary } from '../services/firestoreWorkspaceTypes';
+import type { ProfileState } from '../services/profileTypes';
 
 type StorageLike = Pick<Storage, 'getItem'>;
 
@@ -23,13 +23,6 @@ export type DemoBootstrap = {
   tenantName: string;
   token: string;
   plan: 'free' | 'pro';
-};
-
-export type DemoProfileState = {
-  name: string | null;
-  theme: 'light' | 'dark';
-  alerts: Alert[];
-  reminders: Reminder[];
 };
 
 export type DemoWorkspaceContext = {
@@ -117,7 +110,7 @@ export function getDemoBootstrap(
   };
 }
 
-export function createDemoProfileState(): DemoProfileState {
+export function createDemoProfileState(): ProfileState {
   return {
     name: 'Marina Demo',
     theme: 'light',

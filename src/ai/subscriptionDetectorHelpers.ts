@@ -1,6 +1,6 @@
 import { Transaction } from '../../types';
 import { inferSubscriptionCycleFromDates, normalizeSubscriptionText, roundSubscriptionAmount } from './subscriptionDetectionCore';
-import type { SubscriptionBillingCycle } from './subscriptionDetector';
+import type { SubscriptionBillingCycle } from './subscriptionDetectionCore';
 
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 

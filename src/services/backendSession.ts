@@ -11,7 +11,7 @@ interface FirebaseSessionBootstrapInput {
   allowLegacyDevelopmentFallback?: boolean;
 }
 
-interface BackendSessionPayload {
+export interface BackendSessionPayload {
   token?: string;
   accessToken?: string;
   refreshToken?: string;

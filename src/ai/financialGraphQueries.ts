@@ -1,6 +1,4 @@
 import type { FinancialGraph } from './financialGraphTypes';
-import type { FinancialGraphEdge } from '../../models/FinancialGraphEdge';
-import type { FinancialGraphNode } from '../../models/FinancialGraphNode';
 import type { CategoryNodeMeta, MerchantNodeMeta, SubscriptionNodeMeta } from '../../models/FinancialGraphNode';
 
 export interface TopMerchant {
@@ -120,54 +118,6 @@ export function detectSubscriptionCandidates(graph: FinancialGraph): Subscriptio
   }
 
   return results.sort((a, b) => (b.is_confirmed_subscription ? 1 : 0) - (a.is_confirmed_subscription ? 1 : 0));
-}
-
-export function getNodesByType(
-  graph: FinancialGraph,
-  type: FinancialGraphNode['type'],
-): FinancialGraphNode[] {
-  return [...graph.nodes.values()].filter((n) => n.type === type);
-}
-
-export function getEdgesFrom(graph: FinancialGraph, nodeId: string): FinancialGraphEdge[] {
-  return graph.edges.filter((e) => e.from === nodeId);
-}
-
-export function getEdgesTo(graph: FinancialGraph, nodeId: string): FinancialGraphEdge[] {
-  return graph.edges.filter((e) => e.to === nodeId);
-}
-
-export function getNeighbors(graph: FinancialGraph, nodeId: string): FinancialGraphNode[] {
-  return getEdgesFrom(graph, nodeId)
-    .map((e) => graph.nodes.get(e.to))
-    .filter((n): n is FinancialGraphNode => Boolean(n));
-}
-
-export function findPath(
-  graph: FinancialGraph,
-  fromId: string,
-  toId: string,
-  maxDepth = 5,
-): string[] | null {
-  if (!graph.nodes.has(fromId) || !graph.nodes.has(toId)) return null;
-  const queue: string[][] = [[fromId]];
-  const visited = new Set<string>([fromId]);
-
-  while (queue.length) {
-    const path = queue.shift()!;
-    const curr = path[path.length - 1];
-    if (curr === toId) return path;
-    if (path.length >= maxDepth) continue;
-
-    for (const edge of graph.edges.filter((e) => e.from === curr)) {
-      if (!visited.has(edge.to)) {
-        visited.add(edge.to);
-        queue.push([...path, edge.to]);
-      }
-    }
-  }
-
-  return null;
 }
 
 export function graphToAIContext(graph: FinancialGraph, maxMerchants = 8): string {

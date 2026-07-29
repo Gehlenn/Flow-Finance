@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import env from './env';
 import logger from './logger';
-import type { AIProviderResponse } from './ai';
+import type { AIProviderResponse } from './aiTypes';
 
 let client: OpenAI | null = null;
 

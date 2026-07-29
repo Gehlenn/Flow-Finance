@@ -19,21 +19,9 @@ import {
   parseOFX as parseOFXImpl,
   parsePDF as parsePDFImpl,
 } from './importServiceHelpers';
+import type { ImportedTransaction, ImportFormat } from './importServiceTypes';
 
-export type ImportFormat = 'ofx' | 'csv' | 'pdf' | 'unknown';
-
-export interface ImportedTransaction {
-  raw_date: string;
-  raw_amount: number;
-  raw_description: string;
-  raw_type?: TransactionType;
-  category?: Category;
-  merchant?: string;
-  type?: TransactionType;
-  confidence?: number;
-  selected: boolean;
-  duplicate?: boolean;
-}
+export type { ImportedTransaction, ImportFormat } from './importServiceTypes';
 
 export interface ImportResult {
   format: ImportFormat;

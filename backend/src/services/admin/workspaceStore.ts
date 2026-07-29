@@ -155,7 +155,7 @@ function persistState(state: WorkspaceStoreState): void {
   }
 
   if (!areLegacyStateBlobsDisabled()) {
-    void saveJsonState(POSTGRES_STATE_KEY, state as unknown as Record<string, unknown>).catch((error) => {
+    void saveJsonState(POSTGRES_STATE_KEY, state).catch((error) => {
       logger.warn({
         error,
         tenantCount: state.tenants.length,
@@ -292,7 +292,7 @@ async function persistStateForRuntime(state: WorkspaceStoreState): Promise<void>
     }
 
     try {
-      await saveJsonState(POSTGRES_STATE_KEY, state as unknown as Record<string, unknown>);
+      await saveJsonState(POSTGRES_STATE_KEY, state);
     } catch (error) {
       logger.warn({
         error,

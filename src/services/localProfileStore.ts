@@ -1,15 +1,8 @@
-import type { Alert, Reminder } from '../../types';
-
-export type LocalProfileState = {
-  name: string | null;
-  theme: 'light' | 'dark';
-  alerts: Alert[];
-  reminders: Reminder[];
-};
+import type { ProfileState } from './profileTypes';
 
 const PROFILE_STORAGE_PREFIX = 'flow_sync_profile:';
 
-export function createDefaultLocalProfileState(): LocalProfileState {
+export function createDefaultLocalProfileState(): ProfileState {
   return {
     name: null,
     theme: 'light',
@@ -22,7 +15,7 @@ function buildProfileStorageKey(userId: string): string {
   return `${PROFILE_STORAGE_PREFIX}${userId}`;
 }
 
-function normalizeProfileState(data: Partial<LocalProfileState> | null | undefined): LocalProfileState {
+function normalizeProfileState(data: Partial<ProfileState> | null | undefined): ProfileState {
   return {
     name: typeof data?.name === 'string' && data.name.trim().length > 0 ? data.name : null,
     theme: data?.theme === 'dark' ? 'dark' : 'light',
@@ -31,7 +24,7 @@ function normalizeProfileState(data: Partial<LocalProfileState> | null | undefin
   };
 }
 
-export function loadLocalProfileState(userId: string): LocalProfileState | null {
+export function loadLocalProfileState(userId: string): ProfileState | null {
   if (typeof window === 'undefined' || !userId) {
     return null;
   }
@@ -42,13 +35,13 @@ export function loadLocalProfileState(userId: string): LocalProfileState | null 
   }
 
   try {
-    return normalizeProfileState(JSON.parse(raw) as Partial<LocalProfileState>);
+    return normalizeProfileState(JSON.parse(raw) as Partial<ProfileState>);
   } catch {
     return null;
   }
 }
 
-export function saveLocalProfileState(userId: string, profile: Partial<LocalProfileState>): LocalProfileState {
+export function saveLocalProfileState(userId: string, profile: Partial<ProfileState>): ProfileState {
   const normalized = normalizeProfileState(profile);
 
   if (typeof window !== 'undefined' && userId) {

@@ -64,4 +64,23 @@ describe('IntegrationTelemetry observability', () => {
     expect(Sentry.captureException).toHaveBeenCalled();
     errorSpy.mockRestore();
   });
+
+  it('captures an instrumented failure once at the telemetry owner', async () => {
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+    const descriptor: PropertyDescriptor = {
+      configurable: true,
+      value: vi.fn().mockRejectedValue(new Error('instrumented boom')),
+      writable: true,
+    };
+
+    IntegrationTelemetry.instrument(telemetry, {
+      integrationName: 'stripe',
+      operation: 'payment_process',
+      requestId: 'req-instrumented',
+    })({}, 'run', descriptor);
+
+    await expect(descriptor.value()).rejects.toThrow('instrumented boom');
+    expect(Sentry.captureException).toHaveBeenCalledTimes(1);
+    errorSpy.mockRestore();
+  });
 });

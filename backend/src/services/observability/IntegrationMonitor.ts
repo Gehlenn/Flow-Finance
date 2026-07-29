@@ -46,17 +46,9 @@ export class IntegrationMonitor {
     };
     baseContext.integrationName = integrationMap[provider] || 'openai';
 
-    try {
-      const result = await this.telemetry.executeWithTelemetry(baseContext, fn);
-      this.telemetry.recordSuccess(baseContext, { provider });
-      return result;
-    } catch (error) {
-      this.logger.error(
-        { provider, operation, requestId: baseContext.requestId, error: normalizeErrorMessage(error) },
-        `AI call failed: ${provider} - ${operation}`
-      );
-      throw error;
-    }
+    const result = await this.telemetry.executeWithTelemetry(baseContext, fn);
+    this.telemetry.recordSuccess(baseContext, { provider });
+    return result;
   }
 
   /**

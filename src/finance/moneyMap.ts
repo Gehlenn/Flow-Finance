@@ -59,7 +59,6 @@ function parseMoneyMapDate(dateValue: string): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-// ─── PART 6 — calculateMoneyDistribution ─────────────────────────────────────
 
 export function calculateMoneyDistribution(
   transactions: Transaction[],
@@ -163,33 +162,4 @@ export function calculateMoneyDistribution(
     top_category: distribution[0] ?? null,
     income_distribution,
   };
-}
-
-// ─── Mini chart data (para sparklines no dashboard) ──────────────────────────
-
-export function getWeeklySpendingByCategory(
-  transactions: Transaction[],
-  weeks: number = 4
-): { week: string; [category: string]: number | string }[] {
-  const base = transactions.filter(t => !t.generated && t.type === TransactionType.DESPESA);
-  const result: { week: string; [category: string]: number | string }[] = [];
-
-  for (let w = weeks - 1; w >= 0; w--) {
-    const end   = new Date(Date.now() - w * 7 * 86400000);
-    const start = new Date(Date.now() - (w + 1) * 7 * 86400000);
-    const weekTxs = base.filter(t => {
-      const parsed = parseMoneyMapDate(t.date);
-      return parsed !== null && parsed >= start && parsed < end;
-    });
-    const entry: { week: string; [cat: string]: number | string } = {
-      week: `S${weeks - w}`,
-    };
-    for (const t of weekTxs) {
-      const cat = t.category ?? 'Outros';
-      entry[cat] = ((entry[cat] as number) ?? 0) + t.amount;
-    }
-    result.push(entry);
-  }
-
-  return result;
 }

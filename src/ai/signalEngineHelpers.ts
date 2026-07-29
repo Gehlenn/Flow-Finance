@@ -1,5 +1,5 @@
 import { Transaction, TransactionType } from '../../types';
-import type { FinancialSignalKind } from './signalEngine';
+import type { FinancialSignalKind } from './signalEngineTypes';
 import type { FinancialRiskAlert } from './riskAnalyzer';
 
 export function nowIso(): string {

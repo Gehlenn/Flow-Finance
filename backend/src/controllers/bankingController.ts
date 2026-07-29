@@ -381,6 +381,7 @@ export const createConnectTokenController = asyncHandler(async (req: Request, re
 });
 
 export const pluggyWebhookController = asyncHandler(async (req: Request, res: Response) => {
+  const pluggyEnabled = isPluggyEnabled();
   const configuredSecret = env.PLUGGY_WEBHOOK_SECRET;
   const providedSecret = String(
     req.query.secret
@@ -389,19 +390,28 @@ export const pluggyWebhookController = asyncHandler(async (req: Request, res: Re
     || ''
   );
 
-  if (configuredSecret && !stringsEqual(providedSecret, configuredSecret)) {
-    logger.warn({ path: req.path }, 'Rejected Pluggy webhook due to invalid secret');
-    res.status(401).json({ message: 'Invalid webhook secret' });
-    return;
-  }
-
   const payload = req.body as PluggyWebhookPayload;
   const eventName = extractWebhookEventName(payload);
   const itemId = extractWebhookItemId(payload);
 
-  if (!isPluggyEnabled()) {
+  if (!pluggyEnabled) {
     logger.info({ eventName, itemId }, 'Pluggy webhook ignored because provider is disabled');
     res.status(202).json({ received: true, processed: false, reason: 'provider-disabled' });
+    return;
+  }
+
+  if (!configuredSecret) {
+    logger.error(
+      { path: req.path, fallback: 'pluggy-webhook-secret-missing' },
+      'Rejected Pluggy webhook because PLUGGY_WEBHOOK_SECRET is not configured',
+    );
+    res.status(503).json({ message: 'Pluggy webhook is unavailable because its signing secret is not configured' });
+    return;
+  }
+
+  if (!stringsEqual(providedSecret, configuredSecret)) {
+    logger.warn({ path: req.path }, 'Rejected Pluggy webhook due to invalid secret');
+    res.status(401).json({ message: 'Invalid webhook secret' });
     return;
   }
 
@@ -437,8 +447,7 @@ export const pluggyWebhookController = asyncHandler(async (req: Request, res: Re
 
 export const listConnectorsController = asyncHandler(async (_req: Request, res: Response) => {
   if (!isPluggyEnabled() || !env.PLUGGY_CLIENT_ID || !env.PLUGGY_CLIENT_SECRET) {
-    // Fallback: Return hardcoded bank catalog when Pluggy integration is inactive.
-    // This should be removed once Pluggy becomes mandatory for production.
+    // Keep connector selection available when the real provider is disabled.
     res.json(BRAZILIAN_BANKS.map((b) => ({ id: b.id, name: b.name, imageUrl: b.logo, primaryColor: b.color, country: b.country })));
     return;
   }

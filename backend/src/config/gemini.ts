@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI, ResponseSchema } from '@google/generative-ai';
 import env from './env';
 import logger from './logger';
-import type { AIProviderResponse } from './ai';
+import type { AIProviderResponse } from './aiTypes';
 
 let genAI: GoogleGenerativeAI | null = null;
 

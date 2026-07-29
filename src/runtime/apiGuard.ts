@@ -35,10 +35,6 @@ let apiOfflineMode = false;
 let lastHealthCheck = 0;
 const HEALTH_CHECK_COOLDOWN = 30000; // 30s entre checks
 
-export function isAPIOffline(): boolean {
-  return apiOfflineMode;
-}
-
 export async function checkAPIHealth(): Promise<GuardResult> {
   const now = Date.now();
 

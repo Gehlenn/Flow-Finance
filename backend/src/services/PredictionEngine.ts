@@ -312,7 +312,15 @@ export class PredictionEngine {
   clearCache(userId?: string): void {
     if (userId) {
       this.memCache.delete(userId);
-      redisCache.del(`${REDIS_CACHE_PREFIX}${userId}`).catch(() => undefined);
+      const cacheKey = `${REDIS_CACHE_PREFIX}${userId}`;
+      redisCache.del(cacheKey).catch((err: unknown) => {
+        logger.warn({
+          err,
+          userId,
+          cacheKey,
+          fallback: 'prediction-engine-cache-delete-failed',
+        }, 'PredictionEngine: Redis cache delete failed, TTL expiry remains active');
+      });
     } else {
       this.memCache.clear();
       // Cannot enumerate all Redis keys here without pattern scan — acceptable trade-off.

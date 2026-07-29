@@ -1,10 +1,6 @@
 import { categorizeTransaction } from '../engines/finance/categorization/transactionCategorizer';
-import type { TextFileLike, ImportedStatementTransaction } from './ofxImporter';
+import type { ImportedStatementTransaction } from './ofxImporter';
 import { normalizeImportedTransaction } from './importNormalizer';
-
-export interface PdfTextExtractor {
-  extractText(file: TextFileLike): Promise<string>;
-}
 
 const BR_AMOUNT_REGEX = /-?\s*R?\$?\s*([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2}|[0-9]+\.[0-9]{2})/;
 const DATE_REGEX = /(\d{2}[\/\-]\d{2}[\/\-]\d{4}|\d{4}[\-]\d{2}[\-]\d{2})/;
@@ -110,12 +106,4 @@ export function parsePdfStatementText(text: string): ImportedStatementTransactio
   }
 
   return transactions;
-}
-
-export async function importPDFStatement(
-  file: TextFileLike,
-  extractor?: PdfTextExtractor,
-): Promise<ImportedStatementTransaction[]> {
-  const text = extractor ? await extractor.extractText(file) : await file.text();
-  return parsePdfStatementText(text);
 }

@@ -112,7 +112,6 @@ vi.mock('../../src/routes/integrationKeys', () => ({ default: vi.fn() }));
 vi.mock('../../src/routes/clinicIntegration', () => ({ default: vi.fn() }));
 vi.mock('../../src/routes/businessIntegration', () => ({ default: vi.fn() }));
 vi.mock('../../src/routes/workspace', () => ({ default: vi.fn() }));
-vi.mock('../../src/middleware/featureGate', () => ({ featureGateOpenFinance: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()) }));
 vi.mock('../../src/middleware/requestContext', () => ({ requestContextMiddleware: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()) }));
 vi.mock('../../src/middleware/jsonValidation', () => ({ validateJsonMiddleware: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()) }));
 vi.mock('../../src/middleware/rateLimit', () => ({ apiLimiter: vi.fn() }));

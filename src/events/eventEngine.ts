@@ -29,7 +29,7 @@ import { API_ENDPOINTS, getAuthHeaders, getStoredWorkspaceId } from '../config/a
 import { logError, logInfo, logWarn } from '../utils/logger';
 
 
-// PART 5 - Storage
+// Event persistence
 
 const MAX_EVENTS  = 200;
 const eventCacheByWorkspace = new Map<string, FinancialEvent[]>();
@@ -129,13 +129,13 @@ export async function refreshFinancialEvents(limit = MAX_EVENTS): Promise<Financ
   }
 }
 
-// PART 2 - In-memory subscriber registry
+// In-memory subscribers
 
 type EventCallback = (event: FinancialEvent) => void;
 
 const subscribers: EventCallback[] = [];
 
-// PART 2 - Core bus functions
+// Event bus
 
 /** Emite um evento, persiste e notifica todos os subscribers. */
 export function emitFinancialEvent(
@@ -198,7 +198,7 @@ export function clearFinancialEvents(): void {
   eventCacheByWorkspace.set(getActiveWsId(), []);
 }
 
-// PART 3 - Typed event helpers
+// Typed event emitters
 
 export const FinancialEventEmitter = {
   transactionCreated(payload: unknown) {
@@ -227,7 +227,7 @@ export const FinancialEventEmitter = {
   },
 };
 
-// PART 4 - Reactive listener pipeline
+// Listener pipeline
 
 /**
  * Inicializa o pipeline de listeners reativos.
@@ -263,7 +263,7 @@ export function initEventListeners(
     const { transactions, accounts, userId, onAutopilotActions, onInsights, onRisks, onLeaks, onReport } = getState();
 
     try {
-      // PART 6 - Run AI Orchestrator on relevant events
+      // Run advice generation only for financially relevant events.
       const { runLegacyAIOrchestrator } = await import('../ai/aiOrchestrator');
       const orchestratorResult = await runLegacyAIOrchestrator(userId, accounts, transactions);
 

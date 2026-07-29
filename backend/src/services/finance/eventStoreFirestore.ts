@@ -1,6 +1,6 @@
 import type { Firestore, QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { getFirestoreOrNull, isFirebaseConfigured } from '../../utils/firestoreAdmin';
-import type { DomainEventRecord } from './eventStore';
+import type { DomainEventRecord } from './eventStoreTypes';
 
 const COLLECTION = 'domain_events';
 const DEFAULT_BATCH_SIZE = 250;

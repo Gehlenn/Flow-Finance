@@ -96,14 +96,3 @@ async function cleanStaleCaches(cacheNames: string[]): Promise<void> {
     }),
   );
 }
-
-export async function clearAllCaches(): Promise<void> {
-  if (!("caches" in window)) return;
-
-  const cacheNames = await caches.keys();
-  await Promise.all(cacheNames.map((name) => caches.delete(name)));
-  logInfo("[SW Guard] All caches cleared", {
-    cacheCount: cacheNames.length,
-    fallback: "service-worker-caches-cleared",
-  });
-}

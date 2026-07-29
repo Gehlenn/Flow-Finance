@@ -1,10 +1,10 @@
 /**
- * AI CONTROL PANEL â€” src/pages/AIControlPanel.tsx
+ * AI CONTROL PANEL — src/pages/AIControlPanel.tsx
  *
- * PART 6 â€” Painel de controle para o sistema de IA do Flow Finance.
- * PART 7 â€” Visível apenas em modo desenvolvimento (IS_DEV).
+ * Internal control panel for the Flow Finance AI system.
+ * Available only in development mode (IS_DEV).
  *
- * Design: dark terminal / command-center â€” monospace, scanline aesthetic,
+ * Design: dark terminal / command-center — monospace, scanline aesthetic,
  * deliberate brutalist density. Think "NASA mission control meets developer DevTools".
  */
 
@@ -51,11 +51,11 @@ import {
   ArrowRight, X, Info, Bot, Target, Repeat2, Map, Network
 } from 'lucide-react';
 
-// â”€â”€â”€ Dev guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Dev guard ────────────────────────────────────────────────────────────────
 
 const IS_DEV = import.meta.env.DEV;
 
-// â”€â”€â”€ Shared primitives â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Shared primitives ────────────────────────────────────────────────────────
 
 const TermBadge: React.FC<{ children: React.ReactNode; color?: string }> = ({ children, color = 'text-emerald-400' }) => (
   <span className={`font-mono text-xs font-medium uppercase tracking-[0.08em] px-2 py-0.5 bg-black/40 border border-current/20 rounded ${color}`}>
@@ -392,7 +392,7 @@ const buildReviewedMemory = (entry: AIMemory, reviewState: 'confirmed' | 'invali
   };
 };
 
-// â”€â”€â”€ TAB: Memory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB: Memory ─────────────────────────────────────────────────────────────
 
 const MemoryTab: React.FC<{ userId: string }> = ({ userId }) => {
   const [entries, setEntries] = useState<AIMemory[]>([]);
@@ -802,7 +802,7 @@ const MemoryTab: React.FC<{ userId: string }> = ({ userId }) => {
   );
 };
 
-// â”€â”€â”€ TAB: Insights â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB: Insights ────────────────────────────────────────────────────────────
 
 const InsightsTab: React.FC<{ transactions: Transaction[]; userId: string }> = ({ transactions, userId }) => {
   const insights = useMemo(() => generateFinancialInsights(transactions, userId), [transactions, userId]);
@@ -828,7 +828,7 @@ const InsightsTab: React.FC<{ transactions: Transaction[]; userId: string }> = (
       <SectionHeader icon={<Sparkles size={11} />} title="Financial Insights" count={insights.length} />
       <div className="flex-1 overflow-y-auto">
         {insights.length === 0 ? (
-          <EmptyState icon={<Sparkles size={32} />} message="Sem insights â€” adicione transações" />
+          <EmptyState icon={<Sparkles size={32} />} message="Sem insights — adicione transações" />
         ) : (
           <div className="p-3 flex flex-col gap-2">
             {insights.map(insight => (
@@ -859,7 +859,7 @@ const InsightsTab: React.FC<{ transactions: Transaction[]; userId: string }> = (
   );
 };
 
-// â”€â”€â”€ TAB: Autopilot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB: Autopilot ──────────────────────────────────────────────────────────
 
 const AutopilotTab: React.FC<{ transactions: Transaction[]; accounts: Account[] }> = ({ transactions, accounts }) => {
   const actions = useMemo(() => {
@@ -880,7 +880,7 @@ const AutopilotTab: React.FC<{ transactions: Transaction[]; accounts: Account[] 
       <SectionHeader icon={<Bot size={11} />} title="Autopilot Actions" count={actions.length} />
       <div className="flex-1 overflow-y-auto">
         {actions.length === 0 ? (
-          <EmptyState icon={<Bot size={32} />} message="Nenhuma ação â€” dados insuficientes" />
+          <EmptyState icon={<Bot size={32} />} message="Nenhuma ação — dados insuficientes" />
         ) : (
           <div className="p-3 flex flex-col gap-2">
             {actions.map(action => {
@@ -897,7 +897,7 @@ const AutopilotTab: React.FC<{ transactions: Transaction[]; accounts: Account[] 
                       <p className="font-mono text-xs text-slate-400 leading-relaxed">{action.description}</p>
                       {action.value !== undefined && (
                         <p className="font-mono text-xs text-emerald-400 mt-1.5">
-                          â†— {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(action.value)}
+                          ↗ {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(action.value)}
                         </p>
                       )}
                     </div>
@@ -912,7 +912,7 @@ const AutopilotTab: React.FC<{ transactions: Transaction[]; accounts: Account[] 
   );
 };
 
-// â”€â”€â”€ TAB: Events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB: Events ─────────────────────────────────────────────────────────────
 
 const EventsTab: React.FC = () => {
   const [events, setEvents] = useState<FinancialEvent[]>([]);
@@ -979,7 +979,7 @@ const EventsTab: React.FC = () => {
   );
 };
 
-// â”€â”€â”€ TAB: AI Logs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB: AI Logs ─────────────────────────────────────────────────────────────
 
 const AILogsTab: React.FC = () => {
   const [logs, setLogs] = useState<AIDebugEntry[]>([]);
@@ -1011,7 +1011,7 @@ const AILogsTab: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <p className="font-mono text-xs text-slate-300 truncate">{log.input}</p>
                     {log.predicted_category && (
-                      <p className="font-mono text-xs text-emerald-500 mt-0.5">â†’ {log.predicted_category}</p>
+                      <p className="font-mono text-xs text-emerald-500 mt-0.5">→ {log.predicted_category}</p>
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
@@ -1037,7 +1037,7 @@ const AILogsTab: React.FC = () => {
   );
 };
 
-// â”€â”€â”€ TAB: Subscriptions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB: Subscriptions ──────────────────────────────────────────────────────
 
 const SubscriptionsTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }) => {
   const summary = useMemo(() => detectSubscriptions(transactions), [transactions]);
@@ -1076,7 +1076,7 @@ const SubscriptionsTab: React.FC<{ transactions: Transaction[] }> = ({ transacti
                     <div className="flex items-center gap-3 flex-wrap">
                       <TermBadge color="text-sky-400">{formatCycle(sub.cycle)}</TermBadge>
                       <TermBadge color="text-slate-400">{sub.category}</TermBadge>
-                      <TermBadge color="text-violet-400">{sub.occurrences}Ã— detectado</TermBadge>
+                      <TermBadge color="text-violet-400">{sub.occurrences}× detectado</TermBadge>
                     </div>
                     <div className="flex items-center gap-1.5 mt-1.5">
                       <Calendar size={8} className="text-slate-500" />
@@ -1099,7 +1099,7 @@ const SubscriptionsTab: React.FC<{ transactions: Transaction[] }> = ({ transacti
   );
 };
 
-// â”€â”€â”€ TAB: Money Map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB: Money Map ──────────────────────────────────────────────────────────
 
 const MoneyMapTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }) => {
   const [period, setPeriod] = useState(30);
@@ -1164,7 +1164,7 @@ const MoneyMapTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }
               <div key={item.category} className="flex items-center gap-3">
                 <div className={`w-2 h-2 rounded-sm shrink-0 ${getMoneyMapBgClass(item.color)}`} />
                 <span className="font-mono text-xs text-slate-300 flex-1 truncate">{item.category}</span>
-                <span className="font-mono text-xs text-slate-500">{item.count}Ã—</span>
+                <span className="font-mono text-xs text-slate-500">{item.count}×</span>
                 <div className="flex items-center gap-1">
                   {item.trend === 'up'   && <TrendingUp  size={8} className="text-rose-400"    />}
                   {item.trend === 'down' && <TrendingDown size={8} className="text-emerald-400" />}
@@ -1180,7 +1180,7 @@ const MoneyMapTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }
   );
 };
 
-// â”€â”€â”€ TAB: Leaks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB: Leaks ──────────────────────────────────────────────────────────────
 
 const LeaksTab: React.FC<{ transactions: Transaction[]; leaks?: FinancialLeak[] }> = ({ transactions, leaks }) => {
   const computedLeaks = useMemo(() => detectFinancialLeaks(transactions), [transactions]);
@@ -1216,7 +1216,7 @@ const LeaksTab: React.FC<{ transactions: Transaction[]; leaks?: FinancialLeak[] 
   );
 };
 
-// â”€â”€â”€ TAB: Report â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB: Report ─────────────────────────────────────────────────────────────
 
 const ReportTab: React.FC<{ transactions: Transaction[]; report?: FinancialReport | null }> = ({ transactions, report }) => {
   const computedReport = useMemo(() => generateMonthlyReport(transactions), [transactions]);
@@ -1268,7 +1268,7 @@ const ReportTab: React.FC<{ transactions: Transaction[]; report?: FinancialRepor
   );
 };
 
-// â”€â”€â”€ TAB: Simulation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB: Simulation ─────────────────────────────────────────────────────────
 
 const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[] }> = ({ transactions, accounts }) => {
   const [scenario, setScenario] = useState<SimulationScenario>({
@@ -1432,7 +1432,7 @@ const SimulationTab: React.FC<{ transactions: Transaction[]; accounts: Account[]
   );
 };
 
-// â”€â”€â”€ TAB: Audit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB: Audit ──────────────────────────────────────────────────────────────
 
 const AuditTab: React.FC = () => {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
@@ -1477,7 +1477,7 @@ const AuditTab: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-mono text-xs text-emerald-400">{log.event_type}</span>
-                      <span className="font-mono text-xs text-slate-500">â†’</span>
+                      <span className="font-mono text-xs text-slate-500">→</span>
                       <span className="font-mono text-xs text-slate-300">{log.entity}:{log.entity_id}</span>
                     </div>
                     <p className="font-mono text-xs text-slate-500">{new Date(log.timestamp).toLocaleString()}</p>
@@ -1497,7 +1497,7 @@ const AuditTab: React.FC = () => {
   );
 };
 
-// â”€â”€â”€ TAB: Parser Lab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB: Parser Lab ─────────────────────────────────────────────────────────
 
 const ParserLabTab: React.FC = () => {
   const [input, setInput] = useState('');
@@ -1611,7 +1611,7 @@ const ParserLabTab: React.FC = () => {
     </div>
   );
 };
-// â”€â”€â”€ PART 7 â€” Graph Visualization Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â€” Graph Visualization Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Graph visualization
 
 type GraphViewMode = 'overview' | 'merchants' | 'categories' | 'subscriptions' | 'edges';
 
@@ -1687,7 +1687,7 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
 
       <div className="flex-1 overflow-y-auto">
 
-        {/* OVERVIEW â€” node type distribution + graph schema */}
+        {/* OVERVIEW — node type distribution + graph schema */}
         {view === 'overview' && (
           <div className="p-3 flex flex-col gap-3">
             {/* Schema legend */}
@@ -1705,14 +1705,14 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
               <p className="font-mono text-xs text-slate-500 uppercase tracking-[0.08em] mb-2">Relations</p>
               <div className="grid grid-cols-2 gap-1">
                 {[
-                  ['owns',            'user â†’ account'],
-                  ['has_transaction', 'account â†’ tx'],
-                  ['paid_to',         'tx â†’ merchant'],
-                  ['belongs_to',      'tx â†’ category'],
-                  ['same_category',   'merchant â†’ category'],
-                  ['is_subscription', 'merchant â†’ sub'],
-                  ['co_occurs',       'merchant â†” merchant'],
-                  ['recurring_from',  'sub â†’ merchant'],
+                  ['owns',            'user → account'],
+                  ['has_transaction', 'account → tx'],
+                  ['paid_to',         'tx → merchant'],
+                  ['belongs_to',      'tx → category'],
+                  ['same_category',   'merchant → category'],
+                  ['is_subscription', 'merchant → sub'],
+                  ['co_occurs',       'merchant ↔ merchant'],
+                  ['recurring_from',  'sub → merchant'],
                 ].map(([rel, desc]) => (
                   <div key={rel} className="flex items-center gap-1.5">
                     <ArrowRight size={7} className="text-slate-600 shrink-0" />
@@ -1742,7 +1742,7 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  placeholder="Buscar merchantâ€¦"
+                  placeholder="Buscar merchant…"
                   className="flex-1 bg-transparent font-mono text-xs text-slate-300 placeholder-slate-600 outline-none"
                 />
               </div>
@@ -1762,7 +1762,7 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
                         <span className="font-mono text-xs text-slate-600 w-4 shrink-0">#{i + 1}</span>
                         <div className="flex-1 min-w-0">
                           <p className="font-mono text-xs text-amber-300 truncate">{m.name}</p>
-                          <p className="font-mono text-xs text-slate-500 mt-0.5">{m.visit_count}Ã— · avg {fmt(m.avg_amount)}</p>
+                          <p className="font-mono text-xs text-slate-500 mt-0.5">{m.visit_count}× · avg {fmt(m.avg_amount)}</p>
                         </div>
                         <span className="font-mono text-xs text-slate-200 font-medium">{fmt(m.total_spent)}</span>
                         {selectedNode === m.merchant_id
@@ -1826,7 +1826,7 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
                   <div className="flex-1 min-w-0">
                     <p className="font-mono text-xs text-slate-200 truncate">{sub.name}</p>
                     <p className="font-mono text-xs text-slate-500 mt-0.5">
-                      {sub.visit_count}Ã— · {sub.is_confirmed_subscription ? 'âœ“ confirmada' : '? candidata'}
+                      {sub.visit_count}× · {sub.is_confirmed_subscription ? '✓ confirmada' : '? candidata'}
                     </p>
                   </div>
                   <span className={`font-mono text-xs font-medium ${sub.is_confirmed_subscription ? 'text-emerald-400' : 'text-amber-400'}`}>
@@ -1879,7 +1879,7 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
                   const toLabel   = graph.nodes.get(e.to)?.label   ?? e.to;
                   return (
                     <div key={i} className="flex items-center gap-2 mb-1.5 px-1">
-                      <span className="font-mono text-xs text-slate-600 w-3">{e.weight}Ã—</span>
+                      <span className="font-mono text-xs text-slate-600 w-3">{e.weight}×</span>
                       <span className="font-mono text-xs text-amber-400 truncate max-w-[90px]">{fromLabel}</span>
                       <ArrowRight size={7} className="text-slate-600 shrink-0" />
                       <span className="font-mono text-xs text-amber-300 truncate max-w-[90px]">{toLabel}</span>
@@ -1897,7 +1897,7 @@ const GraphTab: React.FC<{ transactions: Transaction[]; accounts: Account[]; use
   );
 };
 
-// â”€â”€â”€ PART 7 â€” System Stats (quick read at a glance) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// System status summary
 
 const SystemStats: React.FC<{ transactions: Transaction[]; accounts: Account[]; userId: string }> = ({
   transactions, accounts, userId
@@ -1989,7 +1989,7 @@ const FinancialHealthTab: React.FC<{ transactions: Transaction[] }> = ({ transac
           {score.alerts.length === 0
             ? <p className="font-mono text-xs text-emerald-400">Nenhum alerta crítico detectado.</p>
             : score.alerts.map((alert, idx) => (
-              <p key={idx} className="font-mono text-xs text-amber-300 mb-1">â€¢ {alert}</p>
+              <p key={idx} className="font-mono text-xs text-amber-300 mb-1">• {alert}</p>
             ))}
         </div>
       </div>
@@ -2082,7 +2082,7 @@ const FinancialTimelineTab: React.FC<{ transactions: Transaction[] }> = ({ trans
   );
 };
 
-// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 interface AIControlPanelProps {
   transactions: Transaction[];
@@ -2119,7 +2119,7 @@ const TAB_CONFIG: Array<{ id: PanelTab; label: string; icon: React.ReactNode }> 
 const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts, userId, leaks, report }) => {
   const [activeTab, setActiveTab] = useState<PanelTab>('stats');
 
-  // PART 7 â€” Only render in development mode
+  // Keep diagnostics out of production bundles and navigation.
   if (!IS_DEV) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-slate-500">
@@ -2154,7 +2154,7 @@ const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts,
 
   return (
     <div className="flex flex-col gap-0 pb-8">
-      {/* Header â€” dark terminal style */}
+      {/* Header — dark terminal style */}
       <div className="bg-slate-950 border border-slate-700/60 rounded-[1.5rem] overflow-hidden shadow-2xl shadow-black/40">
 
         {/* Title bar */}
@@ -2176,7 +2176,7 @@ const AIControlPanel: React.FC<AIControlPanelProps> = ({ transactions, accounts,
           </div>
         </div>
 
-        {/* Tab bar â€” horizontal scrolling */}
+        {/* Tab bar — horizontal scrolling */}
         <div className="flex overflow-x-auto border-b border-slate-700/60 bg-slate-900/50 scrollbar-none">
           {TAB_CONFIG.map(tab => (
             <button

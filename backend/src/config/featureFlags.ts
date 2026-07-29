@@ -8,7 +8,7 @@
  * ## Kill switches disponíveis
  * | Kill switch                  | Derruba flags afetadas                                           |
  * |------------------------------|------------------------------------------------------------------|
- * | kill_switch_ai               | ai_chat_enabled, ai_analysis_enabled, ai_deep_analysis_enabled  |
+ * | kill_switch_ai               | ai_chat_enabled, ai_deep_analysis_enabled  |
  * | kill_switch_clinic_automation| clinic_automation_ingest_enabled, clinic_automation_auto_post_enabled |
  * | kill_switch_stripe_webhooks  | stripe_payments_enabled                                          |
  *

@@ -1293,7 +1293,24 @@ export const OPENAPI_PATHS = {
       '/api/banking/migrate/firebase': { post: { tags: ['Banking'], summary: 'Migrate banking data from Firebase', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Migration result' } } } },
       '/api/banking/sync': { post: { tags: ['Banking'], summary: 'Sync banking connection', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Sync result' } } } },
       '/api/banking/disconnect': { post: { tags: ['Banking'], summary: 'Disconnect banking connection', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Disconnected' } } } },
-      '/api/banking/webhooks/pluggy': { post: { tags: ['Banking'], summary: 'Pluggy webhook receiver', responses: { '200': { description: 'Webhook accepted' } } } },
+      '/api/banking/webhooks/pluggy': {
+        post: {
+          tags: ['Banking'],
+          summary: 'Pluggy webhook receiver',
+          parameters: [{
+            in: 'header',
+            name: 'x-pluggy-webhook-secret',
+            required: false,
+            schema: { type: 'string' },
+            description: 'Webhook signing secret. Required whenever OPEN_FINANCE_PROVIDER=pluggy.',
+          }],
+          responses: {
+            '202': { description: 'Webhook received; processing may be skipped when the provider is disabled or the item is unknown' },
+            '401': { description: 'Webhook signing secret is invalid' },
+            '503': { description: 'Pluggy is enabled but PLUGGY_WEBHOOK_SECRET is not configured' },
+          },
+        },
+      },
       '/api/billing/subscription': { post: { tags: ['Billing'], summary: 'Create or change subscription', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Subscription updated' } } } },
       '/api/billing/export': { get: { tags: ['Billing'], summary: 'Export workspace data (not yet available)', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '501': { description: 'Export not implemented yet' } } } },
       '/api/admin/users': { get: { tags: ['Admin'], summary: 'List workspace users', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'User list' } } } },

@@ -4,18 +4,7 @@ import { logWarn } from '../utils/logger';
 import { getConnections } from '../../services/integrations/openBankingService';
 import { detectSalary, type SalaryDetectionResult } from '../ai/salaryDetector';
 import { detectFixedExpenses, type FixedExpenseReport } from '../ai/fixedExpenseDetector';
-
-export interface BankSyncReport {
-  started_at: string;
-  finished_at: string;
-  duration_ms: number;
-  connections_synced: number;
-  connections_failed: number;
-  total_imported: number;
-  results: unknown[];
-  salary_analysis?: unknown;
-  fixed_expense_report?: unknown;
-}
+import type { BankSyncReport } from './bankSyncTypes';
 
 const SYNC_REPORTS_KEY = 'flow_bank_sync_reports';
 const MAX_REPORTS = 10;

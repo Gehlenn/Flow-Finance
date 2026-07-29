@@ -11,7 +11,7 @@ import {
 import type { MainNavigationItem } from "../../src/app/mainNavigation";
 import type { Tab } from "../../hooks/navigationTypes";
 
-export interface AppMainNavProps {
+interface AppMainNavProps {
   items: MainNavigationItem[];
   activeSectionTab: Tab;
   onSelectTab: (tab: Tab) => void;
@@ -32,7 +32,7 @@ const NAV_BUTTON_CLASS_MAP = {
     "hidden max-w-[4.25rem] text-center text-[10px] font-medium uppercase leading-tight tracking-[0.03em] md:block md:max-w-none md:text-xs md:tracking-[0.06em] xl:text-[10px] xl:tracking-[0.04em]",
 };
 
-export function renderTabIcon(tab: string): React.ReactNode {
+function renderTabIcon(tab: string): React.ReactNode {
   switch (tab) {
     case "dashboard":
       return <LayoutDashboard size={18} />;
@@ -53,7 +53,7 @@ export function renderTabIcon(tab: string): React.ReactNode {
   }
 }
 
-export const NavButton: React.FC<{
+const NavButton: React.FC<{
   active: boolean;
   onClick: () => void;
   icon: React.ReactNode;

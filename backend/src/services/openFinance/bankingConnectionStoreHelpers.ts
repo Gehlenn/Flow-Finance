@@ -1,4 +1,4 @@
-import type { StoredBankConnection, StoredBankProvider, StoredConnectionStatus } from './bankingConnectionStore';
+import type { StoredBankConnection, StoredBankProvider, StoredConnectionStatus } from './bankingConnectionStoreTypes';
 
 export function parseBankingConnectionStoreDriver(driver?: string): 'memory' | 'postgres' | 'firebase' | null {
   const normalized = String(driver || '').toLowerCase();

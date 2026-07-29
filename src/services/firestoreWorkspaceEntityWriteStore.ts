@@ -1,6 +1,7 @@
 import { collection, doc, setDoc, writeBatch } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../../services/firebase';
-import type { AuditLogDocument, SyncEntity, WorkspaceScopedEntity } from './firestoreWorkspaceTypes';
+import type { AuditLogDocument, WorkspaceScopedEntity } from './firestoreWorkspaceTypes';
+import type { SyncEntity } from './sync/syncTypes';
 import {
   hasWorkspaceContext,
   nowIso,

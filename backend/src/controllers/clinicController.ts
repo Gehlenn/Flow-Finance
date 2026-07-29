@@ -30,7 +30,16 @@ function buildRedisClient(): RedisLike {
   const isProduction = process.env.NODE_ENV === 'production';
 
   if (process.env.REDIS_URL) {
-    return redisClient as unknown as RedisLike;
+    return {
+      get: (key) => redisClient.get(key),
+      set: (key, value) => redisClient.set(key, value),
+      setEx: (key, ttl, value) => redisClient.setEx(key, ttl, value),
+      exists: (key) => redisClient.exists(key),
+      del: (key) => redisClient.del(key),
+      keys: (pattern) => redisClient.keys(pattern),
+      ttl: (key) => redisClient.ttl(key),
+      ping: () => redisClient.ping(),
+    };
   }
 
   if (isProduction) {
