@@ -4,7 +4,6 @@
  *  - Requests dentro do limite passam e incrementam contador
  *  - Requests que excedem o limite recebem 429 com headers corretos
  *  - Usuário free tem limite menor que usuário pro
- *  - trackOnly incrementa sem bloquear
  *  - Headers X-RateLimit-* estão presentes em toda resposta
  *  - Reset epoch aponta para início do próximo mês
  */
@@ -27,6 +26,22 @@ vi.mock('../../backend/src/config/logger', () => ({
   default: { debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
 
+const usageAuthorityMocks = vi.hoisted(() => ({
+  isFirestoreAiUsageAuthorityEnabled: vi.fn().mockReturnValue(false),
+  reserveWorkspaceUsage: vi.fn().mockResolvedValue(null),
+  WorkspaceUsageAuthorityUnavailableError: class WorkspaceUsageAuthorityUnavailableError extends Error {},
+  WorkspaceUsageIdempotencyConflictError: class WorkspaceUsageIdempotencyConflictError extends Error {},
+}));
+
+vi.mock('../../backend/src/services/usage/workspaceUsageAuthority', () => usageAuthorityMocks);
+
+beforeEach(() => {
+  usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReset().mockReturnValue(false);
+  usageAuthorityMocks.reserveWorkspaceUsage.mockReset().mockResolvedValue(null);
+  vi.stubEnv('NODE_ENV', 'test');
+  vi.stubEnv('VERCEL', '');
+});
+
 const postgresMocks = vi.hoisted(() => ({
   saveWorkspaceSaasState: vi.fn().mockResolvedValue(undefined),
   loadWorkspaceSaasState: vi.fn().mockResolvedValue(null),
@@ -42,15 +57,32 @@ vi.mock('../../backend/src/services/persistence/postgresStateStore', () => postg
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function makeReq(userId = 'user-test', workspaceId?: string) {
+function makeReq(
+  userId = 'user-test',
+  workspaceId?: string,
+  options: { idempotencyKey?: string; requestId?: string } = {},
+) {
   return {
     userId,
     workspaceId,
-    header: vi.fn().mockImplementation((name: string) => (name === 'x-workspace-id' ? workspaceId : undefined)),
+    requestId: options.requestId ?? 'request-quota-test',
+    header: vi.fn().mockImplementation((name: string) => {
+      if (name === 'x-workspace-id') return workspaceId;
+      if (name === 'Idempotency-Key') return options.idempotencyKey;
+      return undefined;
+    }),
     params: {},
     query: {},
     body: {},
-  } as { userId?: string; workspaceId?: string; header: ReturnType<typeof vi.fn>; params: Record<string, never>; query: Record<string, never>; body: Record<string, never> };
+  } as {
+    userId?: string;
+    workspaceId?: string;
+    requestId?: string;
+    header: ReturnType<typeof vi.fn>;
+    params: Record<string, never>;
+    query: Record<string, never>;
+    body: Record<string, never>;
+  };
 }
 
 function makeRes() {
@@ -69,13 +101,13 @@ function makeRes() {
 async function runMiddleware(
   resource: 'aiQueries' | 'bankConnections' | 'transactions',
   userId: string,
-  options?: { trackOnly?: boolean },
   workspaceId?: string,
+  requestOptions?: { idempotencyKey?: string; requestId?: string },
 ) {
-  const req = makeReq(userId, workspaceId);
+  const req = makeReq(userId, workspaceId, requestOptions);
   const res = makeRes();
   const next = vi.fn();
-  const mw = quotaMiddleware(resource, 1, options);
+  const mw = quotaMiddleware(resource, 1);
   mw(req, res, next);
   await new Promise((resolve) => setTimeout(resolve, 0));
   return { req, res, next };
@@ -207,27 +239,6 @@ describe('quotaMiddleware — plano pro', () => {
   });
 });
 
-describe('quotaMiddleware — trackOnly', () => {
-  beforeEach(() => {
-    resetSaasStoreForTests();
-    resetWorkspaceStoreForTests();
-  });
-
-  it('trackOnly passa mesmo com limite excedido', async () => {
-    const userId = 'user-track-only';
-    await incrementMonthlyUsage(userId, 'transactions', PLAN_LIMITS.free.transactions + 1000);
-
-    const { next } = await runMiddleware('transactions', userId, { trackOnly: true });
-    expect(next).toHaveBeenCalled();
-  });
-
-  it('trackOnly ainda incrementa o contador', async () => {
-    const userId = 'user-track-count';
-    await runMiddleware('transactions', userId, { trackOnly: true });
-    expect(getMonthlyCount(userId, 'transactions')).toBe(1);
-  });
-});
-
 describe('quotaMiddleware — sem userId', () => {
   beforeEach(() => {
     resetSaasStoreForTests();
@@ -287,7 +298,7 @@ describe('quotaMiddleware - workspace scope', () => {
   it('aplica limites e contador no escopo do workspace quando o contexto existe', async () => {
     const workspace = createWorkspace('Quota Workspace', 'owner-workspace');
 
-    await runMiddleware('aiQueries', 'owner-workspace', undefined, workspace.workspaceId);
+    await runMiddleware('aiQueries', 'owner-workspace', workspace.workspaceId);
 
     expect(getWorkspaceMonthlyCount(workspace.workspaceId, 'aiQueries')).toBe(1);
     expect(getMonthlyCount('owner-workspace', 'aiQueries')).toBe(0);
@@ -309,7 +320,7 @@ describe('quotaMiddleware - workspace scope', () => {
     setUserPlan('owner-pro', 'free');
     incrementWorkspaceMonthlyUsage(workspace.workspaceId, 'aiQueries', PLAN_LIMITS.free.aiQueries + 5);
 
-    const { next, res } = await runMiddleware('aiQueries', 'owner-pro', undefined, workspace.workspaceId);
+    const { next, res } = await runMiddleware('aiQueries', 'owner-pro', workspace.workspaceId);
 
     expect(next).toHaveBeenCalled();
     expect(res.setHeader).toHaveBeenCalledWith('X-RateLimit-Plan', 'pro');
@@ -320,7 +331,7 @@ describe('quotaMiddleware - workspace scope', () => {
     const workspace = createWorkspace('Free Workspace', 'owner-free');
     incrementWorkspaceMonthlyUsage(workspace.workspaceId, 'bankConnections', PLAN_LIMITS.free.bankConnections);
 
-    const { next, res } = await runMiddleware('bankConnections', 'owner-free', undefined, workspace.workspaceId);
+    const { next, res } = await runMiddleware('bankConnections', 'owner-free', workspace.workspaceId);
 
     expect(next).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(429);
@@ -329,5 +340,182 @@ describe('quotaMiddleware - workspace scope', () => {
       scopeId: workspace.workspaceId,
       plan: 'free',
     }));
+  });
+
+  it('mantem bankConnections no caminho legado durante o cutover exclusivo de AI', async () => {
+    usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(true);
+    const workspace = createWorkspace('Banking legacy cutover', 'owner-bank-legacy');
+
+    const { next } = await runMiddleware('bankConnections', 'owner-bank-legacy', workspace.workspaceId);
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(usageAuthorityMocks.reserveWorkspaceUsage).not.toHaveBeenCalled();
+    expect(getWorkspaceMonthlyCount(workspace.workspaceId, 'bankConnections')).toBe(1);
+  });
+
+  it('faz fallback legado apenas no desenvolvimento/teste quando a autoridade Firestore nao esta configurada', async () => {
+    usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(true);
+    const workspace = createWorkspace('Workspace fallback', 'owner-fallback');
+    usageAuthorityMocks.reserveWorkspaceUsage.mockRejectedValue(
+      new usageAuthorityMocks.WorkspaceUsageAuthorityUnavailableError(),
+    );
+
+    await runMiddleware('aiQueries', 'owner-fallback', workspace.workspaceId);
+
+    expect(usageAuthorityMocks.reserveWorkspaceUsage).toHaveBeenCalledWith(expect.objectContaining({
+      workspaceId: workspace.workspaceId,
+      userId: 'owner-fallback',
+      idempotencyKey: 'request-quota-test',
+    }));
+    expect(getWorkspaceMonthlyCount(workspace.workspaceId, 'aiQueries')).toBe(1);
+  });
+
+  it('usa a reserva atomica autoritativa e bloqueia o replay antes do controller', async () => {
+    usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(true);
+    const workspace = createWorkspace('Workspace authority', 'owner-authority');
+    usageAuthorityMocks.reserveWorkspaceUsage
+      .mockResolvedValueOnce({
+        outcome: 'accepted',
+        idempotent: false,
+        current: 1,
+        limit: 50,
+        remaining: 49,
+        monthKey: '2026-07',
+        plan: 'free',
+      })
+      .mockResolvedValueOnce({
+        outcome: 'accepted',
+        idempotent: true,
+        current: 1,
+        limit: 50,
+        remaining: 49,
+        monthKey: '2026-07',
+        plan: 'free',
+      });
+
+    const first = await runMiddleware('aiQueries', 'owner-authority', workspace.workspaceId, { idempotencyKey: 'quota-replay-1' });
+    const replay = await runMiddleware('aiQueries', 'owner-authority', workspace.workspaceId, { idempotencyKey: 'quota-replay-1' });
+
+    expect(first.next).toHaveBeenCalledOnce();
+    expect(replay.next).not.toHaveBeenCalled();
+    expect(replay.res.status).toHaveBeenCalledWith(409);
+    expect(replay.res.json).toHaveBeenCalledWith(expect.objectContaining({
+      error: 'idempotency_replay',
+    }));
+    expect(usageAuthorityMocks.reserveWorkspaceUsage).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      idempotencyKey: 'quota-replay-1',
+    }));
+    expect(getWorkspaceMonthlyCount(workspace.workspaceId, 'aiQueries')).toBe(0);
+    expect(replay.res.setHeader).toHaveBeenCalledWith('X-RateLimit-Remaining', '49');
+  });
+
+  it('retorna 429 da decisao autoritativa sem chamar next', async () => {
+    usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(true);
+    const workspace = createWorkspace('Workspace exceeded', 'owner-exceeded');
+    usageAuthorityMocks.reserveWorkspaceUsage.mockResolvedValue({
+      outcome: 'limit_exceeded',
+      idempotent: false,
+      current: 50,
+      limit: 50,
+      remaining: 0,
+      monthKey: '2026-07',
+      plan: 'free',
+    });
+
+    const { res, next } = await runMiddleware('aiQueries', 'owner-exceeded', workspace.workspaceId);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(429);
+    expect(res.setHeader).toHaveBeenCalledWith('X-RateLimit-Remaining', '0');
+  });
+
+  it('retorna 409 quando a chave de idempotencia conflita', async () => {
+    usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(true);
+    const workspace = createWorkspace('Workspace conflict', 'owner-conflict');
+    usageAuthorityMocks.reserveWorkspaceUsage.mockRejectedValue(
+      new usageAuthorityMocks.WorkspaceUsageIdempotencyConflictError('conflict'),
+    );
+
+    const { res, next } = await runMiddleware('aiQueries', 'owner-conflict', workspace.workspaceId);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(409);
+  });
+
+  it('falha fechada com 503 em producao quando a autoridade nao esta configurada', async () => {
+    usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(true);
+    const workspace = createWorkspace('Workspace production', 'owner-production');
+    vi.stubEnv('NODE_ENV', 'production');
+    usageAuthorityMocks.reserveWorkspaceUsage.mockRejectedValue(
+      new usageAuthorityMocks.WorkspaceUsageAuthorityUnavailableError(),
+    );
+
+    const { res, next } = await runMiddleware(
+      'aiQueries',
+      'owner-production',
+      workspace.workspaceId,
+      { idempotencyKey: 'production-authority-unavailable' },
+    );
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(getWorkspaceMonthlyCount(workspace.workspaceId, 'aiQueries')).toBe(0);
+  });
+
+  it('falha fechada com 503 no Vercel mesmo fora de NODE_ENV production', async () => {
+    usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(true);
+    const workspace = createWorkspace('Workspace Vercel', 'owner-vercel');
+    vi.stubEnv('NODE_ENV', 'test');
+    vi.stubEnv('VERCEL', '1');
+    usageAuthorityMocks.reserveWorkspaceUsage.mockRejectedValue(
+      new usageAuthorityMocks.WorkspaceUsageAuthorityUnavailableError(),
+    );
+
+    const { res, next } = await runMiddleware(
+      'aiQueries',
+      'owner-vercel',
+      workspace.workspaceId,
+      { idempotencyKey: 'vercel-authority-unavailable' },
+    );
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(getWorkspaceMonthlyCount(workspace.workspaceId, 'aiQueries')).toBe(0);
+  });
+
+  it('exige Idempotency-Key explicita em producao', async () => {
+    usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(true);
+    const workspace = createWorkspace('Workspace production key', 'owner-production-key');
+    vi.stubEnv('NODE_ENV', 'production');
+
+    const { res, next } = await runMiddleware(
+      'aiQueries',
+      'owner-production-key',
+      workspace.workspaceId,
+      { requestId: 'generated-request-id' },
+    );
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      error: 'missing_idempotency_key',
+    }));
+    expect(usageAuthorityMocks.reserveWorkspaceUsage).not.toHaveBeenCalled();
+  });
+
+  it('rejeita Idempotency-Key invalida antes de reservar ou executar o controller', async () => {
+    usageAuthorityMocks.isFirestoreAiUsageAuthorityEnabled.mockReturnValue(true);
+    const workspace = createWorkspace('Workspace invalid key', 'owner-invalid-key');
+
+    const { res, next } = await runMiddleware(
+      'aiQueries',
+      'owner-invalid-key',
+      workspace.workspaceId,
+      { idempotencyKey: 'invalid/key' },
+    );
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(usageAuthorityMocks.reserveWorkspaceUsage).not.toHaveBeenCalled();
   });
 });

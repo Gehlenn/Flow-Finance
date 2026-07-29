@@ -37,7 +37,7 @@ router.get('/connectors', authz('bankConnections:read'), listConnectorsControlle
 router.get('/connections', authz('bankConnections:read'), listConnectionsController);
 
 router.post('/connect-token', authz('bankConnections:create'), validate(ConnectTokenSchema), createConnectTokenController);
-router.post('/connect', authz('bankConnections:create'), quotaMiddleware('bankConnections'), validate(ConnectBankSchema), connectBankController);
+router.post('/connect', authz('bankConnections:create'), validate(ConnectBankSchema), quotaMiddleware('bankConnections'), connectBankController);
 router.post('/migrate/firebase', authz('bankConnections:update'), migrateCurrentUserConnectionsToFirebaseController);
 router.post('/sync', authz('bankConnections:update'), validate(SyncBankSchema), syncBankController);
 router.post('/disconnect', authz('bankConnections:delete'), validate(DisconnectBankSchema), disconnectBankController);

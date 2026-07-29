@@ -67,6 +67,7 @@ describe('cors config', () => {
     });
 
     expect(options.allowedHeaders).toEqual(expect.arrayContaining([
+      'Idempotency-Key',
       'sentry-trace',
       'baggage',
     ]));

@@ -49,6 +49,10 @@ import {
   queryWorkspaceUsageEvents,
 } from '../services/persistence/postgresStateStore';
 import { isResourceKind } from '../../shared/saasCatalog';
+import {
+  getAuthoritativeWorkspaceUsage,
+  isFirestoreAiUsageAuthorityEnabled,
+} from '../services/usage/workspaceUsageAuthority';
 
 const router = Router();
 
@@ -126,7 +130,55 @@ router.use(workspaceContextMiddleware);
 
 router.get('/usage', authz('billing:read'), asyncHandler(async (req: Request, res: Response) => {
   const workspaceId = await requireAuthorizedWorkspace(req);
-  res.json({ scope: 'workspace', workspaceId, usage: getWorkspaceUsage(workspaceId) });
+  const legacyUsage = getWorkspaceUsage(workspaceId);
+
+  if (!isFirestoreAiUsageAuthorityEnabled()) {
+    res.json({
+      scope: 'workspace',
+      workspaceId,
+      usage: legacyUsage,
+    });
+    return;
+  }
+
+  try {
+    const authoritative = await getAuthoritativeWorkspaceUsage(workspaceId);
+    if (authoritative) {
+      const legacyCurrentMonth = legacyUsage[authoritative.monthKey];
+      res.json({
+        scope: 'workspace',
+        workspaceId,
+        currentMonthKey: authoritative.monthKey,
+        plan: authoritative.plan,
+        usage: {
+          ...legacyUsage,
+          [authoritative.monthKey]: {
+            transactions: legacyCurrentMonth?.transactions ?? 0,
+            aiQueries: authoritative.usage.aiQueries,
+            bankConnections: legacyCurrentMonth?.bankConnections ?? 0,
+          },
+        },
+      });
+      return;
+    }
+  } catch (error) {
+    logger.error({
+      error,
+      workspaceId,
+      fallback: 'workspace-usage-authority-read-failed',
+    }, 'Failed to read authoritative workspace usage');
+    throw new AppError(503, 'Workspace usage authority is unavailable');
+  }
+
+  if (process.env.NODE_ENV === 'production' || process.env.VERCEL === '1') {
+    throw new AppError(503, 'Workspace usage authority is unavailable');
+  }
+
+  res.json({
+    scope: 'workspace',
+    workspaceId,
+    usage: legacyUsage,
+  });
 }));
 
 router.get('/billing-hooks', authz('billing:read'), asyncHandler(async (req: Request, res: Response) => {

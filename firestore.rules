@@ -245,6 +245,10 @@ service cloud.firestore {
       match /saas_usage/{usageId} {
         allow read: if isWorkspaceMember(workspaceId);
         allow create, update, delete: if false;
+
+        match /{authorityDocument=**} {
+          allow read, write: if false;
+        }
       }
 
       match /billing_state/{stateId} {

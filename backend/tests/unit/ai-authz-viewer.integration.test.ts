@@ -101,6 +101,7 @@ describe('AI routes authz gates (viewer)', () => {
       .post('/api/ai/cfo')
       .set('Authorization', createTestAuthorizationHeader('user-1'))
       .set('x-workspace-id', 'ws-1')
+      .set('Idempotency-Key', 'ai-authz-viewer-allowed')
       .send({
         question: 'Posso gastar este mes?',
         context: 'Saldo atual: 2500',
@@ -124,6 +125,7 @@ describe('AI routes authz gates (viewer)', () => {
       .post('/api/ai/cfo')
       .set('Authorization', createTestAuthorizationHeader('user-1'))
       .set('x-workspace-id', 'ws-1')
+      .set('Idempotency-Key', 'ai-authz-viewer-quota-exhausted')
       .send({ question: 'Posso gastar este mes?' });
 
     expect(response.status).toBe(429);

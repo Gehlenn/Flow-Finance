@@ -38,7 +38,7 @@ router.use(authz('ai:use'));
  * Body: { question: string, context?: string, intent?: CFOIntent }
  * Returns: { answer: string }
  */
-router.post('/cfo', quotaMiddleware('aiQueries'), validate(CFOSchema), aiInputSecurityMiddleware('question'), cfoController);
+router.post('/cfo', validate(CFOSchema), aiInputSecurityMiddleware('question'), quotaMiddleware('aiQueries'), cfoController);
 
 /**
  * POST /api/ai/interpret
@@ -47,7 +47,7 @@ router.post('/cfo', quotaMiddleware('aiQueries'), validate(CFOSchema), aiInputSe
  * Body: { text: string, memoryContext?: string }
  * Returns: { intent: 'transaction'|'reminder', data: TransactionData[] | ReminderData[] }
  */
-router.post('/interpret', quotaMiddleware('aiQueries'), validate(InterpretSchema), aiInputSecurityMiddleware('text'), interpretController);
+router.post('/interpret', validate(InterpretSchema), aiInputSecurityMiddleware('text'), quotaMiddleware('aiQueries'), interpretController);
 
 /**
  * POST /api/ai/scan-receipt
@@ -56,7 +56,7 @@ router.post('/interpret', quotaMiddleware('aiQueries'), validate(InterpretSchema
  * Body: { imageBase64: string, imageMimeType: string, context?: string }
  * Returns: ReceiptScanResult
  */
-router.post('/scan-receipt', quotaMiddleware('aiQueries'), validate(ScanReceiptSchema), scanReceiptController);
+router.post('/scan-receipt', validate(ScanReceiptSchema), quotaMiddleware('aiQueries'), scanReceiptController);
 
 /**
  * POST /api/ai/classify-transactions
@@ -65,7 +65,7 @@ router.post('/scan-receipt', quotaMiddleware('aiQueries'), validate(ScanReceiptS
  * Body: { transactions: TransactionData[] }
  * Returns: TransactionClassification[]
  */
-router.post('/classify-transactions', quotaMiddleware('aiQueries'), validate(ClassifyTransactionsSchema), classifyTransactionsController);
+router.post('/classify-transactions', validate(ClassifyTransactionsSchema), quotaMiddleware('aiQueries'), classifyTransactionsController);
 
 /**
  * POST /api/ai/insights
@@ -74,7 +74,7 @@ router.post('/classify-transactions', quotaMiddleware('aiQueries'), validate(Cla
  * Body: { transactions: TransactionData[], type: 'daily'|'strategic' }
  * Returns: GenerateInsightsResponse
  */
-router.post('/insights', requireFeature('advancedInsights'), quotaMiddleware('aiQueries'), validate(GenerateInsightsSchema), generateInsightsController);
+router.post('/insights', requireFeature('advancedInsights'), validate(GenerateInsightsSchema), quotaMiddleware('aiQueries'), generateInsightsController);
 
 /**
  * POST /api/ai/token-count

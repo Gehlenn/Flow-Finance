@@ -1,6 +1,21 @@
 import { PLAN_IDS } from '../../shared/saasCatalog';
 import { SYNC_ENTITIES } from '../validation/sync.schema';
 
+const AI_IDEMPOTENCY_KEY_HEADER = {
+  name: 'Idempotency-Key',
+  in: 'header',
+  required: false,
+  schema: { type: 'string', minLength: 1, maxLength: 128 },
+  description: 'Required in production when FIRESTORE_AI_USAGE_AUTHORITY_ENABLED=true. Replays are blocked before provider execution.',
+};
+
+const AI_QUOTA_ERROR_RESPONSES = {
+  '400': { description: 'Invalid payload or missing/invalid Idempotency-Key' },
+  '409': { description: 'Idempotency-Key replay or conflict' },
+  '429': { description: 'Monthly AI quota reached' },
+  '503': { description: 'AI quota authority unavailable' },
+};
+
 export const OPENAPI_COMPONENTS = {
       securitySchemes: {
         BearerAuth: {
@@ -222,6 +237,8 @@ export const OPENAPI_COMPONENTS = {
           properties: {
             scope: { type: 'string', enum: ['workspace'] },
             workspaceId: { type: 'string' },
+            currentMonthKey: { type: 'string', pattern: '^\\d{4}-\\d{2}$' },
+            plan: { type: 'string', enum: PLAN_IDS },
             usage: { $ref: '#/components/schemas/UsageMap' },
           },
         },
@@ -793,6 +810,7 @@ export const OPENAPI_PATHS = {
             '200': { description: 'Usage snapshot', content: { 'application/json': { schema: { $ref: '#/components/schemas/WorkspaceUsageResponse' } } } },
             '400': { description: 'workspaceId missing', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
             '403': { description: 'Workspace access denied', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+            '503': { description: 'AI usage authority unavailable during enabled cutover', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           },
         },
       },
@@ -1193,11 +1211,11 @@ export const OPENAPI_PATHS = {
           },
         },
       },
-      '/api/ai/cfo': { post: { tags: ['AI'], summary: 'Generate CFO analysis', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'CFO response' } } } },
-      '/api/ai/interpret': { post: { tags: ['AI'], summary: 'Interpret natural language into finance actions', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Interpretation result' } } } },
-      '/api/ai/scan-receipt': { post: { tags: ['AI'], summary: 'OCR receipt scan', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Scanned receipt fields' } } } },
-      '/api/ai/classify-transactions': { post: { tags: ['AI'], summary: 'Categorize transactions', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Classification result' } } } },
-      '/api/ai/insights': { post: { tags: ['AI'], summary: 'Generate AI insights', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Insight list' } } } },
+      '/api/ai/cfo': { post: { tags: ['AI'], summary: 'Generate CFO analysis', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], parameters: [AI_IDEMPOTENCY_KEY_HEADER], responses: { '200': { description: 'CFO response' }, ...AI_QUOTA_ERROR_RESPONSES } } },
+      '/api/ai/interpret': { post: { tags: ['AI'], summary: 'Interpret natural language into finance actions', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], parameters: [AI_IDEMPOTENCY_KEY_HEADER], responses: { '200': { description: 'Interpretation result' }, ...AI_QUOTA_ERROR_RESPONSES } } },
+      '/api/ai/scan-receipt': { post: { tags: ['AI'], summary: 'OCR receipt scan', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], parameters: [AI_IDEMPOTENCY_KEY_HEADER], responses: { '200': { description: 'Scanned receipt fields' }, ...AI_QUOTA_ERROR_RESPONSES } } },
+      '/api/ai/classify-transactions': { post: { tags: ['AI'], summary: 'Categorize transactions', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], parameters: [AI_IDEMPOTENCY_KEY_HEADER], responses: { '200': { description: 'Classification result' }, ...AI_QUOTA_ERROR_RESPONSES } } },
+      '/api/ai/insights': { post: { tags: ['AI'], summary: 'Generate AI insights', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], parameters: [AI_IDEMPOTENCY_KEY_HEADER], responses: { '200': { description: 'Insight list' }, ...AI_QUOTA_ERROR_RESPONSES } } },
       '/api/ai/token-count': { post: { tags: ['AI'], summary: 'Estimate token count', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Token estimate' } } } },
       '/api/banking/health': { get: { tags: ['Banking'], summary: 'Banking provider health', responses: { '200': { description: 'Provider health' } } } },
       '/api/banking/banks': { get: { tags: ['Banking'], summary: 'List supported banks', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Bank list' } } } },

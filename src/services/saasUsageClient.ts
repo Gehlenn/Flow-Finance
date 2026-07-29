@@ -38,8 +38,8 @@ function normalizeUsageRecord(input: unknown): Record<string, WorkspaceUsageSnap
 }
 
 export function getCurrentMonthKey(at = new Date()): string {
-  const year = at.getFullYear();
-  const month = String(at.getMonth() + 1).padStart(2, '0');
+  const year = at.getUTCFullYear();
+  const month = String(at.getUTCMonth() + 1).padStart(2, '0');
   return `${year}-${month}`;
 }
 
