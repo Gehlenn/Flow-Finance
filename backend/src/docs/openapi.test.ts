@@ -59,6 +59,7 @@ describe('openapi docs', () => {
       .toBe('#/components/schemas/OAuthCallbackResponse');
     expect(spec.paths['/api/saas/usage'].get?.responses?.['200']?.content?.['application/json']?.schema?.$ref)
       .toBe('#/components/schemas/WorkspaceUsageResponse');
+    expect(spec.paths['/api/saas/metering'].get?.responses?.['503']).toBeDefined();
     expect(spec.paths['/api/saas/usage'].put).toBeUndefined();
     expect(spec.paths['/api/saas/usage/increment']).toBeUndefined();
     expect(spec.paths['/api/saas/usage/reset']).toBeUndefined();

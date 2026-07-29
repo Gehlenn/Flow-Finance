@@ -24,6 +24,8 @@ import {
   getWorkspaceMeteringSummary,
   getWorkspaceUsage,
   getWorkspaceUsageEvents,
+  type UsageSnapshot,
+  type WorkspaceUsageEvent,
 } from '../utils/saasStore';
 import {
   applyWorkspaceBillingHook,
@@ -51,6 +53,7 @@ import {
 import { isResourceKind } from '../../shared/saasCatalog';
 import {
   getAuthoritativeWorkspaceUsage,
+  getAuthoritativeWorkspaceUsageEvents,
   isFirestoreAiUsageAuthorityEnabled,
 } from '../services/usage/workspaceUsageAuthority';
 
@@ -73,6 +76,112 @@ async function requireAuthorizedWorkspace(req: Request): Promise<string> {
   }
 
   return workspaceId;
+}
+
+type MeteringFilters = {
+  from?: string;
+  to?: string;
+  resource?: 'transactions' | 'aiQueries' | 'bankConnections';
+};
+
+type MeteringSummary = {
+  totals: UsageSnapshot;
+  months: Record<string, UsageSnapshot>;
+};
+
+function parseMeteringTimestamp(value: unknown, field: 'from' | 'to'): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) {
+    throw new AppError(400, `${field} must be a valid ISO 8601 timestamp with a timezone`);
+  }
+
+  const timestamp = new Date(value);
+  if (Number.isNaN(timestamp.getTime())) {
+    throw new AppError(400, `${field} must be a valid ISO 8601 timestamp with a timezone`);
+  }
+  return timestamp.toISOString();
+}
+
+function eventMonthKey(at: string): string {
+  const date = new Date(at);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+function matchesEventFilters(event: WorkspaceUsageEvent, filters: MeteringFilters): boolean {
+  if (filters.resource && event.resource !== filters.resource) {
+    return false;
+  }
+  if (filters.from && new Date(event.at).getTime() < new Date(filters.from).getTime()) {
+    return false;
+  }
+  if (filters.to && new Date(event.at).getTime() > new Date(filters.to).getTime()) {
+    return false;
+  }
+  return true;
+}
+
+function matchesSummaryMonth(monthKey: string, filters: MeteringFilters): boolean {
+  const monthDate = new Date(`${monthKey}-01T00:00:00.000Z`).getTime();
+  if (filters.from && monthDate < new Date(filters.from).getTime()) {
+    return false;
+  }
+  if (filters.to && monthDate > new Date(filters.to).getTime()) {
+    return false;
+  }
+  return true;
+}
+
+function meteringTotals(months: Record<string, UsageSnapshot>, resource?: MeteringFilters['resource']): UsageSnapshot {
+  return Object.values(months).reduce<UsageSnapshot>((totals, usage) => ({
+    transactions: totals.transactions + (resource === 'transactions' || !resource ? usage.transactions : 0),
+    aiQueries: totals.aiQueries + (resource === 'aiQueries' || !resource ? usage.aiQueries : 0),
+    bankConnections: totals.bankConnections + (resource === 'bankConnections' || !resource ? usage.bankConnections : 0),
+  }), { transactions: 0, aiQueries: 0, bankConnections: 0 });
+}
+
+function mergeCurrentMonthAuthoritativeAiEvents(input: {
+  legacyEvents: WorkspaceUsageEvent[];
+  authoritativeEvents: WorkspaceUsageEvent[];
+  monthKey: string;
+  filters: MeteringFilters;
+  limit?: number;
+}): WorkspaceUsageEvent[] {
+  const legacyWithoutCurrentAuthoritativeAi = input.legacyEvents.filter((event) => !(
+    event.resource === 'aiQueries' && eventMonthKey(event.at) === input.monthKey
+  ));
+  const authorityEvents = input.authoritativeEvents.filter((event) => matchesEventFilters(event, input.filters));
+  const merged = [...legacyWithoutCurrentAuthoritativeAi, ...authorityEvents]
+    .sort((left, right) => right.at.localeCompare(left.at) || right.id.localeCompare(left.id));
+
+  return input.limit ? merged.slice(0, input.limit) : merged;
+}
+
+function replaceCurrentMonthAuthoritativeAiSummary(input: {
+  summary: MeteringSummary;
+  monthKey: string;
+  aiQueries: number;
+  filters: MeteringFilters;
+}): MeteringSummary {
+  const months = Object.fromEntries(Object.entries(input.summary.months).map(([monthKey, usage]) => [
+    monthKey,
+    { ...usage },
+  ])) as Record<string, UsageSnapshot>;
+
+  if (matchesSummaryMonth(input.monthKey, input.filters)) {
+    const legacyMonth = months[input.monthKey] ?? { transactions: 0, aiQueries: 0, bankConnections: 0 };
+    months[input.monthKey] = { ...legacyMonth, aiQueries: input.aiQueries };
+  }
+
+  return {
+    months,
+    totals: meteringTotals(months, input.filters.resource),
+  };
+}
+
+function isProductionAuthorityEnvironment(): boolean {
+  return process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
 }
 
 router.post('/stripe/webhook', asyncHandler(async (req: Request, res: Response) => {
@@ -207,35 +316,140 @@ router.get('/plans', authz('billing:read'), asyncHandler(async (req: Request, re
 router.get('/metering', authz('billing:read'), asyncHandler(async (req: Request, res: Response) => {
   const workspaceId = await requireAuthorizedWorkspace(req);
   const filters = {
-    from: typeof req.query.from === 'string' ? req.query.from : undefined,
-    to: typeof req.query.to === 'string' ? req.query.to : undefined,
+    from: parseMeteringTimestamp(req.query.from, 'from'),
+    to: parseMeteringTimestamp(req.query.to, 'to'),
     resource: isResourceKind(req.query.resource) ? req.query.resource : undefined,
   };
+  if (filters.from && filters.to && new Date(filters.from).getTime() > new Date(filters.to).getTime()) {
+    throw new AppError(400, 'from must be earlier than or equal to to');
+  }
 
   const eventFilters = {
     ...filters,
     limit: parseSafeLimit(req.query.limit, 100),
   };
 
-  const summaryEvents = isPostgresStateStoreEnabled()
+  const legacySummary = isPostgresStateStoreEnabled()
+    ? await queryWorkspaceMeteringSummary(workspaceId, filters)
+    : getWorkspaceMeteringSummary(workspaceId, filters);
+
+  if (!isFirestoreAiUsageAuthorityEnabled()) {
+    const summaryEvents = isPostgresStateStoreEnabled()
+      ? await queryWorkspaceUsageEvents(workspaceId, filters)
+      : getWorkspaceUsageEvents(workspaceId, filters);
+    const sourceEvents = isPostgresStateStoreEnabled()
+      ? await queryWorkspaceUsageEvents(workspaceId, eventFilters)
+      : getWorkspaceUsageEvents(workspaceId, eventFilters);
+    res.json({
+      scope: 'workspace',
+      workspaceId,
+      filters,
+      summary: {
+        ...legacySummary,
+        aiCost: getWorkspaceAICostSummaryFromEvents(workspaceId, summaryEvents),
+      },
+      events: enrichWorkspaceUsageEventsWithAICost(workspaceId, sourceEvents),
+    });
+    return;
+  }
+
+  let authoritative;
+  let authoritativeEvents;
+  try {
+    authoritative = await getAuthoritativeWorkspaceUsage(workspaceId);
+    authoritativeEvents = !authoritative
+      ? null
+      : filters.resource && filters.resource !== 'aiQueries'
+        ? { monthKey: authoritative.monthKey, events: [] }
+        : await getAuthoritativeWorkspaceUsageEvents(workspaceId, {
+          limit: eventFilters.limit,
+          from: filters.from,
+          to: filters.to,
+        });
+  } catch (error) {
+    logger.error({ error, workspaceId, fallback: 'workspace-usage-authority-metering-read-failed' }, 'Failed to read authoritative metering');
+    throw new AppError(503, 'Workspace usage authority is unavailable');
+  }
+
+  if (!authoritative || !authoritativeEvents) {
+    if (isProductionAuthorityEnvironment()) {
+      throw new AppError(503, 'Workspace usage authority is unavailable');
+    }
+
+    const summaryEvents = isPostgresStateStoreEnabled()
+      ? await queryWorkspaceUsageEvents(workspaceId, filters)
+      : getWorkspaceUsageEvents(workspaceId, filters);
+    const sourceEvents = isPostgresStateStoreEnabled()
+      ? await queryWorkspaceUsageEvents(workspaceId, eventFilters)
+      : getWorkspaceUsageEvents(workspaceId, eventFilters);
+    const aiCost = getWorkspaceAICostSummaryFromEvents(workspaceId, summaryEvents);
+    res.json({
+      scope: 'workspace',
+      workspaceId,
+      filters,
+      summary: {
+        ...legacySummary,
+        aiCost,
+        costCoverage: {
+          aiQueries: {
+            status: 'unavailable',
+            reason: 'The enabled Firestore AI authority could not be read; development fallback is legacy-only.',
+          },
+        },
+      },
+      events: enrichWorkspaceUsageEventsWithAICost(workspaceId, sourceEvents),
+    });
+    return;
+  }
+
+  if (authoritative.monthKey !== authoritativeEvents.monthKey) {
+    throw new AppError(503, 'Workspace usage authority is unavailable');
+  }
+
+  // Fetch all legacy events for the enabled path before removing the current
+  // authoritative month. Applying the route limit first could leave a short
+  // page after legacy AI rows are removed.
+  const allLegacyEvents = isPostgresStateStoreEnabled()
     ? await queryWorkspaceUsageEvents(workspaceId, filters)
     : getWorkspaceUsageEvents(workspaceId, filters);
-
-  const sourceEvents = isPostgresStateStoreEnabled()
-    ? await queryWorkspaceUsageEvents(workspaceId, eventFilters)
-    : getWorkspaceUsageEvents(workspaceId, eventFilters);
+  const mergedSummaryEvents = mergeCurrentMonthAuthoritativeAiEvents({
+    legacyEvents: allLegacyEvents,
+    authoritativeEvents: authoritativeEvents.events,
+    monthKey: authoritative.monthKey,
+    filters,
+  });
+  const mergedEvents = mergeCurrentMonthAuthoritativeAiEvents({
+    legacyEvents: allLegacyEvents,
+    authoritativeEvents: authoritativeEvents.events,
+    monthKey: authoritative.monthKey,
+    filters,
+    limit: eventFilters.limit,
+  });
+  const summary = replaceCurrentMonthAuthoritativeAiSummary({
+    summary: legacySummary,
+    monthKey: authoritative.monthKey,
+    aiQueries: authoritative.usage.aiQueries,
+    filters,
+  });
+  const aiCost = getWorkspaceAICostSummaryFromEvents(workspaceId, mergedSummaryEvents);
 
   res.json({
     scope: 'workspace',
     workspaceId,
     filters,
     summary: {
-      ...(isPostgresStateStoreEnabled()
-        ? await queryWorkspaceMeteringSummary(workspaceId, filters)
-        : getWorkspaceMeteringSummary(workspaceId, filters)),
-      aiCost: getWorkspaceAICostSummaryFromEvents(workspaceId, summaryEvents),
+      ...summary,
+      aiCost,
+      costCoverage: {
+        aiQueries: {
+          status: aiCost.sampleCount > 0 ? 'partial' : 'unavailable',
+          reason: aiCost.sampleCount > 0
+            ? 'Current UTC-month authoritative AI usage events do not contain provider token metadata; aiCost contains legacy token samples only and is not complete billing evidence.'
+            : 'No provider token metadata is available for the authoritative AI usage events in this result.',
+        },
+      },
     },
-    events: enrichWorkspaceUsageEventsWithAICost(workspaceId, sourceEvents),
+    events: enrichWorkspaceUsageEventsWithAICost(workspaceId, mergedEvents),
   });
 }));
 

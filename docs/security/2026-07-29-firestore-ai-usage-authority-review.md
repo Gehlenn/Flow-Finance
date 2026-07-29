@@ -27,6 +27,12 @@ The initial implementation attempted to move every quota resource at once. Revie
 - Browser clients cannot write usage documents or read/write internal receipts and events.
 - The browser request wrapper reuses one generated key across network retries and workspace recovery.
 - CORS explicitly allows `Idempotency-Key`.
+- The metering route replaces only current-month AI totals and accepted AI events when the
+  authority is enabled; historical and non-AI usage remain on the legacy source.
+- Authoritative event reads are filtered, ordered, and limited in Firestore. Rejected quota
+  attempts are not loaded as consumption.
+- Metering rejects invalid date ranges, fails closed in production, and identifies AI cost
+  coverage as partial or unavailable instead of inventing provider-cost evidence.
 
 ## Staged cutover
 
@@ -43,19 +49,36 @@ When enabled:
 - only `aiQueries` uses the Firestore authority;
 - `transactions` and `bankConnections` remain legacy;
 - `/api/saas/usage` preserves legacy history and legacy non-AI counters while replacing the current UTC month's `aiQueries` value with the authoritative value;
+- `/api/saas/metering` preserves legacy history and non-AI events while replacing current-month AI events with accepted Firestore authority events;
 - an unavailable authority fails closed.
 
 ## Activation blockers
 
 Do not enable the flag in production until all of the following are complete:
 
-1. Backfill every workspace's current UTC-month `aiQueries` count into `workspaces/{workspaceId}/saas_usage/{YYYY-MM}`.
-2. Execute the prepared Firestore Emulator concurrency tests and confirm:
-   - exactly one request wins the final available slot;
-   - concurrent retries with the same key produce one increment, receipt, and event.
-3. Add behavioral Firestore Rules tests proving clients cannot access `receipts` or `events`.
-4. Decide whether `/api/saas/metering` will read Firestore AI events or receive them through a transactional outbox.
-5. Confirm the production service identity has only the Firestore permissions required for workspace, usage, receipt, and event operations.
+1. Deploy the required `events(outcome, createdAt)` composite index from
+   `firestore.indexes.json` and record proof that it is ready in the production project.
+2. Establish the mandatory quiescence window and execute the production current-month
+   backfill according to `2026-07-29-firestore-ai-usage-backfill-runbook.md`. Record the
+   dry-run, apply, and final dry-run aggregate outputs.
+3. Confirm the actual production runtime principal and IAM bindings match
+   `2026-07-29-firestore-usage-authority-production-permissions.md`, without a broader
+   conflicting role.
+4. Make an explicit product decision about what consumes quota. The current implementation
+   reserves before controller/provider execution, so an admitted request can consume quota
+   even if the provider later fails. Changing this safely requires a reservation lifecycle or
+   compensation/reconciliation design, not a catch/fallback.
+
+Completed engineering prerequisites:
+
+- Firestore Emulator concurrency and same-key retry tests passed.
+- Behavioral Rules tests deny client get/list/create/update/delete access to `receipts` and
+  `events` for unauthenticated, viewer, member, admin, and owner contexts.
+- The current-month Firestore metering reader, legacy merge, bounded event query, cost
+  coverage contract, and production fail-closed behavior are implemented and tested.
+- The dry-run-first, idempotent backfill tooling and operational runbook are implemented.
+- The minimum runtime IAM permission specification is documented. Actual production
+  principal/binding evidence remains an operational blocker above.
 
 ## Deferred architecture
 
@@ -83,7 +106,17 @@ Validated locally:
 - Firestore Rules static tests;
 - application and backend TypeScript checks;
 - OpenAPI and CORS tests.
+- Firestore Emulator concurrency and retry tests.
+- behavioral Firestore Rules tests for internal authority subcollections;
+- backfill source-integrity, conflict, synthetic-event, dry-run, and idempotency tests;
+- metering event merge, date range, bounded query, cost coverage, and production 503 tests;
+- root/backend TypeScript, application/backend builds, Knip, Madge, secret scan, and the
+  repository unit-test suite.
 
-Not validated:
+Not validated by this repository:
 
-- the real Firestore Emulator concurrency gate. Execution was blocked by the platform usage limit, so no substitute result is claimed.
+- the production Firestore composite-index deployment state;
+- the production backfill execution and quiescence evidence;
+- the deployed runtime service identity and its effective IAM policy;
+- the product decision for whether quota represents admission, provider attempt, or useful
+  response.

@@ -43,6 +43,27 @@ export type AuthoritativeWorkspaceUsage = {
   usage: UsageSnapshot;
 };
 
+/**
+ * The public-compatible projection of an accepted authority reservation.
+ * Rejected reservations remain internal quota/audit facts: they never changed
+ * the legacy usage total and must not be added to metering consumption.
+ */
+export type AuthoritativeWorkspaceUsageEvent = {
+  id: string;
+  workspaceId: string;
+  userId?: string;
+  resource: 'aiQueries';
+  amount: number;
+  at: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type AuthoritativeWorkspaceUsageEventReadOptions = {
+  limit: number;
+  from?: string;
+  to?: string;
+};
+
 export class WorkspaceUsageAuthorityUnavailableError extends Error {
   readonly code = 'workspace_usage_authority_unavailable';
   readonly cause?: unknown;
@@ -108,6 +129,24 @@ function emptyUsage(): UsageSnapshot {
 
 function readNonNegativeInteger(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
+}
+
+function readPositiveSafeInteger(value: unknown): number | undefined {
+  const parsed = readNonNegativeInteger(value);
+  return parsed !== undefined && parsed > 0 ? parsed : undefined;
+}
+
+function readIsoTimestamp(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value.trim()) {
+    return undefined;
+  }
+
+  const timestamp = new Date(value);
+  return Number.isNaN(timestamp.getTime()) ? undefined : timestamp.toISOString();
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function readUsageSnapshot(snapshot: DocumentSnapshot): UsageSnapshot {
@@ -245,6 +284,56 @@ function workspaceUsageRef(db: Firestore, workspaceId: string, monthKey: string)
   return db.collection(WORKSPACES_COLLECTION).doc(workspaceId).collection(SAAS_USAGE_COLLECTION).doc(monthKey);
 }
 
+function readAuthorityUsageEvent(
+  id: string,
+  raw: unknown,
+  workspaceId: string,
+  monthKey: string,
+): AuthoritativeWorkspaceUsageEvent | null {
+  if (!id.trim() || !isRecord(raw)) {
+    throw new WorkspaceUsageInputError('Workspace usage event is malformed');
+  }
+
+  const amount = readPositiveSafeInteger(raw.amount);
+  const current = readNonNegativeInteger(raw.current);
+  const limit = readNonNegativeInteger(raw.limit);
+  const remaining = readNonNegativeInteger(raw.remaining);
+  const at = readIsoTimestamp(raw.createdAt);
+  const metadata = raw.metadata;
+
+  if (
+    raw.workspaceId !== workspaceId ||
+    raw.monthKey !== monthKey ||
+    raw.resource !== 'aiQueries' ||
+    typeof raw.userId !== 'string' || !raw.userId.trim() ||
+    typeof raw.idempotencyKey !== 'string' || !raw.idempotencyKey.trim() ||
+    typeof raw.idempotent !== 'boolean' ||
+    (raw.outcome !== 'accepted' && raw.outcome !== 'limit_exceeded') ||
+    amount === undefined ||
+    current === undefined ||
+    limit === undefined ||
+    remaining === undefined ||
+    !at ||
+    (metadata !== undefined && !isRecord(metadata))
+  ) {
+    throw new WorkspaceUsageInputError('Workspace usage event has invalid authority fields');
+  }
+
+  if (raw.outcome === 'limit_exceeded') {
+    return null;
+  }
+
+  return {
+    id,
+    workspaceId,
+    userId: raw.userId,
+    resource: 'aiQueries',
+    amount,
+    at,
+    ...(metadata ? { metadata: { ...metadata } } : {}),
+  };
+}
+
 export async function reserveWorkspaceUsage(input: WorkspaceUsageReservation): Promise<WorkspaceUsageReservationOutcome> {
   validateReservation(input);
 
@@ -358,4 +447,56 @@ export async function getAuthoritativeWorkspaceUsage(workspaceId: string): Promi
     plan: workspace.plan,
     usage: readUsageSnapshot(usageSnapshot),
   };
+}
+
+/**
+ * Reads only the current UTC-month authority event stream. This intentionally
+ * mirrors the staged AI cutover: historical usage remains in the legacy store
+ * until a separate, verified migration exists.
+ */
+export async function getAuthoritativeWorkspaceUsageEvents(
+  workspaceId: string,
+  options: AuthoritativeWorkspaceUsageEventReadOptions = { limit: 100 },
+): Promise<{ monthKey: string; events: AuthoritativeWorkspaceUsageEvent[] } | null> {
+  if (!workspaceId.trim() || workspaceId.includes('/')) {
+    throw new WorkspaceUsageInputError('workspaceId must be a non-empty Firestore document id');
+  }
+  if (!Number.isSafeInteger(options.limit) || options.limit < 1 || options.limit > 500) {
+    throw new WorkspaceUsageInputError('limit must be a safe integer between 1 and 500');
+  }
+  const from = options.from === undefined ? undefined : readIsoTimestamp(options.from);
+  const to = options.to === undefined ? undefined : readIsoTimestamp(options.to);
+  if ((options.from !== undefined && !from) || (options.to !== undefined && !to)) {
+    throw new WorkspaceUsageInputError('from and to must be valid ISO timestamps');
+  }
+  if (from && to && from > to) {
+    throw new WorkspaceUsageInputError('from must be earlier than or equal to to');
+  }
+
+  const db = await getFirestoreOrNull('WorkspaceUsageAuthority');
+  if (!db) {
+    return null;
+  }
+
+  const monthKey = utcMonthKey();
+  try {
+    let query = workspaceUsageRef(db, workspaceId, monthKey)
+      .collection(EVENTS_COLLECTION)
+      .where('outcome', '==', 'accepted');
+    if (from) {
+      query = query.where('createdAt', '>=', from);
+    }
+    if (to) {
+      query = query.where('createdAt', '<=', to);
+    }
+    const snapshot = await query.orderBy('createdAt', 'desc').limit(options.limit).get();
+    const events = snapshot.docs
+      .map((document) => readAuthorityUsageEvent(document.id, document.data(), workspaceId, monthKey))
+      .filter((event): event is AuthoritativeWorkspaceUsageEvent => event !== null)
+      .sort((left, right) => right.at.localeCompare(left.at) || right.id.localeCompare(left.id));
+
+    return { monthKey, events };
+  } catch (error) {
+    throw new WorkspaceUsageAuthorityUnavailableError(error);
+  }
 }
