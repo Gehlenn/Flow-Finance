@@ -11,6 +11,7 @@ vi.mock('../../src/config/api.config', () => ({
   API_ENDPOINTS: {
     SAAS: {
       PLANS: '/api/saas/plans',
+      PLAN_CHANGE: '/api/saas/plan',
       STRIPE_CHECKOUT_SESSION: '/api/saas/stripe/checkout-session',
       STRIPE_PORTAL_SESSION: '/api/saas/stripe/portal-session',
     },
@@ -42,7 +43,12 @@ vi.mock('../../src/app/productAnalytics', () => ({
 import { ApiRequestError } from '../../src/config/api.config';
 import { MONETIZATION_PRICING } from '../../src/app/monetizationPlan';
 import { getPlanLimits } from '../../src/saas/policyEngine';
-import { createWorkspaceCheckoutSession, createWorkspacePortalSession, getWorkspacePlanCatalog } from '../../src/saas/billingClient';
+import {
+  changeWorkspacePlan,
+  createWorkspaceCheckoutSession,
+  createWorkspacePortalSession,
+  getWorkspacePlanCatalog,
+} from '../../src/saas/billingClient';
 
 describe('billingClient', () => {
   beforeEach(() => {
@@ -60,7 +66,9 @@ describe('billingClient', () => {
     const freeLimits = getPlanLimits('free');
     const proLimits = getPlanLimits('pro');
 
-    expect(catalog.billingProvider).toBe('mock');
+    expect(catalog.billingProvider).toBe('none');
+    expect(catalog.mockBillingEnabled).toBe(false);
+    expect(catalog.manualPlanChangeAllowed).toBe(false);
     expect(catalog.plans).toHaveLength(2);
     expect(catalog.plans.find((plan) => plan.id === 'free')).toMatchObject({
       name: 'Free',
@@ -99,7 +107,9 @@ describe('billingClient', () => {
 
     const catalog = await getWorkspacePlanCatalog({ workspaceId: 'ws-2' });
 
-    expect(catalog.billingProvider).toBe('mock');
+    expect(catalog.billingProvider).toBe('none');
+    expect(catalog.mockBillingEnabled).toBe(false);
+    expect(catalog.manualPlanChangeAllowed).toBe(false);
     expect(apiMocks.logWarn).toHaveBeenCalledWith(
       '[BillingClient] Falling back to local plan catalog',
       expect.objectContaining({
@@ -126,6 +136,27 @@ describe('billingClient', () => {
     expect(catalog.plans.find((plan) => plan.id === 'pro')?.features).toContain(
       'Revisar saldo, recebiveis e proximas saidas sem bloqueio mensal.',
     );
+  });
+
+  it('sends mock plan changes through the authorized backend endpoint', async () => {
+    apiMocks.apiRequest.mockResolvedValueOnce({
+      scope: 'workspace',
+      workspaceId: 'ws-1',
+      previousPlan: 'free',
+      currentPlan: 'pro',
+      changed: true,
+      source: 'mock_api',
+    });
+
+    await expect(changeWorkspacePlan({ workspaceId: 'ws-1', plan: 'pro' })).resolves.toMatchObject({
+      currentPlan: 'pro',
+      changed: true,
+    });
+
+    expect(apiMocks.apiRequest).toHaveBeenCalledWith('/api/saas/plan', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ workspaceId: 'ws-1', plan: 'pro' }),
+    }));
   });
 
   it('tracks checkout lifecycle and preserves the request failure signal', async () => {

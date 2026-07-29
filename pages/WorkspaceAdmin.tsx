@@ -17,11 +17,11 @@ import {
 import {
   getWorkspaceBillingOverview,
   listWorkspaceBillingHooks,
-  updateWorkspacePlan,
   type WorkspaceBillingHookDocument,
 } from '../src/services/firestoreBillingStore';
 import {
   buildBillingReturnUrl as buildSaasBillingReturnUrl,
+  changeWorkspacePlan,
   createWorkspaceCheckoutSession,
   createWorkspacePortalSession,
   getWorkspacePlanCatalog,
@@ -224,20 +224,23 @@ const WorkspaceAdminPage: React.FC<WorkspaceAdminPageProps> = ({
   };
 
   const handlePlanChange = async (plan: 'free' | 'pro') => {
-    if (!activeWorkspace || !userId || currentPlan === plan) {
+    if (!activeWorkspace || currentPlan === plan) {
       return;
     }
 
     setBusy(true);
     setError(null);
     try {
-      await updateWorkspacePlan({
-        tenantId: activeWorkspace.tenantId,
+      const result = await changeWorkspacePlan({
         workspaceId: activeWorkspace.workspaceId,
-        userId,
         plan,
       });
-      await loadWorkspaceData({ ...activeWorkspace, plan });
+      const updatedWorkspace = { ...activeWorkspace, plan: result.currentPlan };
+      setActiveWorkspace(updatedWorkspace);
+      setWorkspaces((currentWorkspaces) => currentWorkspaces.map((workspace) => (
+        workspace.workspaceId === updatedWorkspace.workspaceId ? updatedWorkspace : workspace
+      )));
+      await loadWorkspaceData(updatedWorkspace);
     } catch (planError) {
       logWarn('[WorkspaceAdmin] Failed to update workspace plan', {
         error: planError,

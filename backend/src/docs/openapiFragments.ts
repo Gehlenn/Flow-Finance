@@ -1013,7 +1013,8 @@ export const OPENAPI_PATHS = {
       '/api/saas/billing-hooks': {
         post: {
           tags: ['SaaS'],
-          summary: 'Record billing hook event',
+          summary: 'Record a mock billing hook event',
+          description: 'Mock/test-only endpoint. Production billing state is synchronized from signed Stripe webhooks.',
           security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }],
           requestBody: {
             required: true,
@@ -1317,7 +1318,8 @@ export const OPENAPI_PATHS = {
       '/api/billing/subscription': {
         post: {
           tags: ['Billing'],
-          summary: 'Create or change subscription',
+          summary: 'Create or change a mock subscription',
+          description: 'Mock/test-only compatibility endpoint. Production subscription changes must use Stripe checkout and signed Stripe webhooks.',
           security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }],
           requestBody: {
             required: true,
@@ -1336,7 +1338,7 @@ export const OPENAPI_PATHS = {
           },
           responses: {
             '201': {
-              description: 'Subscription created or changed',
+              description: 'Mock subscription created or changed',
               content: {
                 'application/json': {
                   schema: {
@@ -1360,6 +1362,14 @@ export const OPENAPI_PATHS = {
                       entitlements: { type: 'object', description: 'Workspace feature and limit entitlements' },
                     },
                   },
+                },
+              },
+            },
+            '403': {
+              description: 'Manual mock billing updates are disabled outside mock/test environments',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ErrorResponse' },
                 },
               },
             },

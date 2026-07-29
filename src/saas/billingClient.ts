@@ -47,6 +47,15 @@ type StripePortalResponse = {
   url: string;
 };
 
+type WorkspacePlanChangeResponse = {
+  scope: 'workspace';
+  workspaceId: string;
+  previousPlan: 'free' | 'pro';
+  currentPlan: 'free' | 'pro';
+  changed: boolean;
+  source: 'mock_api' | 'billing_hook';
+};
+
 type BillingAnalyticsSource = 'pricing' | 'upgrade_prompt' | 'settings' | 'workspace_admin' | 'unknown';
 
 function createLocalBillingPlans(): WorkspacePlanCatalog['plans'] {
@@ -74,14 +83,26 @@ function createFallbackPlanCatalog(workspaceId: string, currentPlan: 'free' | 'p
     scope: 'workspace',
     workspaceId,
     currentPlan,
-    mockBillingEnabled: true,
+    // The local catalog is display-only: it never grants billing authority.
+    mockBillingEnabled: false,
     stripeConfigured: false,
     stripePortalEnabled: false,
     hasBillingCustomer: false,
-    billingProvider: 'mock',
-    manualPlanChangeAllowed: true,
+    billingProvider: 'none',
+    manualPlanChangeAllowed: false,
     plans: createLocalBillingPlans(),
   };
+}
+
+export async function changeWorkspacePlan(input: {
+  workspaceId: string;
+  plan: 'free' | 'pro';
+}): Promise<WorkspacePlanChangeResponse> {
+  return await apiRequest<WorkspacePlanChangeResponse>(API_ENDPOINTS.SAAS.PLAN_CHANGE, {
+    method: 'POST',
+    headers: getAuthHeaders({ workspaceId: input.workspaceId }),
+    body: JSON.stringify({ workspaceId: input.workspaceId, plan: input.plan }),
+  });
 }
 
 function createDemoPlanCatalog(workspaceId: string, currentPlan: 'free' | 'pro'): WorkspacePlanCatalog {

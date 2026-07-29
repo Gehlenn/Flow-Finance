@@ -1,13 +1,9 @@
-import { collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, orderBy, query } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../../services/firebase';
-import type { BillingHookPayload, PlanName } from '../saas/types';
-import { writeAuditLogEvent } from './firestoreWorkspaceStore';
+import type { PlanName } from '../saas/types';
 import type { WorkspaceBillingHookDocument, WorkspaceBillingState, WorkspaceUsageSnapshot } from './firestoreBillingTypes';
 import { getCurrentMonthKey, getDefaultUsageSnapshot, readWorkspaceUsage } from './firestoreBillingUsageStore';
 import { getDemoBootstrapPlan } from '../demo/demoBootstrap';
-
-const FIREBASE_BILLING_CONFIG_ERROR = new Error('Workspace billing requires Firebase configuration.');
-const FIREBASE_BILLING_CONTEXT_ERROR = new Error('Workspace billing requires a workspaceId and tenantId.');
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -15,10 +11,6 @@ function nowIso(): string {
 
 function hasWorkspaceContext(workspaceId?: string, tenantId?: string): boolean {
   return Boolean(workspaceId?.trim()) && Boolean(tenantId?.trim());
-}
-
-function billingStateDocRef(workspaceId: string) {
-  return doc(collection(db, 'workspaces', workspaceId, 'billing_state'), 'current');
 }
 
 function billingHooksCollection(workspaceId: string) {
@@ -35,6 +27,10 @@ function normalizeUsageSnapshot(input?: Partial<WorkspaceUsageSnapshot> | null):
     aiQueries: Number(input?.aiQueries || 0),
     bankConnections: Number(input?.bankConnections || 0),
   };
+}
+
+function isPlanName(value: unknown): value is PlanName {
+  return value === 'free' || value === 'pro';
 }
 
 export async function getWorkspaceBillingState(
@@ -64,123 +60,21 @@ export async function getWorkspaceBillingState(
     };
   }
 
-  const stateSnapshot = await getDoc(billingStateDocRef(workspaceId));
-  if (stateSnapshot.exists()) {
-    return stateSnapshot.data() as WorkspaceBillingState;
-  }
-
   const workspaceSnapshot = await getDoc(workspaceDocRef(workspaceId));
-  const workspacePlan = workspaceSnapshot.exists()
-    ? ((workspaceSnapshot.data() as { plan?: PlanName }).plan || 'free')
-    : 'free';
+  const workspaceData = workspaceSnapshot.exists()
+    ? workspaceSnapshot.data() as { plan?: unknown; updatedAt?: unknown }
+    : null;
+  const workspacePlan = isPlanName(workspaceData?.plan) ? workspaceData.plan : 'free';
+  const updatedAt = typeof workspaceData?.updatedAt === 'string' ? workspaceData.updatedAt : nowIso();
 
   return {
     workspaceId,
     tenantId,
     plan: workspacePlan,
     status: 'active',
-    updatedAt: nowIso(),
+    updatedAt,
     updatedByUserId: 'system',
   };
-}
-
-export async function recordWorkspaceBillingHook(input: {
-  tenantId: string;
-  workspaceId: string;
-  payload: BillingHookPayload;
-}): Promise<WorkspaceBillingHookDocument> {
-  if (!isFirebaseConfigured) {
-    throw FIREBASE_BILLING_CONFIG_ERROR;
-  }
-  if (!hasWorkspaceContext(input.workspaceId, input.tenantId)) {
-    throw FIREBASE_BILLING_CONTEXT_ERROR;
-  }
-
-  const eventRef = doc(billingHooksCollection(input.workspaceId));
-  const event: WorkspaceBillingHookDocument = {
-    ...input.payload,
-    id: eventRef.id,
-    tenantId: input.tenantId,
-    workspaceId: input.workspaceId,
-    createdAt: nowIso(),
-  };
-
-  await setDoc(eventRef, event, { merge: true });
-  await writeAuditLogEvent({
-    tenantId: input.tenantId,
-    workspaceId: input.workspaceId,
-    userId: input.payload.userId,
-    action: `billing.${input.payload.event}`,
-    resourceType: 'billing_hook',
-    resourceId: event.id,
-    metadata: {
-      plan: input.payload.plan,
-      resource: input.payload.resource,
-      amount: input.payload.amount,
-    },
-  });
-
-  return event;
-}
-
-export async function updateWorkspacePlan(input: {
-  tenantId: string;
-  workspaceId: string;
-  userId: string;
-  plan: PlanName;
-}): Promise<WorkspaceBillingState> {
-  if (!isFirebaseConfigured) {
-    throw FIREBASE_BILLING_CONFIG_ERROR;
-  }
-  if (!hasWorkspaceContext(input.workspaceId, input.tenantId)) {
-    throw FIREBASE_BILLING_CONTEXT_ERROR;
-  }
-
-  const nextState: WorkspaceBillingState = {
-    workspaceId: input.workspaceId,
-    tenantId: input.tenantId,
-    plan: input.plan,
-    status: 'active',
-    updatedAt: nowIso(),
-    updatedByUserId: input.userId,
-  };
-
-  await Promise.all([
-    setDoc(billingStateDocRef(input.workspaceId), nextState, { merge: true }),
-    setDoc(workspaceDocRef(input.workspaceId), {
-      plan: input.plan,
-      updatedAt: nextState.updatedAt,
-    }, { merge: true }),
-    writeAuditLogEvent({
-      tenantId: input.tenantId,
-      workspaceId: input.workspaceId,
-      userId: input.userId,
-      action: 'workspace.plan_changed',
-      resourceType: 'workspace',
-      resourceId: input.workspaceId,
-      metadata: {
-        plan: input.plan,
-      },
-    }),
-    recordWorkspaceBillingHook({
-      tenantId: input.tenantId,
-      workspaceId: input.workspaceId,
-      payload: {
-        userId: input.userId,
-        workspaceId: input.workspaceId,
-        plan: input.plan,
-        event: 'plan_changed',
-        resource: 'transactions',
-        amount: 0,
-        at: nextState.updatedAt,
-        metadata: {
-          source: 'workspace_admin',
-        },
-      },
-    }),
-  ]);
-
-  return nextState;
 }
 
 export async function listWorkspaceBillingHooks(input: {

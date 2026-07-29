@@ -15,6 +15,7 @@ import { AppError } from '../../backend/src/middleware/errorHandler';
 import { getAuditEvents, resetAuditLogForTests } from '../../backend/src/services/admin/auditLog';
 import {
   applyBillingHook,
+  applyWorkspaceBillingHook,
   changeUserPlan,
   getPlanCatalog,
   isMockBillingEnabled,
@@ -23,6 +24,7 @@ import {
   getBillingHookCount,
   getBillingHooksForUser,
   getUserPlan,
+  getWorkspaceBillingHookCount,
   incrementMonthlyUsage,
   PLAN_LIMITS,
   resetSaasStoreForTests,
@@ -156,6 +158,22 @@ describe('billingService', () => {
     );
   });
 
+  it('bloqueia billing hooks antes de persistir eventos fora de mock/test', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.ALLOW_MOCK_BILLING_UPDATES = 'true';
+
+    await expect(applyWorkspaceBillingHook({
+      workspaceId: 'workspace-prod',
+      userId: 'user-prod',
+      plan: 'pro',
+      event: 'plan_changed',
+      amount: 0,
+      at: '2026-03-16T10:00:00.000Z',
+    })).rejects.toThrow('Mock billing updates are disabled in this environment');
+
+    expect(getWorkspaceBillingHookCount('workspace-prod')).toBe(0);
+  });
+
   it('sincroniza plano via billing hook plan_changed', async () => {
     const result = await applyBillingHook({
       userId: 'user-hook',
@@ -194,12 +212,15 @@ describe('billingService', () => {
     expect(getAuditEvents({ action: 'billing.plan_changed' })).toHaveLength(0);
   });
 
-  it('isMockBillingEnabled reflete NODE_ENV test e flag explicita', () => {
+  it('isMockBillingEnabled nunca libera override manual em producao', () => {
     process.env.NODE_ENV = 'production';
     delete process.env.ALLOW_MOCK_BILLING_UPDATES;
     expect(isMockBillingEnabled()).toBe(false);
 
     process.env.ALLOW_MOCK_BILLING_UPDATES = 'true';
+    expect(isMockBillingEnabled()).toBe(false);
+
+    process.env.NODE_ENV = 'development';
     expect(isMockBillingEnabled()).toBe(true);
   });
 });

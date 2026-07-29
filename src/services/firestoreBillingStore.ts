@@ -16,6 +16,4 @@ export {
   getWorkspaceBillingOverview,
   getWorkspaceBillingState,
   listWorkspaceBillingHooks,
-  recordWorkspaceBillingHook,
-  updateWorkspacePlan,
 } from './firestoreBillingStateStore';

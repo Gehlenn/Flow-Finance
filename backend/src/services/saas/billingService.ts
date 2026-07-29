@@ -48,7 +48,14 @@ type BillingHookInput = Omit<BillingHookPayload, 'userId'> & {
 };
 
 export function isMockBillingEnabled(): boolean {
-  return process.env.ALLOW_MOCK_BILLING_UPDATES === 'true' || process.env.NODE_ENV === 'test';
+  return process.env.NODE_ENV === 'test'
+    || (process.env.NODE_ENV !== 'production' && process.env.ALLOW_MOCK_BILLING_UPDATES === 'true');
+}
+
+function requireMockBillingEnabled(): void {
+  if (!isMockBillingEnabled()) {
+    throw new AppError(403, 'Mock billing updates are disabled in this environment');
+  }
 }
 
 export function getPlanCatalog(userId: string): {
@@ -103,9 +110,7 @@ export async function changeUserPlan(input: ChangeUserPlanInput): Promise<{
   changed: boolean;
   source: 'mock_api' | 'billing_hook';
 }> {
-  if (!isMockBillingEnabled()) {
-    throw new AppError(403, 'Mock billing updates are disabled in this environment');
-  }
+  requireMockBillingEnabled();
 
   return applyPlanChange({
     userId: input.userId,
@@ -131,9 +136,7 @@ export async function changeWorkspacePlan(input: {
   changed: boolean;
   source: 'mock_api' | 'billing_hook';
 }> {
-  if (!isMockBillingEnabled()) {
-    throw new AppError(403, 'Mock billing updates are disabled in this environment');
-  }
+  requireMockBillingEnabled();
 
   const workspace = await getWorkspaceAsync(input.workspaceId);
   if (!workspace) {
@@ -212,6 +215,8 @@ export async function applyBillingHook(input: BillingHookInput): Promise<{
   changed: boolean;
   event: BillingHookEvent;
 }> {
+  requireMockBillingEnabled();
+
   await appendBillingHook(input.userId, {
     userId: input.userId,
     plan: input.plan,
@@ -255,6 +260,8 @@ export async function applyWorkspaceBillingHook(input: BillingHookInput & { work
   changed: boolean;
   event: BillingHookEvent;
 }> {
+  requireMockBillingEnabled();
+
   await appendWorkspaceBillingHook(input.workspaceId, {
     workspaceId: input.workspaceId,
     userId: input.userId,
