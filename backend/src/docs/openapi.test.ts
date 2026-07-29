@@ -31,7 +31,6 @@ describe('openapi docs', () => {
     expect(spec.paths['/api/auth/login']).toBeDefined();
     expect(spec.paths['/api/sync/push']).toBeDefined();
     expect(spec.paths['/api/finance/events']).toBeDefined();
-    expect(spec.paths['/api/saas/usage/increment']).toBeDefined();
     expect(spec.paths['/api/integrations/external/events']).toBeDefined();
     expect(spec.paths['/api/integrations/transactions']).toBeDefined();
     expect(spec.paths['/api/integrations/reminders']).toBeDefined();
@@ -60,13 +59,16 @@ describe('openapi docs', () => {
       .toBe('#/components/schemas/OAuthCallbackResponse');
     expect(spec.paths['/api/saas/usage'].get?.responses?.['200']?.content?.['application/json']?.schema?.$ref)
       .toBe('#/components/schemas/WorkspaceUsageResponse');
-    expect(spec.paths['/api/saas/usage'].put?.requestBody).toBeDefined();
+    expect(spec.paths['/api/saas/usage'].put).toBeUndefined();
+    expect(spec.paths['/api/saas/usage/increment']).toBeUndefined();
+    expect(spec.paths['/api/saas/usage/reset']).toBeUndefined();
     expect(spec.paths['/api/saas/stripe/checkout-session'].post?.requestBody).toBeDefined();
     expect(spec.paths['/api/saas/stripe/checkout-session'].post?.responses?.['200']?.content?.['application/json']?.schema?.$ref)
       .toBe('#/components/schemas/StripeCheckoutResponse');
     expect(spec.paths['/api/saas/stripe/portal-session'].post?.responses?.['200']?.content?.['application/json']?.schema?.$ref)
       .toBe('#/components/schemas/StripePortalResponse');
     expect(spec.paths['/api/saas/billing-hooks'].post?.requestBody).toBeDefined();
+    expect(spec.paths['/api/saas/billing-hooks'].get?.responses?.['200']).toBeDefined();
     expect(spec.paths['/api/saas/billing-hooks'].post?.description).toContain('Mock/test-only');
     expect(spec.paths['/api/saas/billing-hooks'].post?.responses?.['403']).toBeDefined();
     expect(spec.paths['/api/sync/push'].post?.requestBody).toMatchObject({

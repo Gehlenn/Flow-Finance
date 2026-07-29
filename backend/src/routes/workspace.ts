@@ -11,6 +11,7 @@ import {
 } from '../services/admin/workspaceStore';
 import { authz } from '../middleware/authz';
 import { asyncHandler } from '../middleware/errorHandler';
+import { isWorkspaceRole } from '../services/admin/workspaceMembershipPolicy';
 
 const router = Router();
 
@@ -25,10 +26,6 @@ function normalizeParam(value: string | string[] | undefined): string | undefine
   return value;
 }
 
-function normalizeRole(value: unknown): 'owner' | 'admin' | 'member' | 'viewer' {
-  return value === 'owner' || value === 'admin' || value === 'member' || value === 'viewer' ? value : 'member';
-}
-
 router.post('/', asyncHandler(async (req: Request, res: Response) => {
   const { name, tenantId } = req.body;
   if (!name || typeof name !== 'string') {
@@ -39,7 +36,7 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
   if (typeof tenantId === 'string' && tenantId.length > 0) {
     const workspaces = await listWorkspaceSummariesForUserAsync(req.userId!);
     const canManageTenant = workspaces.some((workspace) => (
-      workspace.tenantId === tenantId && (workspace.role === 'owner' || workspace.role === 'admin')
+      workspace.tenantId === tenantId && workspace.role === 'owner'
     ));
 
     if (!canManageTenant) {
@@ -75,7 +72,12 @@ router.post(
       return;
     }
 
-    const membership = await addUserToWorkspaceAsync(workspaceId, userId, normalizeRole(role), req.userId!);
+    if (!isWorkspaceRole(role)) {
+      res.status(400).json({ error: 'Role de membro invalida' });
+      return;
+    }
+
+    const membership = await addUserToWorkspaceAsync(workspaceId, userId, role, req.userId!);
     if (!membership) {
       res.status(404).json({ error: 'Workspace nao encontrado' });
       return;
@@ -105,7 +107,7 @@ router.delete('/:workspaceId/users/:userId', workspaceContextMiddleware, authz('
     return;
   }
 
-  const removed = await removeUserFromWorkspaceAsync(userId, workspaceId);
+  const removed = await removeUserFromWorkspaceAsync(userId, workspaceId, req.userId!);
   if (!removed) {
     res.status(404).json({ error: 'Membro nao encontrado' });
     return;

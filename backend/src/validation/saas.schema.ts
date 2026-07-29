@@ -2,30 +2,6 @@ import { z } from 'zod';
 import logger from '../config/logger';
 import { BILLING_HOOK_EVENTS, PLAN_IDS, RESOURCE_KINDS } from '../../shared/saasCatalog';
 
-const UsageSnapshotSchema = z.object({
-  transactions: z.number().int().min(0),
-  aiQueries: z.number().int().min(0),
-  bankConnections: z.number().int().min(0),
-});
-
-export const UsageUpsertSchema = z.object({
-  workspaceId: z.string().min(1).optional(),
-  usage: z.record(z.string(), UsageSnapshotSchema),
-});
-
-export const UsageIncrementSchema = z.object({
-  workspaceId: z.string().min(1).optional(),
-  resource: z.enum(RESOURCE_KINDS),
-  amount: z.number().int().min(1).default(1),
-  at: z.string().min(1).optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
-});
-
-export const UsageResetSchema = z.object({
-  workspaceId: z.string().min(1).optional(),
-  monthKey: z.string().regex(/^\d{4}-\d{2}$/).optional(),
-});
-
 export const BillingHookSchema = z.object({
   workspaceId: z.string().min(1).optional(),
   plan: z.enum(PLAN_IDS),
@@ -109,9 +85,6 @@ export const StripePortalSchema = z.object({
   returnUrl: safeReturnUrl(),
 });
 
-export type UsageUpsertRequest = z.infer<typeof UsageUpsertSchema>;
-export type UsageIncrementRequest = z.infer<typeof UsageIncrementSchema>;
-export type UsageResetRequest = z.infer<typeof UsageResetSchema>;
 export type BillingHookRequest = z.infer<typeof BillingHookSchema>;
 export type PlanChangeRequest = z.infer<typeof PlanChangeSchema>;
 export type StripeCheckoutRequest = z.infer<typeof StripeCheckoutSchema>;

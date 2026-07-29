@@ -3,7 +3,7 @@ import type { Express } from 'express';
 import { beforeAll, vi } from 'vitest';
 import { createTestAuthorizationHeader } from '../helpers/auth';
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
-import { resetSaasStoreForTests } from '../../src/utils/saasStore';
+import { recordWorkspaceUsage, resetSaasStoreForTests } from '../../src/utils/saasStore';
 
 vi.mock('../../src/config/database', () => ({
   query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
@@ -132,23 +132,19 @@ describe('Admin API', () => {
     const ownerUserId = 'owner-admin-metering';
     const workspaceId = await createProWorkspace(ownerUserId);
 
-    await request(app)
-      .post('/api/saas/usage/increment')
-      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
-      .set('x-workspace-id', workspaceId)
-      .send({
-        resource: 'aiQueries',
-        amount: 1,
-        metadata: {
-          aiUsage: {
-            provider: 'openai',
-            model: 'gpt-4o-mini',
-            inputTokens: 1_000_000,
-            outputTokens: 1_000_000,
-            tokensUsed: 2_000_000,
-          },
+    await recordWorkspaceUsage(workspaceId, {
+      resource: 'aiQueries',
+      amount: 1,
+      metadata: {
+        aiUsage: {
+          provider: 'openai',
+          model: 'gpt-4o-mini',
+          inputTokens: 1_000_000,
+          outputTokens: 1_000_000,
+          tokensUsed: 2_000_000,
         },
-      });
+      },
+    });
 
     const res = await request(app)
       .get('/api/admin/usage-metering?from=2026-01-01T00:00:00.000Z&to=2026-12-31T23:59:59.999Z')

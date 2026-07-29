@@ -11,8 +11,6 @@ type ErrorBoundaryProps = {
 const appBootstrapDemoMocks = vi.hoisted(() => ({
   logErrorMock: vi.fn(),
   configureBillingTransportMock: vi.fn(),
-  configureUsageStoreAdapterMock: vi.fn(),
-  resetUsageStoreAdapterMock: vi.fn(),
 }));
 
 vi.mock('../../src/utils/logger', () => ({
@@ -37,12 +35,7 @@ vi.mock('../../src/config/sentry', () => ({
 
 vi.mock('../../src/saas', () => ({
   configureBillingTransport: appBootstrapDemoMocks.configureBillingTransportMock,
-  configureUsageStoreAdapter: appBootstrapDemoMocks.configureUsageStoreAdapterMock,
-  createFirestoreBillingTransport: vi.fn(() => ({})),
-  createFirestoreUsageStoreAdapter: vi.fn(() => ({})),
   createHttpBillingTransport: vi.fn(() => ({})),
-  createHttpUsageStoreAdapter: vi.fn(() => ({})),
-  resetUsageStoreAdapter: appBootstrapDemoMocks.resetUsageStoreAdapterMock,
 }));
 
 vi.mock('../../hooks/useAuthAndWorkspace', () => ({
@@ -150,15 +143,11 @@ describe('App bootstrap demo mode', () => {
   beforeEach(() => {
     appBootstrapDemoMocks.logErrorMock.mockReset();
     appBootstrapDemoMocks.configureBillingTransportMock.mockReset();
-    appBootstrapDemoMocks.configureUsageStoreAdapterMock.mockReset();
-    appBootstrapDemoMocks.resetUsageStoreAdapterMock.mockReset();
   });
 
-  it('desliga os adaptadores do Firestore no bootstrap demo', () => {
+  it('desliga o transporte de billing no bootstrap demo', () => {
     render(<App />);
 
     expect(appBootstrapDemoMocks.configureBillingTransportMock).toHaveBeenCalledWith(null);
-    expect(appBootstrapDemoMocks.resetUsageStoreAdapterMock).toHaveBeenCalled();
-    expect(appBootstrapDemoMocks.configureUsageStoreAdapterMock).not.toHaveBeenCalled();
   });
 });

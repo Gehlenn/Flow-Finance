@@ -6,19 +6,13 @@ import { validate } from '../middleware/validate';
 import { workspaceContextMiddleware } from '../middleware/workspaceContext';
 import {
   BillingHookSchema,
-  UsageIncrementSchema,
-  UsageResetSchema,
   PlanChangeSchema,
   StripeCheckoutSchema,
   StripePortalSchema,
-  UsageUpsertSchema,
   type BillingHookRequest,
   type PlanChangeRequest,
   type StripeCheckoutRequest,
   type StripePortalRequest,
-  type UsageIncrementRequest,
-  type UsageResetRequest,
-  type UsageUpsertRequest,
 } from '../validation/saas.schema';
 import logger from '../config/logger';
 import { billingService } from '../billing/billingService';
@@ -30,9 +24,6 @@ import {
   getWorkspaceMeteringSummary,
   getWorkspaceUsage,
   getWorkspaceUsageEvents,
-  recordWorkspaceUsage,
-  resetWorkspaceUsage,
-  setWorkspaceUsage,
 } from '../utils/saasStore';
 import {
   applyWorkspaceBillingHook,
@@ -138,39 +129,22 @@ router.get('/usage', authz('billing:read'), asyncHandler(async (req: Request, re
   res.json({ scope: 'workspace', workspaceId, usage: getWorkspaceUsage(workspaceId) });
 }));
 
-router.put('/usage', authz('billing:manage'), validate(UsageUpsertSchema), asyncHandler(async (req: Request, res: Response) => {
-  const payload = req.body as UsageUpsertRequest;
+router.get('/billing-hooks', authz('billing:read'), asyncHandler(async (req: Request, res: Response) => {
   const workspaceId = await requireAuthorizedWorkspace(req);
+  const workspace = await getWorkspaceAsync(workspaceId);
+  if (!workspace) {
+    throw new AppError(404, 'Workspace not found');
+  }
 
-  await setWorkspaceUsage(workspaceId, payload.usage);
-  res.json({ success: true, scope: 'workspace', workspaceId });
-}));
-
-router.post('/usage/increment', authz('billing:manage'), validate(UsageIncrementSchema), asyncHandler(async (req: Request, res: Response) => {
-  const payload = req.body as UsageIncrementRequest;
-  const workspaceId = await requireAuthorizedWorkspace(req);
-  const total = await recordWorkspaceUsage(workspaceId, {
-    resource: payload.resource,
-    amount: payload.amount ?? 1,
-    at: payload.at,
-    metadata: payload.metadata,
-    userId: req.userId,
-  });
-
-  res.json({
-    success: true,
-    scope: 'workspace',
+  const hooks = getBillingHooksForWorkspace(workspaceId).map((hook, index) => ({
+    ...hook,
+    id: `${workspaceId}_${hook.at}_${index}`,
+    tenantId: workspace.tenantId,
     workspaceId,
-    resource: payload.resource,
-    total,
-  });
-}));
+    createdAt: hook.at,
+  }));
 
-router.post('/usage/reset', authz('billing:manage'), validate(UsageResetSchema), asyncHandler(async (req: Request, res: Response) => {
-  const payload = req.body as UsageResetRequest;
-  const workspaceId = await requireAuthorizedWorkspace(req);
-  await resetWorkspaceUsage(workspaceId, payload.monthKey);
-  res.json({ success: true, scope: 'workspace', workspaceId, monthKey: payload.monthKey || null });
+  res.json({ scope: 'workspace', workspaceId, hooks });
 }));
 
 router.get('/plans', authz('billing:read'), asyncHandler(async (req: Request, res: Response) => {

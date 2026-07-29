@@ -14,7 +14,6 @@ const aicfoMocks = vi.hoisted(() => ({
   ensureActiveWorkspace: vi.fn(),
   getCurrentWorkspaceIdentity: vi.fn(),
   getWorkspaceBillingOverview: vi.fn(),
-  incrementWorkspaceUsage: vi.fn(),
   trackProductEvent: vi.fn(),
   trackProductEventOnce: vi.fn(() => true),
   demoPlan: { value: null as 'free' | 'pro' | null },
@@ -90,7 +89,6 @@ vi.mock('../../src/services/workspaceSession', () => ({
 
 vi.mock('../../src/services/firestoreBillingStore', () => ({
   getWorkspaceBillingOverview: aicfoMocks.getWorkspaceBillingOverview,
-  incrementWorkspaceUsage: aicfoMocks.incrementWorkspaceUsage,
 }));
 
 vi.mock('../../src/demo/demoBootstrap', () => ({
@@ -176,7 +174,6 @@ describe('AICFO plan render', () => {
       },
       billingHooks: [],
     });
-    aicfoMocks.incrementWorkspaceUsage.mockResolvedValue(1);
   });
 
   it('plano free exibe banner de modo essencial e reduz atalho de prompts', () => {
@@ -444,6 +441,10 @@ describe('AICFO plan render', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Resposta consultiva\./i)).toBeTruthy();
+    });
+
+    await waitFor(() => {
+      expect(aicfoMocks.getWorkspaceBillingOverview).toHaveBeenCalledTimes(2);
     });
 
     expect(screen.getAllByText(/Evidencia usada/i).length).toBeGreaterThan(0);

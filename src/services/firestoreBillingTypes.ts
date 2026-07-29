@@ -1,7 +1,10 @@
 import type { BillingHookPayload, PlanName } from '../saas/types';
-import type { UsageSnapshot } from '../saas/usageTracker';
 
-export type WorkspaceUsageSnapshot = UsageSnapshot;
+export interface WorkspaceUsageSnapshot {
+  transactions: number;
+  aiQueries: number;
+  bankConnections: number;
+}
 
 export interface WorkspaceBillingState {
   workspaceId: string;

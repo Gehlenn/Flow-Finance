@@ -53,14 +53,9 @@ vi.mock('firebase/firestore', () => ({
 }));
 
 import {
-  addWorkspaceMember,
-  createPersonalWorkspace,
   listWorkspaceAuditEvents,
   loadWorkspaceEntities,
-  listWorkspaceMembers,
   listWorkspaceCollectionDocuments,
-  listUserWorkspaceSummaries,
-  removeWorkspaceMember,
   replaceWorkspaceEntityCollection,
   upsertWorkspaceCollectionDocument,
 } from '../../src/services/firestoreWorkspaceStore';
@@ -70,111 +65,6 @@ describe('firestoreWorkspaceStore', () => {
     vi.clearAllMocks();
     firestoreWorkspaceStoreMocks.generatedId.value = 0;
     firestoreWorkspaceStoreMocks.isFirebaseConfigured.value = true;
-  });
-
-  it('merges workspace memberships with workspace documents', async () => {
-    firestoreWorkspaceStoreMocks.getDocsMock.mockResolvedValueOnce({
-      empty: false,
-      docs: [
-        {
-          data: () => ({
-            id: 'ws_1_user_1',
-            tenantId: 'tenant_1',
-            workspaceId: 'ws_1',
-            userId: 'user-1',
-            role: 'owner',
-            status: 'active',
-          }),
-        },
-      ],
-    });
-
-    firestoreWorkspaceStoreMocks.getDocMock.mockImplementation(async (ref: { path: string; id: string }) => {
-      if (ref.path === 'workspaces/ws_1') {
-        return {
-          exists: () => true,
-          id: 'ws_1',
-          data: () => ({
-            id: 'ws_1',
-            tenantId: 'tenant_1',
-            tenantName: 'Tenant Principal',
-            name: 'Workspace Principal',
-            plan: 'pro',
-            isDefault: true,
-          }),
-        };
-      }
-
-      throw new Error(`Unexpected path ${ref.path}`);
-    });
-
-    const workspaces = await listUserWorkspaceSummaries('user-1');
-
-    expect(workspaces).toEqual([
-      {
-        workspaceId: 'ws_1',
-        tenantId: 'tenant_1',
-        name: 'Workspace Principal',
-        tenantName: 'Tenant Principal',
-        plan: 'pro',
-        role: 'owner',
-        isDefault: true,
-      },
-    ]);
-  });
-
-  it('lists workspace members from Firestore', async () => {
-    firestoreWorkspaceStoreMocks.getDocsMock.mockResolvedValueOnce({
-      docs: [
-        { data: () => ({ id: 'ws_1_user_1', tenantId: 'tenant_1', workspaceId: 'ws_1', userId: 'user-1', role: 'owner', status: 'active', createdAt: '2026-04-01T00:00:00.000Z', updatedAt: '2026-04-01T00:00:00.000Z' }) },
-        { data: () => ({ id: 'ws_1_user_2', tenantId: 'tenant_1', workspaceId: 'ws_1', userId: 'user-2', role: 'member', status: 'active', createdAt: '2026-04-02T00:00:00.000Z', updatedAt: '2026-04-02T00:00:00.000Z' }) },
-      ],
-    });
-
-    const members = await listWorkspaceMembers('ws_1');
-
-    expect(members).toHaveLength(2);
-    expect(members[0].userId).toBe('user-1');
-    expect(members[1].userId).toBe('user-2');
-  });
-
-  it('adds and removes workspace members with audit logging', async () => {
-    await addWorkspaceMember({
-      tenantId: 'tenant-1',
-      workspaceId: 'ws-1',
-      userId: 'user-2',
-      role: 'viewer',
-      invitedByUserId: 'user-1',
-    });
-
-    expect(firestoreWorkspaceStoreMocks.setDocMock).toHaveBeenCalledWith(
-      expect.objectContaining({ path: 'workspace_members/ws-1_user-2' }),
-      expect.objectContaining({
-        userId: 'user-2',
-        workspaceId: 'ws-1',
-        tenantId: 'tenant-1',
-        role: 'viewer',
-      }),
-      { merge: true },
-    );
-
-    firestoreWorkspaceStoreMocks.getDocsMock.mockResolvedValueOnce({
-      empty: true,
-      docs: [],
-    });
-
-    await removeWorkspaceMember({
-      tenantId: 'tenant-1',
-      workspaceId: 'ws-1',
-      userId: 'user-2',
-      removedByUserId: 'user-1',
-    });
-
-    expect(firestoreWorkspaceStoreMocks.setDocMock).toHaveBeenCalledWith(
-      expect.objectContaining({ path: 'workspace_members/ws-1_user-2' }),
-      expect.objectContaining({ status: 'disabled' }),
-      { merge: true },
-    );
   });
 
   it('lists audit events for a workspace', async () => {
@@ -240,20 +130,6 @@ describe('firestoreWorkspaceStore', () => {
       },
     )).rejects.toThrow(/workspaceId and tenantId/i);
 
-    await expect(addWorkspaceMember({
-      tenantId: '',
-      workspaceId: 'ws-1',
-      userId: 'user-2',
-      role: 'viewer',
-      invitedByUserId: 'user-1',
-    })).rejects.toThrow(/workspaceId and tenantId/i);
-
-    await expect(removeWorkspaceMember({
-      tenantId: '',
-      workspaceId: 'ws-1',
-      userId: 'user-2',
-      removedByUserId: 'user-1',
-    })).rejects.toThrow(/workspaceId and tenantId/i);
   });
 
   it('reconciles temporary ids and writes audit entries when replacing a workspace collection', async () => {
@@ -416,16 +292,6 @@ describe('firestoreWorkspaceStore', () => {
   it('falls back safely when Firebase workspace sync is not configured', async () => {
     firestoreWorkspaceStoreMocks.isFirebaseConfigured.value = false;
 
-    await expect(listUserWorkspaceSummaries('user-1')).resolves.toEqual([]);
-    await expect(listWorkspaceMembers('ws-1')).resolves.toEqual([]);
     await expect(listWorkspaceAuditEvents({ tenantId: 'tenant-1', workspaceId: 'ws-1' })).resolves.toEqual([]);
-    await expect(createPersonalWorkspace({ userId: 'user-1', name: 'Flow User', email: 'user@test.dev' })).resolves.toEqual(
-      expect.objectContaining({
-        workspaceId: 'local-user-1',
-        tenantId: 'local-tenant-user-1',
-        role: 'owner',
-        plan: 'free',
-      }),
-    );
   });
 });

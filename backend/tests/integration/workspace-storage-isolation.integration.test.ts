@@ -5,6 +5,7 @@ import { createTestAuthorizationHeader } from '../helpers/auth';
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
 import { resetCloudSyncStoreForTests } from '../../src/services/sync/cloudSyncStore';
 import { getAuditEvents, resetAuditLogForTests } from '../../src/services/admin/auditLog';
+import { setWorkspaceUsage } from '../../src/utils/saasStore';
 
 vi.mock('../../src/config/database', () => ({
   query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
@@ -180,36 +181,12 @@ describe('Workspace storage isolation', () => {
       .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .send({ name: 'Usage Workspace Two' });
 
-    const firstUpdate = await request(app)
-      .put('/api/saas/usage')
-      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
-      .set('x-workspace-id', firstWorkspace.body.workspaceId)
-      .send({
-        usage: {
-          '2026-04': {
-            transactions: 5,
-            aiQueries: 1,
-            bankConnections: 0,
-          },
-        },
-      });
-
-    const secondUpdate = await request(app)
-      .put('/api/saas/usage')
-      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
-      .set('x-workspace-id', secondWorkspace.body.workspaceId)
-      .send({
-        usage: {
-          '2026-04': {
-            transactions: 9,
-            aiQueries: 3,
-            bankConnections: 0,
-          },
-        },
-      });
-
-    expect(firstUpdate.status).toBe(200);
-    expect(secondUpdate.status).toBe(200);
+    await setWorkspaceUsage(firstWorkspace.body.workspaceId, {
+      '2026-04': { transactions: 5, aiQueries: 1, bankConnections: 0 },
+    });
+    await setWorkspaceUsage(secondWorkspace.body.workspaceId, {
+      '2026-04': { transactions: 9, aiQueries: 3, bankConnections: 0 },
+    });
 
     const firstRead = await request(app)
       .get('/api/saas/usage')
@@ -263,22 +240,15 @@ describe('Workspace storage isolation', () => {
           }],
         });
 
-      const usageResponse = await request(app)
-        .put('/api/saas/usage')
-        .set('Authorization', createTestAuthorizationHeader(ownerUserId))
-        .set('x-workspace-id', workspace.workspaceId)
-        .send({
-          usage: {
-            '2026-04': {
-              transactions: index + 1,
-              aiQueries: (index + 1) * 2,
-              bankConnections: 0,
-            },
-          },
-        });
+      await setWorkspaceUsage(workspace.workspaceId, {
+        '2026-04': {
+          transactions: index + 1,
+          aiQueries: (index + 1) * 2,
+          bankConnections: 0,
+        },
+      });
 
       expect(syncResponse.status).toBe(200);
-      expect(usageResponse.status).toBe(200);
     }
 
     for (const [index, workspace] of workspaces.entries()) {

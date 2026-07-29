@@ -19,10 +19,7 @@ import { addBreadcrumb, initSentry } from "./src/config/sentry";
 import { logError } from "./src/utils/logger";
 import {
   configureBillingTransport,
-  configureUsageStoreAdapter,
   createHttpBillingTransport,
-  createHttpUsageStoreAdapter,
-  resetUsageStoreAdapter,
 } from "./src/saas";
 import { useAuthAndWorkspace } from "./hooks/useAuthAndWorkspace";
 import { useFinancialState } from "./hooks/useFinancialState";
@@ -254,10 +251,7 @@ const App: React.FC = () => {
     userId: authState.user.id,
     workspaceId: authState.activeWorkspace.workspaceId,
     configureBillingTransport,
-    configureUsageStoreAdapter,
-    resetUsageStoreAdapter,
     createBillingTransport: createHttpBillingTransport,
-    createUsageStoreAdapter: createHttpUsageStoreAdapter,
   });
   const handleOpenEntryCapture = useCallback(() => {
     setShowAIInput(true);

@@ -1,8 +1,13 @@
-import { collection, doc, getDoc, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../../services/firebase';
+import { API_ENDPOINTS, apiRequest, getAuthHeaders } from '../config/api.config';
 import type { PlanName } from '../saas/types';
 import type { WorkspaceBillingHookDocument, WorkspaceBillingState, WorkspaceUsageSnapshot } from './firestoreBillingTypes';
-import { getCurrentMonthKey, getDefaultUsageSnapshot, readWorkspaceUsage } from './firestoreBillingUsageStore';
+import {
+  getCurrentMonthKey,
+  getDefaultUsageSnapshot,
+  readWorkspaceUsageFromServer,
+} from './saasUsageClient';
 import { getDemoBootstrapPlan } from '../demo/demoBootstrap';
 
 function nowIso(): string {
@@ -11,10 +16,6 @@ function nowIso(): string {
 
 function hasWorkspaceContext(workspaceId?: string, tenantId?: string): boolean {
   return Boolean(workspaceId?.trim()) && Boolean(tenantId?.trim());
-}
-
-function billingHooksCollection(workspaceId: string) {
-  return collection(db, 'workspaces', workspaceId, 'billing_hooks');
 }
 
 function workspaceDocRef(workspaceId: string) {
@@ -81,17 +82,21 @@ export async function listWorkspaceBillingHooks(input: {
   workspaceId: string;
   maxItems?: number;
 }): Promise<WorkspaceBillingHookDocument[]> {
-  if (!isFirebaseConfigured || !input.workspaceId.trim()) {
+  if (!input.workspaceId.trim() || getDemoBootstrapPlan()) {
     return [];
   }
 
-  const snapshot = await getDocs(query(
-    billingHooksCollection(input.workspaceId),
-    orderBy('createdAt', 'desc'),
-    limit(input.maxItems || 20),
-  ));
+  const response = await apiRequest<{ hooks?: WorkspaceBillingHookDocument[] }>(
+    API_ENDPOINTS.SAAS.BILLING_HOOKS,
+    {
+      method: 'GET',
+      headers: getAuthHeaders({ workspaceId: input.workspaceId }),
+    },
+  );
 
-  return snapshot.docs.map((entry) => entry.data() as WorkspaceBillingHookDocument);
+  return Array.isArray(response.hooks)
+    ? response.hooks.slice(0, input.maxItems || 20)
+    : [];
 }
 
 export async function getWorkspaceBillingOverview(input: {
@@ -143,7 +148,7 @@ export async function getWorkspaceBillingOverview(input: {
 
   const [billingState, usage, billingHooks] = await Promise.all([
     getWorkspaceBillingState(input.workspaceId, input.tenantId),
-    readWorkspaceUsage(input.workspaceId),
+    readWorkspaceUsageFromServer(input.workspaceId),
     listWorkspaceBillingHooks({ workspaceId: input.workspaceId, maxItems: 10 }),
   ]);
 

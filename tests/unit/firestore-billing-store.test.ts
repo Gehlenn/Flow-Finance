@@ -8,6 +8,8 @@ const billingMocks = vi.hoisted(() => ({
   writeAuditLogEventMock: vi.fn().mockResolvedValue(undefined),
   isFirebaseConfigured: { value: true },
   demoPlan: { value: null as 'free' | 'pro' | null },
+  readWorkspaceUsageFromServerMock: vi.fn(),
+  apiRequestMock: vi.fn(),
 }));
 
 vi.mock('../../services/firebase', () => ({
@@ -23,6 +25,21 @@ vi.mock('../../src/demo/demoBootstrap', () => ({
 
 vi.mock('../../src/services/firestoreWorkspaceStore', () => ({
   writeAuditLogEvent: billingMocks.writeAuditLogEventMock,
+}));
+
+vi.mock('../../src/services/saasUsageClient', () => ({
+  getCurrentMonthKey: () => '2026-04',
+  getDefaultUsageSnapshot: () => ({ transactions: 0, aiQueries: 0, bankConnections: 0 }),
+  readWorkspaceUsageFromServer: billingMocks.readWorkspaceUsageFromServerMock,
+}));
+
+vi.mock('../../src/config/api.config', () => ({
+  API_ENDPOINTS: { SAAS: { BILLING_HOOKS: 'https://backend.test/api/saas/billing-hooks' } },
+  apiRequest: billingMocks.apiRequestMock,
+  getAuthHeaders: ({ workspaceId }: { workspaceId?: string }) => ({
+    'Content-Type': 'application/json',
+    ...(workspaceId ? { 'x-workspace-id': workspaceId } : {}),
+  }),
 }));
 
 vi.mock('firebase/firestore', () => ({
@@ -49,14 +66,7 @@ vi.mock('firebase/firestore', () => ({
   setDoc: billingMocks.setDocMock,
 }));
 
-import {
-  getCurrentMonthKey,
-  getWorkspaceBillingOverview,
-  incrementWorkspaceUsage,
-  listWorkspaceBillingHooks,
-  readWorkspaceUsage,
-  resetWorkspaceUsage,
-} from '../../src/services/firestoreBillingStore';
+import { getWorkspaceBillingOverview, listWorkspaceBillingHooks } from '../../src/services/firestoreBillingStore';
 
 describe('firestoreBillingStore', () => {
   beforeEach(() => {
@@ -64,6 +74,8 @@ describe('firestoreBillingStore', () => {
     billingMocks.generatedId.value = 0;
     billingMocks.isFirebaseConfigured.value = true;
     billingMocks.demoPlan.value = null;
+    billingMocks.readWorkspaceUsageFromServerMock.mockResolvedValue({});
+    billingMocks.apiRequestMock.mockResolvedValue({ hooks: [] });
   });
 
   it('uses the workspace plan as the billing authority instead of legacy billing state', async () => {
@@ -71,17 +83,14 @@ describe('firestoreBillingStore', () => {
       .mockResolvedValueOnce({
         exists: () => true,
         data: () => ({ plan: 'free', updatedAt: '2026-04-03T00:00:00.000Z' }),
-      })
-      .mockResolvedValueOnce({
-        exists: () => true,
-        data: () => ({ usage: { '2026-04': { transactions: 4, aiQueries: 2, bankConnections: 1 } } }),
       });
+    billingMocks.readWorkspaceUsageFromServerMock.mockResolvedValue({
+      '2026-04': { transactions: 4, aiQueries: 2, bankConnections: 1 },
+    });
 
-    billingMocks.getDocsMock.mockResolvedValueOnce({
-      docs: [
-        {
-          data: () => ({ id: 'hook-1', tenantId: 'tenant-1', workspaceId: 'ws-1', userId: 'user-1', plan: 'pro', event: 'plan_changed', resource: 'transactions', amount: 0, at: '2026-04-02T00:00:00.000Z', createdAt: '2026-04-02T00:00:00.000Z' }),
-        },
+    billingMocks.apiRequestMock.mockResolvedValueOnce({
+      hooks: [
+        { id: 'hook-1', tenantId: 'tenant-1', workspaceId: 'ws-1', userId: 'user-1', plan: 'pro', event: 'plan_changed', resource: 'transactions', amount: 0, at: '2026-04-02T00:00:00.000Z', createdAt: '2026-04-02T00:00:00.000Z' },
       ],
     });
 
@@ -96,30 +105,27 @@ describe('firestoreBillingStore', () => {
     expect(billingMocks.getDocMock).toHaveBeenCalledWith(
       expect.objectContaining({ path: 'workspaces/ws-1' }),
     );
+    expect(billingMocks.readWorkspaceUsageFromServerMock).toHaveBeenCalledWith('ws-1');
     expect(overview.currentMonthUsage.transactions).toBe(4);
     expect(overview.billingHooks).toHaveLength(1);
   });
 
-  it('returns safe defaults when Firebase billing is not configured', async () => {
+  it('keeps workspace usage server-side when Firebase billing is not configured', async () => {
     billingMocks.isFirebaseConfigured.value = false;
-
-    await expect(readWorkspaceUsage('ws-1')).resolves.toEqual({});
+    billingMocks.readWorkspaceUsageFromServerMock.mockResolvedValue({
+      '2026-04': { transactions: 7, aiQueries: 3, bankConnections: 1 },
+    });
     await expect(listWorkspaceBillingHooks({ workspaceId: 'ws-1' })).resolves.toEqual([]);
     await expect(getWorkspaceBillingOverview({ tenantId: 'tenant-1', workspaceId: 'ws-1' })).resolves.toEqual(
       expect.objectContaining({
         currentPlan: 'free',
-        currentMonthUsage: { transactions: 0, aiQueries: 0, bankConnections: 0 },
+        currentMonthUsage: { transactions: 7, aiQueries: 3, bankConnections: 1 },
         billingHooks: [], 
       }),
     );
   });
 
-  it('uses the local calendar month for usage aggregation', () => {
-    expect(getCurrentMonthKey(new Date(2026, 3, 30, 23, 59))).toBe('2026-04');
-    expect(getCurrentMonthKey(new Date(2026, 4, 1, 0, 0))).toBe('2026-05');
-  });
-
-  it('returns safe defaults when billing context is incomplete and rejects write operations', async () => {
+  it('returns safe defaults when billing context is incomplete', async () => {
     await expect(getWorkspaceBillingOverview({ tenantId: '', workspaceId: 'ws-1' })).resolves.toEqual(
       expect.objectContaining({
         currentPlan: 'free',
@@ -128,11 +134,7 @@ describe('firestoreBillingStore', () => {
       }),
     );
 
-    await expect(readWorkspaceUsage('')).resolves.toEqual({});
     await expect(listWorkspaceBillingHooks({ workspaceId: '' })).resolves.toEqual([]);
-    await expect(incrementWorkspaceUsage({ workspaceId: '', resource: 'transactions', amount: 1 })).resolves.toBe(0);
-    await expect(resetWorkspaceUsage('')).resolves.toBeUndefined();
-
   });
 
   it('returns a pro billing overview in demo mode without Firestore reads', async () => {
@@ -151,6 +153,6 @@ describe('firestoreBillingStore', () => {
     );
 
     expect(billingMocks.getDocMock).not.toHaveBeenCalled();
-    expect(billingMocks.getDocsMock).not.toHaveBeenCalled();
+    expect(billingMocks.apiRequestMock).not.toHaveBeenCalled();
   });
 });

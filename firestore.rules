@@ -132,22 +132,19 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read, write: if isCurrentUser(userId);
+      allow read: if isCurrentUser(userId);
+      allow create: if isCurrentUser(userId)
+        && !request.resource.data.keys().hasAny(['activeTenantId', 'activeWorkspaceId']);
+      allow update: if isCurrentUser(userId)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['activeTenantId', 'activeWorkspaceId']);
+      allow delete: if isCurrentUser(userId);
     }
 
     match /tenants/{tenantId} {
-      allow create: if isSignedIn()
-        && request.resource.data.id == tenantId
-        && request.resource.data.ownerUserId == request.auth.uid
-        && request.resource.data.plan == 'free'
-        && hasNoBillingAuthorityFields(request.resource.data);
+      allow create: if false;
       allow read: if resource.data.id == tenantId
         && (isTenantOwner(tenantId) || isTenantMember(tenantId));
-      allow update: if resource.data.id == tenantId
-        && isTenantOwner(tenantId)
-        && keepsTenantAuthorityImmutable();
-      allow delete: if resource.data.id == tenantId
-        && isTenantOwner(tenantId);
+      allow update, delete: if false;
     }
 
     match /tenant_members/{memberId} {
@@ -160,30 +157,13 @@ service cloud.firestore {
           || isTenantOwner(resource.data.tenantId)
           || canManageWorkspace(resource.data.workspaceId)
         );
-      allow create: if isSignedIn()
-        && request.resource.data.tenantId is string
-        && request.resource.data.workspaceId is string
-        && request.resource.data.userId is string
-        && workspaceBelongsToTenant(request.resource.data.workspaceId, request.resource.data.tenantId)
-        && canManageWorkspace(request.resource.data.workspaceId);
-      allow update: if isSignedIn()
-        && resource.data.workspaceId is string
-        && workspaceBelongsToTenant(resource.data.workspaceId, resource.data.tenantId)
-        && canManageWorkspace(resource.data.workspaceId);
-      allow delete: if false;
+      allow create, update, delete: if false;
     }
 
     match /workspaces/{workspaceId} {
-      allow create: if isSignedIn()
-        && request.resource.data.id == workspaceId
-        && request.resource.data.createdAt is string
-        && request.resource.data.tenantId is string
-        && request.resource.data.plan == 'free'
-        && hasNoBillingAuthorityFields(request.resource.data);
+      allow create: if false;
       allow read: if isWorkspaceMember(workspaceId);
-      allow update: if canManageWorkspace(workspaceId)
-        && keepsWorkspaceBillingAuthorityImmutable();
-      allow delete: if isWorkspaceOwner(workspaceId);
+      allow update, delete: if false;
 
       match /accounts/{accountId} {
         allow read: if isWorkspaceMember(workspaceId);
@@ -264,9 +244,7 @@ service cloud.firestore {
 
       match /saas_usage/{usageId} {
         allow read: if isWorkspaceMember(workspaceId);
-        allow create, update: if canEditWorkspaceData(workspaceId)
-          && memberMatchesWorkspaceTenant(workspaceId);
-        allow delete: if canManageWorkspace(workspaceId);
+        allow create, update, delete: if false;
       }
 
       match /billing_state/{stateId} {
@@ -285,18 +263,7 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid
         || isWorkspaceMember(resource.data.workspaceId)
       );
-      allow create: if isSignedIn()
-        && canManageWorkspace(request.resource.data.workspaceId)
-        && request.resource.data.workspaceId is string
-        && request.resource.data.userId is string
-        && request.resource.data.tenantId is string
-        && workspaceBelongsToTenant(request.resource.data.workspaceId, request.resource.data.tenantId);
-      allow update: if isSignedIn()
-        && canManageWorkspace(resource.data.workspaceId)
-        && workspaceBelongsToTenant(resource.data.workspaceId, resource.data.tenantId);
-      allow delete: if isSignedIn()
-        && canManageWorkspace(resource.data.workspaceId)
-        && workspaceBelongsToTenant(resource.data.workspaceId, resource.data.tenantId);
+      allow create, update, delete: if false;
     }
 
     match /audit_logs/{tenantId}/events/{eventId} {
@@ -305,13 +272,7 @@ service cloud.firestore {
         && resource.data.tenantId == tenantId
         && workspaceBelongsToTenant(resource.data.workspaceId, tenantId)
         && canManageWorkspace(resource.data.workspaceId);
-      allow create: if isSignedIn()
-        && request.resource.data.workspaceId is string
-        && request.resource.data.tenantId == tenantId
-        && workspaceBelongsToTenant(request.resource.data.workspaceId, tenantId)
-        && canEditWorkspaceData(request.resource.data.workspaceId)
-        && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if false;
+      allow create, update, delete: if false;
     }
 
     match /accounts/{accountId} {

@@ -225,62 +225,6 @@ export const OPENAPI_COMPONENTS = {
             usage: { $ref: '#/components/schemas/UsageMap' },
           },
         },
-        UsageUpsertRequest: {
-          type: 'object',
-          required: ['usage'],
-          properties: {
-            workspaceId: { type: 'string' },
-            usage: { $ref: '#/components/schemas/UsageMap' },
-          },
-        },
-        UsageWriteResponse: {
-          type: 'object',
-          required: ['success', 'scope', 'workspaceId'],
-          properties: {
-            success: { type: 'boolean', enum: [true] },
-            scope: { type: 'string', enum: ['workspace'] },
-            workspaceId: { type: 'string' },
-          },
-        },
-        UsageIncrementRequest: {
-          type: 'object',
-          required: ['resource'],
-          properties: {
-            workspaceId: { type: 'string' },
-            resource: { type: 'string', enum: ['transactions', 'aiQueries', 'bankConnections'] },
-            amount: { type: 'integer', minimum: 1, default: 1 },
-            at: { type: 'string' },
-            metadata: { type: 'object', additionalProperties: true },
-          },
-        },
-        UsageIncrementResponse: {
-          type: 'object',
-          required: ['success', 'scope', 'workspaceId', 'resource', 'total'],
-          properties: {
-            success: { type: 'boolean', enum: [true] },
-            scope: { type: 'string', enum: ['workspace'] },
-            workspaceId: { type: 'string' },
-            resource: { type: 'string', enum: ['transactions', 'aiQueries', 'bankConnections'] },
-            total: { type: 'integer', minimum: 0 },
-          },
-        },
-        UsageResetRequest: {
-          type: 'object',
-          properties: {
-            workspaceId: { type: 'string' },
-            monthKey: { type: 'string', pattern: '^\\d{4}-\\d{2}$' },
-          },
-        },
-        UsageResetResponse: {
-          type: 'object',
-          required: ['success', 'scope', 'workspaceId', 'monthKey'],
-          properties: {
-            success: { type: 'boolean', enum: [true] },
-            scope: { type: 'string', enum: ['workspace'] },
-            workspaceId: { type: 'string' },
-            monthKey: { type: 'string', nullable: true },
-          },
-        },
         PlanCatalogEntry: {
           type: 'object',
           required: ['id', 'name', 'priceMonthlyCents', 'currency', 'limits', 'features'],
@@ -851,64 +795,6 @@ export const OPENAPI_PATHS = {
             '403': { description: 'Workspace access denied', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           },
         },
-        put: {
-          tags: ['SaaS'],
-          summary: 'Upsert usage snapshot',
-          security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }],
-          requestBody: {
-            required: true,
-            content: {
-              'application/json': {
-                schema: { $ref: '#/components/schemas/UsageUpsertRequest' },
-              },
-            },
-          },
-          responses: {
-            '200': { description: 'Usage updated', content: { 'application/json': { schema: { $ref: '#/components/schemas/UsageWriteResponse' } } } },
-            '400': { description: 'Usage payload invalid or workspaceId missing', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
-            '403': { description: 'Workspace access denied', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
-          },
-        },
-      },
-      '/api/saas/usage/increment': {
-        post: {
-          tags: ['SaaS'],
-          summary: 'Increment usage for a feature/resource',
-          security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }],
-          requestBody: {
-            required: true,
-            content: {
-              'application/json': {
-                schema: { $ref: '#/components/schemas/UsageIncrementRequest' },
-              },
-            },
-          },
-          responses: {
-            '200': { description: 'Usage incremented', content: { 'application/json': { schema: { $ref: '#/components/schemas/UsageIncrementResponse' } } } },
-            '400': { description: 'Increment payload invalid or workspaceId missing', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
-            '403': { description: 'Workspace access denied', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
-          },
-        },
-      },
-      '/api/saas/usage/reset': {
-        post: {
-          tags: ['SaaS'],
-          summary: 'Reset usage period',
-          security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }],
-          requestBody: {
-            required: true,
-            content: {
-              'application/json': {
-                schema: { $ref: '#/components/schemas/UsageResetRequest' },
-              },
-            },
-          },
-          responses: {
-            '200': { description: 'Usage reset', content: { 'application/json': { schema: { $ref: '#/components/schemas/UsageResetResponse' } } } },
-            '400': { description: 'Reset payload invalid or workspaceId missing', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
-            '403': { description: 'Workspace access denied', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
-          },
-        },
       },
       '/api/saas/plans': {
         get: {
@@ -1011,6 +897,31 @@ export const OPENAPI_PATHS = {
         },
       },
       '/api/saas/billing-hooks': {
+        get: {
+          tags: ['SaaS'],
+          summary: 'List authoritative workspace billing hook events',
+          security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }],
+          responses: {
+            '200': {
+              description: 'Workspace billing hooks',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: ['scope', 'workspaceId', 'hooks'],
+                    properties: {
+                      scope: { type: 'string', enum: ['workspace'] },
+                      workspaceId: { type: 'string' },
+                      hooks: { type: 'array', items: { type: 'object', additionalProperties: true } },
+                    },
+                  },
+                },
+              },
+            },
+            '403': { description: 'Workspace access denied', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+            '404': { description: 'Workspace not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          },
+        },
         post: {
           tags: ['SaaS'],
           summary: 'Record a mock billing hook event',

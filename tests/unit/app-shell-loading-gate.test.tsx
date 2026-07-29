@@ -30,11 +30,7 @@ vi.mock('../../src/config/sentry', () => ({
 
 vi.mock('../../src/saas', () => ({
   configureBillingTransport: vi.fn(),
-  configureUsageStoreAdapter: vi.fn(),
-  createFirestoreUsageStoreAdapter: vi.fn(() => ({})),
   createHttpBillingTransport: vi.fn(() => ({})),
-  createHttpUsageStoreAdapter: vi.fn(() => ({})),
-  resetUsageStoreAdapter: vi.fn(),
 }));
 
 vi.mock('../../hooks/useAuthAndWorkspace', () => ({

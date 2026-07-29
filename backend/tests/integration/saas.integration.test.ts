@@ -4,7 +4,12 @@ import request from 'supertest';
 import type { Express } from 'express';
 import { beforeAll, beforeEach, vi } from 'vitest';
 import { createTestAuthorizationHeader } from '../helpers/auth';
-import { getBillingHooksForWorkspace, resetSaasStoreForTests } from '../../src/utils/saasStore';
+import {
+  getBillingHooksForWorkspace,
+  recordWorkspaceUsage,
+  resetSaasStoreForTests,
+  setWorkspaceUsage,
+} from '../../src/utils/saasStore';
 import { resetWorkspaceStoreForTests } from '../../src/services/admin/workspaceStore';
 
 vi.mock('../../src/config/database', () => ({
@@ -118,7 +123,7 @@ describe('SaaS API workspace scope', () => {
     expect(res.body.hasBillingCustomer).toBe(false);
   });
 
-  it('POST /api/saas/plan upgrades the workspace plan and PUT /api/saas/usage persists workspace usage', async () => {
+  it('POST /api/saas/plan upgrades the workspace plan while usage remains read-only to browsers', async () => {
     const ownerUserId = 'owner-saas-upgrade';
     const created = await request(app)
       .post('/api/tenant')
@@ -135,22 +140,35 @@ describe('SaaS API workspace scope', () => {
     expect(upgrade.body.scope).toBe('workspace');
     expect(upgrade.body.currentPlan).toBe('pro');
 
-    const usageUpdate = await request(app)
+    await setWorkspaceUsage(created.body.workspaceId, {
+      '2026-03': {
+        transactions: 12,
+        aiQueries: 8,
+        bankConnections: 2,
+      },
+    });
+
+    const usageWrite = await request(app)
       .put('/api/saas/usage')
       .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .set('x-workspace-id', created.body.workspaceId)
-      .send({
-        usage: {
-          '2026-03': {
-            transactions: 12,
-            aiQueries: 8,
-            bankConnections: 2,
-          },
-        },
-      });
+      .send({ usage: {} });
 
-    expect(usageUpdate.status).toBe(200);
-    expect(usageUpdate.body.scope).toBe('workspace');
+    expect(usageWrite.status).toBe(404);
+
+    const usageIncrement = await request(app)
+      .post('/api/saas/usage/increment')
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .set('x-workspace-id', created.body.workspaceId)
+      .send({ resource: 'aiQueries' });
+    const usageReset = await request(app)
+      .post('/api/saas/usage/reset')
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .set('x-workspace-id', created.body.workspaceId)
+      .send({});
+
+    expect(usageIncrement.status).toBe(404);
+    expect(usageReset.status).toBe(404);
 
     const usageRead = await request(app)
       .get('/api/saas/usage')
@@ -203,6 +221,44 @@ describe('SaaS API workspace scope', () => {
     }
   });
 
+  it('GET /api/saas/billing-hooks returns the server-side workspace history', async () => {
+    const ownerUserId = 'owner-saas-hook-history';
+    const created = await request(app)
+      .post('/api/tenant')
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .send({ name: 'Workspace Hook History' });
+
+    const recorded = await request(app)
+      .post('/api/saas/billing-hooks')
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .set('x-workspace-id', created.body.workspaceId)
+      .send({
+        plan: 'pro',
+        event: 'plan_changed',
+        amount: 0,
+        at: '2026-07-29T12:00:00.000Z',
+      });
+    expect(recorded.status).toBe(200);
+
+    const response = await request(app)
+      .get('/api/saas/billing-hooks')
+      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
+      .set('x-workspace-id', created.body.workspaceId);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      scope: 'workspace',
+      workspaceId: created.body.workspaceId,
+      hooks: [{
+        tenantId: created.body.tenantId,
+        workspaceId: created.body.workspaceId,
+        plan: 'pro',
+        event: 'plan_changed',
+        createdAt: '2026-07-29T12:00:00.000Z',
+      }],
+    });
+  });
+
   it('GET /api/saas/metering returns workspace-scoped usage summary and events', async () => {
     const ownerUserId = 'owner-saas-metering';
     const created = await request(app)
@@ -210,23 +266,19 @@ describe('SaaS API workspace scope', () => {
       .set('Authorization', createTestAuthorizationHeader(ownerUserId))
       .send({ name: 'Workspace Metering' });
 
-    await request(app)
-      .post('/api/saas/usage/increment')
-      .set('Authorization', createTestAuthorizationHeader(ownerUserId))
-      .set('x-workspace-id', created.body.workspaceId)
-      .send({
-        resource: 'aiQueries',
-        amount: 1,
-        metadata: {
-          aiUsage: {
-            provider: 'openai',
-            model: 'gpt-4o-mini',
-            inputTokens: 1_000_000,
-            outputTokens: 1_000_000,
-            tokensUsed: 2_000_000,
-          },
+    await recordWorkspaceUsage(created.body.workspaceId, {
+      resource: 'aiQueries',
+      amount: 1,
+      metadata: {
+        aiUsage: {
+          provider: 'openai',
+          model: 'gpt-4o-mini',
+          inputTokens: 1_000_000,
+          outputTokens: 1_000_000,
+          tokensUsed: 2_000_000,
         },
-      });
+      },
+    });
 
     const res = await request(app)
       .get('/api/saas/metering?from=2026-01-01T00:00:00.000Z&to=2026-12-31T23:59:59.999Z')

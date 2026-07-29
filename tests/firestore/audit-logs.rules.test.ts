@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
-import { initializeTestEnvironment, assertFails, assertSucceeds, RulesTestEnvironment } from '@firebase/rules-unit-testing';
+import { initializeTestEnvironment, assertFails, RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { deleteDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 
 const projectId = 'demo-flow-finance-audit-logs';
@@ -138,10 +138,10 @@ describe('audit_logs firestore rules', () => {
     await testEnv.cleanup();
   });
 
-  it('permite create para membro autenticado com userId igual ao auth.uid', async () => {
+  it('nega create para clientes autenticados', async () => {
     const db = testEnv.authenticatedContext('member-1').firestore();
 
-    await assertSucceeds(setDoc(
+    await assertFails(setDoc(
       doc(db, 'audit_logs', 'tenant-1', 'events', 'evt-create'),
       buildAuditLogPayload('member-1'),
     ));
