@@ -53,7 +53,7 @@ export function resetFeatureFlagService(): void {
  * Permite controle de flags em produção sem alterar código.
  *
  * Variáveis suportadas (valor: 'true' | 'false'):
- *   FF_OPEN_FINANCE, FF_AI_CHAT, FF_AI_ANALYSIS, FF_AI_FALLBACK,
+ *   FF_OPEN_FINANCE, FF_AI_CHAT, FF_AI_ANALYSIS,
  *   FF_CLINIC_INGEST, FF_CLINIC_AUTO_POST, FF_KILL_AI,
  *   FF_KILL_CLINIC, FF_KILL_STRIPE
  */

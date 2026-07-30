@@ -93,13 +93,6 @@ export class WorkspaceUsageInputError extends Error {
   }
 }
 
-// Compatibility names used by the quota boundary. They alias the same error
-// constructors so instanceof checks remain reliable across the service layer.
-export {
-  WorkspaceUsageAuthorityUnavailableError as UsageAuthorityUnavailableError,
-  WorkspaceUsageIdempotencyConflictError as UsageIdempotencyConflictError,
-};
-
 type WorkspaceUsageDocument = UsageSnapshot & {
   monthKey: string;
   updatedAt: string;
