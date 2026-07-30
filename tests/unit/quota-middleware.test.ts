@@ -401,6 +401,7 @@ describe('quotaMiddleware - workspace scope', () => {
     expect(replay.res.status).toHaveBeenCalledWith(409);
     expect(replay.res.json).toHaveBeenCalledWith(expect.objectContaining({
       error: 'idempotency_replay',
+      message: 'This Idempotency-Key has already been used for an existing quota reservation.',
     }));
     expect(usageAuthorityMocks.reserveWorkspaceUsage).toHaveBeenNthCalledWith(2, expect.objectContaining({
       idempotencyKey: 'quota-replay-1',

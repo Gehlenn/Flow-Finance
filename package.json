@@ -45,6 +45,7 @@
     "health:vercel": "node scripts/verify-vercel-observability.mjs https://flow-finance-backend.vercel.app",
     "health:published-headers": "node scripts/check-published-headers.mjs --strict",
     "health:csp-readiness": "node scripts/check-csp-readiness.mjs",
+    "health:firestore-authority:static": "node scripts/check-firestore-authority-static.mjs",
     "health:visual-baseline": "node scripts/check-visual-baseline.mjs",
     "health:visual-diff": "node ./node_modules/@playwright/test/cli.js test tests/e2e/visual-diff.spec.ts --project=chromium --workers=1 --output=test-results/playwright-visual-diff",
     "health:target-performance": "node scripts/check-target-performance-evidence.mjs",

@@ -43,6 +43,9 @@ jobs:
     - name: Type check
       run: npm run type-check
 
+    - name: Verify Firestore authority static prerequisites
+      run: npm run health:firestore-authority:static
+
     - name: Verify architecture quality
       run: npm run quality:architecture
 
