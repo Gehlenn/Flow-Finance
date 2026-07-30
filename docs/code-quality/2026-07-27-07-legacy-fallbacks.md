@@ -10,6 +10,14 @@ Scope: remove only obsolete legacy, compatibility, deprecated, or fallback paths
 > live imports use `src/finance/importService.ts` and
 > `src/ai/receiptScanner.ts`.
 
+> Follow-up on 2026-07-29: an orphan backend AI factory/orchestrator/provider
+> stack and its dedicated tests were removed after confirming that production
+> uses `backend/src/config/ai.ts`. Two unconsumed usage-authority aliases and a
+> nonexistent `FF_AI_FALLBACK` comment entry were also removed. Active provider
+> failover and quota persistence compatibility remain pending explicit runtime
+> contracts. See
+> [AI runtime and quota follow-up](./2026-07-29-ai-runtime-and-quota-follow-up.md).
+
 ## Executive assessment
 
 The repository contains many occurrences of `legacy`, `deprecated`, `compatibility`, and `fallback`, but most are not dead code. Several are active operational contracts: provider failover, offline/local-first behavior, persistence migration, authentication compatibility, observability, imports, security controls, and external integrations.

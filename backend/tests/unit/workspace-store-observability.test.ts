@@ -346,7 +346,7 @@ describe('workspaceStore observability', () => {
     });
   });
 
-  it('aguarda persistencia Postgres no caminho assincrono quando ela esta pronta', async () => {
+  it('nao usa Postgres como autoridade transacional em producao sem Firestore', async () => {
     process.env.NODE_ENV = 'production';
     process.env.DISABLE_LEGACY_STATE_BLOBS = 'true';
     mocks.isPostgresStateStoreEnabled.mockReturnValue(true);
@@ -356,11 +356,12 @@ describe('workspaceStore observability', () => {
     const { createTenantAsync, resetWorkspaceStoreForTests } = await import('../../src/services/admin/workspaceStore');
     resetWorkspaceStoreForTests();
 
-    await expect(createTenantAsync('Tenant Flow', 'user-1')).resolves.toMatchObject({
-      workspace: expect.objectContaining({ name: 'Tenant Flow' }),
-      tenant: expect.objectContaining({ name: 'Tenant Flow' }),
+    await expect(createTenantAsync('Tenant Flow', 'user-1')).rejects.toMatchObject({
+      name: 'AppError',
+      statusCode: 503,
+      message: 'Persistencia duravel de workspace indisponivel',
     });
-    expect(mocks.saveWorkspaceStoreState).toHaveBeenCalledTimes(1);
+    expect(mocks.saveWorkspaceStoreState).not.toHaveBeenCalled();
   });
 
   it('usa Firestore como store duravel quando ele esta pronto', async () => {

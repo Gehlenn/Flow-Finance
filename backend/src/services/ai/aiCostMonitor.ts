@@ -1,4 +1,4 @@
-import type { AIProvider } from './types';
+export type AIProvider = 'openai' | 'gemini' | 'claude';
 
 export type AICostEvidence =
   | 'provider_usage_tokens'
