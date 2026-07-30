@@ -109,7 +109,7 @@ async function enforceWorkspaceQuota(input: QuotaRequest & { workspaceId: string
       if (reservation.idempotent) {
         input.res.status(409).json({
           error: 'idempotency_replay',
-          message: 'This Idempotency-Key has already been used for a completed quota reservation.',
+          message: 'This Idempotency-Key has already been used for an existing quota reservation.',
         });
         return;
       }

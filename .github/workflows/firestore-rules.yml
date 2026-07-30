@@ -31,5 +31,8 @@ jobs:
       - name: Install backend dependencies
         run: npm ci --prefix backend --no-audit --no-fund
 
+      - name: Verify Firestore authority static prerequisites
+        run: npm run health:firestore-authority:static
+
       - name: Run Firestore rules tests
         run: npm run test:firestore:rules

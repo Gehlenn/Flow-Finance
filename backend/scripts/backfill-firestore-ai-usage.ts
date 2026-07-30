@@ -1,6 +1,10 @@
 import 'dotenv/config';
 
 import {
+  parseFirestoreAiUsageBackfillMode,
+  type FirestoreAiUsageBackfillMode,
+} from './firestore-ai-usage-backfill-contract.mjs';
+import {
   initializePostgresStateStore,
   isPostgresStateStoreEnabled,
   loadWorkspaceSaasState,
@@ -15,14 +19,6 @@ import {
   type BackfillAction,
 } from '../src/services/usage/firestoreAiUsageBackfill';
 
-type BackfillMode = 'dry-run' | 'apply';
-
-function parseMode(args: string[]): BackfillMode {
-  if (args.length === 0) return 'dry-run';
-  if (args.length === 1 && args[0] === '--apply') return 'apply';
-  throw new Error('Usage: npm run backfill:firestore-ai-usage -- [--apply]');
-}
-
 function emptyCounts(): Record<BackfillAction, number> {
   return {
     create_snapshot_and_event: 0,
@@ -34,7 +30,7 @@ function emptyCounts(): Record<BackfillAction, number> {
 }
 
 async function main(): Promise<void> {
-  const mode = parseMode(process.argv.slice(2));
+  const mode: FirestoreAiUsageBackfillMode = parseFirestoreAiUsageBackfillMode(process.argv.slice(2));
   if (process.env.FIRESTORE_AI_USAGE_AUTHORITY_ENABLED === 'true') {
     throw new Error('Refusing to run while FIRESTORE_AI_USAGE_AUTHORITY_ENABLED=true');
   }
