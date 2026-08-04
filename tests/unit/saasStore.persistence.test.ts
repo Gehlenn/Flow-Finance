@@ -35,6 +35,7 @@ describe('saasStore persistence', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     delete process.env.SAAS_STORE_FILE;
   });
 
@@ -77,6 +78,20 @@ describe('saasStore persistence', () => {
 
     expect(secondInstance.getWorkspaceMonthlyCount('ws-1', 'aiQueries')).toBe(7);
     expect(secondInstance.getWorkspaceBillingHookCount('ws-1')).toBe(1);
+  });
+
+  it('keeps confirmed usage when the legacy file backup fails', async () => {
+    const saasStore = await loadSaasStoreModule();
+    const writeSpy = vi.spyOn(fs, 'writeFileSync').mockImplementationOnce(() => {
+      throw new Error('legacy file unavailable');
+    });
+
+    await expect(
+      saasStore.incrementMonthlyUsage('user-file-backup-failure', 'aiQueries', 1),
+    ).resolves.toBe(1);
+
+    expect(saasStore.getMonthlyCount('user-file-backup-failure', 'aiQueries')).toBe(1);
+    writeSpy.mockRestore();
   });
 
   it('reset removes the persisted store file', async () => {

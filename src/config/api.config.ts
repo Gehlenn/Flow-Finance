@@ -133,16 +133,18 @@ export const CLIENT_APP_VERSION =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APP_VERSION
     ? String(import.meta.env.VITE_APP_VERSION)
     : '0.9.7');
-
+export const QUOTA_PERSISTENCE_UNAVAILABLE_ERROR_CODE = 'quota_persistence_unavailable' as const;
+type ApiRequestErrorCode = typeof QUOTA_PERSISTENCE_UNAVAILABLE_ERROR_CODE;
 export class ApiRequestError extends Error {
   statusCode: number;
+  errorCode?: ApiRequestErrorCode;
   requestId?: string;
   routeScope?: string;
   details?: Record<string, unknown>;
-
   constructor(params: {
     statusCode: number;
     message: string;
+    errorCode?: ApiRequestErrorCode;
     requestId?: string;
     routeScope?: string;
     details?: Record<string, unknown>;
@@ -150,6 +152,7 @@ export class ApiRequestError extends Error {
     super(params.message);
     this.name = 'ApiRequestError';
     this.statusCode = params.statusCode;
+    this.errorCode = params.errorCode;
     this.requestId = params.requestId;
     this.routeScope = params.routeScope;
     this.details = params.details;
@@ -347,7 +350,8 @@ export async function apiRequest<T>(
 
       if (!response.ok) {
         const errorPayload: unknown = await response.json().catch(() => ({}));
-        const payloadMessage = readErrorPayloadField(errorPayload, 'message') || readErrorPayloadField(errorPayload, 'error');
+        const payloadError = readErrorPayloadField(errorPayload, 'error');
+        const payloadMessage = readErrorPayloadField(errorPayload, 'message') || payloadError;
         const message = String(payloadMessage || response.statusText || 'Request failed');
         const requestIdFromBody = typeof readErrorPayloadField(errorPayload, 'requestId') === 'string'
           ? String(readErrorPayloadField(errorPayload, 'requestId'))
@@ -357,6 +361,9 @@ export async function apiRequest<T>(
         const apiError = new ApiRequestError({
           statusCode: response.status,
           message: `API Error ${response.status}: ${message}`,
+          errorCode: payloadError === QUOTA_PERSISTENCE_UNAVAILABLE_ERROR_CODE
+            ? QUOTA_PERSISTENCE_UNAVAILABLE_ERROR_CODE
+            : undefined,
           requestId: requestIdFromBody || requestIdFromHeader,
           routeScope: typeof readErrorPayloadField(errorPayload, 'routeScope') === 'string'
             ? String(readErrorPayloadField(errorPayload, 'routeScope'))
@@ -394,6 +401,14 @@ export async function apiRequest<T>(
       
       // Don't retry on auth errors or non-network issues
       if (error instanceof Error && (error.message.includes('401') || error.message.includes('403'))) {
+        throw error;
+      }
+
+      if (
+        error instanceof ApiRequestError
+        && error.statusCode === 503
+        && error.errorCode === QUOTA_PERSISTENCE_UNAVAILABLE_ERROR_CODE
+      ) {
         throw error;
       }
 

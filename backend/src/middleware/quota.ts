@@ -163,7 +163,7 @@ async function enforceUserQuota(input: QuotaRequest): Promise<void> {
 }
 
 async function enforceLegacyQuota(input: QuotaRequest & { workspaceId?: string }): Promise<void> {
-  const { res, next, userId, workspaceId, resource, amount } = input;
+  const { req, res, next, userId, workspaceId, resource, amount } = input;
 
   const scope = workspaceId ? 'workspace' : 'user';
   const scopeId = workspaceId || userId;
@@ -197,10 +197,32 @@ async function enforceLegacyQuota(input: QuotaRequest & { workspaceId?: string }
       await incrementMonthlyUsage(userId, resource, amount);
     }
   } catch (error) {
-    logger.warn(
-      { error, userId, workspaceId, plan, resource, scope, fallback: 'quota-increment-failed' },
-      'Legacy quota tracking failed; continuing request without persistence',
+    setQuotaHeaders(res, {
+      plan,
+      scope,
+      resource,
+      limit,
+      remaining: Math.max(0, limit - current),
+    });
+    logger.error(
+      {
+        requestId: req.requestId,
+        routeScope: req.routeScope,
+        userId,
+        workspaceId,
+        plan,
+        resource,
+        amount,
+        scope,
+        current,
+        limit,
+        errorType: error instanceof Error ? error.name : typeof error,
+        fallback: 'quota-persistence-failed',
+      },
+      'Legacy quota persistence failed; request blocked',
     );
+    respondQuotaPersistenceUnavailable(req, res);
+    return;
   }
 
   logger.debug({ userId, workspaceId, plan, resource, newTotal: current + amount, limit, scope }, 'Quota incremented');
@@ -306,6 +328,15 @@ function respondQuotaAuthorityUnavailable(res: Response): void {
   res.status(503).json({
     error: 'quota_authority_unavailable',
     message: 'Workspace quota authority is unavailable.',
+  });
+}
+
+function respondQuotaPersistenceUnavailable(req: Request, res: Response): void {
+  res.status(503).json({
+    error: 'quota_persistence_unavailable',
+    message: 'Quota usage could not be recorded. Please try again later.',
+    ...(req.requestId ? { requestId: req.requestId } : {}),
+    ...(req.routeScope ? { routeScope: req.routeScope } : {}),
   });
 }
 

@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { API_CONFIG, apiRequest } from '../../src/config/api.config';
+import {
+  API_CONFIG,
+  QUOTA_PERSISTENCE_UNAVAILABLE_ERROR_CODE,
+  apiRequest,
+} from '../../src/config/api.config';
 
 function response(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
@@ -99,6 +103,33 @@ describe('apiRequest idempotency keys', () => {
     const originalKey = getHeader(fetchMock, 0, 'Idempotency-Key');
     expect(getHeader(fetchMock, 1, 'Idempotency-Key')).toBeNull();
     expect(getHeader(fetchMock, 2, 'Idempotency-Key')).toBe(originalKey);
+  });
+
+  it('does not retry a quota persistence 503 response', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response({
+      error: QUOTA_PERSISTENCE_UNAVAILABLE_ERROR_CODE,
+    }, 503));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(apiRequest('/api/mutations', { retries: 2 })).rejects.toMatchObject({
+      statusCode: 503,
+      errorCode: QUOTA_PERSISTENCE_UNAVAILABLE_ERROR_CODE,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries a generic 503 response and resolves the next attempt', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response({ error: 'service_unavailable' }, 503))
+      .mockResolvedValueOnce(response({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(apiRequest<{ ok: boolean }>('/api/mutations', { retries: 1 }))
+      .resolves.toEqual({ ok: true });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it.each(['GET', 'HEAD'])('does not add an idempotency key to %s requests', async (method) => {
