@@ -13,7 +13,14 @@ const AI_QUOTA_ERROR_RESPONSES = {
   '400': { description: 'Invalid payload or missing/invalid Idempotency-Key' },
   '409': { description: 'Idempotency-Key replay or conflict' },
   '429': { description: 'Monthly AI quota reached' },
-  '503': { description: 'AI quota authority unavailable' },
+  '503': {
+    description: 'AI quota authority or quota persistence unavailable',
+    content: {
+      'application/json': {
+        schema: { $ref: '#/components/schemas/ErrorResponse' },
+      },
+    },
+  },
 };
 
 export const OPENAPI_COMPONENTS = {
@@ -36,6 +43,8 @@ export const OPENAPI_COMPONENTS = {
             error: { type: 'string' },
             message: { type: 'string' },
             statusCode: { type: 'integer' },
+            requestId: { type: 'string' },
+            routeScope: { type: 'string' },
           },
         },
         AuthUser: {
@@ -1245,7 +1254,25 @@ export const OPENAPI_PATHS = {
       '/api/banking/connectors': { get: { tags: ['Banking'], summary: 'List banking connectors', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Connector list' } } } },
       '/api/banking/connections': { get: { tags: ['Banking'], summary: 'List banking connections', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Connection list' } } } },
       '/api/banking/connect-token': { post: { tags: ['Banking'], summary: 'Create bank connect token', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Connect token' } } } },
-      '/api/banking/connect': { post: { tags: ['Banking'], summary: 'Create banking connection', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Connection created' } } } },
+      '/api/banking/connect': {
+        post: {
+          tags: ['Banking'],
+          summary: 'Create banking connection',
+          security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }],
+          responses: {
+            '200': { description: 'Connection created' },
+            '429': { description: 'Monthly bank connection quota reached' },
+            '503': {
+              description: 'Quota persistence unavailable',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ErrorResponse' },
+                },
+              },
+            },
+          },
+        },
+      },
       '/api/banking/migrate/firebase': { post: { tags: ['Banking'], summary: 'Migrate banking data from Firebase', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Migration result' } } } },
       '/api/banking/sync': { post: { tags: ['Banking'], summary: 'Sync banking connection', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Sync result' } } } },
       '/api/banking/disconnect': { post: { tags: ['Banking'], summary: 'Disconnect banking connection', security: [{ BearerAuth: [] }, { WorkspaceHeader: [] }], responses: { '200': { description: 'Disconnected' } } } },

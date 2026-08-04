@@ -22,9 +22,14 @@ import {
 } from '../../backend/src/utils/saasStore';
 import { createWorkspace, updateWorkspaceBilling, resetWorkspaceStoreForTests } from '../../backend/src/services/admin/workspaceStore';
 
-vi.mock('../../backend/src/config/logger', () => ({
-  default: { debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn() },
+const loggerMocks = vi.hoisted(() => ({
+  debug: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
 }));
+
+vi.mock('../../backend/src/config/logger', () => ({ default: loggerMocks }));
 
 const usageAuthorityMocks = vi.hoisted(() => ({
   isFirestoreAiUsageAuthorityEnabled: vi.fn().mockReturnValue(false),
@@ -60,12 +65,13 @@ vi.mock('../../backend/src/services/persistence/postgresStateStore', () => postg
 function makeReq(
   userId = 'user-test',
   workspaceId?: string,
-  options: { idempotencyKey?: string; requestId?: string } = {},
+  options: { idempotencyKey?: string; requestId?: string; routeScope?: string } = {},
 ) {
   return {
     userId,
     workspaceId,
     requestId: options.requestId ?? 'request-quota-test',
+    routeScope: options.routeScope ?? 'quota-test',
     header: vi.fn().mockImplementation((name: string) => {
       if (name === 'x-workspace-id') return workspaceId;
       if (name === 'Idempotency-Key') return options.idempotencyKey;
@@ -78,6 +84,7 @@ function makeReq(
     userId?: string;
     workspaceId?: string;
     requestId?: string;
+    routeScope?: string;
     header: ReturnType<typeof vi.fn>;
     params: Record<string, never>;
     query: Record<string, never>;
@@ -102,7 +109,7 @@ async function runMiddleware(
   resource: 'aiQueries' | 'bankConnections' | 'transactions',
   userId: string,
   workspaceId?: string,
-  requestOptions?: { idempotencyKey?: string; requestId?: string },
+  requestOptions?: { idempotencyKey?: string; requestId?: string; routeScope?: string },
 ) {
   const req = makeReq(userId, workspaceId, requestOptions);
   const res = makeRes();
@@ -173,13 +180,44 @@ describe('quotaMiddleware — plano free', () => {
     expect(res.setHeader).toHaveBeenCalledWith('X-RateLimit-Reset', expect.any(String));
   });
 
-  it('continua a requisicao se a persistencia de quota falhar', async () => {
+  it('bloqueia com 503 se a persistencia de quota do usuario falhar', async () => {
     const spy = vi.spyOn(saasStore, 'incrementMonthlyUsage').mockRejectedValueOnce(new Error('quota store failed'));
 
-    const { next, res } = await runMiddleware('aiQueries', 'user-quota-fallback');
+    const { next, res } = await runMiddleware(
+      'aiQueries',
+      'user-quota-fallback',
+      undefined,
+      { requestId: 'request-user-quota-failure', routeScope: 'ai' },
+    );
 
-    expect(next).toHaveBeenCalled();
-    expect(res.status).not.toHaveBeenCalledWith(500);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith({
+      error: 'quota_persistence_unavailable',
+      message: 'Quota usage could not be recorded. Please try again later.',
+      requestId: 'request-user-quota-failure',
+      routeScope: 'ai',
+    });
+    expect(res.setHeader).toHaveBeenLastCalledWith(
+      'X-RateLimit-Reset',
+      expect.any(String),
+    );
+    expect(res.setHeader).toHaveBeenCalledWith(
+      'X-RateLimit-Remaining',
+      String(PLAN_LIMITS.free.aiQueries),
+    );
+    expect(loggerMocks.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: 'request-user-quota-failure',
+        routeScope: 'ai',
+        userId: 'user-quota-fallback',
+        resource: 'aiQueries',
+        errorType: 'Error',
+        fallback: 'quota-persistence-failed',
+      }),
+      'Legacy quota persistence failed; request blocked',
+    );
+    expect(loggerMocks.error.mock.calls.at(-1)?.[0]).not.toHaveProperty('error');
     spy.mockRestore();
   });
 
@@ -351,6 +389,34 @@ describe('quotaMiddleware - workspace scope', () => {
     expect(next).toHaveBeenCalledOnce();
     expect(usageAuthorityMocks.reserveWorkspaceUsage).not.toHaveBeenCalled();
     expect(getWorkspaceMonthlyCount(workspace.workspaceId, 'bankConnections')).toBe(1);
+  });
+
+  it('bloqueia com 503 se a persistencia de quota do workspace falhar', async () => {
+    const workspace = createWorkspace('Banking persistence failure', 'owner-bank-failure');
+    const spy = vi
+      .spyOn(saasStore, 'incrementWorkspaceMonthlyUsage')
+      .mockRejectedValueOnce(new Error('workspace quota store failed'));
+
+    const { next, res } = await runMiddleware(
+      'bankConnections',
+      'owner-bank-failure',
+      workspace.workspaceId,
+      { requestId: 'request-workspace-quota-failure', routeScope: 'banking' },
+    );
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith({
+      error: 'quota_persistence_unavailable',
+      message: 'Quota usage could not be recorded. Please try again later.',
+      requestId: 'request-workspace-quota-failure',
+      routeScope: 'banking',
+    });
+    expect(res.setHeader).toHaveBeenCalledWith(
+      'X-RateLimit-Remaining',
+      String(PLAN_LIMITS.free.bankConnections),
+    );
+    spy.mockRestore();
   });
 
   it('faz fallback legado apenas no desenvolvimento/teste quando a autoridade Firestore nao esta configurada', async () => {

@@ -105,6 +105,89 @@ describe('saasStore — Postgres como fonte de verdade do billing', () => {
     await expect(
       saasStore.incrementWorkspaceMonthlyUsage('ws-pg-err', 'transactions', 1),
     ).rejects.toThrow('DB write failed');
+
+    expect(saasStore.getWorkspaceMonthlyCount('ws-pg-err', 'transactions')).toBe(0);
+    expect(saasStore.getWorkspaceUsageEvents('ws-pg-err')).toEqual([]);
+
+    postgresMocks.saveWorkspaceSaasState.mockResolvedValue(undefined);
+    await expect(
+      saasStore.incrementWorkspaceMonthlyUsage('ws-pg-err', 'transactions', 1),
+    ).resolves.toBe(1);
+  });
+
+  it('serializa mutacoes para uma falha nao contaminar a reserva seguinte', async () => {
+    let rejectFirstWrite: (reason?: unknown) => void = () => undefined;
+    const firstWrite = new Promise<void>((_resolve, reject) => {
+      rejectFirstWrite = reject;
+    });
+    postgresMocks.saveWorkspaceSaasState
+      .mockImplementationOnce(() => firstWrite)
+      .mockResolvedValue(undefined);
+
+    const saasStore = await loadSaasStoreModule();
+    saasStore.resetSaasStoreForTests();
+
+    const failedReservation = saasStore.incrementWorkspaceMonthlyUsage(
+      'ws-pg-serialized',
+      'bankConnections',
+      1,
+    );
+    const failedExpectation = expect(failedReservation).rejects.toThrow('first write failed');
+
+    await vi.waitFor(() => {
+      expect(postgresMocks.saveWorkspaceSaasState).toHaveBeenCalledOnce();
+    });
+
+    const nextReservation = saasStore.incrementWorkspaceMonthlyUsage(
+      'ws-pg-serialized',
+      'bankConnections',
+      1,
+    );
+    expect(postgresMocks.saveWorkspaceSaasState).toHaveBeenCalledOnce();
+
+    rejectFirstWrite(new Error('first write failed'));
+
+    await failedExpectation;
+    await expect(nextReservation).resolves.toBe(1);
+    expect(postgresMocks.saveWorkspaceSaasState).toHaveBeenCalledTimes(2);
+    expect(saasStore.getWorkspaceMonthlyCount('ws-pg-serialized', 'bankConnections')).toBe(1);
+    expect(saasStore.getWorkspaceUsageEvents('ws-pg-serialized')).toHaveLength(1);
+  });
+
+  it('hidrata o cache antes de aceitar a primeira mutacao', async () => {
+    const now = new Date();
+    const monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+    const persistedState = {
+      usageByWorkspace: {
+        'ws-pg-hydration': {
+          [monthKey]: { transactions: 2, aiQueries: 0, bankConnections: 0 },
+        },
+      },
+      usageEventsByWorkspace: {},
+      billingHooksByWorkspace: {},
+    };
+    let resolveHydration: (state: typeof persistedState) => void = () => undefined;
+    const hydration = new Promise<typeof persistedState>((resolve) => {
+      resolveHydration = resolve;
+    });
+    postgresMocks.loadWorkspaceSaasState.mockReturnValueOnce(hydration);
+
+    const saasStore = await loadSaasStoreModule();
+    saasStore.resetSaasStoreForTests();
+
+    const initialization = saasStore.initializeSaasStorePersistence();
+    const firstMutation = saasStore.incrementWorkspaceMonthlyUsage(
+      'ws-pg-hydration',
+      'transactions',
+      1,
+    );
+
+    expect(postgresMocks.saveWorkspaceSaasState).not.toHaveBeenCalled();
+    resolveHydration(persistedState);
+
+    await initialization;
+    await expect(firstMutation).resolves.toBe(3);
+    expect(saasStore.getWorkspaceMonthlyCount('ws-pg-hydration', 'transactions')).toBe(3);
   });
 
   it('erro no Postgres propaga a partir de appendWorkspaceBillingHook', async () => {
